@@ -646,7 +646,7 @@ def run_extract_render(output_dir: Path, clean: bool) -> None:
                 {
                     "page": page_index,
                     "source_tileset": tileset_name,
-                    "path": str(page_out.relative_to(output_dir)),
+                    "path": page_out.relative_to(output_dir).as_posix(),
                     "logical_tile_count": logical_tile_count,
                 }
             )

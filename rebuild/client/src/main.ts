@@ -174,7 +174,9 @@ connectWebSocket();
 bindWalkInput();
 
 function normalizeRepoRelative(path: string): string {
-  return path.replace(/\\/g, '/').replace(/^\/?rebuild\/assets\//, '');
+  const posixPath = path.replace(/\\/g, '/');
+  const rebuildAssetsPrefix = /^(?:[A-Za-z]:)?\/?.*?rebuild\/assets\//;
+  return posixPath.replace(rebuildAssetsPrefix, '');
 }
 
 async function loadJsonFromAssets<T>(repoRelativePath: string): Promise<T> {
@@ -194,7 +196,9 @@ async function resolveImageUrlFromAssets(repoRelativePath: string): Promise<stri
   const modulePath = `../../assets/${normalized}`;
   const imageUrl = imageAssetUrls[modulePath];
   if (!imageUrl) {
-    throw new Error(`missing image asset at ${modulePath}`);
+    throw new Error(
+      `missing image asset for original="${repoRelativePath}" normalized="${normalized}" at ${modulePath}`,
+    );
   }
 
   return imageUrl;
