@@ -3,6 +3,7 @@ export type CopyTilesOp = {
   pageId: number;
   destLocalTileIndex: number;
   sourceLocalTileIndex: number;
+  tileCount: number;
 };
 
 export type CopyPaletteOp = {
@@ -49,6 +50,7 @@ export function makeCyclicTileSwap(pageId: number, baseTileIndex: number, tileCo
     pageId,
     destLocalTileIndex: baseTileIndex,
     sourceLocalTileIndex: baseTileIndex + normalizedFrame,
+    tileCount,
   };
 }
 
@@ -67,7 +69,7 @@ export function buildGeneralPrimaryAnimations(): TilesetAnimCallback {
     const timerDiv = Math.floor(counter / 16);
     if (phase === 0) {
       const sequence = [0, 1, 0, 2];
-      return { ops: [{ kind: 'copy_tiles', pageId: 0, destLocalTileIndex: 508, sourceLocalTileIndex: 508 + sequence[timerDiv % sequence.length] }] };
+      return { ops: [{ kind: 'copy_tiles', pageId: 0, destLocalTileIndex: 508, sourceLocalTileIndex: 508 + sequence[timerDiv % sequence.length], tileCount: 4 }] };
     }
     if (phase === 1) return { ops: [makeCyclicTileSwap(0, 432, 30, timerDiv)] };
     if (phase === 2) return { ops: [makeCyclicTileSwap(0, 464, 10, timerDiv)] };
