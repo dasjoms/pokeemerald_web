@@ -1,4 +1,4 @@
-import { Application, Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
+import { Application, Assets, Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
 import {
   Direction,
   MessageType,
@@ -320,7 +320,13 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
   const tileTextureCache = new Map<string, Texture>();
   for (const page of atlas.pages) {
     const textureUrl = await resolveImageUrlFromAssets(page.path);
-    pageTextures.set(page.page, Texture.from(textureUrl));
+    const loaded = await Assets.load<Texture>(textureUrl);
+    if (loaded.width === 0 || loaded.height === 0) {
+      throw new Error(
+        `loaded atlas texture has zero dimensions for page ${page.page} (${page.path})`,
+      );
+    }
+    pageTextures.set(page.page, loaded);
   }
 
   const primaryPage = atlas.pages[0];
