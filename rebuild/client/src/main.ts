@@ -216,6 +216,9 @@ function makeRenderAssetRef(layout: LayoutFile): RenderAssetsRef {
 async function connectWebSocket(): Promise<void> {
   socket = new WebSocket('ws://127.0.0.1:8080/ws');
   socket.binaryType = 'arraybuffer';
+  socket.addEventListener('open', () => {
+    socket?.send(encodeJoinSession('web-client'));
+  });
 
   socket.addEventListener('message', async (event) => {
     if (!(event.data instanceof ArrayBuffer)) {
@@ -489,6 +492,24 @@ function sendWalkInput(direction: Direction): void {
   if (ENABLE_CLIENT_PREDICTION) {
     applyPredictedWalk(direction, inputSeq);
   }
+}
+
+function encodeJoinSession(playerId: string): Uint8Array {
+  const encoder = new TextEncoder();
+  const playerIdBytes = encoder.encode(playerId);
+
+  const payload = new Uint8Array(4 + playerIdBytes.length);
+  const payloadView = new DataView(payload.buffer);
+  payloadView.setUint32(0, playerIdBytes.length, true);
+  payload.set(playerIdBytes, 4);
+
+  const frame = new Uint8Array(7 + payload.length);
+  const view = new DataView(frame.buffer);
+  view.setUint16(0, PROTOCOL_VERSION, true);
+  view.setUint8(2, MessageType.JOIN_SESSION);
+  view.setUint32(3, payload.length, true);
+  frame.set(payload, 7);
+  return frame;
 }
 
 function encodeWalkInput(direction: Direction, inputSeq: number, clientTime: bigint): Uint8Array {
