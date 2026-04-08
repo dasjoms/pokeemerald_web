@@ -1,0 +1,113 @@
+{
+  "pair_id": "gTileset_Building__gTileset_EliteFour",
+  "programs": {
+    "primary": {
+      "source_tileset": "gTileset_Building",
+      "callback": "InitTilesetAnim_Building",
+      "program": "TilesetAnim_Building",
+      "counter_max_expr": "256",
+      "events": [
+        {
+          "gate": {
+            "mod": 8,
+            "eq": 0
+          },
+          "actions": [
+            {
+              "function": "QueueAnimTiles_Building_TVTurnedOn",
+              "args": "timer / 8",
+              "copy_ops": [
+                {
+                  "source_expr": "gTilesetAnims_Building_TvTurnedOn[i]",
+                  "frame_array": "gTilesetAnims_Building_TvTurnedOn",
+                  "dest_expr": "(u16 *)(BG_VRAM + TILE_OFFSET_4BPP(496))",
+                  "dest_tile_indices": [
+                    496
+                  ],
+                  "size_expr": "4 * TILE_SIZE_4BPP",
+                  "size_tiles": 4
+                }
+              ],
+              "palette_ops": []
+            }
+          ]
+        }
+      ]
+    },
+    "secondary": {
+      "source_tileset": "gTileset_EliteFour",
+      "callback": "InitTilesetAnim_EliteFour",
+      "program": "TilesetAnim_EliteFour",
+      "counter_max_expr": "128",
+      "events": [
+        {
+          "gate": {
+            "mod": 64,
+            "eq": 1
+          },
+          "actions": [
+            {
+              "function": "QueueAnimTiles_EliteFour_GroundLights",
+              "args": "timer / 64",
+              "copy_ops": [
+                {
+                  "source_expr": "gTilesetAnims_EliteFour_FloorLight[i]",
+                  "frame_array": "gTilesetAnims_EliteFour_FloorLight",
+                  "dest_expr": "(u16 *)(BG_VRAM + TILE_OFFSET_4BPP(NUM_TILES_IN_PRIMARY + 480))",
+                  "dest_tile_indices": [
+                    992
+                  ],
+                  "size_expr": "4 * TILE_SIZE_4BPP",
+                  "size_tiles": 4
+                }
+              ],
+              "palette_ops": []
+            }
+          ]
+        },
+        {
+          "gate": {
+            "mod": 8,
+            "eq": 1
+          },
+          "actions": [
+            {
+              "function": "QueueAnimTiles_EliteFour_WallLights",
+              "args": "timer / 8",
+              "copy_ops": [
+                {
+                  "source_expr": "gTilesetAnims_EliteFour_WallLights[i]",
+                  "frame_array": "gTilesetAnims_EliteFour_WallLights",
+                  "dest_expr": "(u16 *)(BG_VRAM + TILE_OFFSET_4BPP(NUM_TILES_IN_PRIMARY + 504))",
+                  "dest_tile_indices": [
+                    1016
+                  ],
+                  "size_expr": "1 * TILE_SIZE_4BPP",
+                  "size_tiles": 1
+                }
+              ],
+              "palette_ops": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "frame_arrays": {
+    "gTilesetAnims_Building_TvTurnedOn": [
+      null,
+      null
+    ],
+    "gTilesetAnims_EliteFour_FloorLight": [
+      null,
+      null
+    ],
+    "gTilesetAnims_EliteFour_WallLights": [
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "frame_sources": []
+}
