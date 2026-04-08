@@ -33,6 +33,12 @@ Payload fields:
 
 - `player_id: string` (u32 length + UTF-8 bytes)
 
+Runtime behavior:
+
+- Server does not emit `SessionAccepted`/`WorldSnapshot` until `JoinSession` is
+  received.
+- Additional `JoinSession` messages after success are ignored.
+
 #### `WalkInput`
 
 Client walking intent for Phase 1 movement.
@@ -45,6 +51,14 @@ Payload fields:
 
 `input_seq` is the deterministic sequencing key used to pair this input with the
 server's `WalkResult`.
+
+Runtime behavior:
+
+- If movement arrives before join completion, server returns `WalkResult` with
+  `accepted=0` and `reason=NOT_JOINED`.
+- Server accepts only `input_seq == expected_seq`; stale/duplicate/skipped
+  values are rejected with `SEQUENCE_MISMATCH`.
+- Malformed direction bytes are rejected with `INVALID_DIRECTION`.
 
 ### Server → Client
 
@@ -118,8 +132,12 @@ For collision and out-of-bounds attempts, server must keep
 
 ## Determinism Rules
 
-- Client sends monotonic `input_seq`; server responds with exactly one
-  `WalkResult` per accepted input record.
+- Client must join before movement; pre-join movement is explicitly rejected.
+- Client sends monotonic `input_seq`; server accepts only the exact expected
+  value and rejects stale/duplicate/skipped sequence numbers.
+- Server emits exactly one authoritative `WalkResult` for each accepted input
+  record, and also emits explicit reject `WalkResult` records for invalid
+  movement attempts.
 - Server includes `server_frame` in all authoritative state messages
   (`SessionAccepted`, `WorldSnapshot`, `WalkResult`, `WorldDelta`).
 - In conflict, client must treat server position/facing/frame as ground truth.

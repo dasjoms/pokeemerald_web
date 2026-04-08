@@ -7,10 +7,14 @@ use std::{
 use anyhow::{anyhow, Context};
 use serde::Deserialize;
 use tokio::sync::{mpsc, RwLock};
+use tracing::trace;
 
 use crate::{
     movement::{validate_walk, MoveRejectReason, MoveValidation, MovementMap},
-    protocol::{Direction, RejectionReason, ServerMessage, WalkInput, WalkResult},
+    protocol::{
+        Direction, RejectionReason, ServerMessage, SessionAccepted, WalkInput, WalkResult,
+        WorldSnapshot,
+    },
     session::{PlayerState, Session, SessionInit},
 };
 
@@ -85,11 +89,106 @@ impl World {
         connection_id: u64,
         input: WalkInput,
     ) -> anyhow::Result<()> {
+        let tick = self.current_tick().await as u32;
         let mut sessions = self.sessions.write().await;
         let session = sessions
             .get_mut(&connection_id)
             .ok_or_else(|| anyhow!("unknown session {connection_id}"))?;
+
+        if !session.joined {
+            trace!(
+                connection_id,
+                expected_seq = session.next_expected_input_seq,
+                received_seq = input.input_seq,
+                reject_reason = ?RejectionReason::NotJoined,
+                "rejecting walk input"
+            );
+            let _ = session.send(self.walk_rejection_for_session(
+                session,
+                input.input_seq,
+                RejectionReason::NotJoined,
+                tick,
+            ));
+            return Ok(());
+        }
+
+        if input.input_seq != session.next_expected_input_seq {
+            trace!(
+                connection_id,
+                expected_seq = session.next_expected_input_seq,
+                received_seq = input.input_seq,
+                reject_reason = ?RejectionReason::SequenceMismatch,
+                "rejecting walk input"
+            );
+            let _ = session.send(self.walk_rejection_for_session(
+                session,
+                input.input_seq,
+                RejectionReason::SequenceMismatch,
+                tick,
+            ));
+            return Ok(());
+        }
+
+        session.next_expected_input_seq = session.next_expected_input_seq.saturating_add(1);
         session.enqueue_walk_input(input);
+        Ok(())
+    }
+
+    pub async fn reject_invalid_direction_input(
+        &self,
+        connection_id: u64,
+        input_seq: u32,
+    ) -> anyhow::Result<()> {
+        let tick = self.current_tick().await as u32;
+        let mut sessions = self.sessions.write().await;
+        let session = sessions
+            .get_mut(&connection_id)
+            .ok_or_else(|| anyhow!("unknown session {connection_id}"))?;
+
+        trace!(
+            connection_id,
+            expected_seq = session.next_expected_input_seq,
+            received_seq = input_seq,
+            reject_reason = ?RejectionReason::InvalidDirection,
+            "rejecting walk input"
+        );
+        let _ = session.send(self.walk_rejection_for_session(
+            session,
+            input_seq,
+            RejectionReason::InvalidDirection,
+            tick,
+        ));
+        Ok(())
+    }
+
+    pub async fn join_session(&self, connection_id: u64) -> anyhow::Result<()> {
+        let tick = self.current_tick().await as u32;
+        let mut sessions = self.sessions.write().await;
+        let session = sessions
+            .get_mut(&connection_id)
+            .ok_or_else(|| anyhow!("unknown session {connection_id}"))?;
+
+        if session.joined {
+            return Ok(());
+        }
+
+        session.joined = true;
+        session.send(ServerMessage::SessionAccepted(SessionAccepted {
+            session_id: session.connection_id as u32,
+            server_frame: tick,
+        }))?;
+        session.send(ServerMessage::WorldSnapshot(WorldSnapshot {
+            map_id: 1,
+            player_pos: crate::protocol::Position {
+                x: session.player_state.tile_x,
+                y: session.player_state.tile_y,
+            },
+            facing: session.player_state.facing,
+            map_chunk_hash: Vec::new(),
+            map_chunk: Vec::new(),
+            server_frame: tick,
+        }))?;
+
         Ok(())
     }
 
@@ -135,6 +234,26 @@ impl World {
                 let _ = session.send(result);
             }
         }
+    }
+
+    fn walk_rejection_for_session(
+        &self,
+        session: &Session,
+        input_seq: u32,
+        reason: RejectionReason,
+        server_frame: u32,
+    ) -> ServerMessage {
+        ServerMessage::WalkResult(WalkResult {
+            input_seq,
+            accepted: false,
+            authoritative_pos: crate::protocol::Position {
+                x: session.player_state.tile_x,
+                y: session.player_state.tile_y,
+            },
+            facing: session.player_state.facing,
+            reason,
+            server_frame,
+        })
     }
 }
 

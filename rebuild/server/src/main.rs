@@ -14,10 +14,7 @@ use tokio::sync::mpsc;
 use tracing::{error, info, warn};
 
 use rebuild_server::{
-    protocol::{
-        decode_client_message, encode_server_message, ClientMessage, Position, ServerMessage,
-        SessionAccepted, WorldSnapshot,
-    },
+    protocol::{decode_client_message, encode_server_message, ClientMessage, ServerMessage},
     world::World,
 };
 
@@ -85,33 +82,6 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
     });
 
     let session = state.world.create_session(outgoing_tx).await;
-    let accepted = ServerMessage::SessionAccepted(SessionAccepted {
-        session_id: session.connection_id as u32,
-        server_frame: state.world.current_tick().await as u32,
-    });
-    if session.send(accepted).is_err() {
-        let _ = state.world.remove_session(session.connection_id).await;
-        writer.abort();
-        return;
-    }
-
-    let snapshot = ServerMessage::WorldSnapshot(WorldSnapshot {
-        map_id: 1,
-        player_pos: Position {
-            x: session.player_state.tile_x,
-            y: session.player_state.tile_y,
-        },
-        facing: session.player_state.facing,
-        map_chunk_hash: Vec::new(),
-        map_chunk: Vec::new(),
-        server_frame: state.world.current_tick().await as u32,
-    });
-
-    if session.send(snapshot).is_err() {
-        let _ = state.world.remove_session(session.connection_id).await;
-        writer.abort();
-        return;
-    }
 
     while let Some(frame_result) = ws_rx.next().await {
         let message = match frame_result {
@@ -141,8 +111,28 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                         );
                     }
                 }
+                Ok(ClientMessage::WalkInputInvalidDirection { input_seq, .. }) => {
+                    if let Err(err) = state
+                        .world
+                        .reject_invalid_direction_input(session.connection_id, input_seq)
+                        .await
+                    {
+                        warn!(
+                            ?err,
+                            connection_id = session.connection_id,
+                            "failed to reject invalid walk input direction"
+                        );
+                    }
+                }
                 Ok(ClientMessage::JoinSession(_)) => {
-                    // Session is currently auto-provisioned at connect time.
+                    if let Err(err) = state.world.join_session(session.connection_id).await {
+                        warn!(
+                            ?err,
+                            connection_id = session.connection_id,
+                            "failed to process join session"
+                        );
+                        break;
+                    }
                 }
                 Err(err) => {
                     warn!(
