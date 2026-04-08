@@ -3,6 +3,7 @@ import { Direction } from './protocol_generated';
 
 type Cardinal = 'south' | 'north' | 'west' | 'east';
 type AnimationKind = 'face' | 'walk';
+type SpriteSheetKind = 'normal' | 'running';
 
 type AnimationFrameMeta = {
   duration: number;
@@ -39,7 +40,19 @@ type AvatarDefinition = {
       colors: string[];
       symbol: string;
     };
+    reflection?: {
+      colors: string[];
+      symbol: string;
+      source_path?: string;
+    };
   };
+  sheet_sources: Record<
+    SpriteSheetKind,
+    {
+      source_path: string;
+      symbol: string;
+    }
+  >;
 };
 
 type PlayerManifest = {
@@ -58,6 +71,8 @@ export type PlayerAnimationAssets = {
   anchorX: number;
   anchorY: number;
   paletteColors: string[];
+  reflectionPaletteColors: string[] | null;
+  reflectionPaletteSourcePath: string | null;
   directionalBindings: AvatarDefinition['animation_bindings'];
   frameTextures: Map<number, Texture>;
 };
@@ -90,8 +105,14 @@ export async function loadPlayerAnimationAssets(
   }
 
   const [walkingBaseTexture, runningBaseTexture] = await Promise.all([
-    loadBaseTexture(options.resolveImageUrlFromAssets, `players/${options.avatarId}/walking.png`),
-    loadBaseTexture(options.resolveImageUrlFromAssets, `players/${options.avatarId}/running.png`),
+    loadBaseTexture(
+      options.resolveImageUrlFromAssets,
+      resolveSheetPngPathFromManifest(avatar.sheet_sources.normal.source_path),
+    ),
+    loadBaseTexture(
+      options.resolveImageUrlFromAssets,
+      resolveSheetPngPathFromManifest(avatar.sheet_sources.running.source_path),
+    ),
   ]);
 
   const frameTextures = new Map<number, Texture>();
@@ -123,9 +144,17 @@ export async function loadPlayerAnimationAssets(
     anchorX: avatar.graphics.anchor.x,
     anchorY: avatar.graphics.anchor.y,
     paletteColors: avatar.palettes.normal.colors,
+    reflectionPaletteColors: avatar.palettes.reflection?.colors ?? null,
+    reflectionPaletteSourcePath: avatar.palettes.reflection?.source_path ?? null,
     directionalBindings: avatar.animation_bindings,
     frameTextures,
   };
+}
+
+function resolveSheetPngPathFromManifest(sourcePath: string): string {
+  return sourcePath
+    .replace(/^graphics\/object_events\/pics\/people\//, 'players/')
+    .replace(/\.4bpp$/i, '.png');
 }
 
 async function loadBaseTexture(
