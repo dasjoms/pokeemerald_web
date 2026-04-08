@@ -5,6 +5,7 @@ import argparse
 import json
 import re
 import shutil
+import struct
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -451,8 +452,153 @@ def decode_metatile_entries(raw_entries: list[int]) -> list[dict[str, Any]]:
     return metatiles
 
 
+def read_png_dimensions(path: Path) -> tuple[int, int]:
+    with path.open("rb") as png_file:
+        header = png_file.read(24)
+    if len(header) < 24 or header[:8] != b"\x89PNG\r\n\x1a\n":
+        raise ValueError(f"Unsupported PNG file header: {path}")
+    width, height = struct.unpack(">II", header[16:24])
+    if width <= 0 or height <= 0:
+        raise ValueError(f"Invalid PNG dimensions for {path}: {width}x{height}")
+    return width, height
+
+
 def pair_id(primary_tileset: str, secondary_tileset: str) -> str:
     return f"{primary_tileset}__{secondary_tileset}".replace("/", "_")
+
+
+def validate_render_data(output_dir: Path) -> dict[str, int]:
+    layouts_index = read_json(output_dir / "layouts_index.json")
+    maps_index = read_json(output_dir / "maps_index.json")
+    referenced_layout_ids = {
+        str(entry.get("layout_id"))
+        for entry in maps_index.get("maps", [])
+        if isinstance(entry, dict) and entry.get("layout_id")
+    }
+    unresolved: list[str] = []
+    metatiles_resolved = 0
+
+    for summary in layouts_index["layouts"]:
+        layout_id = summary["id"]
+        if layout_id not in referenced_layout_ids:
+            continue
+        layout_path = output_dir / summary["decoded_path"]
+        layout_json = read_json(layout_path)
+        render_assets = layout_json.get("render_assets")
+        if not isinstance(render_assets, dict):
+            unresolved.append(f"{layout_id}: missing render_assets in {summary['decoded_path']}")
+            continue
+
+        pair_id_value = str(render_assets.get("pair_id", "<unknown>"))
+        metatiles_json = read_json(output_dir / str(render_assets["metatiles"]))
+        palettes_json = read_json(output_dir / str(render_assets["palettes"]))
+        atlas_json = read_json(output_dir / str(render_assets["atlas"]))
+
+        atlas_tile_counts_by_page: dict[int, int] = {}
+        for page in atlas_json.get("pages", []):
+            page_id = int(page["page"])
+            atlas_path = output_dir / str(page["path"])
+            width, height = read_png_dimensions(atlas_path)
+            fallback_tile_count = (width // 8) * (height // 8)
+            atlas_tile_counts_by_page[page_id] = int(page.get("logical_tile_count", fallback_tile_count))
+
+        primary_tile_count = atlas_tile_counts_by_page.get(0, 0)
+        secondary_tile_count = atlas_tile_counts_by_page.get(1, 0)
+
+        palette_counts = {
+            str(tileset_block["source_tileset"]): len(tileset_block.get("palettes", []))
+            for tileset_block in palettes_json.get("tilesets", [])
+        }
+
+        metatile_lookup = {
+            str(tileset_block["source_tileset"]): tileset_block.get("metatiles", [])
+            for tileset_block in metatiles_json.get("tilesets", [])
+        }
+
+        primary_name = str(layout_json["primary_tileset"])
+        secondary_name = str(layout_json["secondary_tileset"])
+        primary_metatiles = metatile_lookup.get(primary_name, [])
+        secondary_metatiles = metatile_lookup.get(secondary_name, [])
+
+        for tile in [*layout_json.get("tiles", []), *layout_json.get("border_tiles", [])]:
+            metatile_id = int(tile.get("metatile_id", -1))
+            if metatile_id < 0:
+                unresolved.append(
+                    f"{layout_id}: invalid metatile_id={metatile_id} "
+                    f"(pair={pair_id_value}, tilesets={primary_name}/{secondary_name})"
+                )
+                continue
+            if metatile_id < PRIMARY_METATILE_COUNT:
+                source_tileset = primary_name
+                source_index = metatile_id
+                metatile_entry = primary_metatiles[source_index] if source_index < len(primary_metatiles) else None
+            else:
+                source_tileset = secondary_name
+                source_index = metatile_id - PRIMARY_METATILE_COUNT
+                metatile_entry = secondary_metatiles[source_index] if source_index < len(secondary_metatiles) else None
+
+            if metatile_entry is None:
+                unresolved.append(
+                    f"{layout_id}: unresolved metatile_id={metatile_id} (tileset={source_tileset}, "
+                    f"source_index={source_index}, pair={pair_id_value}, file={summary['decoded_path']})"
+                )
+                continue
+
+            palette_count = palette_counts.get(source_tileset)
+            if palette_count is None:
+                unresolved.append(
+                    f"{layout_id}: missing palette set for tileset={source_tileset} "
+                    f"(pair={pair_id_value}, file={summary['decoded_path']})"
+                )
+                continue
+
+            for subtile in metatile_entry.get("subtiles", []):
+                tile_index = int(subtile["tile_index"])
+                palette_index = int(subtile["palette_index"])
+                source_page = 1 if tile_index >= primary_tile_count else 0
+                local_tile_index = tile_index if source_page == 0 else tile_index - primary_tile_count
+                local_page_tile_count = primary_tile_count if source_page == 0 else secondary_tile_count
+                if (
+                    tile_index < 0
+                    or local_tile_index < 0
+                    or local_page_tile_count <= 0
+                    or local_tile_index >= local_page_tile_count
+                ):
+                    unresolved.append(
+                        f"{layout_id}: out-of-bounds tile index {tile_index} in metatile_id={metatile_id} "
+                        f"(tileset={source_tileset}, source_page={source_page}, "
+                        f"local_page_tile_count={local_page_tile_count}, pair={pair_id_value}, "
+                        f"file={summary['decoded_path']})"
+                    )
+                    break
+                if palette_index < 0 or palette_index >= palette_count:
+                    unresolved.append(
+                        f"{layout_id}: out-of-bounds palette index {palette_index} in metatile_id={metatile_id} "
+                        f"(tileset={source_tileset}, palette_count={palette_count}, pair={pair_id_value}, "
+                        f"file={summary['decoded_path']})"
+                    )
+                    break
+            else:
+                metatiles_resolved += 1
+
+    if unresolved:
+        print("Render data parity validation failed:")
+        for issue in unresolved[:50]:
+            print(f"  - {issue}")
+        if len(unresolved) > 50:
+            print(f"  - ... {len(unresolved) - 50} more issue(s)")
+        raise SystemExit(1)
+
+    report = {
+        "layouts_checked": len(referenced_layout_ids),
+        "metatiles_resolved": metatiles_resolved,
+        "unresolved_count": 0,
+    }
+    print("Render data parity validation report")
+    print(f"layouts checked: {report['layouts_checked']}")
+    print(f"metatiles resolved: {report['metatiles_resolved']}")
+    print(f"unresolved count: {report['unresolved_count']}")
+    return report
 
 
 def run_extract_render(output_dir: Path, clean: bool) -> None:
@@ -488,6 +634,11 @@ def run_extract_render(output_dir: Path, clean: bool) -> None:
             metatile_path = ROOT / tileset_metatile_paths[tileset_name]
             tileset_dir = metatile_path.parent
             tiles_png = resolve_tiles_png_for_tileset(tileset_name, tileset_dir)
+            raw_metatiles = read_u16_le(metatile_path)
+            decoded_metatiles = decode_metatile_entries(raw_metatiles)
+            logical_tile_count = (
+                max((subtile["tile_index"] for item in decoded_metatiles for subtile in item["subtiles"]), default=-1) + 1
+            )
             page_name = "tileset_atlas.png" if page_index == 0 else f"tileset_atlas_{page_index}.png"
             page_out = pair_dir / page_name
             shutil.copy2(tiles_png, page_out)
@@ -496,6 +647,7 @@ def run_extract_render(output_dir: Path, clean: bool) -> None:
                     "page": page_index,
                     "source_tileset": tileset_name,
                     "path": str(page_out.relative_to(output_dir)),
+                    "logical_tile_count": logical_tile_count,
                 }
             )
 
@@ -518,10 +670,8 @@ def run_extract_render(output_dir: Path, clean: bool) -> None:
                 }
             )
 
-            raw_metatiles = read_u16_le(metatile_path)
             attr_rel = tileset_attr_paths.get(tileset_name)
             attrs = read_u16_le(ROOT / attr_rel) if attr_rel else []
-            decoded_metatiles = decode_metatile_entries(raw_metatiles)
             for item in decoded_metatiles:
                 idx = item["metatile_index"]
                 if idx < len(attrs):
@@ -566,6 +716,11 @@ def run_extract_render(output_dir: Path, clean: bool) -> None:
 
     (render_root / "index.json").write_text(json.dumps(render_index, indent=2) + "\n", encoding="utf-8")
     print(f"Extracted render assets for {len(render_index['pairs'])} tileset pairs to {render_root}")
+    validate_render_data(output_dir)
+
+
+def run_validate_render(output_dir: Path) -> None:
+    validate_render_data(output_dir)
 
 
 def parse_args() -> argparse.Namespace:
@@ -592,6 +747,15 @@ def parse_args() -> argparse.Namespace:
     extract_render.add_argument("--clean", action="store_true", help="Delete output directory before extraction")
 
     sub.add_parser("validate", help="Validate references and print load counts")
+    validate_render = sub.add_parser(
+        "validate-render",
+        help="Validate extracted render data against layout metatile and atlas/palette bounds",
+    )
+    validate_render.add_argument(
+        "--output-dir",
+        default=str(ROOT / "rebuild/assets"),
+        help="Artifact output directory",
+    )
     return parser.parse_args()
 
 
@@ -603,6 +767,8 @@ def main() -> None:
         run_extract_render(Path(args.output_dir), clean=args.clean)
     elif args.command == "validate":
         run_validate()
+    elif args.command == "validate-render":
+        run_validate_render(Path(args.output_dir))
 
 
 if __name__ == "__main__":
