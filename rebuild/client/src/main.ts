@@ -189,6 +189,7 @@ type RenderedSubtileBinding = {
 const TILE_SIZE = 16;
 const SUBTILE_SIZE = 8;
 const PLAYER_SIZE = 12;
+const RENDER_SCALE = 4;
 const TILESET_ANIMATION_STEP_MS = 1000 / 60;
 const ENABLE_CLIENT_PREDICTION =
   new URLSearchParams(window.location.search).get('predict') === '1';
@@ -260,6 +261,7 @@ await app.init({
 });
 appRoot.appendChild(app.canvas);
 
+const gameContainer = new Container();
 const worldContainer = new Container();
 const mapBg3Layer = new Container();
 const mapBg2Layer = new Container();
@@ -271,7 +273,9 @@ worldContainer.addChild(mapBg2Layer);
 worldContainer.addChild(actorLayer);
 worldContainer.addChild(mapBg1Layer);
 worldContainer.addChild(debugOverlayLayer);
-app.stage.addChild(worldContainer);
+gameContainer.scale.set(RENDER_SCALE, RENDER_SCALE);
+gameContainer.addChild(worldContainer);
+app.stage.addChild(gameContainer);
 debugOverlayLayer.visible = debugOverlayEnabled;
 
 const playerSprite = new Graphics()
@@ -1215,8 +1219,8 @@ function positionPlayerSprite(): void {
 function updateCamera(): void {
   const centerX = state.playerTileX * TILE_SIZE + TILE_SIZE / 2;
   const centerY = state.playerTileY * TILE_SIZE + TILE_SIZE / 2;
-  worldContainer.x = app.screen.width / 2 - centerX;
-  worldContainer.y = app.screen.height / 2 - centerY;
+  gameContainer.x = app.screen.width / 2 - centerX * RENDER_SCALE;
+  gameContainer.y = app.screen.height / 2 - centerY * RENDER_SCALE;
 }
 
 function renderHud(): void {
