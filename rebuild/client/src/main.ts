@@ -21,6 +21,10 @@ import {
 import { MapRenderStratum, resolveMapRenderStratum } from './mapLayerComposition';
 import { createTilesetAnimationState, type TileAnimsFile } from './tilesetAnimation';
 import { applyCopyTilesOpsToActiveSwaps, type ActiveTileSwapSource } from './tilesetAnimationRendererState';
+import {
+  loadPlayerAnimationAssets,
+  PlayerAnimationController,
+} from './playerAnimation';
 
 type ServerMessage =
   | { type: MessageType.SESSION_ACCEPTED; payload: { session_id: number; server_frame: number } }
@@ -188,9 +192,11 @@ type RenderedSubtileBinding = {
 
 const TILE_SIZE = 16;
 const SUBTILE_SIZE = 8;
-const PLAYER_SIZE = 12;
 const RENDER_SCALE = 4;
 const TILESET_ANIMATION_STEP_MS = 1000 / 60;
+const PLAYER_ANIMATION_AVATAR_ID = new URLSearchParams(window.location.search).get('avatar') === 'may'
+  ? 'may'
+  : 'brendan';
 const ENABLE_CLIENT_PREDICTION =
   new URLSearchParams(window.location.search).get('predict') === '1';
 const ENABLE_DEBUG_OVERLAY_DEFAULT =
@@ -280,12 +286,25 @@ gameContainer.addChild(worldContainer);
 app.stage.addChild(gameContainer);
 debugOverlayLayer.visible = debugOverlayEnabled;
 
-const playerSprite = new Graphics()
-  .rect(0, 0, PLAYER_SIZE, PLAYER_SIZE)
-  .fill({ color: 0xffd166 });
+const playerAnimationAssets = await loadPlayerAnimationAssets({
+  avatarId: PLAYER_ANIMATION_AVATAR_ID,
+  loadJsonFromAssets,
+  resolveImageUrlFromAssets,
+});
+const playerAnimation = new PlayerAnimationController(playerAnimationAssets);
+const initialPlayerFrame = playerAnimation.getCurrentFrame();
+const playerSprite = new Sprite(initialPlayerFrame.texture);
+playerSprite.scale.x = initialPlayerFrame.hFlip ? -1 : 1;
+playerSprite.x = initialPlayerFrame.hFlip ? playerAnimationAssets.frameWidth : 0;
+playerSprite.anchor.set(
+  playerAnimationAssets.anchorX / playerAnimationAssets.frameWidth,
+  playerAnimationAssets.anchorY / playerAnimationAssets.frameHeight,
+);
 actorLayer.addChild(playerSprite);
 
 app.ticker.add(() => {
+  playerAnimation.tick(app.ticker.deltaMS);
+  presentPlayerAnimationFrame();
   tickTilesetAnimationClock(app.ticker.deltaMS);
   presentTilesetAnimation();
   positionPlayerSprite();
@@ -386,6 +405,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     state.playerTileX = snapshot.player_pos.x;
     state.playerTileY = snapshot.player_pos.y;
     state.facing = snapshot.facing;
+    playerAnimation.setIdle(snapshot.facing);
     state.lastAckServerTick = snapshot.server_frame;
     pendingPredictedInputs.clear();
 
@@ -405,6 +425,11 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
   state.playerTileX = clampedAuthoritativeTile.x;
   state.playerTileY = clampedAuthoritativeTile.y;
   state.facing = result.facing;
+  if (result.accepted) {
+    playerAnimation.startWalkStep(result.facing);
+  } else {
+    playerAnimation.setIdle(result.facing);
+  }
   state.lastAckServerTick = result.server_frame;
   if (!result.accepted) {
     console.info(
@@ -1211,11 +1236,18 @@ function applyPredictedWalk(direction: Direction, inputSeq: number): void {
   state.playerTileX = predictedTile.x;
   state.playerTileY = predictedTile.y;
   state.facing = direction;
+  playerAnimation.startWalkStep(direction);
 }
 
 function positionPlayerSprite(): void {
-  playerSprite.x = state.playerTileX * TILE_SIZE + (TILE_SIZE - PLAYER_SIZE) / 2;
-  playerSprite.y = state.playerTileY * TILE_SIZE + (TILE_SIZE - PLAYER_SIZE) / 2;
+  playerSprite.x = state.playerTileX * TILE_SIZE + TILE_SIZE / 2;
+  playerSprite.y = state.playerTileY * TILE_SIZE + TILE_SIZE;
+}
+
+function presentPlayerAnimationFrame(): void {
+  const selection = playerAnimation.getCurrentFrame();
+  playerSprite.texture = selection.texture;
+  playerSprite.scale.x = selection.hFlip ? -1 : 1;
 }
 
 function updateCamera(): void {
