@@ -1,0 +1,16 @@
+{
+  "pages": [
+    {
+      "page": 0,
+      "source_tileset": "gTileset_Building",
+      "path": "render/gTileset_Building__gTileset_BattlePalace/tileset_atlas.png",
+      "logical_tile_count": 502
+    },
+    {
+      "page": 1,
+      "source_tileset": "gTileset_BattlePalace",
+      "path": "render/gTileset_Building__gTileset_BattlePalace/tileset_atlas_1.png",
+      "logical_tile_count": 656
+    }
+  ]
+}
