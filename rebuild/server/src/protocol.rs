@@ -64,4 +64,5 @@ pub enum WalkRejectReason {
     None,
     Collision,
     OutOfBounds,
+    ForcedMovementDisabled,
 }

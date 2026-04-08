@@ -9,7 +9,7 @@ use serde::Deserialize;
 use tokio::sync::{mpsc, RwLock};
 
 use crate::{
-    movement::{validate_walk, MoveValidation},
+    movement::{validate_walk, MoveRejectReason, MoveValidation, MovementMap},
     protocol::{Facing, ServerMessage, WalkInput, WalkRejectReason, WalkResult},
     session::{PlayerState, Session, SessionInit},
 };
@@ -105,17 +105,19 @@ impl World {
                     session.player_state.tile_x,
                     session.player_state.tile_y,
                     input.facing,
-                    self.map.width,
-                    self.map.height,
-                    &self.map.collision,
+                    MovementMap {
+                        width: self.map.width,
+                        height: self.map.height,
+                        collision: &self.map.collision,
+                        behavior: &self.map.behavior,
+                    },
                 ) {
                     MoveValidation::Accepted { next_x, next_y } => {
                         session.player_state.tile_x = next_x;
                         session.player_state.tile_y = next_y;
                         (true, WalkRejectReason::None)
                     }
-                    MoveValidation::Collision => (false, WalkRejectReason::Collision),
-                    MoveValidation::OutOfBounds => (false, WalkRejectReason::OutOfBounds),
+                    MoveValidation::Rejected(reason) => (false, map_reject_reason(reason)),
                 };
 
                 let result = ServerMessage::WalkResult(WalkResult {
@@ -134,6 +136,13 @@ impl World {
     }
 }
 
+fn map_reject_reason(reason: MoveRejectReason) -> WalkRejectReason {
+    match reason {
+        MoveRejectReason::Collision => WalkRejectReason::Collision,
+        MoveRejectReason::OutOfBounds => WalkRejectReason::OutOfBounds,
+        MoveRejectReason::ForcedMovementDisabled => WalkRejectReason::ForcedMovementDisabled,
+    }
+}
 impl MapData {
     fn from_layout_file(layout_path: &str) -> anyhow::Result<Self> {
         let raw = fs::read_to_string(layout_path)
