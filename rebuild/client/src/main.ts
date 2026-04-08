@@ -19,6 +19,7 @@ import {
   type IndexedAtlasPages,
 } from './metatileRenderer';
 import { MapRenderStratum, resolveMapRenderStratum } from './mapLayerComposition';
+import { applyCopyTilesOpsToActiveSwaps } from './tilesetAnimationRendererState';
 
 type ServerMessage =
   | { type: MessageType.SESSION_ACCEPTED; payload: { session_id: number; server_frame: number } }
@@ -954,31 +955,11 @@ function applyTilesetAnimationDiff(
 
   const dirtyBindings = new Set<RenderedSubtileBinding>();
 
-  const nextExpandedTileSwaps = new Map<string, number>();
-  for (const op of nextTileSwaps.values()) {
-    for (let offset = 0; offset < op.tileCount; offset += 1) {
-      const destLocalTileIndex = op.destLocalTileIndex + offset;
-      const sourceLocalTileIndex = op.sourceLocalTileIndex + offset;
-      nextExpandedTileSwaps.set(`${op.pageId}:${destLocalTileIndex}`, sourceLocalTileIndex);
+  const dirtyTileKeys = applyCopyTilesOpsToActiveSwaps(nextTileSwaps, activeTileSwaps);
+  for (const tileKey of dirtyTileKeys) {
+    for (const binding of subtileBindingsByTile.get(tileKey) ?? []) {
+      dirtyBindings.add(binding);
     }
-  }
-  for (const [tileKey, nextSourceLocalTileIndex] of nextExpandedTileSwaps.entries()) {
-    if (activeTileSwaps.get(tileKey) !== nextSourceLocalTileIndex) {
-      for (const binding of subtileBindingsByTile.get(tileKey) ?? []) {
-        dirtyBindings.add(binding);
-      }
-    }
-  }
-  for (const tileKey of activeTileSwaps.keys()) {
-    if (!nextExpandedTileSwaps.has(tileKey)) {
-      for (const binding of subtileBindingsByTile.get(tileKey) ?? []) {
-        dirtyBindings.add(binding);
-      }
-    }
-  }
-  activeTileSwaps.clear();
-  for (const [tileKey, sourceLocalTileIndex] of nextExpandedTileSwaps.entries()) {
-    activeTileSwaps.set(tileKey, sourceLocalTileIndex);
   }
   for (const [key, next] of nextPaletteSwaps.entries()) {
     const current = activePaletteSwaps.get(key);
