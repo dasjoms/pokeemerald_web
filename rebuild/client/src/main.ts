@@ -7,6 +7,11 @@ import {
   type WalkResult,
   type WorldSnapshot,
 } from './protocol_generated';
+import {
+  applyPredictedStep,
+  clampToMapBounds,
+  reconcilePredictions,
+} from './prediction';
 
 type ServerMessage =
   | { type: MessageType.SESSION_ACCEPTED; payload: { session_id: number; server_frame: number } }
@@ -135,13 +140,30 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
   }
 
   const result = message.payload;
-  state.playerTileX = result.authoritative_pos.x;
-  state.playerTileY = result.authoritative_pos.y;
+  const clampedAuthoritativeTile = clampToMapBounds(
+    {
+      x: result.authoritative_pos.x,
+      y: result.authoritative_pos.y,
+    },
+    state.mapWidth,
+    state.mapHeight,
+  );
+  state.playerTileX = clampedAuthoritativeTile.x;
+  state.playerTileY = clampedAuthoritativeTile.y;
   state.facing = result.facing;
   state.lastAckServerTick = result.server_frame;
 
   if (ENABLE_CLIENT_PREDICTION) {
-    pendingPredictedInputs.delete(result.input_seq);
+    // Presentation-only client prediction: server WalkResult remains authoritative.
+    const reconciled = reconcilePredictions({
+      result,
+      pendingInputs: pendingPredictedInputs,
+      mapWidth: state.mapWidth,
+      mapHeight: state.mapHeight,
+    });
+    state.playerTileX = reconciled.tile.x;
+    state.playerTileY = reconciled.tile.y;
+    state.facing = reconciled.facing;
   }
 }
 
@@ -333,24 +355,16 @@ function readU32(raw: Uint8Array, offset: number): number {
 
 function applyPredictedWalk(direction: Direction, inputSeq: number): void {
   pendingPredictedInputs.set(inputSeq, direction);
-
-  const { dx, dy } = directionToDelta(direction);
-  state.playerTileX = state.playerTileX + dx;
-  state.playerTileY = state.playerTileY + dy;
+  // Presentation-only prediction (non-authoritative): clamp local visuals to map bounds.
+  const predictedTile = applyPredictedStep(
+    { x: state.playerTileX, y: state.playerTileY },
+    direction,
+    state.mapWidth,
+    state.mapHeight,
+  );
+  state.playerTileX = predictedTile.x;
+  state.playerTileY = predictedTile.y;
   state.facing = direction;
-}
-
-function directionToDelta(direction: Direction): { dx: number; dy: number } {
-  switch (direction) {
-    case Direction.UP:
-      return { dx: 0, dy: -1 };
-    case Direction.DOWN:
-      return { dx: 0, dy: 1 };
-    case Direction.LEFT:
-      return { dx: -1, dy: 0 };
-    case Direction.RIGHT:
-      return { dx: 1, dy: 0 };
-  }
 }
 
 function positionPlayerSprite(): void {
