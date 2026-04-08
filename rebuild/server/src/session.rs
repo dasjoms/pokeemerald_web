@@ -6,6 +6,7 @@ use crate::protocol::{Direction, ServerMessage, WalkInput};
 
 #[derive(Debug, Clone)]
 pub struct PlayerState {
+    pub map_id: String,
     pub tile_x: u16,
     pub tile_y: u16,
     pub facing: Direction,
