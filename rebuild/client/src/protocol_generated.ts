@@ -27,14 +27,20 @@ export enum RejectionReason {
   FORCED_MOVEMENT_DISABLED = 6,
 }
 
+export enum PlayerAvatar {
+  BRENDAN = 0,
+  MAY = 1,
+}
+
 export type Position = { x: number; y: number };
 export type JoinSession = { player_id: string };
 export type WalkInput = { direction: Direction; input_seq: number; client_time: bigint };
-export type SessionAccepted = { session_id: number; server_frame: number };
+export type SessionAccepted = { session_id: number; server_frame: number; avatar: PlayerAvatar };
 export type WorldSnapshot = {
   map_id: number;
   player_pos: Position;
   facing: Direction;
+  avatar: PlayerAvatar;
   map_chunk_hash: Uint8Array;
   map_chunk: Uint8Array;
   server_frame: number;

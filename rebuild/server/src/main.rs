@@ -169,8 +169,12 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                         );
                     }
                 }
-                Ok(ClientMessage::JoinSession(_)) => {
-                    if let Err(err) = state.world.join_session(session.connection_id).await {
+                Ok(ClientMessage::JoinSession(join)) => {
+                    if let Err(err) = state
+                        .world
+                        .join_session(session.connection_id, &join.player_id)
+                        .await
+                    {
                         warn!(
                             ?err,
                             connection_id = session.connection_id,

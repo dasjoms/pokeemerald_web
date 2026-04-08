@@ -53,6 +53,11 @@ class RejectionReason(IntEnum):
     FORCED_MOVEMENT_DISABLED = 6
 
 
+class PlayerAvatar(IntEnum):
+    BRENDAN = 0
+    MAY = 1
+
+
 @dataclass(frozen=True)
 class Position:
     x: int
@@ -75,6 +80,7 @@ class WalkInput:
 class SessionAccepted:
     session_id: int
     server_frame: int
+    avatar: PlayerAvatar
 
 
 @dataclass(frozen=True)
@@ -82,6 +88,7 @@ class WorldSnapshot:
     map_id: int
     player_pos: Position
     facing: Direction
+    avatar: PlayerAvatar
     map_chunk_hash: bytes
     map_chunk: bytes
     server_frame: int
@@ -147,7 +154,11 @@ def _encode_payload(message: WireMessage) -> tuple[MessageType, bytes]:
 
     if isinstance(message, SessionAccepted):
         return MessageType.SESSION_ACCEPTED, b"".join(
-            [_U32.pack(message.session_id), _U32.pack(message.server_frame)]
+            [
+                _U32.pack(message.session_id),
+                _U32.pack(message.server_frame),
+                _U8.pack(int(message.avatar)),
+            ]
         )
 
     if isinstance(message, WorldSnapshot):
@@ -161,6 +172,7 @@ def _encode_payload(message: WireMessage) -> tuple[MessageType, bytes]:
                 _U16.pack(message.player_pos.x),
                 _U16.pack(message.player_pos.y),
                 _U8.pack(int(message.facing)),
+                _U8.pack(int(message.avatar)),
                 _U32.pack(message.server_frame),
                 _U8.pack(hash_len),
                 message.map_chunk_hash,
@@ -206,14 +218,20 @@ def _decode_payload(message_type: MessageType, payload: bytes) -> WireMessage:
     if message_type is MessageType.SESSION_ACCEPTED:
         session_id, offset = _unpack_u32(payload, offset)
         server_frame, offset = _unpack_u32(payload, offset)
+        avatar, offset = _unpack_u8(payload, offset)
         _ensure_done(payload, offset)
-        return SessionAccepted(session_id=session_id, server_frame=server_frame)
+        return SessionAccepted(
+            session_id=session_id,
+            server_frame=server_frame,
+            avatar=PlayerAvatar(avatar),
+        )
 
     if message_type is MessageType.WORLD_SNAPSHOT:
         map_id, offset = _unpack_u16(payload, offset)
         x, offset = _unpack_u16(payload, offset)
         y, offset = _unpack_u16(payload, offset)
         facing, offset = _unpack_u8(payload, offset)
+        avatar, offset = _unpack_u8(payload, offset)
         server_frame, offset = _unpack_u32(payload, offset)
         hash_len, offset = _unpack_u8(payload, offset)
         map_chunk_hash, offset = _unpack_exact(payload, offset, hash_len)
@@ -223,6 +241,7 @@ def _decode_payload(message_type: MessageType, payload: bytes) -> WireMessage:
             map_id=map_id,
             player_pos=Position(x=x, y=y),
             facing=Direction(facing),
+            avatar=PlayerAvatar(avatar),
             map_chunk_hash=map_chunk_hash,
             map_chunk=map_chunk,
             server_frame=server_frame,

@@ -103,5 +103,8 @@ fn walk_result_wire_encoding_with_forced_movement_disabled_is_canonical() {
         .status()
         .expect("python must run");
 
-    assert!(status.success(), "python walk result decoder assertions failed");
+    assert!(
+        status.success(),
+        "python walk result decoder assertions failed"
+    );
 }
