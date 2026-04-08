@@ -11,6 +11,18 @@ TypeScript + PixiJS browser client target (render/input layer).
 ## Run
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
+
+## Build / test
+
+```bash
+npm ci
+npm run build
+npm test
+```
+
+If `npm run build` fails with `TS2688: Cannot find type definition file for 'node'`,
+dependencies were not fully installed. Re-run `npm ci` in `rebuild/client/` to restore
+`@types/node` and other dev dependencies before building.
