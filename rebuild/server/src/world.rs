@@ -11,6 +11,7 @@ use tokio::sync::{mpsc, RwLock};
 use tracing::{error, trace};
 
 use crate::{
+    map_chunk::{serialize_world_snapshot_map_chunk, world_snapshot_map_chunk_hash},
     movement::{
         facing_delta, validate_walk, ConnectedDestination, MoveRejectReason, MoveValidation,
         MovementMap,
@@ -43,6 +44,7 @@ pub struct MapData {
     pub map_id: String,
     pub width: u16,
     pub height: u16,
+    pub metatile_id: Vec<u16>,
     pub collision: Vec<u8>,
     pub behavior: Vec<u8>,
     pub connections: Vec<MapConnection>,
@@ -273,6 +275,18 @@ impl World {
                 error!(connection_id, map_id = %session_map_id, "{message}");
                 anyhow!(message)
             })?;
+        let map_chunk = {
+            let map = self.maps.get(&session_map_id).ok_or_else(|| {
+                let message = format!(
+                    "failed to load map {} for world snapshot connection {}",
+                    session_map_id, connection_id
+                );
+                error!(connection_id, map_id = %session_map_id, "{message}");
+                anyhow!(message)
+            })?;
+            serialize_world_snapshot_map_chunk(map)
+        };
+        let map_chunk_hash = world_snapshot_map_chunk_hash(&map_chunk);
 
         session.joined = true;
         session.send(ServerMessage::SessionAccepted(SessionAccepted {
@@ -286,8 +300,8 @@ impl World {
                 y: session.player_state.tile_y,
             },
             facing: session.player_state.facing,
-            map_chunk_hash: Vec::new(),
-            map_chunk: Vec::new(),
+            map_chunk_hash,
+            map_chunk,
             server_frame: tick,
         }))?;
 
@@ -483,6 +497,10 @@ impl ConnectionDirection {
 }
 
 impl MapData {
+    pub fn tile_count(&self) -> usize {
+        self.width as usize * self.height as usize
+    }
+
     fn from_layout_file(
         map_id: impl Into<String>,
         layout_path: &str,
@@ -503,7 +521,9 @@ impl MapData {
 
         let mut collision = Vec::with_capacity(tile_count);
         let mut behavior = Vec::with_capacity(tile_count);
+        let mut metatile_id = Vec::with_capacity(tile_count);
         for tile in decoded.tiles {
+            metatile_id.push(tile.metatile_id);
             collision.push(tile.collision);
             behavior.push(tile.behavior_id);
         }
@@ -512,6 +532,7 @@ impl MapData {
             map_id: map_id.into(),
             width: decoded.width,
             height: decoded.height,
+            metatile_id,
             collision,
             behavior,
             connections,
@@ -540,6 +561,7 @@ struct LayoutArtifact {
 
 #[derive(Debug, Deserialize)]
 struct LayoutTile {
+    metatile_id: u16,
     collision: u8,
     behavior_id: u8,
 }
