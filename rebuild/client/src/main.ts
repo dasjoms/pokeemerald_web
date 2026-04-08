@@ -18,6 +18,7 @@ import {
   MetatileTextureCache,
   type IndexedAtlasPages,
 } from './metatileRenderer';
+import { MapRenderStratum, resolveMapRenderStratum } from './mapLayerComposition';
 
 type ServerMessage =
   | { type: MessageType.SESSION_ACCEPTED; payload: { session_id: number; server_frame: number } }
@@ -77,6 +78,7 @@ type MetatileSubtile = {
 
 type Metatile = {
   metatile_index: number;
+  layer_type?: number;
   subtiles: MetatileSubtile[];
 };
 
@@ -157,13 +159,15 @@ await app.init({
 appRoot.appendChild(app.canvas);
 
 const worldContainer = new Container();
-const mapGroundLayer = new Container();
+const mapBg3Layer = new Container();
+const mapBg2Layer = new Container();
 const actorLayer = new Container();
-const mapTopLayer = new Container();
+const mapBg1Layer = new Container();
 const debugOverlayLayer = new Container();
-worldContainer.addChild(mapGroundLayer);
+worldContainer.addChild(mapBg3Layer);
+worldContainer.addChild(mapBg2Layer);
 worldContainer.addChild(actorLayer);
-worldContainer.addChild(mapTopLayer);
+worldContainer.addChild(mapBg1Layer);
 worldContainer.addChild(debugOverlayLayer);
 app.stage.addChild(worldContainer);
 debugOverlayLayer.visible = debugOverlayEnabled;
@@ -312,8 +316,9 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
   state.mapWidth = layout.width;
   state.mapHeight = layout.height;
 
-  mapGroundLayer.removeChildren();
-  mapTopLayer.removeChildren();
+  mapBg3Layer.removeChildren();
+  mapBg2Layer.removeChildren();
+  mapBg1Layer.removeChildren();
   debugOverlayLayer.removeChildren();
 
   let indexedAtlasPages = indexedAtlasPageCache.get(renderAssets.pair_id);
@@ -397,12 +402,7 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
       }
 
       const sourcePalettes = isPrimaryMetatile ? primaryPalettes : secondaryPalettes;
-      const sortedSubtiles = [...metatile.subtiles].sort((a, b) => {
-        if (a.layer !== b.layer) {
-          return a.layer - b.layer;
-        }
-        return a.layer_order - b.layer_order;
-      });
+      const sortedSubtiles = [...metatile.subtiles].sort((a, b) => a.layer_order - b.layer_order);
 
       for (const subtile of sortedSubtiles) {
         const sourcePage = subtile.tile_index >= primaryTileCount ? 1 : 0;
@@ -437,10 +437,17 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
           sprite.scale.y = -1;
           sprite.y += SUBTILE_SIZE;
         }
-        if (subtile.layer === 0) {
-          mapGroundLayer.addChild(sprite);
-        } else {
-          mapTopLayer.addChild(sprite);
+        const mapRenderStratum = resolveMapRenderStratum(metatile.layer_type, subtile.layer);
+        switch (mapRenderStratum) {
+          case MapRenderStratum.BG3:
+            mapBg3Layer.addChild(sprite);
+            break;
+          case MapRenderStratum.BG2:
+            mapBg2Layer.addChild(sprite);
+            break;
+          case MapRenderStratum.BG1:
+            mapBg1Layer.addChild(sprite);
+            break;
         }
       }
 
