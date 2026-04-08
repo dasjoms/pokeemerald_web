@@ -5,6 +5,7 @@ import argparse
 import json
 import re
 import shutil
+import struct
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -220,16 +221,55 @@ def resolve_existing_source_path(rel_path: str) -> Path:
     raise FileNotFoundError(f"Could not resolve source asset for {rel_path}; tried: {candidates}")
 
 
-def sheet_rect(frame_index: int, frame_count: int, tile_w: int, tile_h: int) -> dict[str, int]:
-    columns = min(3, frame_count)
-    x = (frame_index % columns) * tile_w * TILE_SIZE_PX
-    y = (frame_index // columns) * tile_h * TILE_SIZE_PX
+def png_dimensions(path: Path) -> tuple[int, int]:
+    with path.open("rb") as handle:
+        header = handle.read(24)
+
+    if len(header) < 24 or header[:8] != b"\x89PNG\r\n\x1a\n":
+        raise ValueError(f"Expected PNG source for atlas bounds, got: {path}")
+
+    width, height = struct.unpack(">II", header[16:24])
+    return width, height
+
+
+def sheet_rect(frame_index: int, tile_w: int, tile_h: int, sheet_width: int) -> dict[str, int]:
+    frame_width = tile_w * TILE_SIZE_PX
+    frame_height = tile_h * TILE_SIZE_PX
+    if frame_width <= 0 or frame_height <= 0:
+        raise ValueError("Frame tile dimensions must be positive")
+
+    columns = sheet_width // frame_width
+    if columns <= 0:
+        raise ValueError(
+            f"Sheet width {sheet_width}px is smaller than frame width {frame_width}px"
+        )
+
+    x = (frame_index % columns) * frame_width
+    y = (frame_index // columns) * frame_height
     return {
         "x": x,
         "y": y,
-        "w": tile_w * TILE_SIZE_PX,
-        "h": tile_h * TILE_SIZE_PX,
+        "w": frame_width,
+        "h": frame_height,
     }
+
+
+def validate_frame_atlas_bounds(avatar_id: str, frame_atlas: dict[str, Any], sheet_dimensions: dict[str, tuple[int, int]]) -> None:
+    for frame_key, atlas in frame_atlas.items():
+        sheet_symbol = atlas["sheet_symbol"]
+        if sheet_symbol not in sheet_dimensions:
+            raise ValueError(f"Missing dimensions for sheet symbol {sheet_symbol} ({avatar_id})")
+
+        sheet_width, sheet_height = sheet_dimensions[sheet_symbol]
+        rect = atlas["rect"]
+        x, y, w, h = rect["x"], rect["y"], rect["w"], rect["h"]
+        if x < 0 or y < 0 or w <= 0 or h <= 0:
+            raise ValueError(f"Invalid rect for {avatar_id} frame {frame_key}: {rect}")
+        if x + w > sheet_width or y + h > sheet_height:
+            raise ValueError(
+                f"Frame atlas out of bounds for {avatar_id} frame {frame_key} "
+                f"on {sheet_symbol}: rect={rect}, sheet={sheet_width}x{sheet_height}"
+            )
 
 
 def resolve_assets() -> list[dict[str, Any]]:
@@ -252,15 +292,22 @@ def resolve_assets() -> list[dict[str, Any]]:
 
         frame_by_sheet: dict[str, int] = {}
         frame_atlas: dict[str, Any] = {}
+        sheet_dimensions: dict[str, tuple[int, int]] = {}
         for output_frame_idx, entry in enumerate(pic_entries):
             sheet_symbol = entry["pic_symbol"]
             local_frame = frame_by_sheet.get(sheet_symbol, 0)
             frame_by_sheet[sheet_symbol] = local_frame + 1
+
+            sheet_path = resolve_existing_source_path(incbins[sheet_symbol])
+            if sheet_symbol not in sheet_dimensions:
+                sheet_dimensions[sheet_symbol] = png_dimensions(sheet_path)
+            sheet_width, _sheet_height = sheet_dimensions[sheet_symbol]
+
             rect = sheet_rect(
                 frame_index=entry["source_frame_index"],
-                frame_count=9,
                 tile_w=entry["tile_width"],
                 tile_h=entry["tile_height"],
+                sheet_width=sheet_width,
             )
             frame_atlas[str(output_frame_idx)] = {
                 "sheet_symbol": sheet_symbol,
@@ -268,6 +315,8 @@ def resolve_assets() -> list[dict[str, Any]]:
                 "sheet_order_index": local_frame,
                 "rect": rect,
             }
+
+        validate_frame_atlas_bounds(avatar.avatar_id, frame_atlas, sheet_dimensions)
 
         normal_palette_path = resolve_existing_source_path(incbins[avatar.normal_palette_symbol])
         reflection_palette_path = resolve_existing_source_path(incbins["gObjectEventPal_BridgeReflection"])
