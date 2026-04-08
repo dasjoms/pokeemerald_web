@@ -132,6 +132,8 @@ type ClientWorldState = {
   facing: Direction;
   lastInputSeq: number;
   lastAckServerTick: number;
+  renderTileX: number;
+  renderTileY: number;
 };
 
 type CopyTilesOp = {
@@ -222,7 +224,22 @@ const state: ClientWorldState = {
   facing: Direction.DOWN,
   lastInputSeq: 0,
   lastAckServerTick: 0,
+  renderTileX: 0,
+  renderTileY: 0,
 };
+
+const WALK_STEP_DURATION_MS = (1000 / 60) * 16;
+let activeWalkTransition:
+  | {
+      startX: number;
+      startY: number;
+      targetX: number;
+      targetY: number;
+      elapsedMs: number;
+      durationMs: number;
+      facing: Direction;
+    }
+  | null = null;
 
 const pendingPredictedInputs = new Map<number, Direction>();
 let hasLoggedPrimaryTileCountMismatch = false;
@@ -303,6 +320,7 @@ playerSprite.anchor.set(
 actorLayer.addChild(playerSprite);
 
 app.ticker.add(() => {
+  tickWalkTransition(app.ticker.deltaMS);
   playerAnimation.tick(app.ticker.deltaMS);
   presentPlayerAnimationFrame();
   tickTilesetAnimationClock(app.ticker.deltaMS);
@@ -405,6 +423,9 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     state.mapId = snapshot.map_id;
     state.playerTileX = snapshot.player_pos.x;
     state.playerTileY = snapshot.player_pos.y;
+    state.renderTileX = state.playerTileX;
+    state.renderTileY = state.playerTileY;
+    activeWalkTransition = null;
     state.facing = snapshot.facing;
     await applyAuthoritativeAvatar(snapshot.avatar);
     playerAnimation.setIdle(snapshot.facing);
@@ -428,8 +449,12 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
   state.playerTileY = clampedAuthoritativeTile.y;
   state.facing = result.facing;
   if (result.accepted) {
+    startAuthoritativeWalkTransition(result.facing);
     playerAnimation.startWalkStep(result.facing);
   } else {
+    activeWalkTransition = null;
+    state.renderTileX = state.playerTileX;
+    state.renderTileY = state.playerTileY;
     playerAnimation.setIdle(result.facing);
   }
   state.lastAckServerTick = result.server_frame;
@@ -450,6 +475,8 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     state.playerTileX = reconciled.tile.x;
     state.playerTileY = reconciled.tile.y;
     state.facing = reconciled.facing;
+    state.renderTileX = state.playerTileX;
+    state.renderTileY = state.playerTileY;
   }
 }
 
@@ -1264,13 +1291,15 @@ function applyPredictedWalk(direction: Direction, inputSeq: number): void {
   );
   state.playerTileX = predictedTile.x;
   state.playerTileY = predictedTile.y;
+  state.renderTileX = state.playerTileX;
+  state.renderTileY = state.playerTileY;
   state.facing = direction;
   playerAnimation.startWalkStep(direction);
 }
 
 function positionPlayerSprite(): void {
-  playerSprite.x = state.playerTileX * TILE_SIZE + TILE_SIZE / 2;
-  playerSprite.y = state.playerTileY * TILE_SIZE + TILE_SIZE;
+  playerSprite.x = state.renderTileX * TILE_SIZE + TILE_SIZE / 2;
+  playerSprite.y = state.renderTileY * TILE_SIZE + TILE_SIZE;
 }
 
 function presentPlayerAnimationFrame(): void {
@@ -1280,10 +1309,46 @@ function presentPlayerAnimationFrame(): void {
 }
 
 function updateCamera(): void {
-  const centerX = state.playerTileX * TILE_SIZE + TILE_SIZE / 2;
-  const centerY = state.playerTileY * TILE_SIZE + TILE_SIZE / 2;
+  const centerX = state.renderTileX * TILE_SIZE + TILE_SIZE / 2;
+  const centerY = state.renderTileY * TILE_SIZE + TILE_SIZE / 2;
   gameContainer.x = app.screen.width / 2 - centerX * RENDER_SCALE;
   gameContainer.y = app.screen.height / 2 - centerY * RENDER_SCALE;
+}
+
+function startAuthoritativeWalkTransition(facing: Direction): void {
+  activeWalkTransition = {
+    startX: state.renderTileX,
+    startY: state.renderTileY,
+    targetX: state.playerTileX,
+    targetY: state.playerTileY,
+    elapsedMs: 0,
+    durationMs: WALK_STEP_DURATION_MS,
+    facing,
+  };
+}
+
+function tickWalkTransition(deltaMs: number): void {
+  if (!activeWalkTransition) {
+    state.renderTileX = state.playerTileX;
+    state.renderTileY = state.playerTileY;
+    return;
+  }
+
+  activeWalkTransition.elapsedMs += Math.max(0, deltaMs);
+  const t = Math.min(1, activeWalkTransition.elapsedMs / activeWalkTransition.durationMs);
+  state.renderTileX =
+    activeWalkTransition.startX +
+    (activeWalkTransition.targetX - activeWalkTransition.startX) * t;
+  state.renderTileY =
+    activeWalkTransition.startY +
+    (activeWalkTransition.targetY - activeWalkTransition.startY) * t;
+
+  if (t >= 1) {
+    state.renderTileX = activeWalkTransition.targetX;
+    state.renderTileY = activeWalkTransition.targetY;
+    playerAnimation.setIdle(activeWalkTransition.facing);
+    activeWalkTransition = null;
+  }
 }
 
 function renderHud(): void {

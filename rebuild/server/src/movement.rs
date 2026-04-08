@@ -142,6 +142,50 @@ pub fn facing_delta(facing: Direction) -> (i32, i32) {
     }
 }
 
+pub const WALK_TILE_PIXELS: u16 = 16;
+pub const WALK_SAMPLE_MS: f32 = 1000.0 / 60.0;
+pub const WALK_NORMAL_STEP_PIXELS_PER_SAMPLE: u8 = 1;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StepSpeed {
+    Step1,
+    Step2,
+    Step3,
+    Step4,
+    Step8,
+}
+
+impl StepSpeed {
+    pub const fn pixels_per_sample(self) -> u8 {
+        match self {
+            StepSpeed::Step1 => 1,
+            StepSpeed::Step2 => 2,
+            StepSpeed::Step3 => 3,
+            StepSpeed::Step4 => 4,
+            StepSpeed::Step8 => 8,
+        }
+    }
+
+    pub const fn samples_per_tile(self) -> u16 {
+        match self {
+            StepSpeed::Step1 => 16,
+            StepSpeed::Step2 => 8,
+            StepSpeed::Step3 => 6,
+            StepSpeed::Step4 => 4,
+            StepSpeed::Step8 => 2,
+        }
+    }
+}
+
+pub fn normal_walk_samples_per_tile() -> u16 {
+    StepSpeed::Step1.samples_per_tile()
+}
+
+pub fn step_progress_pixels(elapsed_samples: u16, speed: StepSpeed) -> u16 {
+    let raw = elapsed_samples.saturating_mul(speed.pixels_per_sample() as u16);
+    raw.min(WALK_TILE_PIXELS)
+}
+
 fn tile_query(x: i32, y: i32, map: &MovementMap<'_>) -> TileQuery {
     let in_bounds = x >= 0 && y >= 0 && x < map.width as i32 && y < map.height as i32;
     if !in_bounds {

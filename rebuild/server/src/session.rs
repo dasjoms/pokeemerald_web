@@ -2,7 +2,10 @@ use std::collections::VecDeque;
 
 use tokio::sync::mpsc;
 
-use crate::protocol::{Direction, PlayerAvatar, ServerMessage, WalkInput};
+use crate::{
+    movement::{normal_walk_samples_per_tile, step_progress_pixels, StepSpeed, WALK_SAMPLE_MS},
+    protocol::{Direction, PlayerAvatar, ServerMessage, WalkInput},
+};
 
 #[derive(Debug, Clone)]
 pub struct PlayerState {
@@ -13,6 +16,64 @@ pub struct PlayerState {
     pub avatar: PlayerAvatar,
 }
 
+#[derive(Debug, Clone)]
+pub struct ActiveWalkTransition {
+    pub input_seq: u32,
+    pub start_map_id: String,
+    pub start_x: u16,
+    pub start_y: u16,
+    pub target_map_id: String,
+    pub target_x: u16,
+    pub target_y: u16,
+    pub direction: Direction,
+    pub speed: StepSpeed,
+    sample_accumulator_ms: f32,
+    elapsed_samples: u16,
+}
+
+impl ActiveWalkTransition {
+    pub fn new(
+        input_seq: u32,
+        start_map_id: String,
+        start_x: u16,
+        start_y: u16,
+        target_map_id: String,
+        target_x: u16,
+        target_y: u16,
+        direction: Direction,
+    ) -> Self {
+        Self {
+            input_seq,
+            start_map_id,
+            start_x,
+            start_y,
+            target_map_id,
+            target_x,
+            target_y,
+            direction,
+            speed: StepSpeed::Step1,
+            sample_accumulator_ms: 0.0,
+            elapsed_samples: 0,
+        }
+    }
+
+    pub fn advance(&mut self, tick_delta_ms: f32) {
+        self.sample_accumulator_ms += tick_delta_ms.max(0.0);
+        while self.sample_accumulator_ms >= WALK_SAMPLE_MS {
+            self.sample_accumulator_ms -= WALK_SAMPLE_MS;
+            self.elapsed_samples = self.elapsed_samples.saturating_add(1);
+        }
+    }
+
+    pub fn progress_pixels(&self) -> u16 {
+        step_progress_pixels(self.elapsed_samples, self.speed)
+    }
+
+    pub fn is_complete(&self) -> bool {
+        self.elapsed_samples >= normal_walk_samples_per_tile()
+    }
+}
+
 #[derive(Debug)]
 pub struct Session {
     pub connection_id: u64,
@@ -20,6 +81,7 @@ pub struct Session {
     pub player_state: PlayerState,
     pub joined: bool,
     pub next_expected_input_seq: u32,
+    pub active_walk_transition: Option<ActiveWalkTransition>,
     walk_inputs: VecDeque<WalkInput>,
     outbound: mpsc::UnboundedSender<ServerMessage>,
 }
@@ -37,6 +99,7 @@ impl Session {
             player_state,
             joined: false,
             next_expected_input_seq: 0,
+            active_walk_transition: None,
             walk_inputs: VecDeque::new(),
             outbound,
         }
@@ -46,8 +109,8 @@ impl Session {
         self.walk_inputs.push_back(input);
     }
 
-    pub fn take_ready_walk_inputs(&mut self) -> VecDeque<WalkInput> {
-        std::mem::take(&mut self.walk_inputs)
+    pub fn pop_walk_input(&mut self) -> Option<WalkInput> {
+        self.walk_inputs.pop_front()
     }
 
     pub fn send(
