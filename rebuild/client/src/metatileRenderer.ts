@@ -211,7 +211,9 @@ function makePaletteTexture(indices: Uint8Array, palette: PaletteColor[] | undef
   }
 
   ctx.putImageData(new ImageData(rgba, SUBTILE_SIZE, SUBTILE_SIZE), 0, 0);
-  return Texture.from(canvas);
+  const texture = Texture.from(canvas);
+  texture.source.scaleMode = 'nearest';
+  return texture;
 }
 
 export class MetatileTextureCache {
