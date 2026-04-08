@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Emerald Rebuild Client</title>
+    <style>
+      html, body { margin: 0; padding: 0; background: #0f172a; color: #e2e8f0; }
+      #app-root { width: 100vw; height: 100vh; overflow: hidden; position: relative; }
+      #hud {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        z-index: 20;
+        font-family: monospace;
+        font-size: 13px;
+        background: rgba(2, 6, 23, 0.8);
+        border: 1px solid rgba(148, 163, 184, 0.4);
+        border-radius: 4px;
+        padding: 8px;
+        min-width: 240px;
+      }
+      #hud .row { display: flex; justify-content: space-between; gap: 12px; }
+      #hud .label { color: #93c5fd; }
+      #hud .value { color: #e2e8f0; }
+    </style>
+  </head>
+  <body>
+    <div id="app-root">
+      <div id="hud">
+        <div class="row"><span class="label">map</span><span class="value" data-hud="mapId">-</span></div>
+        <div class="row"><span class="label">tile</span><span class="value" data-hud="tile">-</span></div>
+        <div class="row"><span class="label">facing</span><span class="value" data-hud="facing">-</span></div>
+        <div class="row"><span class="label">last input_seq</span><span class="value" data-hud="inputSeq">-</span></div>
+        <div class="row"><span class="label">last ack tick</span><span class="value" data-hud="serverTick">-</span></div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
