@@ -1,8 +1,3 @@
-mod movement;
-mod protocol;
-mod session;
-mod world;
-
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 
 use axum::{
@@ -18,7 +13,7 @@ use futures::{SinkExt, StreamExt};
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
 
-use crate::{
+use rebuild_server::{
     protocol::{ClientMessage, ServerMessage, SessionAccepted, WorldSnapshot},
     world::World,
 };
