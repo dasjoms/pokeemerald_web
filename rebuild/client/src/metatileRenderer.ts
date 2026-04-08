@@ -223,8 +223,9 @@ export class MetatileTextureCache {
     localTileIndex: number;
     paletteIndex: number;
     palettes: PaletteColor[][];
+    animationKey?: string;
   }): Texture | null {
-    const cacheKey = `${params.pageId}:${params.localTileIndex}:${params.paletteIndex}`;
+    const cacheKey = `${params.pageId}:${params.localTileIndex}:${params.paletteIndex}:${params.animationKey ?? 'base'}`;
     const cached = this.textureCache.get(cacheKey);
     if (cached) {
       return cached;
