@@ -1,7 +1,7 @@
 export type CopyTilesOpLike = {
   pageId: number;
   destLocalTileIndex: number;
-  sourceLocalTileIndex: number;
+  sourceFrameLocalTileIndex: number;
   tileCount: number;
 };
 
@@ -15,7 +15,7 @@ export function applyCopyTilesOpsToActiveSwaps(
   for (const op of nextTileSwaps.values()) {
     for (let offset = 0; offset < op.tileCount; offset += 1) {
       const destLocalTileIndex = op.destLocalTileIndex + offset;
-      const sourceLocalTileIndex = op.sourceLocalTileIndex + offset;
+      const sourceLocalTileIndex = op.sourceFrameLocalTileIndex + offset;
       nextExpandedTileSwaps.set(`${op.pageId}:${destLocalTileIndex}`, sourceLocalTileIndex);
     }
   }
