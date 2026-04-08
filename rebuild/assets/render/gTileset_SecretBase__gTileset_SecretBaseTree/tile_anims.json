@@ -1,0 +1,24 @@
+{
+  "tile_anims_version": 2,
+  "pair_id": "gTileset_SecretBase__gTileset_SecretBaseTree",
+  "programs": {
+    "primary": {
+      "source_tileset": "gTileset_SecretBase",
+      "callback": null,
+      "program": null,
+      "counter_max_expr": null,
+      "events": []
+    },
+    "secondary": {
+      "source_tileset": "gTileset_SecretBaseTree",
+      "callback": null,
+      "program": null,
+      "counter_max_expr": null,
+      "events": []
+    }
+  },
+  "frame_arrays": {},
+  "frame_payloads": [],
+  "frame_payload_blob": "tile_anim_frames.bin",
+  "frame_sources": []
+}

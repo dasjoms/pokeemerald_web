@@ -1,0 +1,823 @@
+{
+  "tile_anims_version": 2,
+  "pair_id": "gTileset_General__gTileset_Slateport",
+  "programs": {
+    "primary": {
+      "source_tileset": "gTileset_General",
+      "callback": "InitTilesetAnim_General",
+      "program": "TilesetAnim_General",
+      "counter_max_expr": "256",
+      "events": [
+        {
+          "gate": {
+            "mod": 16,
+            "eq": 0
+          },
+          "actions": [
+            {
+              "function": "QueueAnimTiles_General_Flower",
+              "args": "timer / 16",
+              "copy_ops": [
+                {
+                  "source_expr": "gTilesetAnims_General_Flower[i]",
+                  "frame_array": "gTilesetAnims_General_Flower",
+                  "dest_expr": "(u16 *)(BG_VRAM + TILE_OFFSET_4BPP(508))",
+                  "dest_tile_indices": [
+                    508
+                  ],
+                  "size_expr": "4 * TILE_SIZE_4BPP",
+                  "size_tiles": 4
+                }
+              ],
+              "palette_ops": []
+            }
+          ]
+        },
+        {
+          "gate": {
+            "mod": 16,
+            "eq": 1
+          },
+          "actions": [
+            {
+              "function": "QueueAnimTiles_General_Water",
+              "args": "timer / 16",
+              "copy_ops": [
+                {
+                  "source_expr": "gTilesetAnims_General_Water[i]",
+                  "frame_array": "gTilesetAnims_General_Water",
+                  "dest_expr": "(u16 *)(BG_VRAM + TILE_OFFSET_4BPP(432))",
+                  "dest_tile_indices": [
+                    432
+                  ],
+                  "size_expr": "30 * TILE_SIZE_4BPP",
+                  "size_tiles": 30
+                }
+              ],
+              "palette_ops": []
+            }
+          ]
+        },
+        {
+          "gate": {
+            "mod": 16,
+            "eq": 2
+          },
+          "actions": [
+            {
+              "function": "QueueAnimTiles_General_SandWaterEdge",
+              "args": "timer / 16",
+              "copy_ops": [
+                {
+                  "source_expr": "gTilesetAnims_General_SandWaterEdge[i]",
+                  "frame_array": "gTilesetAnims_General_SandWaterEdge",
+                  "dest_expr": "(u16 *)(BG_VRAM + TILE_OFFSET_4BPP(464))",
+                  "dest_tile_indices": [
+                    464
+                  ],
+                  "size_expr": "10 * TILE_SIZE_4BPP",
+                  "size_tiles": 10
+                }
+              ],
+              "palette_ops": []
+            }
+          ]
+        },
+        {
+          "gate": {
+            "mod": 16,
+            "eq": 3
+          },
+          "actions": [
+            {
+              "function": "QueueAnimTiles_General_Waterfall",
+              "args": "timer / 16",
+              "copy_ops": [
+                {
+                  "source_expr": "gTilesetAnims_General_Waterfall[i]",
+                  "frame_array": "gTilesetAnims_General_Waterfall",
+                  "dest_expr": "(u16 *)(BG_VRAM + TILE_OFFSET_4BPP(496))",
+                  "dest_tile_indices": [
+                    496
+                  ],
+                  "size_expr": "6 * TILE_SIZE_4BPP",
+                  "size_tiles": 6
+                }
+              ],
+              "palette_ops": []
+            }
+          ]
+        },
+        {
+          "gate": {
+            "mod": 16,
+            "eq": 4
+          },
+          "actions": [
+            {
+              "function": "QueueAnimTiles_General_LandWaterEdge",
+              "args": "timer / 16",
+              "copy_ops": [
+                {
+                  "source_expr": "gTilesetAnims_General_LandWaterEdge[i]",
+                  "frame_array": "gTilesetAnims_General_LandWaterEdge",
+                  "dest_expr": "(u16 *)(BG_VRAM + TILE_OFFSET_4BPP(480))",
+                  "dest_tile_indices": [
+                    480
+                  ],
+                  "size_expr": "10 * TILE_SIZE_4BPP",
+                  "size_tiles": 10
+                }
+              ],
+              "palette_ops": []
+            }
+          ]
+        }
+      ]
+    },
+    "secondary": {
+      "source_tileset": "gTileset_Slateport",
+      "callback": "InitTilesetAnim_Slateport",
+      "program": "TilesetAnim_Slateport",
+      "counter_max_expr": "sPrimaryTilesetAnimCounterMax",
+      "events": [
+        {
+          "gate": {
+            "mod": 16,
+            "eq": 0
+          },
+          "actions": [
+            {
+              "function": "QueueAnimTiles_Slateport_Balloons",
+              "args": "timer / 16",
+              "copy_ops": [
+                {
+                  "source_expr": "gTilesetAnims_Slateport_Balloons[i]",
+                  "frame_array": "gTilesetAnims_Slateport_Balloons",
+                  "dest_expr": "(u16 *)(BG_VRAM + TILE_OFFSET_4BPP(NUM_TILES_IN_PRIMARY + 224))",
+                  "dest_tile_indices": [
+                    736
+                  ],
+                  "size_expr": "4 * TILE_SIZE_4BPP",
+                  "size_tiles": 4
+                }
+              ],
+              "palette_ops": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "frame_arrays": {
+    "gTilesetAnims_General_Flower": [
+      0,
+      1,
+      0,
+      2
+    ],
+    "gTilesetAnims_General_LandWaterEdge": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "gTilesetAnims_General_SandWaterEdge": [
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      7
+    ],
+    "gTilesetAnims_General_Water": [
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21
+    ],
+    "gTilesetAnims_General_Waterfall": [
+      22,
+      23,
+      24,
+      25
+    ],
+    "gTilesetAnims_Slateport_Balloons": [
+      26,
+      27,
+      28,
+      29
+    ]
+  },
+  "frame_payloads": [
+    {
+      "payload_id": 0,
+      "symbol_name": "gTilesetAnims_General_Flower_Frame0",
+      "payload_offset": 0,
+      "tile_count": 4,
+      "byte_count": 128,
+      "expected_copy_size_tiles": [
+        4
+      ]
+    },
+    {
+      "payload_id": 1,
+      "symbol_name": "gTilesetAnims_General_Flower_Frame1",
+      "payload_offset": 128,
+      "tile_count": 4,
+      "byte_count": 128,
+      "expected_copy_size_tiles": [
+        4
+      ]
+    },
+    {
+      "payload_id": 2,
+      "symbol_name": "gTilesetAnims_General_Flower_Frame2",
+      "payload_offset": 256,
+      "tile_count": 4,
+      "byte_count": 128,
+      "expected_copy_size_tiles": [
+        4
+      ]
+    },
+    {
+      "payload_id": 3,
+      "symbol_name": "gTilesetAnims_General_LandWaterEdge_Frame0",
+      "payload_offset": 384,
+      "tile_count": 10,
+      "byte_count": 320,
+      "expected_copy_size_tiles": [
+        10
+      ]
+    },
+    {
+      "payload_id": 4,
+      "symbol_name": "gTilesetAnims_General_LandWaterEdge_Frame1",
+      "payload_offset": 704,
+      "tile_count": 10,
+      "byte_count": 320,
+      "expected_copy_size_tiles": [
+        10
+      ]
+    },
+    {
+      "payload_id": 5,
+      "symbol_name": "gTilesetAnims_General_LandWaterEdge_Frame2",
+      "payload_offset": 1024,
+      "tile_count": 10,
+      "byte_count": 320,
+      "expected_copy_size_tiles": [
+        10
+      ]
+    },
+    {
+      "payload_id": 6,
+      "symbol_name": "gTilesetAnims_General_LandWaterEdge_Frame3",
+      "payload_offset": 1344,
+      "tile_count": 10,
+      "byte_count": 320,
+      "expected_copy_size_tiles": [
+        10
+      ]
+    },
+    {
+      "payload_id": 7,
+      "symbol_name": "gTilesetAnims_General_SandWaterEdge_Frame0",
+      "payload_offset": 1664,
+      "tile_count": 10,
+      "byte_count": 320,
+      "expected_copy_size_tiles": [
+        10
+      ]
+    },
+    {
+      "payload_id": 8,
+      "symbol_name": "gTilesetAnims_General_SandWaterEdge_Frame1",
+      "payload_offset": 1984,
+      "tile_count": 10,
+      "byte_count": 320,
+      "expected_copy_size_tiles": [
+        10
+      ]
+    },
+    {
+      "payload_id": 9,
+      "symbol_name": "gTilesetAnims_General_SandWaterEdge_Frame2",
+      "payload_offset": 2304,
+      "tile_count": 10,
+      "byte_count": 320,
+      "expected_copy_size_tiles": [
+        10
+      ]
+    },
+    {
+      "payload_id": 10,
+      "symbol_name": "gTilesetAnims_General_SandWaterEdge_Frame3",
+      "payload_offset": 2624,
+      "tile_count": 10,
+      "byte_count": 320,
+      "expected_copy_size_tiles": [
+        10
+      ]
+    },
+    {
+      "payload_id": 11,
+      "symbol_name": "gTilesetAnims_General_SandWaterEdge_Frame4",
+      "payload_offset": 2944,
+      "tile_count": 10,
+      "byte_count": 320,
+      "expected_copy_size_tiles": [
+        10
+      ]
+    },
+    {
+      "payload_id": 12,
+      "symbol_name": "gTilesetAnims_General_SandWaterEdge_Frame5",
+      "payload_offset": 3264,
+      "tile_count": 10,
+      "byte_count": 320,
+      "expected_copy_size_tiles": [
+        10
+      ]
+    },
+    {
+      "payload_id": 13,
+      "symbol_name": "gTilesetAnims_General_SandWaterEdge_Frame6",
+      "payload_offset": 3584,
+      "tile_count": 10,
+      "byte_count": 320,
+      "expected_copy_size_tiles": [
+        10
+      ]
+    },
+    {
+      "payload_id": 14,
+      "symbol_name": "gTilesetAnims_General_Water_Frame0",
+      "payload_offset": 3904,
+      "tile_count": 30,
+      "byte_count": 960,
+      "expected_copy_size_tiles": [
+        30
+      ]
+    },
+    {
+      "payload_id": 15,
+      "symbol_name": "gTilesetAnims_General_Water_Frame1",
+      "payload_offset": 4864,
+      "tile_count": 30,
+      "byte_count": 960,
+      "expected_copy_size_tiles": [
+        30
+      ]
+    },
+    {
+      "payload_id": 16,
+      "symbol_name": "gTilesetAnims_General_Water_Frame2",
+      "payload_offset": 5824,
+      "tile_count": 30,
+      "byte_count": 960,
+      "expected_copy_size_tiles": [
+        30
+      ]
+    },
+    {
+      "payload_id": 17,
+      "symbol_name": "gTilesetAnims_General_Water_Frame3",
+      "payload_offset": 6784,
+      "tile_count": 30,
+      "byte_count": 960,
+      "expected_copy_size_tiles": [
+        30
+      ]
+    },
+    {
+      "payload_id": 18,
+      "symbol_name": "gTilesetAnims_General_Water_Frame4",
+      "payload_offset": 7744,
+      "tile_count": 30,
+      "byte_count": 960,
+      "expected_copy_size_tiles": [
+        30
+      ]
+    },
+    {
+      "payload_id": 19,
+      "symbol_name": "gTilesetAnims_General_Water_Frame5",
+      "payload_offset": 8704,
+      "tile_count": 30,
+      "byte_count": 960,
+      "expected_copy_size_tiles": [
+        30
+      ]
+    },
+    {
+      "payload_id": 20,
+      "symbol_name": "gTilesetAnims_General_Water_Frame6",
+      "payload_offset": 9664,
+      "tile_count": 30,
+      "byte_count": 960,
+      "expected_copy_size_tiles": [
+        30
+      ]
+    },
+    {
+      "payload_id": 21,
+      "symbol_name": "gTilesetAnims_General_Water_Frame7",
+      "payload_offset": 10624,
+      "tile_count": 30,
+      "byte_count": 960,
+      "expected_copy_size_tiles": [
+        30
+      ]
+    },
+    {
+      "payload_id": 22,
+      "symbol_name": "gTilesetAnims_General_Waterfall_Frame0",
+      "payload_offset": 11584,
+      "tile_count": 6,
+      "byte_count": 192,
+      "expected_copy_size_tiles": [
+        6
+      ]
+    },
+    {
+      "payload_id": 23,
+      "symbol_name": "gTilesetAnims_General_Waterfall_Frame1",
+      "payload_offset": 11776,
+      "tile_count": 6,
+      "byte_count": 192,
+      "expected_copy_size_tiles": [
+        6
+      ]
+    },
+    {
+      "payload_id": 24,
+      "symbol_name": "gTilesetAnims_General_Waterfall_Frame2",
+      "payload_offset": 11968,
+      "tile_count": 6,
+      "byte_count": 192,
+      "expected_copy_size_tiles": [
+        6
+      ]
+    },
+    {
+      "payload_id": 25,
+      "symbol_name": "gTilesetAnims_General_Waterfall_Frame3",
+      "payload_offset": 12160,
+      "tile_count": 6,
+      "byte_count": 192,
+      "expected_copy_size_tiles": [
+        6
+      ]
+    },
+    {
+      "payload_id": 26,
+      "symbol_name": "gTilesetAnims_Slateport_Balloons_Frame0",
+      "payload_offset": 12352,
+      "tile_count": 4,
+      "byte_count": 128,
+      "expected_copy_size_tiles": [
+        4
+      ]
+    },
+    {
+      "payload_id": 27,
+      "symbol_name": "gTilesetAnims_Slateport_Balloons_Frame1",
+      "payload_offset": 12480,
+      "tile_count": 4,
+      "byte_count": 128,
+      "expected_copy_size_tiles": [
+        4
+      ]
+    },
+    {
+      "payload_id": 28,
+      "symbol_name": "gTilesetAnims_Slateport_Balloons_Frame2",
+      "payload_offset": 12608,
+      "tile_count": 4,
+      "byte_count": 128,
+      "expected_copy_size_tiles": [
+        4
+      ]
+    },
+    {
+      "payload_id": 29,
+      "symbol_name": "gTilesetAnims_Slateport_Balloons_Frame3",
+      "payload_offset": 12736,
+      "tile_count": 4,
+      "byte_count": 128,
+      "expected_copy_size_tiles": [
+        4
+      ]
+    }
+  ],
+  "frame_payload_blob": "tile_anim_frames.bin",
+  "frame_sources": [
+    {
+      "source_index": 0,
+      "symbol_name": "gTilesetAnims_General_Flower_Frame0",
+      "source_path": "data/tilesets/primary/general/anim/flower/0.png",
+      "render_path": "render/gTileset_General__gTileset_Slateport/tile_anim_sources/0000_gTilesetAnims_General_Flower_Frame0.4bpp",
+      "width": 16,
+      "height": 16,
+      "tile_count": 4,
+      "byte_count": 128
+    },
+    {
+      "source_index": 1,
+      "symbol_name": "gTilesetAnims_General_Flower_Frame1",
+      "source_path": "data/tilesets/primary/general/anim/flower/1.png",
+      "render_path": "render/gTileset_General__gTileset_Slateport/tile_anim_sources/0001_gTilesetAnims_General_Flower_Frame1.4bpp",
+      "width": 16,
+      "height": 16,
+      "tile_count": 4,
+      "byte_count": 128
+    },
+    {
+      "source_index": 2,
+      "symbol_name": "gTilesetAnims_General_Flower_Frame2",
+      "source_path": "data/tilesets/primary/general/anim/flower/2.png",
+      "render_path": "render/gTileset_General__gTileset_Slateport/tile_anim_sources/0002_gTilesetAnims_General_Flower_Frame2.4bpp",
+      "width": 16,
+      "height": 16,
+      "tile_count": 4,
+      "byte_count": 128
+    },
+    {
+      "source_index": 3,
+      "symbol_name": "gTilesetAnims_General_LandWaterEdge_Frame0",
+      "source_path": "data/tilesets/primary/general/anim/land_water_edge/0.png",
+      "render_path": "render/gTileset_General__gTileset_Slateport/tile_anim_sources/0003_gTilesetAnims_General_LandWaterEdge_Frame0.4bpp",
+      "width": 80,
+      "height": 8,
+      "tile_count": 10,
+      "byte_count": 320
+    },
+    {
+      "source_index": 4,
+      "symbol_name": "gTilesetAnims_General_LandWaterEdge_Frame1",
+      "source_path": "data/tilesets/primary/general/anim/land_water_edge/1.png",
+      "render_path": "render/gTileset_General__gTileset_Slateport/tile_anim_sources/0004_gTilesetAnims_General_LandWaterEdge_Frame1.4bpp",
+      "width": 80,
+      "height": 8,
+      "tile_count": 10,
+      "byte_count": 320
+    },
+    {
+      "source_index": 5,
+      "symbol_name": "gTilesetAnims_General_LandWaterEdge_Frame2",
+      "source_path": "data/tilesets/primary/general/anim/land_water_edge/2.png",
+      "render_path": "render/gTileset_General__gTileset_Slateport/tile_anim_sources/0005_gTilesetAnims_General_LandWaterEdge_Frame2.4bpp",
+      "width": 80,
+      "height": 8,
+      "tile_count": 10,
+      "byte_count": 320
+    },
+    {
+      "source_index": 6,
+      "symbol_name": "gTilesetAnims_General_LandWaterEdge_Frame3",
+      "source_path": "data/tilesets/primary/general/anim/land_water_edge/3.png",
+      "render_path": "render/gTileset_General__gTileset_Slateport/tile_anim_sources/0006_gTilesetAnims_General_LandWaterEdge_Frame3.4bpp",
+      "width": 80,
+      "height": 8,
+      "tile_count": 10,
+      "byte_count": 320
+    },
+    {
+      "source_index": 7,
+      "symbol_name": "gTilesetAnims_General_SandWaterEdge_Frame0",
+      "source_path": "data/tilesets/primary/general/anim/sand_water_edge/0.png",
+      "render_path": "render/gTileset_General__gTileset_Slateport/tile_anim_sources/0007_gTilesetAnims_General_SandWaterEdge_Frame0.4bpp",
+      "width": 16,
+      "height": 40,
+      "tile_count": 10,
+      "byte_count": 320
+    },
+    {
+      "source_index": 8,
+      "symbol_name": "gTilesetAnims_General_SandWaterEdge_Frame1",
+      "source_path": "data/tilesets/primary/general/anim/sand_water_edge/1.png",
+      "render_path": "render/gTileset_General__gTileset_Slateport/tile_anim_sources/0008_gTilesetAnims_General_SandWaterEdge_Frame1.4bpp",
+      "width": 16,
+      "height": 40,
+      "tile_count": 10,
+      "byte_count": 320
+    },
+    {
+      "source_index": 9,
+      "symbol_name": "gTilesetAnims_General_SandWaterEdge_Frame2",
+      "source_path": "data/tilesets/primary/general/anim/sand_water_edge/2.png",
+      "render_path": "render/gTileset_General__gTileset_Slateport/tile_anim_sources/0009_gTilesetAnims_General_SandWaterEdge_Frame2.4bpp",
+      "width": 16,
+      "height": 40,
+      "tile_count": 10,
+      "byte_count": 320
+    },
+    {
+      "source_index": 10,
+      "symbol_name": "gTilesetAnims_General_SandWaterEdge_Frame3",
+      "source_path": "data/tilesets/primary/general/anim/sand_water_edge/3.png",
+      "render_path": "render/gTileset_General__gTileset_Slateport/tile_anim_sources/0010_gTilesetAnims_General_SandWaterEdge_Frame3.4bpp",
+      "width": 16,
+      "height": 40,
+      "tile_count": 10,
+      "byte_count": 320
+    },
+    {
+      "source_index": 11,
+      "symbol_name": "gTilesetAnims_General_SandWaterEdge_Frame4",
+      "source_path": "data/tilesets/primary/general/anim/sand_water_edge/4.png",
+      "render_path": "render/gTileset_General__gTileset_Slateport/tile_anim_sources/0011_gTilesetAnims_General_SandWaterEdge_Frame4.4bpp",
+      "width": 16,
+      "height": 40,
+      "tile_count": 10,
+      "byte_count": 320
+    },
+    {
+      "source_index": 12,
+      "symbol_name": "gTilesetAnims_General_SandWaterEdge_Frame5",
+      "source_path": "data/tilesets/primary/general/anim/sand_water_edge/5.png",
+      "render_path": "render/gTileset_General__gTileset_Slateport/tile_anim_sources/0012_gTilesetAnims_General_SandWaterEdge_Frame5.4bpp",
+      "width": 16,
+      "height": 40,
+      "tile_count": 10,
+      "byte_count": 320
+    },
+    {
+      "source_index": 13,
+      "symbol_name": "gTilesetAnims_General_SandWaterEdge_Frame6",
+      "source_path": "data/tilesets/primary/general/anim/sand_water_edge/6.png",
+      "render_path": "render/gTileset_General__gTileset_Slateport/tile_anim_sources/0013_gTilesetAnims_General_SandWaterEdge_Frame6.4bpp",
+      "width": 16,
+      "height": 40,
+      "tile_count": 10,
+      "byte_count": 320
+    },
+    {
+      "source_index": 14,
+      "symbol_name": "gTilesetAnims_General_Water_Frame0",
+      "source_path": "data/tilesets/primary/general/anim/water/0.png",
+      "render_path": "render/gTileset_General__gTileset_Slateport/tile_anim_sources/0014_gTilesetAnims_General_Water_Frame0.4bpp",
+      "width": 16,
+      "height": 120,
+      "tile_count": 30,
+      "byte_count": 960
+    },
+    {
+      "source_index": 15,
+      "symbol_name": "gTilesetAnims_General_Water_Frame1",
+      "source_path": "data/tilesets/primary/general/anim/water/1.png",
+      "render_path": "render/gTileset_General__gTileset_Slateport/tile_anim_sources/0015_gTilesetAnims_General_Water_Frame1.4bpp",
+      "width": 16,
+      "height": 120,
+      "tile_count": 30,
+      "byte_count": 960
+    },
+    {
+      "source_index": 16,
+      "symbol_name": "gTilesetAnims_General_Water_Frame2",
+      "source_path": "data/tilesets/primary/general/anim/water/2.png",
+      "render_path": "render/gTileset_General__gTileset_Slateport/tile_anim_sources/0016_gTilesetAnims_General_Water_Frame2.4bpp",
+      "width": 16,
+      "height": 120,
+      "tile_count": 30,
+      "byte_count": 960
+    },
+    {
+      "source_index": 17,
+      "symbol_name": "gTilesetAnims_General_Water_Frame3",
+      "source_path": "data/tilesets/primary/general/anim/water/3.png",
+      "render_path": "render/gTileset_General__gTileset_Slateport/tile_anim_sources/0017_gTilesetAnims_General_Water_Frame3.4bpp",
+      "width": 16,
+      "height": 120,
+      "tile_count": 30,
+      "byte_count": 960
+    },
+    {
+      "source_index": 18,
+      "symbol_name": "gTilesetAnims_General_Water_Frame4",
+      "source_path": "data/tilesets/primary/general/anim/water/4.png",
+      "render_path": "render/gTileset_General__gTileset_Slateport/tile_anim_sources/0018_gTilesetAnims_General_Water_Frame4.4bpp",
+      "width": 16,
+      "height": 120,
+      "tile_count": 30,
+      "byte_count": 960
+    },
+    {
+      "source_index": 19,
+      "symbol_name": "gTilesetAnims_General_Water_Frame5",
+      "source_path": "data/tilesets/primary/general/anim/water/5.png",
+      "render_path": "render/gTileset_General__gTileset_Slateport/tile_anim_sources/0019_gTilesetAnims_General_Water_Frame5.4bpp",
+      "width": 16,
+      "height": 120,
+      "tile_count": 30,
+      "byte_count": 960
+    },
+    {
+      "source_index": 20,
+      "symbol_name": "gTilesetAnims_General_Water_Frame6",
+      "source_path": "data/tilesets/primary/general/anim/water/6.png",
+      "render_path": "render/gTileset_General__gTileset_Slateport/tile_anim_sources/0020_gTilesetAnims_General_Water_Frame6.4bpp",
+      "width": 16,
+      "height": 120,
+      "tile_count": 30,
+      "byte_count": 960
+    },
+    {
+      "source_index": 21,
+      "symbol_name": "gTilesetAnims_General_Water_Frame7",
+      "source_path": "data/tilesets/primary/general/anim/water/7.png",
+      "render_path": "render/gTileset_General__gTileset_Slateport/tile_anim_sources/0021_gTilesetAnims_General_Water_Frame7.4bpp",
+      "width": 16,
+      "height": 120,
+      "tile_count": 30,
+      "byte_count": 960
+    },
+    {
+      "source_index": 22,
+      "symbol_name": "gTilesetAnims_General_Waterfall_Frame0",
+      "source_path": "data/tilesets/primary/general/anim/waterfall/0.png",
+      "render_path": "render/gTileset_General__gTileset_Slateport/tile_anim_sources/0022_gTilesetAnims_General_Waterfall_Frame0.4bpp",
+      "width": 8,
+      "height": 48,
+      "tile_count": 6,
+      "byte_count": 192
+    },
+    {
+      "source_index": 23,
+      "symbol_name": "gTilesetAnims_General_Waterfall_Frame1",
+      "source_path": "data/tilesets/primary/general/anim/waterfall/1.png",
+      "render_path": "render/gTileset_General__gTileset_Slateport/tile_anim_sources/0023_gTilesetAnims_General_Waterfall_Frame1.4bpp",
+      "width": 8,
+      "height": 48,
+      "tile_count": 6,
+      "byte_count": 192
+    },
+    {
+      "source_index": 24,
+      "symbol_name": "gTilesetAnims_General_Waterfall_Frame2",
+      "source_path": "data/tilesets/primary/general/anim/waterfall/2.png",
+      "render_path": "render/gTileset_General__gTileset_Slateport/tile_anim_sources/0024_gTilesetAnims_General_Waterfall_Frame2.4bpp",
+      "width": 8,
+      "height": 48,
+      "tile_count": 6,
+      "byte_count": 192
+    },
+    {
+      "source_index": 25,
+      "symbol_name": "gTilesetAnims_General_Waterfall_Frame3",
+      "source_path": "data/tilesets/primary/general/anim/waterfall/3.png",
+      "render_path": "render/gTileset_General__gTileset_Slateport/tile_anim_sources/0025_gTilesetAnims_General_Waterfall_Frame3.4bpp",
+      "width": 8,
+      "height": 48,
+      "tile_count": 6,
+      "byte_count": 192
+    },
+    {
+      "source_index": 26,
+      "symbol_name": "gTilesetAnims_Slateport_Balloons_Frame0",
+      "source_path": "data/tilesets/secondary/slateport/anim/balloons/0.png",
+      "render_path": "render/gTileset_General__gTileset_Slateport/tile_anim_sources/0026_gTilesetAnims_Slateport_Balloons_Frame0.4bpp",
+      "width": 16,
+      "height": 16,
+      "tile_count": 4,
+      "byte_count": 128
+    },
+    {
+      "source_index": 27,
+      "symbol_name": "gTilesetAnims_Slateport_Balloons_Frame1",
+      "source_path": "data/tilesets/secondary/slateport/anim/balloons/1.png",
+      "render_path": "render/gTileset_General__gTileset_Slateport/tile_anim_sources/0027_gTilesetAnims_Slateport_Balloons_Frame1.4bpp",
+      "width": 16,
+      "height": 16,
+      "tile_count": 4,
+      "byte_count": 128
+    },
+    {
+      "source_index": 28,
+      "symbol_name": "gTilesetAnims_Slateport_Balloons_Frame2",
+      "source_path": "data/tilesets/secondary/slateport/anim/balloons/2.png",
+      "render_path": "render/gTileset_General__gTileset_Slateport/tile_anim_sources/0028_gTilesetAnims_Slateport_Balloons_Frame2.4bpp",
+      "width": 16,
+      "height": 16,
+      "tile_count": 4,
+      "byte_count": 128
+    },
+    {
+      "source_index": 29,
+      "symbol_name": "gTilesetAnims_Slateport_Balloons_Frame3",
+      "source_path": "data/tilesets/secondary/slateport/anim/balloons/3.png",
+      "render_path": "render/gTileset_General__gTileset_Slateport/tile_anim_sources/0029_gTilesetAnims_Slateport_Balloons_Frame3.4bpp",
+      "width": 16,
+      "height": 16,
+      "tile_count": 4,
+      "byte_count": 128
+    }
+  ]
+}

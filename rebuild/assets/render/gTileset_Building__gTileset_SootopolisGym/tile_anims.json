@@ -1,0 +1,263 @@
+{
+  "tile_anims_version": 2,
+  "pair_id": "gTileset_Building__gTileset_SootopolisGym",
+  "programs": {
+    "primary": {
+      "source_tileset": "gTileset_Building",
+      "callback": "InitTilesetAnim_Building",
+      "program": "TilesetAnim_Building",
+      "counter_max_expr": "256",
+      "events": [
+        {
+          "gate": {
+            "mod": 8,
+            "eq": 0
+          },
+          "actions": [
+            {
+              "function": "QueueAnimTiles_Building_TVTurnedOn",
+              "args": "timer / 8",
+              "copy_ops": [
+                {
+                  "source_expr": "gTilesetAnims_Building_TvTurnedOn[i]",
+                  "frame_array": "gTilesetAnims_Building_TvTurnedOn",
+                  "dest_expr": "(u16 *)(BG_VRAM + TILE_OFFSET_4BPP(496))",
+                  "dest_tile_indices": [
+                    496
+                  ],
+                  "size_expr": "4 * TILE_SIZE_4BPP",
+                  "size_tiles": 4
+                }
+              ],
+              "palette_ops": []
+            }
+          ]
+        }
+      ]
+    },
+    "secondary": {
+      "source_tileset": "gTileset_SootopolisGym",
+      "callback": "InitTilesetAnim_SootopolisGym",
+      "program": "TilesetAnim_SootopolisGym",
+      "counter_max_expr": "240",
+      "events": [
+        {
+          "gate": {
+            "mod": 8,
+            "eq": 0
+          },
+          "actions": [
+            {
+              "function": "QueueAnimTiles_SootopolisGym_Waterfalls",
+              "args": "timer / 8",
+              "copy_ops": [
+                {
+                  "source_expr": "gTilesetAnims_SootopolisGym_SideWaterfall[i]",
+                  "frame_array": "gTilesetAnims_SootopolisGym_SideWaterfall",
+                  "dest_expr": "(u16 *)(BG_VRAM + TILE_OFFSET_4BPP(NUM_TILES_IN_PRIMARY + 496))",
+                  "dest_tile_indices": [
+                    1008
+                  ],
+                  "size_expr": "12 * TILE_SIZE_4BPP",
+                  "size_tiles": 12
+                },
+                {
+                  "source_expr": "gTilesetAnims_SootopolisGym_FrontWaterfall[i]",
+                  "frame_array": "gTilesetAnims_SootopolisGym_FrontWaterfall",
+                  "dest_expr": "(u16 *)(BG_VRAM + TILE_OFFSET_4BPP(NUM_TILES_IN_PRIMARY + 464))",
+                  "dest_tile_indices": [
+                    976
+                  ],
+                  "size_expr": "20 * TILE_SIZE_4BPP",
+                  "size_tiles": 20
+                }
+              ],
+              "palette_ops": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "frame_arrays": {
+    "gTilesetAnims_Building_TvTurnedOn": [
+      0,
+      1
+    ],
+    "gTilesetAnims_SootopolisGym_FrontWaterfall": [
+      2,
+      3,
+      4
+    ],
+    "gTilesetAnims_SootopolisGym_SideWaterfall": [
+      5,
+      6,
+      7
+    ]
+  },
+  "frame_payloads": [
+    {
+      "payload_id": 0,
+      "symbol_name": "gTilesetAnims_Building_TvTurnedOn_Frame0",
+      "payload_offset": 0,
+      "tile_count": 4,
+      "byte_count": 128,
+      "expected_copy_size_tiles": [
+        4
+      ]
+    },
+    {
+      "payload_id": 1,
+      "symbol_name": "gTilesetAnims_Building_TvTurnedOn_Frame1",
+      "payload_offset": 128,
+      "tile_count": 4,
+      "byte_count": 128,
+      "expected_copy_size_tiles": [
+        4
+      ]
+    },
+    {
+      "payload_id": 2,
+      "symbol_name": "gTilesetAnims_SootopolisGym_FrontWaterfall_Frame0",
+      "payload_offset": 256,
+      "tile_count": 20,
+      "byte_count": 640,
+      "expected_copy_size_tiles": [
+        20
+      ]
+    },
+    {
+      "payload_id": 3,
+      "symbol_name": "gTilesetAnims_SootopolisGym_FrontWaterfall_Frame1",
+      "payload_offset": 896,
+      "tile_count": 20,
+      "byte_count": 640,
+      "expected_copy_size_tiles": [
+        20
+      ]
+    },
+    {
+      "payload_id": 4,
+      "symbol_name": "gTilesetAnims_SootopolisGym_FrontWaterfall_Frame2",
+      "payload_offset": 1536,
+      "tile_count": 20,
+      "byte_count": 640,
+      "expected_copy_size_tiles": [
+        20
+      ]
+    },
+    {
+      "payload_id": 5,
+      "symbol_name": "gTilesetAnims_SootopolisGym_SideWaterfall_Frame0",
+      "payload_offset": 2176,
+      "tile_count": 12,
+      "byte_count": 384,
+      "expected_copy_size_tiles": [
+        12
+      ]
+    },
+    {
+      "payload_id": 6,
+      "symbol_name": "gTilesetAnims_SootopolisGym_SideWaterfall_Frame1",
+      "payload_offset": 2560,
+      "tile_count": 12,
+      "byte_count": 384,
+      "expected_copy_size_tiles": [
+        12
+      ]
+    },
+    {
+      "payload_id": 7,
+      "symbol_name": "gTilesetAnims_SootopolisGym_SideWaterfall_Frame2",
+      "payload_offset": 2944,
+      "tile_count": 12,
+      "byte_count": 384,
+      "expected_copy_size_tiles": [
+        12
+      ]
+    }
+  ],
+  "frame_payload_blob": "tile_anim_frames.bin",
+  "frame_sources": [
+    {
+      "source_index": 0,
+      "symbol_name": "gTilesetAnims_Building_TvTurnedOn_Frame0",
+      "source_path": "data/tilesets/primary/building/anim/tv_turned_on/0.png",
+      "render_path": "render/gTileset_Building__gTileset_SootopolisGym/tile_anim_sources/0000_gTilesetAnims_Building_TvTurnedOn_Frame0.4bpp",
+      "width": 16,
+      "height": 16,
+      "tile_count": 4,
+      "byte_count": 128
+    },
+    {
+      "source_index": 1,
+      "symbol_name": "gTilesetAnims_Building_TvTurnedOn_Frame1",
+      "source_path": "data/tilesets/primary/building/anim/tv_turned_on/1.png",
+      "render_path": "render/gTileset_Building__gTileset_SootopolisGym/tile_anim_sources/0001_gTilesetAnims_Building_TvTurnedOn_Frame1.4bpp",
+      "width": 16,
+      "height": 16,
+      "tile_count": 4,
+      "byte_count": 128
+    },
+    {
+      "source_index": 2,
+      "symbol_name": "gTilesetAnims_SootopolisGym_FrontWaterfall_Frame0",
+      "source_path": "data/tilesets/secondary/sootopolis_gym/anim/front_waterfall/0.png",
+      "render_path": "render/gTileset_Building__gTileset_SootopolisGym/tile_anim_sources/0002_gTilesetAnims_SootopolisGym_FrontWaterfall_Frame0.4bpp",
+      "width": 32,
+      "height": 40,
+      "tile_count": 20,
+      "byte_count": 640
+    },
+    {
+      "source_index": 3,
+      "symbol_name": "gTilesetAnims_SootopolisGym_FrontWaterfall_Frame1",
+      "source_path": "data/tilesets/secondary/sootopolis_gym/anim/front_waterfall/1.png",
+      "render_path": "render/gTileset_Building__gTileset_SootopolisGym/tile_anim_sources/0003_gTilesetAnims_SootopolisGym_FrontWaterfall_Frame1.4bpp",
+      "width": 32,
+      "height": 40,
+      "tile_count": 20,
+      "byte_count": 640
+    },
+    {
+      "source_index": 4,
+      "symbol_name": "gTilesetAnims_SootopolisGym_FrontWaterfall_Frame2",
+      "source_path": "data/tilesets/secondary/sootopolis_gym/anim/front_waterfall/2.png",
+      "render_path": "render/gTileset_Building__gTileset_SootopolisGym/tile_anim_sources/0004_gTilesetAnims_SootopolisGym_FrontWaterfall_Frame2.4bpp",
+      "width": 32,
+      "height": 40,
+      "tile_count": 20,
+      "byte_count": 640
+    },
+    {
+      "source_index": 5,
+      "symbol_name": "gTilesetAnims_SootopolisGym_SideWaterfall_Frame0",
+      "source_path": "data/tilesets/secondary/sootopolis_gym/anim/side_waterfall/0.png",
+      "render_path": "render/gTileset_Building__gTileset_SootopolisGym/tile_anim_sources/0005_gTilesetAnims_SootopolisGym_SideWaterfall_Frame0.4bpp",
+      "width": 16,
+      "height": 48,
+      "tile_count": 12,
+      "byte_count": 384
+    },
+    {
+      "source_index": 6,
+      "symbol_name": "gTilesetAnims_SootopolisGym_SideWaterfall_Frame1",
+      "source_path": "data/tilesets/secondary/sootopolis_gym/anim/side_waterfall/1.png",
+      "render_path": "render/gTileset_Building__gTileset_SootopolisGym/tile_anim_sources/0006_gTilesetAnims_SootopolisGym_SideWaterfall_Frame1.4bpp",
+      "width": 16,
+      "height": 48,
+      "tile_count": 12,
+      "byte_count": 384
+    },
+    {
+      "source_index": 7,
+      "symbol_name": "gTilesetAnims_SootopolisGym_SideWaterfall_Frame2",
+      "source_path": "data/tilesets/secondary/sootopolis_gym/anim/side_waterfall/2.png",
+      "render_path": "render/gTileset_Building__gTileset_SootopolisGym/tile_anim_sources/0007_gTilesetAnims_SootopolisGym_SideWaterfall_Frame2.4bpp",
+      "width": 16,
+      "height": 48,
+      "tile_count": 12,
+      "byte_count": 384
+    }
+  ]
+}

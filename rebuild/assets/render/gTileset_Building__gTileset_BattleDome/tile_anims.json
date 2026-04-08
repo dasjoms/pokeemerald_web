@@ -1,0 +1,196 @@
+{
+  "tile_anims_version": 2,
+  "pair_id": "gTileset_Building__gTileset_BattleDome",
+  "programs": {
+    "primary": {
+      "source_tileset": "gTileset_Building",
+      "callback": "InitTilesetAnim_Building",
+      "program": "TilesetAnim_Building",
+      "counter_max_expr": "256",
+      "events": [
+        {
+          "gate": {
+            "mod": 8,
+            "eq": 0
+          },
+          "actions": [
+            {
+              "function": "QueueAnimTiles_Building_TVTurnedOn",
+              "args": "timer / 8",
+              "copy_ops": [
+                {
+                  "source_expr": "gTilesetAnims_Building_TvTurnedOn[i]",
+                  "frame_array": "gTilesetAnims_Building_TvTurnedOn",
+                  "dest_expr": "(u16 *)(BG_VRAM + TILE_OFFSET_4BPP(496))",
+                  "dest_tile_indices": [
+                    496
+                  ],
+                  "size_expr": "4 * TILE_SIZE_4BPP",
+                  "size_tiles": 4
+                }
+              ],
+              "palette_ops": []
+            }
+          ]
+        }
+      ]
+    },
+    "secondary": {
+      "source_tileset": "gTileset_BattleDome",
+      "callback": "InitTilesetAnim_BattleDome",
+      "program": "TilesetAnim_BattleDome",
+      "counter_max_expr": "sPrimaryTilesetAnimCounterMax",
+      "events": [
+        {
+          "gate": {
+            "mod": 4,
+            "eq": 0
+          },
+          "actions": [
+            {
+              "function": "BlendAnimPalette_BattleDome_FloorLights",
+              "args": "timer / 4",
+              "copy_ops": [],
+              "palette_ops": [
+                {
+                  "source_expr": "sTilesetAnims_BattleDomeFloorLightPals[timer % ARRAY_COUNT(sTilesetAnims_BattleDomeFloorLightPals)]",
+                  "palette_slot": 8,
+                  "frame_array": "sTilesetAnims_BattleDomeFloorLightPals"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "frame_arrays": {
+    "gTilesetAnims_Building_TvTurnedOn": [
+      4,
+      5
+    ],
+    "sTilesetAnims_BattleDomeFloorLightPals": [
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  "frame_payloads": [
+    {
+      "payload_id": 0,
+      "symbol_name": "gTilesetAnims_BattleDomePals0_0",
+      "payload_offset": 0,
+      "tile_count": 1,
+      "byte_count": 32,
+      "expected_copy_size_tiles": []
+    },
+    {
+      "payload_id": 1,
+      "symbol_name": "gTilesetAnims_BattleDomePals0_1",
+      "payload_offset": 32,
+      "tile_count": 1,
+      "byte_count": 32,
+      "expected_copy_size_tiles": []
+    },
+    {
+      "payload_id": 2,
+      "symbol_name": "gTilesetAnims_BattleDomePals0_2",
+      "payload_offset": 64,
+      "tile_count": 1,
+      "byte_count": 32,
+      "expected_copy_size_tiles": []
+    },
+    {
+      "payload_id": 3,
+      "symbol_name": "gTilesetAnims_BattleDomePals0_3",
+      "payload_offset": 96,
+      "tile_count": 1,
+      "byte_count": 32,
+      "expected_copy_size_tiles": []
+    },
+    {
+      "payload_id": 4,
+      "symbol_name": "gTilesetAnims_Building_TvTurnedOn_Frame0",
+      "payload_offset": 128,
+      "tile_count": 4,
+      "byte_count": 128,
+      "expected_copy_size_tiles": [
+        4
+      ]
+    },
+    {
+      "payload_id": 5,
+      "symbol_name": "gTilesetAnims_Building_TvTurnedOn_Frame1",
+      "payload_offset": 256,
+      "tile_count": 4,
+      "byte_count": 128,
+      "expected_copy_size_tiles": [
+        4
+      ]
+    }
+  ],
+  "frame_payload_blob": "tile_anim_frames.bin",
+  "frame_sources": [
+    {
+      "source_index": 0,
+      "symbol_name": "gTilesetAnims_BattleDomePals0_0",
+      "source_path": "graphics/battle_frontier/dome_anim1.pal",
+      "render_path": "render/gTileset_Building__gTileset_BattleDome/tile_anim_sources/0000_gTilesetAnims_BattleDomePals0_0.gbapal",
+      "width": null,
+      "height": null,
+      "tile_count": null,
+      "byte_count": 32
+    },
+    {
+      "source_index": 1,
+      "symbol_name": "gTilesetAnims_BattleDomePals0_1",
+      "source_path": "graphics/battle_frontier/dome_anim2.pal",
+      "render_path": "render/gTileset_Building__gTileset_BattleDome/tile_anim_sources/0001_gTilesetAnims_BattleDomePals0_1.gbapal",
+      "width": null,
+      "height": null,
+      "tile_count": null,
+      "byte_count": 32
+    },
+    {
+      "source_index": 2,
+      "symbol_name": "gTilesetAnims_BattleDomePals0_2",
+      "source_path": "graphics/battle_frontier/dome_anim3.pal",
+      "render_path": "render/gTileset_Building__gTileset_BattleDome/tile_anim_sources/0002_gTilesetAnims_BattleDomePals0_2.gbapal",
+      "width": null,
+      "height": null,
+      "tile_count": null,
+      "byte_count": 32
+    },
+    {
+      "source_index": 3,
+      "symbol_name": "gTilesetAnims_BattleDomePals0_3",
+      "source_path": "graphics/battle_frontier/dome_anim4.pal",
+      "render_path": "render/gTileset_Building__gTileset_BattleDome/tile_anim_sources/0003_gTilesetAnims_BattleDomePals0_3.gbapal",
+      "width": null,
+      "height": null,
+      "tile_count": null,
+      "byte_count": 32
+    },
+    {
+      "source_index": 4,
+      "symbol_name": "gTilesetAnims_Building_TvTurnedOn_Frame0",
+      "source_path": "data/tilesets/primary/building/anim/tv_turned_on/0.png",
+      "render_path": "render/gTileset_Building__gTileset_BattleDome/tile_anim_sources/0004_gTilesetAnims_Building_TvTurnedOn_Frame0.4bpp",
+      "width": 16,
+      "height": 16,
+      "tile_count": 4,
+      "byte_count": 128
+    },
+    {
+      "source_index": 5,
+      "symbol_name": "gTilesetAnims_Building_TvTurnedOn_Frame1",
+      "source_path": "data/tilesets/primary/building/anim/tv_turned_on/1.png",
+      "render_path": "render/gTileset_Building__gTileset_BattleDome/tile_anim_sources/0005_gTilesetAnims_Building_TvTurnedOn_Frame1.4bpp",
+      "width": 16,
+      "height": 16,
+      "tile_count": 4,
+      "byte_count": 128
+    }
+  ]
+}

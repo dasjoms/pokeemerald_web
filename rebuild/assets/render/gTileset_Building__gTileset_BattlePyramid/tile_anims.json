@@ -1,0 +1,270 @@
+{
+  "tile_anims_version": 2,
+  "pair_id": "gTileset_Building__gTileset_BattlePyramid",
+  "programs": {
+    "primary": {
+      "source_tileset": "gTileset_Building",
+      "callback": "InitTilesetAnim_Building",
+      "program": "TilesetAnim_Building",
+      "counter_max_expr": "256",
+      "events": [
+        {
+          "gate": {
+            "mod": 8,
+            "eq": 0
+          },
+          "actions": [
+            {
+              "function": "QueueAnimTiles_Building_TVTurnedOn",
+              "args": "timer / 8",
+              "copy_ops": [
+                {
+                  "source_expr": "gTilesetAnims_Building_TvTurnedOn[i]",
+                  "frame_array": "gTilesetAnims_Building_TvTurnedOn",
+                  "dest_expr": "(u16 *)(BG_VRAM + TILE_OFFSET_4BPP(496))",
+                  "dest_tile_indices": [
+                    496
+                  ],
+                  "size_expr": "4 * TILE_SIZE_4BPP",
+                  "size_tiles": 4
+                }
+              ],
+              "palette_ops": []
+            }
+          ]
+        }
+      ]
+    },
+    "secondary": {
+      "source_tileset": "gTileset_BattlePyramid",
+      "callback": "InitTilesetAnim_BattlePyramid",
+      "program": "TilesetAnim_BattlePyramid",
+      "counter_max_expr": "sPrimaryTilesetAnimCounterMax",
+      "events": [
+        {
+          "gate": {
+            "mod": 8,
+            "eq": 0
+          },
+          "actions": [
+            {
+              "function": "QueueAnimTiles_BattlePyramid_Torch",
+              "args": "timer / 8",
+              "copy_ops": [
+                {
+                  "source_expr": "gTilesetAnims_BattlePyramid_Torch[i]",
+                  "frame_array": "gTilesetAnims_BattlePyramid_Torch",
+                  "dest_expr": "(u16 *)(BG_VRAM + TILE_OFFSET_4BPP(NUM_TILES_IN_PRIMARY + 151))",
+                  "dest_tile_indices": [
+                    663
+                  ],
+                  "size_expr": "8 * TILE_SIZE_4BPP",
+                  "size_tiles": 8
+                }
+              ],
+              "palette_ops": []
+            },
+            {
+              "function": "QueueAnimTiles_BattlePyramid_StatueShadow",
+              "args": "timer / 8",
+              "copy_ops": [
+                {
+                  "source_expr": "gTilesetAnims_BattlePyramid_StatueShadow[i]",
+                  "frame_array": "gTilesetAnims_BattlePyramid_StatueShadow",
+                  "dest_expr": "(u16 *)(BG_VRAM + TILE_OFFSET_4BPP(NUM_TILES_IN_PRIMARY + 135))",
+                  "dest_tile_indices": [
+                    647
+                  ],
+                  "size_expr": "8 * TILE_SIZE_4BPP",
+                  "size_tiles": 8
+                }
+              ],
+              "palette_ops": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "frame_arrays": {
+    "gTilesetAnims_BattlePyramid_StatueShadow": [
+      0,
+      1,
+      2
+    ],
+    "gTilesetAnims_BattlePyramid_Torch": [
+      3,
+      4,
+      5
+    ],
+    "gTilesetAnims_Building_TvTurnedOn": [
+      6,
+      7
+    ]
+  },
+  "frame_payloads": [
+    {
+      "payload_id": 0,
+      "symbol_name": "gTilesetAnims_BattlePyramid_StatueShadow_Frame0",
+      "payload_offset": 0,
+      "tile_count": 8,
+      "byte_count": 256,
+      "expected_copy_size_tiles": [
+        8
+      ]
+    },
+    {
+      "payload_id": 1,
+      "symbol_name": "gTilesetAnims_BattlePyramid_StatueShadow_Frame1",
+      "payload_offset": 256,
+      "tile_count": 8,
+      "byte_count": 256,
+      "expected_copy_size_tiles": [
+        8
+      ]
+    },
+    {
+      "payload_id": 2,
+      "symbol_name": "gTilesetAnims_BattlePyramid_StatueShadow_Frame2",
+      "payload_offset": 512,
+      "tile_count": 8,
+      "byte_count": 256,
+      "expected_copy_size_tiles": [
+        8
+      ]
+    },
+    {
+      "payload_id": 3,
+      "symbol_name": "gTilesetAnims_BattlePyramid_Torch_Frame0",
+      "payload_offset": 768,
+      "tile_count": 8,
+      "byte_count": 256,
+      "expected_copy_size_tiles": [
+        8
+      ]
+    },
+    {
+      "payload_id": 4,
+      "symbol_name": "gTilesetAnims_BattlePyramid_Torch_Frame1",
+      "payload_offset": 1024,
+      "tile_count": 8,
+      "byte_count": 256,
+      "expected_copy_size_tiles": [
+        8
+      ]
+    },
+    {
+      "payload_id": 5,
+      "symbol_name": "gTilesetAnims_BattlePyramid_Torch_Frame2",
+      "payload_offset": 1280,
+      "tile_count": 8,
+      "byte_count": 256,
+      "expected_copy_size_tiles": [
+        8
+      ]
+    },
+    {
+      "payload_id": 6,
+      "symbol_name": "gTilesetAnims_Building_TvTurnedOn_Frame0",
+      "payload_offset": 1536,
+      "tile_count": 4,
+      "byte_count": 128,
+      "expected_copy_size_tiles": [
+        4
+      ]
+    },
+    {
+      "payload_id": 7,
+      "symbol_name": "gTilesetAnims_Building_TvTurnedOn_Frame1",
+      "payload_offset": 1664,
+      "tile_count": 4,
+      "byte_count": 128,
+      "expected_copy_size_tiles": [
+        4
+      ]
+    }
+  ],
+  "frame_payload_blob": "tile_anim_frames.bin",
+  "frame_sources": [
+    {
+      "source_index": 0,
+      "symbol_name": "gTilesetAnims_BattlePyramid_StatueShadow_Frame0",
+      "source_path": "data/tilesets/secondary/battle_pyramid/anim/statue_shadow/0.png",
+      "render_path": "render/gTileset_Building__gTileset_BattlePyramid/tile_anim_sources/0000_gTilesetAnims_BattlePyramid_StatueShadow_Frame0.4bpp",
+      "width": 16,
+      "height": 32,
+      "tile_count": 8,
+      "byte_count": 256
+    },
+    {
+      "source_index": 1,
+      "symbol_name": "gTilesetAnims_BattlePyramid_StatueShadow_Frame1",
+      "source_path": "data/tilesets/secondary/battle_pyramid/anim/statue_shadow/1.png",
+      "render_path": "render/gTileset_Building__gTileset_BattlePyramid/tile_anim_sources/0001_gTilesetAnims_BattlePyramid_StatueShadow_Frame1.4bpp",
+      "width": 16,
+      "height": 32,
+      "tile_count": 8,
+      "byte_count": 256
+    },
+    {
+      "source_index": 2,
+      "symbol_name": "gTilesetAnims_BattlePyramid_StatueShadow_Frame2",
+      "source_path": "data/tilesets/secondary/battle_pyramid/anim/statue_shadow/2.png",
+      "render_path": "render/gTileset_Building__gTileset_BattlePyramid/tile_anim_sources/0002_gTilesetAnims_BattlePyramid_StatueShadow_Frame2.4bpp",
+      "width": 16,
+      "height": 32,
+      "tile_count": 8,
+      "byte_count": 256
+    },
+    {
+      "source_index": 3,
+      "symbol_name": "gTilesetAnims_BattlePyramid_Torch_Frame0",
+      "source_path": "data/tilesets/secondary/battle_pyramid/anim/torch/0.png",
+      "render_path": "render/gTileset_Building__gTileset_BattlePyramid/tile_anim_sources/0003_gTilesetAnims_BattlePyramid_Torch_Frame0.4bpp",
+      "width": 16,
+      "height": 32,
+      "tile_count": 8,
+      "byte_count": 256
+    },
+    {
+      "source_index": 4,
+      "symbol_name": "gTilesetAnims_BattlePyramid_Torch_Frame1",
+      "source_path": "data/tilesets/secondary/battle_pyramid/anim/torch/1.png",
+      "render_path": "render/gTileset_Building__gTileset_BattlePyramid/tile_anim_sources/0004_gTilesetAnims_BattlePyramid_Torch_Frame1.4bpp",
+      "width": 16,
+      "height": 32,
+      "tile_count": 8,
+      "byte_count": 256
+    },
+    {
+      "source_index": 5,
+      "symbol_name": "gTilesetAnims_BattlePyramid_Torch_Frame2",
+      "source_path": "data/tilesets/secondary/battle_pyramid/anim/torch/2.png",
+      "render_path": "render/gTileset_Building__gTileset_BattlePyramid/tile_anim_sources/0005_gTilesetAnims_BattlePyramid_Torch_Frame2.4bpp",
+      "width": 16,
+      "height": 32,
+      "tile_count": 8,
+      "byte_count": 256
+    },
+    {
+      "source_index": 6,
+      "symbol_name": "gTilesetAnims_Building_TvTurnedOn_Frame0",
+      "source_path": "data/tilesets/primary/building/anim/tv_turned_on/0.png",
+      "render_path": "render/gTileset_Building__gTileset_BattlePyramid/tile_anim_sources/0006_gTilesetAnims_Building_TvTurnedOn_Frame0.4bpp",
+      "width": 16,
+      "height": 16,
+      "tile_count": 4,
+      "byte_count": 128
+    },
+    {
+      "source_index": 7,
+      "symbol_name": "gTilesetAnims_Building_TvTurnedOn_Frame1",
+      "source_path": "data/tilesets/primary/building/anim/tv_turned_on/1.png",
+      "render_path": "render/gTileset_Building__gTileset_BattlePyramid/tile_anim_sources/0007_gTilesetAnims_Building_TvTurnedOn_Frame1.4bpp",
+      "width": 16,
+      "height": 16,
+      "tile_count": 4,
+      "byte_count": 128
+    }
+  ]
+}
