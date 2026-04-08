@@ -1,4 +1,4 @@
-import { Rectangle, Texture } from 'pixi.js';
+import { Assets, Rectangle, Texture } from 'pixi.js';
 import { Direction } from './protocol_generated';
 
 type Cardinal = 'south' | 'north' | 'west' | 'east';
@@ -170,7 +170,8 @@ async function loadBaseTexture(
   repoRelativePath: string,
 ): Promise<Texture> {
   const imageUrl = await resolveImageUrlFromAssets(repoRelativePath);
-  return Texture.from(imageUrl);
+  const texture = await Assets.load<Texture>(imageUrl);
+  return texture;
 }
 
 export class PlayerAnimationController {
