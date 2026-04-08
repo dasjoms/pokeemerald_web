@@ -1,4 +1,4 @@
-import { Application, Assets, Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
+import { Application, Container, Graphics, Sprite } from 'pixi.js';
 import {
   Direction,
   MessageType,
@@ -13,6 +13,11 @@ import {
   reconcilePredictions,
 } from './prediction';
 import { rejectionReasonLabel } from './rejectionReason';
+import {
+  decodeIndexed4bppPngFromUrl,
+  MetatileTextureCache,
+  type IndexedAtlasPages,
+} from './metatileRenderer';
 
 type ServerMessage =
   | { type: MessageType.SESSION_ACCEPTED; payload: { session_id: number; server_frame: number } }
@@ -127,6 +132,8 @@ const pendingPredictedInputs = new Map<number, Direction>();
 let hasLoggedPrimaryTileCountMismatch = false;
 let socket: WebSocket | null = null;
 let debugOverlayEnabled = ENABLE_DEBUG_OVERLAY_DEFAULT;
+const indexedAtlasPageCache = new Map<string, IndexedAtlasPages>();
+const metatileTextureCaches = new Map<string, MetatileTextureCache>();
 
 const appRoot = document.getElementById('app-root');
 if (!appRoot) {
@@ -290,15 +297,6 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
   }
 }
 
-function paletteToTint(palette: number[][] | undefined): number {
-  if (!palette || palette.length < 2) {
-    return 0xffffff;
-  }
-
-  const [r, g, b] = palette[1];
-  return ((r & 0xff) << 16) | ((g & 0xff) << 8) | (b & 0xff);
-}
-
 async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
   const layoutId = MAP_ID_TO_LAYOUT_ID[snapshot.map_id];
   if (!layoutId) {
@@ -318,30 +316,37 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
   mapTopLayer.removeChildren();
   debugOverlayLayer.removeChildren();
 
-  const pageTextures = new Map<number, Texture>();
-  const tileTextureCache = new Map<string, Texture>();
-  for (const page of atlas.pages) {
-    const textureUrl = await resolveImageUrlFromAssets(page.path);
-    const loaded = await Assets.load<Texture>(textureUrl);
-    if (loaded.width === 0 || loaded.height === 0) {
-      throw new Error(
-        `loaded atlas texture has zero dimensions for page ${page.page} (${page.path})`,
+  let indexedAtlasPages = indexedAtlasPageCache.get(renderAssets.pair_id);
+  if (!indexedAtlasPages) {
+    indexedAtlasPages = new Map();
+    for (const page of atlas.pages) {
+      const textureUrl = await resolveImageUrlFromAssets(page.path);
+      const decoded = await decodeIndexed4bppPngFromUrl(
+        textureUrl,
+        page.logical_tile_count ?? Number.MAX_SAFE_INTEGER,
       );
+      indexedAtlasPages.set(page.page, decoded);
     }
-    pageTextures.set(page.page, loaded);
+    indexedAtlasPageCache.set(renderAssets.pair_id, indexedAtlasPages);
+  }
+
+  let textureCache = metatileTextureCaches.get(renderAssets.pair_id);
+  if (!textureCache) {
+    textureCache = new MetatileTextureCache();
+    metatileTextureCaches.set(renderAssets.pair_id, textureCache);
   }
 
   const primaryPage = atlas.pages[0];
   if (!primaryPage) {
     throw new Error(`missing primary atlas page for ${layout.id}`);
   }
-  const primaryTexture = pageTextures.get(primaryPage.page);
-  if (!primaryTexture) {
-    throw new Error(`missing loaded texture for atlas page ${primaryPage.page}`);
+  const primaryIndexedPage = indexedAtlasPages.get(primaryPage.page);
+  if (!primaryIndexedPage) {
+    throw new Error(`missing decoded atlas page ${primaryPage.page}`);
   }
   const dimensionDerivedPrimaryTileCount =
-    Math.floor(primaryTexture.width / SUBTILE_SIZE) *
-    Math.floor(primaryTexture.height / SUBTILE_SIZE);
+    Math.floor(primaryIndexedPage.width / SUBTILE_SIZE) *
+    Math.floor(primaryIndexedPage.height / SUBTILE_SIZE);
   const metadataPrimaryTileCount = primaryPage.logical_tile_count;
   const primaryTileCount = metadataPrimaryTileCount ?? dimensionDerivedPrimaryTileCount;
 
@@ -401,32 +406,21 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
 
       for (const subtile of sortedSubtiles) {
         const sourcePage = subtile.tile_index >= primaryTileCount ? 1 : 0;
-        const sourceTexture = pageTextures.get(sourcePage);
-        if (!sourceTexture) {
-          continue;
-        }
-
         const localTileIndex =
           sourcePage === 0 ? subtile.tile_index : subtile.tile_index - primaryTileCount;
         if (localTileIndex < 0) {
           continue;
         }
 
-        const atlasColumns = Math.floor(sourceTexture.width / SUBTILE_SIZE);
-        const srcX = (localTileIndex % atlasColumns) * SUBTILE_SIZE;
-        const srcY = Math.floor(localTileIndex / atlasColumns) * SUBTILE_SIZE;
-        if (srcY >= sourceTexture.height) {
-          continue;
-        }
-
-        const cacheKey = `${sourcePage}:${localTileIndex}`;
-        let subtileTexture = tileTextureCache.get(cacheKey);
+        const subtileTexture = textureCache.getTexture({
+          atlasPages: indexedAtlasPages,
+          pageId: sourcePage,
+          localTileIndex,
+          paletteIndex: subtile.palette_index,
+          palettes: sourcePalettes,
+        });
         if (!subtileTexture) {
-          subtileTexture = new Texture({
-            source: sourceTexture.source,
-            frame: new Rectangle(srcX, srcY, SUBTILE_SIZE, SUBTILE_SIZE),
-          });
-          tileTextureCache.set(cacheKey, subtileTexture);
+          continue;
         }
 
         const sprite = new Sprite(subtileTexture);
@@ -443,10 +437,6 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
           sprite.scale.y = -1;
           sprite.y += SUBTILE_SIZE;
         }
-
-        const palette = sourcePalettes[subtile.palette_index];
-        sprite.tint = paletteToTint(palette);
-
         if (subtile.layer === 0) {
           mapGroundLayer.addChild(sprite);
         } else {
