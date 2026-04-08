@@ -1,0 +1,21 @@
+{
+  "pair_id": "gTileset_SecretBase__gTileset_SecretBaseYellowCave",
+  "programs": {
+    "primary": {
+      "source_tileset": "gTileset_SecretBase",
+      "callback": null,
+      "program": null,
+      "counter_max_expr": null,
+      "events": []
+    },
+    "secondary": {
+      "source_tileset": "gTileset_SecretBaseYellowCave",
+      "callback": null,
+      "program": null,
+      "counter_max_expr": null,
+      "events": []
+    }
+  },
+  "frame_arrays": {},
+  "frame_sources": []
+}
