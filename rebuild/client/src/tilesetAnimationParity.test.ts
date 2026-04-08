@@ -83,7 +83,7 @@ describe('extracted tile animation program interpreter', () => {
   it('logs explicit parity errors for invalid extracted frames and falls back to no-op', () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const broken = structuredClone(GENERAL_FIXTURE);
-    broken.frame_arrays.gTilesetAnims_General_Flower = [null];
+    broken.frame_arrays.gTilesetAnims_General_Flower = [];
 
     const state = createTilesetAnimationState(broken, 512);
     expect(state.primaryCallback!(0, 256).ops ?? []).toEqual([]);
