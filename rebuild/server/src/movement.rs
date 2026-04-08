@@ -1,4 +1,4 @@
-use crate::protocol::Facing;
+use crate::protocol::Direction;
 
 const MB_INVALID: u8 = u8::MAX;
 const MB_WALK_EAST: u8 = 0x40;
@@ -65,7 +65,7 @@ pub struct MovementMap<'a> {
     pub behavior: &'a [u8],
 }
 
-pub fn validate_walk(x: u16, y: u16, facing: Facing, map: MovementMap<'_>) -> MoveValidation {
+pub fn validate_walk(x: u16, y: u16, facing: Direction, map: MovementMap<'_>) -> MoveValidation {
     let source = tile_query(x as i32, y as i32, &map);
     let (dx, dy) = facing_delta(facing);
     let destination = tile_query(source.x + dx, source.y + dy, &map);
@@ -132,12 +132,12 @@ fn tile_query(x: i32, y: i32, map: &MovementMap<'_>) -> TileQuery {
     }
 }
 
-fn facing_delta(facing: Facing) -> (i32, i32) {
+fn facing_delta(facing: Direction) -> (i32, i32) {
     match facing {
-        Facing::Up => (0, -1),
-        Facing::Down => (0, 1),
-        Facing::Left => (-1, 0),
-        Facing::Right => (1, 0),
+        Direction::Up => (0, -1),
+        Direction::Down => (0, 1),
+        Direction::Left => (-1, 0),
+        Direction::Right => (1, 0),
     }
 }
 
@@ -186,7 +186,7 @@ fn forced_movement_reject_reason(class: ForcedMovementClass) -> &'static str {
     }
 }
 
-fn trace_walk_attempt(facing: Facing, source: TileQuery, destination: TileQuery, reason: &str) {
+fn trace_walk_attempt(facing: Direction, source: TileQuery, destination: TileQuery, reason: &str) {
     if cfg!(debug_assertions) {
         tracing::trace!(
             input_direction = ?facing,
@@ -220,7 +220,7 @@ mod tests {
 
     #[test]
     fn accepts_basic_walk() {
-        let result = validate_walk(0, 0, Facing::Right, map(&[0, 0, 0, 0], &[0, 0, 0, 0]));
+        let result = validate_walk(0, 0, Direction::Right, map(&[0, 0, 0, 0], &[0, 0, 0, 0]));
         assert_eq!(
             result,
             MoveValidation::Accepted {
@@ -232,7 +232,7 @@ mod tests {
 
     #[test]
     fn rejects_collision_tiles() {
-        let result = validate_walk(0, 0, Facing::Right, map(&[0, 1, 0, 0], &[0, 0, 0, 0]));
+        let result = validate_walk(0, 0, Direction::Right, map(&[0, 1, 0, 0], &[0, 0, 0, 0]));
         assert_eq!(
             result,
             MoveValidation::Rejected(MoveRejectReason::Collision)
@@ -241,7 +241,7 @@ mod tests {
 
     #[test]
     fn rejects_out_of_bounds_tiles() {
-        let result = validate_walk(0, 0, Facing::Up, map(&[0, 0, 0, 0], &[0, 0, 0, 0]));
+        let result = validate_walk(0, 0, Direction::Up, map(&[0, 0, 0, 0], &[0, 0, 0, 0]));
         assert_eq!(
             result,
             MoveValidation::Rejected(MoveRejectReason::OutOfBounds)
@@ -253,7 +253,7 @@ mod tests {
         let result = validate_walk(
             0,
             0,
-            Facing::Right,
+            Direction::Right,
             map(&[0, 0, 0, 0], &[0, MB_WALK_EAST, 0, 0]),
         );
         assert_eq!(
