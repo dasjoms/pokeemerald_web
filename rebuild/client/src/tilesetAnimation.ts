@@ -2,7 +2,7 @@ export type CopyTilesOp = {
   kind: 'copy_tiles';
   pageId: number;
   destLocalTileIndex: number;
-  sourceFrameLocalTileIndex: number;
+  sourcePayloadOffsetTiles: number;
   tileCount: number;
 };
 
@@ -93,6 +93,8 @@ export type TilesetAnimationState = {
   queuedPaletteBlends: Map<string, BlendPaletteOp>;
   accumulatorMs: number;
   tickSerial: number;
+  framePayloadTileIndices: Uint8Array | null;
+  framePayloadTileCount: number;
 };
 
 function logParityError(message: string): void {
@@ -147,18 +149,105 @@ function normalizeFrameIndex(frameIndex: number, frameArrayLength: number): numb
   return mod < 0 ? mod + frameArrayLength : mod;
 }
 
+type FramePayloadRef = { offsetTiles: number; tileCount: number };
+type PreparedProgram = { callback: TilesetAnimCallback | null; validationErrors: string[] };
+
+function decode4bppTilePayload(payloadBlob: Uint8Array): Uint8Array {
+  const tileCount = Math.floor(payloadBlob.length / 32);
+  const decoded = new Uint8Array(tileCount * 64);
+  for (let tile = 0; tile < tileCount; tile += 1) {
+    const byteBase = tile * 32;
+    const outBase = tile * 64;
+    for (let i = 0; i < 32; i += 1) {
+      const packed = payloadBlob[byteBase + i] ?? 0;
+      decoded[outBase + i * 2] = packed & 0x0f;
+      decoded[outBase + i * 2 + 1] = (packed >> 4) & 0x0f;
+    }
+  }
+  return decoded;
+}
+
+function prepareFramePayloadRefs(
+  tileAnims: TileAnimsFile,
+  role: ProgramRole,
+  payloadBlob: Uint8Array | null,
+): {
+  frameArrayPayloadRefs: Map<string, FramePayloadRef[]>;
+  validationErrors: string[];
+} {
+  const program = tileAnims.programs[role];
+  const refsById = new Map<number, FramePayloadRef>();
+  const validationErrors: string[] = [];
+  const frameArrayPayloadRefs = new Map<string, FramePayloadRef[]>();
+  const payloadTileCapacity = payloadBlob ? Math.floor(payloadBlob.length / 32) : 0;
+
+  for (const payload of tileAnims.frame_payloads ?? []) {
+    const derivedTileCount = payload.tile_count ?? Math.floor(payload.byte_count / 32);
+    if (derivedTileCount <= 0) {
+      validationErrors.push(`payload_id=${payload.payload_id} has invalid tile_count`);
+      continue;
+    }
+    const offsetTiles = Math.floor(payload.payload_offset / 32);
+    if ((payload.payload_offset % 32) !== 0) {
+      validationErrors.push(`payload_id=${payload.payload_id} has unaligned payload_offset=${payload.payload_offset}`);
+      continue;
+    }
+    if (payloadBlob && offsetTiles + derivedTileCount > payloadTileCapacity) {
+      validationErrors.push(`payload_id=${payload.payload_id} exceeds blob tile capacity (${payloadTileCapacity})`);
+      continue;
+    }
+    refsById.set(payload.payload_id, { offsetTiles, tileCount: derivedTileCount });
+  }
+
+  for (const event of program.events) {
+    for (const action of event.actions) {
+      for (const copyOp of action.copy_ops) {
+        if (!copyOp.frame_array || !copyOp.size_tiles) continue;
+        const frameArray = tileAnims.frame_arrays[copyOp.frame_array];
+        if (!frameArray?.length) {
+          validationErrors.push(`missing frame array ${copyOp.frame_array}`);
+          continue;
+        }
+        const refs: FramePayloadRef[] = [];
+        for (let i = 0; i < frameArray.length; i += 1) {
+          const payloadId = frameArray[i];
+          const payloadRef = payloadId === null || payloadId === undefined ? null : refsById.get(payloadId);
+          if (!payloadRef) {
+            validationErrors.push(`frame ${copyOp.frame_array}[${i}] does not resolve to payload_id=${payloadId}`);
+            continue;
+          }
+          if (copyOp.size_tiles > payloadRef.tileCount) {
+            validationErrors.push(
+              `copy size_tiles=${copyOp.size_tiles} exceeds payload_id=${payloadId} capacity=${payloadRef.tileCount}`,
+            );
+            continue;
+          }
+          refs.push(payloadRef);
+        }
+        if (refs.length === frameArray.length) {
+          frameArrayPayloadRefs.set(copyOp.frame_array, refs);
+        }
+      }
+    }
+  }
+
+  return { frameArrayPayloadRefs, validationErrors };
+}
+
 function compileProgramCallback(
   tileAnims: TileAnimsFile,
   role: ProgramRole,
   primaryTileCount: number,
-): TilesetAnimCallback | null {
+  frameArrayPayloadRefs: Map<string, FramePayloadRef[]>,
+): PreparedProgram {
   const program = tileAnims.programs[role];
-  if (!program?.events?.length) return null;
+  if (!program?.events?.length) return { callback: null, validationErrors: [] };
 
   const pageId = role === 'primary' ? 0 : 1;
   const sourceTileset = program.source_tileset;
+  const validationErrors: string[] = [];
 
-  return (counter) => {
+  const callback: TilesetAnimCallback = (counter) => {
     const ops: TilesetAnimOp[] = [];
 
     for (const event of program.events) {
@@ -171,21 +260,21 @@ function compileProgramCallback(
           if (!copyOp.frame_array || !copyOp.dest_tile_indices.length || !copyOp.size_tiles) {
             continue;
           }
-          const frameArray = tileAnims.frame_arrays[copyOp.frame_array];
-          if (!frameArray?.length) {
-            logParityError(`${tileAnims.pair_id} missing frame array ${copyOp.frame_array}`);
+          const framePayloadRefs = frameArrayPayloadRefs.get(copyOp.frame_array);
+          if (!framePayloadRefs?.length) {
+            validationErrors.push(`missing resolved frame payload refs for ${copyOp.frame_array}`);
             continue;
           }
 
           const sourceExprMatch = copyOp.source_expr.match(/\[[^\]]+\]/);
           const rawFrameExpr = sourceExprMatch?.[0]?.slice(1, -1) ?? '0';
-          const frameIndexRaw = evaluateExpression(rawFrameExpr, vars, frameArray.length);
+          const frameIndexRaw = evaluateExpression(rawFrameExpr, vars, framePayloadRefs.length);
           if (frameIndexRaw === null) {
             logParityError(`${tileAnims.pair_id} unable to parse frame expr '${rawFrameExpr}'`);
             continue;
           }
-          const frameEntry = frameArray[normalizeFrameIndex(frameIndexRaw, frameArray.length)];
-          if (frameEntry === null || frameEntry === undefined) {
+          const framePayload = framePayloadRefs[normalizeFrameIndex(frameIndexRaw, framePayloadRefs.length)];
+          if (!framePayload) {
             logParityError(`${tileAnims.pair_id} missing frame source for ${copyOp.frame_array}[${frameIndexRaw}]`);
             continue;
           }
@@ -200,7 +289,7 @@ function compileProgramCallback(
               kind: 'copy_tiles',
               pageId,
               destLocalTileIndex: localDest,
-              sourceFrameLocalTileIndex: localDest + frameEntry * copyOp.size_tiles,
+              sourcePayloadOffsetTiles: framePayload.offsetTiles,
               tileCount: copyOp.size_tiles,
             });
           }
@@ -238,11 +327,13 @@ function compileProgramCallback(
 
     return ops.length > 0 ? { ops } : {};
   };
+  return { callback, validationErrors };
 }
 
 export function createTilesetAnimationState(
   tileAnims: TileAnimsFile,
   primaryTileCount: number,
+  framePayloadBlob: Uint8Array | null = null,
 ): TilesetAnimationState {
   if (tileAnims.tile_anims_version !== SUPPORTED_TILE_ANIMS_VERSION) {
     throw new Error(
@@ -252,6 +343,30 @@ export function createTilesetAnimationState(
   const primaryCounterMax = parseCounterMax(tileAnims.programs.primary.counter_max_expr, 256);
   const secondaryExpr = tileAnims.programs.secondary.counter_max_expr;
   const secondaryCounterMax = parseCounterMax(secondaryExpr, primaryCounterMax);
+  const decodedFramePayloadTileIndices = framePayloadBlob ? decode4bppTilePayload(framePayloadBlob) : null;
+
+  const primaryPayloadRefs = prepareFramePayloadRefs(tileAnims, 'primary', framePayloadBlob);
+  const secondaryPayloadRefs = prepareFramePayloadRefs(tileAnims, 'secondary', framePayloadBlob);
+  const primaryPrepared = compileProgramCallback(
+    tileAnims,
+    'primary',
+    primaryTileCount,
+    primaryPayloadRefs.frameArrayPayloadRefs,
+  );
+  const secondaryPrepared = compileProgramCallback(
+    tileAnims,
+    'secondary',
+    primaryTileCount,
+    secondaryPayloadRefs.frameArrayPayloadRefs,
+  );
+  const primaryErrors = [...primaryPayloadRefs.validationErrors, ...primaryPrepared.validationErrors];
+  const secondaryErrors = [...secondaryPayloadRefs.validationErrors, ...secondaryPrepared.validationErrors];
+  if (primaryErrors.length > 0) {
+    logParityError(`${tileAnims.pair_id} disabled primary program after parity validation errors: ${[...new Set(primaryErrors)].join('; ')}`);
+  }
+  if (secondaryErrors.length > 0) {
+    logParityError(`${tileAnims.pair_id} disabled secondary program after parity validation errors: ${[...new Set(secondaryErrors)].join('; ')}`);
+  }
 
   return {
     pairId: tileAnims.pair_id,
@@ -261,12 +376,14 @@ export function createTilesetAnimationState(
     primaryCounterMax,
     secondaryCounter: secondaryExpr === 'sPrimaryTilesetAnimCounterMax' ? 0 : 0,
     secondaryCounterMax,
-    primaryCallback: compileProgramCallback(tileAnims, 'primary', primaryTileCount),
-    secondaryCallback: compileProgramCallback(tileAnims, 'secondary', primaryTileCount),
+    primaryCallback: primaryErrors.length > 0 ? null : primaryPrepared.callback,
+    secondaryCallback: secondaryErrors.length > 0 ? null : secondaryPrepared.callback,
     queuedTileCopies: new Map(),
     queuedPaletteCopies: new Map(),
     queuedPaletteBlends: new Map(),
     accumulatorMs: 0,
     tickSerial: 0,
+    framePayloadTileIndices: decodedFramePayloadTileIndices,
+    framePayloadTileCount: decodedFramePayloadTileIndices ? Math.floor(decodedFramePayloadTileIndices.length / 64) : 0,
   };
 }

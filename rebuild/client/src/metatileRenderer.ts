@@ -221,6 +221,7 @@ export class MetatileTextureCache {
     atlasPages: IndexedAtlasPages;
     pageId: number;
     localTileIndex: number;
+    sourceTileIndices?: Uint8Array;
     paletteIndex: number;
     palettes: PaletteColor[][];
     animationKey?: string;
@@ -231,24 +232,27 @@ export class MetatileTextureCache {
       return cached;
     }
 
-    const page = params.atlasPages.get(params.pageId);
-    if (!page || params.localTileIndex < 0 || params.localTileIndex >= page.tileCount) {
-      return null;
-    }
+    let tileIndices = params.sourceTileIndices;
+    if (!tileIndices) {
+      const page = params.atlasPages.get(params.pageId);
+      if (!page || params.localTileIndex < 0 || params.localTileIndex >= page.tileCount) {
+        return null;
+      }
 
-    const tileColumnCount = Math.floor(page.width / SUBTILE_SIZE);
-    const tileX = params.localTileIndex % tileColumnCount;
-    const tileY = Math.floor(params.localTileIndex / tileColumnCount);
-    const px = tileX * SUBTILE_SIZE;
-    const py = tileY * SUBTILE_SIZE;
-    if (py + SUBTILE_SIZE > page.height) {
-      return null;
-    }
+      const tileColumnCount = Math.floor(page.width / SUBTILE_SIZE);
+      const tileX = params.localTileIndex % tileColumnCount;
+      const tileY = Math.floor(params.localTileIndex / tileColumnCount);
+      const px = tileX * SUBTILE_SIZE;
+      const py = tileY * SUBTILE_SIZE;
+      if (py + SUBTILE_SIZE > page.height) {
+        return null;
+      }
 
-    const tileIndices = new Uint8Array(SUBTILE_SIZE * SUBTILE_SIZE);
-    for (let row = 0; row < SUBTILE_SIZE; row += 1) {
-      const sourceOffset = (py + row) * page.width + px;
-      tileIndices.set(page.tileIndices.subarray(sourceOffset, sourceOffset + SUBTILE_SIZE), row * SUBTILE_SIZE);
+      tileIndices = new Uint8Array(SUBTILE_SIZE * SUBTILE_SIZE);
+      for (let row = 0; row < SUBTILE_SIZE; row += 1) {
+        const sourceOffset = (py + row) * page.width + px;
+        tileIndices.set(page.tileIndices.subarray(sourceOffset, sourceOffset + SUBTILE_SIZE), row * SUBTILE_SIZE);
+      }
     }
 
     const texture = makePaletteTexture(tileIndices, params.palettes[params.paletteIndex]);

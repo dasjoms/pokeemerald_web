@@ -16,6 +16,12 @@ export const GENERAL_FIXTURE: TileAnimsFile = {
   frame_arrays: {
     gTilesetAnims_General_Flower: [0, 1, 0, 2],
   },
+  frame_payloads: [
+    { payload_id: 0, symbol_name: 'gTilesetAnims_General_Flower_Frame0', payload_offset: 0, tile_count: 4, byte_count: 128, expected_copy_size_tiles: [4] },
+    { payload_id: 1, symbol_name: 'gTilesetAnims_General_Flower_Frame1', payload_offset: 128, tile_count: 4, byte_count: 128, expected_copy_size_tiles: [4] },
+    { payload_id: 2, symbol_name: 'gTilesetAnims_General_Flower_Frame2', payload_offset: 256, tile_count: 4, byte_count: 128, expected_copy_size_tiles: [4] },
+  ],
+  frame_payload_blob: 'fixture_general.bin',
 };
 
 export const MAUVILLE_FIXTURE: TileAnimsFile = {
@@ -33,6 +39,13 @@ export const MAUVILLE_FIXTURE: TileAnimsFile = {
     },
   },
   frame_arrays: { gTilesetAnims_Mauville_Flower1: [0, 1, 2, 3] },
+  frame_payloads: [
+    { payload_id: 0, symbol_name: 'gTilesetAnims_Mauville_Flower1_Frame0', payload_offset: 0, tile_count: 4, byte_count: 128, expected_copy_size_tiles: [4] },
+    { payload_id: 1, symbol_name: 'gTilesetAnims_Mauville_Flower1_Frame1', payload_offset: 128, tile_count: 4, byte_count: 128, expected_copy_size_tiles: [4] },
+    { payload_id: 2, symbol_name: 'gTilesetAnims_Mauville_Flower1_Frame2', payload_offset: 256, tile_count: 4, byte_count: 128, expected_copy_size_tiles: [4] },
+    { payload_id: 3, symbol_name: 'gTilesetAnims_Mauville_Flower1_Frame3', payload_offset: 384, tile_count: 4, byte_count: 128, expected_copy_size_tiles: [4] },
+  ],
+  frame_payload_blob: 'fixture_mauville.bin',
 };
 
 export const SOOTOPOLIS_GYM_FIXTURE: TileAnimsFile = {
@@ -49,6 +62,12 @@ export const SOOTOPOLIS_GYM_FIXTURE: TileAnimsFile = {
     },
   },
   frame_arrays: { gTilesetAnims_SootopolisGym_0: [0, 1, 2] },
+  frame_payloads: [
+    { payload_id: 0, symbol_name: 'gTilesetAnims_SootopolisGym_0_Frame0', payload_offset: 0, tile_count: 20, byte_count: 640, expected_copy_size_tiles: [20] },
+    { payload_id: 1, symbol_name: 'gTilesetAnims_SootopolisGym_0_Frame1', payload_offset: 640, tile_count: 20, byte_count: 640, expected_copy_size_tiles: [20] },
+    { payload_id: 2, symbol_name: 'gTilesetAnims_SootopolisGym_0_Frame2', payload_offset: 1280, tile_count: 20, byte_count: 640, expected_copy_size_tiles: [20] },
+  ],
+  frame_payload_blob: 'fixture_sootopolis.bin',
 };
 
 export const BATTLE_DOME_FIXTURE: TileAnimsFile = {
