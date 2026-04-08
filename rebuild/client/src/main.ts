@@ -125,9 +125,50 @@ type ClientWorldState = {
   lastAckServerTick: number;
 };
 
+type TileSwapOperation = {
+  pageId: number;
+  destLocalTileIndex: number;
+  sourceLocalTileIndex: number;
+};
+
+type PaletteSwapOperation = {
+  tilesetName: string;
+  destPaletteIndex: number;
+  sourcePaletteIndex: number;
+};
+
+type TilesetAnimCallback = (counter: number, primaryCounterMax: number) => {
+  tileSwaps?: TileSwapOperation[];
+  paletteSwaps?: PaletteSwapOperation[];
+};
+
+type TilesetAnimationState = {
+  pairId: string;
+  primaryTileset: string;
+  secondaryTileset: string;
+  primaryCounter: number;
+  primaryCounterMax: number;
+  secondaryCounter: number;
+  secondaryCounterMax: number;
+  primaryCallback: TilesetAnimCallback | null;
+  secondaryCallback: TilesetAnimCallback | null;
+  accumulatorMs: number;
+  tickSerial: number;
+};
+
+type RenderedSubtileBinding = {
+  sprite: Sprite;
+  pageId: number;
+  localTileIndex: number;
+  paletteIndex: number;
+  sourceTileset: string;
+  palettes: number[][][];
+};
+
 const TILE_SIZE = 16;
 const SUBTILE_SIZE = 8;
 const PLAYER_SIZE = 12;
+const TILESET_ANIMATION_STEP_MS = 1000 / 60;
 const ENABLE_CLIENT_PREDICTION =
   new URLSearchParams(window.location.search).get('predict') === '1';
 const ENABLE_DEBUG_OVERLAY_DEFAULT =
@@ -157,7 +198,18 @@ let socket: WebSocket | null = null;
 let debugOverlayEnabled = ENABLE_DEBUG_OVERLAY_DEFAULT;
 const indexedAtlasPageCache = new Map<string, IndexedAtlasPages>();
 const metatileTextureCaches = new Map<string, MetatileTextureCache>();
+const tilesetAnimationStates = new Map<string, TilesetAnimationState>();
 let mapIdToLayoutJsonPathPromise: Promise<Map<number, string>> | null = null;
+
+let activeTilesetAnimationPairId: string | null = null;
+let activeTilesetAnimationState: TilesetAnimationState | null = null;
+let activeTextureCache: MetatileTextureCache | null = null;
+let activeIndexedAtlasPages: IndexedAtlasPages | null = null;
+const renderedSubtileBindings: RenderedSubtileBinding[] = [];
+const subtileBindingsByTile = new Map<string, RenderedSubtileBinding[]>();
+const subtileBindingsByPalette = new Map<string, RenderedSubtileBinding[]>();
+const activeTileSwaps = new Map<string, TileSwapOperation>();
+const activePaletteSwaps = new Map<string, PaletteSwapOperation>();
 
 const appRoot = document.getElementById('app-root');
 if (!appRoot) {
@@ -200,6 +252,7 @@ const playerSprite = new Graphics()
 actorLayer.addChild(playerSprite);
 
 app.ticker.add(() => {
+  tickTilesetAnimationClock(app.ticker.deltaMS);
   positionPlayerSprite();
   updateCamera();
   renderHud();
@@ -250,6 +303,245 @@ function makeRenderAssetRef(layout: LayoutFile): RenderAssetsRef {
     atlas: `render/${pairId}/atlas.json`,
     palettes: `render/${pairId}/palettes.json`,
     metatiles: `render/${pairId}/metatiles.json`,
+  };
+}
+
+function makeTilesetAnimSecondaryInit(
+  callback: TilesetAnimCallback | null,
+  options?: { syncWithPrimary?: boolean; max?: number },
+): (primaryCounterMax: number, primaryCounter: number) => Pick<
+  TilesetAnimationState,
+  'secondaryCallback' | 'secondaryCounter' | 'secondaryCounterMax'
+> {
+  return (primaryCounterMax, primaryCounter) => ({
+    secondaryCallback: callback,
+    secondaryCounter: options?.syncWithPrimary ? primaryCounter : 0,
+    secondaryCounterMax: options?.max ?? primaryCounterMax,
+  });
+}
+
+const secondaryTilesetAnimInitByName = new Map<
+  string,
+  (primaryCounterMax: number, primaryCounter: number) => Pick<
+    TilesetAnimationState,
+    'secondaryCallback' | 'secondaryCounter' | 'secondaryCounterMax'
+  >
+>([
+  ['gTileset_Petalburg', makeTilesetAnimSecondaryInit(null)],
+  ['gTileset_Rustboro', makeTilesetAnimSecondaryInit(buildRustboroSecondaryAnimations())],
+  ['gTileset_Dewford', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(8, (timer) => ({
+    tileSwaps: [makeCyclicTileSwap(1, 170, 6, timer)],
+  })))],
+  ['gTileset_Slateport', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(16, (timer) => ({
+    tileSwaps: [makeCyclicTileSwap(1, 160, 8, timer)],
+  })))],
+  ['gTileset_Mauville', makeTilesetAnimSecondaryInit(buildMauvilleSecondaryAnimations(), { syncWithPrimary: true })],
+  ['gTileset_Lavaridge', makeTilesetAnimSecondaryInit(buildLavaridgeSecondaryAnimations())],
+  ['gTileset_Fallarbor', makeTilesetAnimSecondaryInit(null)],
+  ['gTileset_Fortree', makeTilesetAnimSecondaryInit(null)],
+  ['gTileset_Lilycove', makeTilesetAnimSecondaryInit(null)],
+  ['gTileset_Mossdeep', makeTilesetAnimSecondaryInit(null)],
+  ['gTileset_EverGrande', makeTilesetAnimSecondaryInit(buildEverGrandeSecondaryAnimations())],
+  ['gTileset_Pacifidlog', makeTilesetAnimSecondaryInit(buildPacifidlogSecondaryAnimations(), { syncWithPrimary: true })],
+  ['gTileset_Sootopolis', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(16, (timer) => ({
+    tileSwaps: [makeCyclicTileSwap(1, 240, 96, timer)],
+  })))],
+  ['gTileset_BattleFrontierOutsideWest', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(8, (timer) => ({
+    tileSwaps: [makeCyclicTileSwap(1, 264, 3, timer)],
+  })))],
+  ['gTileset_BattleFrontierOutsideEast', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(8, (timer) => ({
+    tileSwaps: [makeCyclicTileSwap(1, 304, 3, timer)],
+  })))],
+  ['gTileset_Underwater', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(16, (timer) => ({
+    tileSwaps: [makeCyclicTileSwap(1, 496, 4, timer)],
+  })), { max: 128 })],
+  ['gTileset_SootopolisGym', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(8, (timer) => ({
+    tileSwaps: [makeCyclicTileSwap(1, 464, 20, timer), makeCyclicTileSwap(1, 496, 12, timer)],
+  })), { max: 240 })],
+  ['gTileset_Cave', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(16, (timer) => ({
+    tileSwaps: [makeCyclicTileSwap(1, 416, 4, timer)],
+  })))],
+  ['gTileset_EliteFour', makeTilesetAnimSecondaryInit(buildEliteFourSecondaryAnimations(), { max: 128 })],
+  ['gTileset_MauvilleGym', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(2, (timer) => ({
+    tileSwaps: [makeCyclicTileSwap(1, 144, 16, timer)],
+  })))],
+  ['gTileset_BikeShop', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(4, (timer) => ({
+    tileSwaps: [makeCyclicTileSwap(1, 496, 9, timer)],
+  })))],
+  ['gTileset_BattlePyramid', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(8, (timer) => ({
+    tileSwaps: [makeCyclicTileSwap(1, 135, 8, timer), makeCyclicTileSwap(1, 151, 8, timer)],
+  })))],
+  ['gTileset_BattleDome', makeTilesetAnimSecondaryInit(buildBattleDomeSecondaryAnimations(), { max: 32 })],
+]);
+
+function createTilesetAnimationState(layout: LayoutFile, pairId: string): TilesetAnimationState {
+  const primaryCallback =
+    layout.primary_tileset === 'gTileset_General'
+      ? buildGeneralPrimaryAnimations()
+      : layout.primary_tileset === 'gTileset_Building'
+        ? buildBuildingPrimaryAnimations()
+        : null;
+  const primaryCounterMax = 256;
+  const secondaryInit = secondaryTilesetAnimInitByName.get(layout.secondary_tileset) ?? makeTilesetAnimSecondaryInit(null);
+  const secondary = secondaryInit(primaryCounterMax, 0);
+
+  return {
+    pairId,
+    primaryTileset: layout.primary_tileset,
+    secondaryTileset: layout.secondary_tileset,
+    primaryCounter: 0,
+    primaryCounterMax,
+    secondaryCounter: secondary.secondaryCounter,
+    secondaryCounterMax: secondary.secondaryCounterMax,
+    primaryCallback,
+    secondaryCallback: secondary.secondaryCallback,
+    accumulatorMs: 0,
+    tickSerial: 0,
+  };
+}
+
+function makeCyclicTileSwap(pageId: number, baseTileIndex: number, tileCount: number, frame: number): TileSwapOperation {
+  const normalizedFrame = ((frame % tileCount) + tileCount) % tileCount;
+  return {
+    pageId,
+    destLocalTileIndex: baseTileIndex,
+    sourceLocalTileIndex: baseTileIndex + normalizedFrame,
+  };
+}
+
+function buildSimpleModuloAnimation(modulo: number, onFrame: (timerDiv: number) => { tileSwaps?: TileSwapOperation[]; paletteSwaps?: PaletteSwapOperation[] }): TilesetAnimCallback {
+  return (counter) => {
+    if (counter % modulo !== 0) {
+      return {};
+    }
+    return onFrame(Math.floor(counter / modulo));
+  };
+}
+
+function buildGeneralPrimaryAnimations(): TilesetAnimCallback {
+  return (counter) => {
+    const phase = counter % 16;
+    const timerDiv = Math.floor(counter / 16);
+    if (phase === 0) {
+      const sequence = [0, 1, 0, 2];
+      return { tileSwaps: [{ pageId: 0, destLocalTileIndex: 508, sourceLocalTileIndex: 508 + sequence[timerDiv % sequence.length] }] };
+    }
+    if (phase === 1) {
+      return { tileSwaps: [makeCyclicTileSwap(0, 432, 30, timerDiv)] };
+    }
+    if (phase === 2) {
+      return { tileSwaps: [makeCyclicTileSwap(0, 464, 10, timerDiv)] };
+    }
+    if (phase === 3) {
+      return { tileSwaps: [makeCyclicTileSwap(0, 496, 6, timerDiv)] };
+    }
+    if (phase === 4) {
+      return { tileSwaps: [makeCyclicTileSwap(0, 480, 10, timerDiv)] };
+    }
+    return {};
+  };
+}
+
+function buildBuildingPrimaryAnimations(): TilesetAnimCallback {
+  return buildSimpleModuloAnimation(8, (timerDiv) => ({
+    tileSwaps: [makeCyclicTileSwap(0, 496, 4, timerDiv)],
+  }));
+}
+
+function buildRustboroSecondaryAnimations(): TilesetAnimCallback {
+  return (counter) => {
+    const phase = counter % 8;
+    const timerDiv = Math.floor(counter / 8);
+    const tileSwaps = [makeCyclicTileSwap(1, 384 + phase * 4, 4, timerDiv)];
+    if (phase === 0) {
+      tileSwaps.push(makeCyclicTileSwap(1, 448, 4, timerDiv));
+    }
+    return { tileSwaps };
+  };
+}
+
+function buildMauvilleSecondaryAnimations(): TilesetAnimCallback {
+  return (counter) => {
+    const phase = counter % 8;
+    const timerDiv = Math.floor(counter / 8);
+    return {
+      tileSwaps: [
+        makeCyclicTileSwap(1, 96 + phase * 4, 4, timerDiv),
+        makeCyclicTileSwap(1, 128 + phase * 4, 4, timerDiv),
+      ],
+    };
+  };
+}
+
+function buildLavaridgeSecondaryAnimations(): TilesetAnimCallback {
+  return (counter) => {
+    const phase = counter % 16;
+    const timerDiv = Math.floor(counter / 16);
+    if (phase === 0) {
+      return {
+        tileSwaps: [
+          makeCyclicTileSwap(1, 288, 4, timerDiv),
+          makeCyclicTileSwap(1, 292, 4, timerDiv + 2),
+        ],
+      };
+    }
+    if (phase === 1) {
+      return { tileSwaps: [makeCyclicTileSwap(1, 160, 4, timerDiv)] };
+    }
+    return {};
+  };
+}
+
+function buildEverGrandeSecondaryAnimations(): TilesetAnimCallback {
+  return (counter) => {
+    const phase = counter % 8;
+    const timerDiv = Math.floor(counter / 8);
+    return { tileSwaps: [makeCyclicTileSwap(1, 272 + phase * 4, 4, timerDiv)] };
+  };
+}
+
+function buildPacifidlogSecondaryAnimations(): TilesetAnimCallback {
+  return (counter) => {
+    const phase = counter % 16;
+    const timerDiv = Math.floor(counter / 16);
+    if (phase === 0) {
+      return { tileSwaps: [makeCyclicTileSwap(1, 464, 30, timerDiv)] };
+    }
+    if (phase === 1) {
+      return { tileSwaps: [makeCyclicTileSwap(1, 496, 8, timerDiv)] };
+    }
+    return {};
+  };
+}
+
+function buildEliteFourSecondaryAnimations(): TilesetAnimCallback {
+  return (counter) => {
+    const tileSwaps: TileSwapOperation[] = [];
+    if (counter % 64 === 0) {
+      tileSwaps.push(makeCyclicTileSwap(1, 480, 4, Math.floor(counter / 64)));
+    }
+    if (counter % 8 === 1) {
+      tileSwaps.push(makeCyclicTileSwap(1, 504, 1, Math.floor(counter / 8)));
+    }
+    return { tileSwaps };
+  };
+}
+
+function buildBattleDomeSecondaryAnimations(): TilesetAnimCallback {
+  return (counter) => {
+    if (counter % 8 !== 0) {
+      return {};
+    }
+    const phase = Math.floor(counter / 8) % 4;
+    return {
+      paletteSwaps: [
+        {
+          tilesetName: 'gTileset_BattleDome',
+          destPaletteIndex: 8,
+          sourcePaletteIndex: 8 + phase,
+        },
+      ],
+    };
   };
 }
 
@@ -344,6 +636,11 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
   mapBg2Layer.removeChildren();
   mapBg1Layer.removeChildren();
   debugOverlayLayer.removeChildren();
+  renderedSubtileBindings.length = 0;
+  subtileBindingsByTile.clear();
+  subtileBindingsByPalette.clear();
+  activeTileSwaps.clear();
+  activePaletteSwaps.clear();
 
   let indexedAtlasPages = indexedAtlasPageCache.get(renderAssets.pair_id);
   if (!indexedAtlasPages) {
@@ -364,6 +661,9 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
     textureCache = new MetatileTextureCache();
     metatileTextureCaches.set(renderAssets.pair_id, textureCache);
   }
+  activeTextureCache = textureCache;
+  activeIndexedAtlasPages = indexedAtlasPages;
+  activeTilesetAnimationPairId = renderAssets.pair_id;
 
   const primaryPage = atlas.pages[0];
   if (!primaryPage) {
@@ -410,6 +710,13 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
   const primaryPalettes = palettesBySource.get(layout.primary_tileset) ?? [];
   const secondaryPalettes = palettesBySource.get(layout.secondary_tileset) ?? [];
 
+  let animationState = tilesetAnimationStates.get(renderAssets.pair_id);
+  if (!animationState) {
+    animationState = createTilesetAnimationState(layout, renderAssets.pair_id);
+    tilesetAnimationStates.set(renderAssets.pair_id, animationState);
+  }
+  activeTilesetAnimationState = animationState;
+
   for (let y = 0; y < runtimeChunk.height; y += 1) {
     for (let x = 0; x < runtimeChunk.width; x += 1) {
       const tile = runtimeChunk.tiles[y * runtimeChunk.width + x];
@@ -436,18 +743,29 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
           continue;
         }
 
+        const sourceTilesetName =
+          sourcePage === 0 ? layout.primary_tileset : layout.secondary_tileset;
         const subtileTexture = textureCache.getTexture({
           atlasPages: indexedAtlasPages,
           pageId: sourcePage,
-          localTileIndex,
-          paletteIndex: subtile.palette_index,
+          localTileIndex: resolveActiveTileSwap(sourcePage, localTileIndex),
+          paletteIndex: resolveActivePaletteSwap(sourceTilesetName, subtile.palette_index),
           palettes: sourcePalettes,
+          animationKey: `${animationState.tickSerial}`,
         });
         if (!subtileTexture) {
           continue;
         }
 
         const sprite = new Sprite(subtileTexture);
+        registerSubtileBinding({
+          sprite,
+          pageId: sourcePage,
+          localTileIndex,
+          paletteIndex: subtile.palette_index,
+          sourceTileset: sourceTilesetName,
+          palettes: sourcePalettes,
+        });
         const subtileX = subtile.subtile_index % 2;
         const subtileY = Math.floor(subtile.subtile_index / 2) % 2;
         sprite.x = x * TILE_SIZE + subtileX * SUBTILE_SIZE;
@@ -483,6 +801,149 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
       overlay.visible = debugOverlayEnabled;
       overlay.label = `collision=${tile.collision} behavior=${tile.behavior_id}`;
       debugOverlayLayer.addChild(overlay);
+    }
+  }
+}
+
+function registerSubtileBinding(binding: RenderedSubtileBinding): void {
+  renderedSubtileBindings.push(binding);
+  const tileKey = `${binding.pageId}:${binding.localTileIndex}`;
+  const paletteKey = `${binding.sourceTileset}:${binding.paletteIndex}`;
+  const tileBindings = subtileBindingsByTile.get(tileKey);
+  if (tileBindings) {
+    tileBindings.push(binding);
+  } else {
+    subtileBindingsByTile.set(tileKey, [binding]);
+  }
+  const paletteBindings = subtileBindingsByPalette.get(paletteKey);
+  if (paletteBindings) {
+    paletteBindings.push(binding);
+  } else {
+    subtileBindingsByPalette.set(paletteKey, [binding]);
+  }
+}
+
+function resolveActiveTileSwap(pageId: number, localTileIndex: number): number {
+  return activeTileSwaps.get(`${pageId}:${localTileIndex}`)?.sourceLocalTileIndex ?? localTileIndex;
+}
+
+function resolveActivePaletteSwap(sourceTilesetName: string, paletteIndex: number): number {
+  return activePaletteSwaps.get(`${sourceTilesetName}:${paletteIndex}`)?.sourcePaletteIndex ?? paletteIndex;
+}
+
+function tickTilesetAnimationClock(deltaMs: number): void {
+  if (!activeTilesetAnimationState) {
+    return;
+  }
+
+  const animationState = activeTilesetAnimationState;
+  animationState.accumulatorMs += Math.max(0, deltaMs);
+  let steps = Math.floor(animationState.accumulatorMs / TILESET_ANIMATION_STEP_MS);
+  if (steps <= 0) {
+    return;
+  }
+
+  animationState.accumulatorMs -= steps * TILESET_ANIMATION_STEP_MS;
+  steps = Math.min(steps, 8);
+  for (let i = 0; i < steps; i += 1) {
+    stepTilesetAnimation(animationState);
+  }
+}
+
+function stepTilesetAnimation(animationState: TilesetAnimationState): void {
+  const nextTileSwaps = new Map<string, TileSwapOperation>();
+  const nextPaletteSwaps = new Map<string, PaletteSwapOperation>();
+
+  animationState.primaryCounter =
+    (animationState.primaryCounter + 1) % Math.max(animationState.primaryCounterMax, 1);
+  animationState.secondaryCounter =
+    (animationState.secondaryCounter + 1) % Math.max(animationState.secondaryCounterMax, 1);
+
+  const primaryOps = animationState.primaryCallback?.(
+    animationState.primaryCounter,
+    animationState.primaryCounterMax,
+  );
+  const secondaryOps = animationState.secondaryCallback?.(
+    animationState.secondaryCounter,
+    animationState.primaryCounterMax,
+  );
+  for (const op of [...(primaryOps?.tileSwaps ?? []), ...(secondaryOps?.tileSwaps ?? [])]) {
+    nextTileSwaps.set(`${op.pageId}:${op.destLocalTileIndex}`, op);
+  }
+  for (const op of [...(primaryOps?.paletteSwaps ?? []), ...(secondaryOps?.paletteSwaps ?? [])]) {
+    nextPaletteSwaps.set(`${op.tilesetName}:${op.destPaletteIndex}`, op);
+  }
+
+  applyTilesetAnimationDiff(nextTileSwaps, nextPaletteSwaps, animationState);
+}
+
+function applyTilesetAnimationDiff(
+  nextTileSwaps: Map<string, TileSwapOperation>,
+  nextPaletteSwaps: Map<string, PaletteSwapOperation>,
+  animationState: TilesetAnimationState,
+): void {
+  if (!activeIndexedAtlasPages || !activeTextureCache || activeTilesetAnimationPairId !== animationState.pairId) {
+    return;
+  }
+
+  const dirtyBindings = new Set<RenderedSubtileBinding>();
+
+  for (const [key, next] of nextTileSwaps.entries()) {
+    const current = activeTileSwaps.get(key);
+    if (!current || current.sourceLocalTileIndex !== next.sourceLocalTileIndex) {
+      for (const binding of subtileBindingsByTile.get(key) ?? []) {
+        dirtyBindings.add(binding);
+      }
+    }
+  }
+  for (const key of activeTileSwaps.keys()) {
+    if (!nextTileSwaps.has(key)) {
+      for (const binding of subtileBindingsByTile.get(key) ?? []) {
+        dirtyBindings.add(binding);
+      }
+    }
+  }
+  for (const [key, next] of nextPaletteSwaps.entries()) {
+    const current = activePaletteSwaps.get(key);
+    if (!current || current.sourcePaletteIndex !== next.sourcePaletteIndex) {
+      for (const binding of subtileBindingsByPalette.get(key) ?? []) {
+        dirtyBindings.add(binding);
+      }
+    }
+  }
+  for (const key of activePaletteSwaps.keys()) {
+    if (!nextPaletteSwaps.has(key)) {
+      for (const binding of subtileBindingsByPalette.get(key) ?? []) {
+        dirtyBindings.add(binding);
+      }
+    }
+  }
+
+  activeTileSwaps.clear();
+  activePaletteSwaps.clear();
+  for (const [key, op] of nextTileSwaps.entries()) {
+    activeTileSwaps.set(key, op);
+  }
+  for (const [key, op] of nextPaletteSwaps.entries()) {
+    activePaletteSwaps.set(key, op);
+  }
+
+  if (dirtyBindings.size === 0) {
+    return;
+  }
+
+  animationState.tickSerial += 1;
+  for (const binding of dirtyBindings) {
+    const texture = activeTextureCache.getTexture({
+      atlasPages: activeIndexedAtlasPages,
+      pageId: binding.pageId,
+      localTileIndex: resolveActiveTileSwap(binding.pageId, binding.localTileIndex),
+      paletteIndex: resolveActivePaletteSwap(binding.sourceTileset, binding.paletteIndex),
+      palettes: binding.palettes,
+      animationKey: `${animationState.tickSerial}`,
+    });
+    if (texture) {
+      binding.sprite.texture = texture;
     }
   }
 }
