@@ -6,7 +6,6 @@ import json
 import re
 import shutil
 import struct
-import subprocess
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -490,26 +489,6 @@ def _parse_c_functions(content: str) -> dict[str, str]:
     return functions
 
 
-def _parse_c_function_params(content: str) -> dict[str, list[str]]:
-    params_by_func: dict[str, list[str]] = {}
-    signature = re.compile(r"(?:static\s+)?void\s+([A-Za-z0-9_]+)\s*\(([^)]*)\)\s*\{", re.M)
-    for match in signature.finditer(content):
-        func_name = match.group(1)
-        raw_params = match.group(2).strip()
-        if not raw_params or raw_params == "void":
-            params_by_func[func_name] = []
-            continue
-        names: list[str] = []
-        for token in [item.strip() for item in raw_params.split(",") if item.strip()]:
-            cleaned = token.split("=")[0].strip()
-            cleaned = cleaned.replace("*", " ")
-            parts = [part for part in cleaned.split() if part]
-            if parts:
-                names.append(parts[-1])
-        params_by_func[func_name] = names
-    return params_by_func
-
-
 def _parse_tile_offset_expr(expr: str) -> int | None:
     normalized = expr.replace(" ", "")
     if normalized.startswith("NUM_TILES_IN_PRIMARY+"):
@@ -535,102 +514,17 @@ def _parse_tile_destinations(expr: str, vdest_arrays: dict[str, list[int]]) -> l
     return []
 
 
-def _parse_dest_resolution(
-    expr: str,
-    vdest_arrays: dict[str, list[int]],
-    param_names: list[str],
-) -> dict[str, Any]:
-    expr = expr.strip()
-    tile_offset_match = re.search(r"TILE_OFFSET_4BPP\(([^)]+)\)", expr)
-    if tile_offset_match:
-        tile_index = _parse_tile_offset_expr(tile_offset_match.group(1))
-        return {
-            "kind": "static_tile_offset",
-            "tile_offset_expr": tile_offset_match.group(1).strip(),
-            "tile_indices": [tile_index] if tile_index is not None else [],
-        }
-
-    vdest_match = re.match(r"([A-Za-z0-9_]+)\[([^]]+)\]$", expr)
-    if vdest_match:
-        array_name = vdest_match.group(1)
-        index_expr = vdest_match.group(2).strip()
-        used_params = sorted({name for name in param_names if re.search(rf"\b{name}\b", index_expr)})
-        return {
-            "kind": "vdest_array_index",
-            "vdest_array": array_name,
-            "index_expr": index_expr,
-            "index_param_refs": used_params,
-            "tile_indices": list(vdest_arrays.get(array_name, [])),
-        }
-
-    return {"kind": "unparsed", "expr": expr, "tile_indices": []}
-
-
-def _ensure_gbagfx_binary() -> Path:
-    gbagfx_dir = ROOT / "tools/gbagfx"
-    binary = gbagfx_dir / "gbagfx"
-    if binary.exists():
-        return binary
-    subprocess.run(["make", "-C", str(gbagfx_dir)], check=True)
-    if not binary.exists():
-        raise ValueError("Failed to build tools/gbagfx/gbagfx")
-    return binary
-
-
-def _resolve_anim_frame_source(symbol: str, rel_source_paths: list[str], generated_dir: Path) -> dict[str, Any]:
-    errors: list[str] = []
-    for rel_source_path in rel_source_paths:
-        source_path = ROOT / rel_source_path
-        if source_path.exists():
-            return {
-                "symbol": symbol,
-                "mode": "source_4bpp",
-                "source_path": rel_source_path,
-                "source_candidates": rel_source_paths,
-                "payload_path": source_path,
-            }
-
-        source_ext = source_path.suffix.lower()
-        if source_ext == ".4bpp":
-            png_rel_path = Path(rel_source_path).with_suffix(".png")
-        else:
-            png_rel_path = Path(f"{rel_source_path}.png")
-        png_rel = png_rel_path.as_posix()
-        png_path = ROOT / png_rel
-        if not png_path.exists():
-            errors.append(f"missing {rel_source_path} and {png_rel}")
-            continue
-
-        generated_dir.mkdir(parents=True, exist_ok=True)
-        generated_payload = generated_dir / f"{symbol}.4bpp"
-        gbagfx = _ensure_gbagfx_binary()
-        subprocess.run([str(gbagfx), str(png_path), str(generated_payload)], check=True)
-        return {
-            "symbol": symbol,
-            "mode": "generated_from_png",
-            "source_path": png_rel,
-            "source_candidates": rel_source_paths,
-            "payload_path": generated_payload,
-        }
-
-    raise ValueError(f"Animation frame source missing for {symbol}: {'; '.join(errors)}")
-
-
 def _parse_tileset_anim_data() -> dict[str, Any]:
     tileset_anims = (ROOT / "src/tileset_anims.c").read_text(encoding="utf-8")
     headers_h = (ROOT / "src/data/tilesets/headers.h").read_text(encoding="utf-8")
     functions = _parse_c_functions(tileset_anims)
-    function_params = _parse_c_function_params(tileset_anims)
 
-    frame_sources: dict[str, list[str]] = {}
-    for symbol, source_a, source_b in re.findall(
-        r'const\s+u16\s+([A-Za-z0-9_]+)\[]\s*=\s*INCBIN_U16\("([^"]+)"(?:,\s*"([^"]+)")?\);',
-        tileset_anims,
-    ):
-        sources = [source_a]
-        if source_b:
-            sources.append(source_b)
-        frame_sources[symbol] = sources
+    frame_sources = dict(
+        re.findall(
+            r"const\s+u16\s+([A-Za-z0-9_]+)\[]\s*=\s*INCBIN_U16\(\"([^\"]+)\"\);",
+            tileset_anims,
+        )
+    )
 
     frame_arrays: dict[str, list[str]] = {}
     for array_name, array_body in re.findall(
@@ -678,7 +572,6 @@ def _parse_tileset_anim_data() -> dict[str, Any]:
 
     queue_ops: dict[str, dict[str, Any]] = {}
     for func_name, body in functions.items():
-        param_names = function_params.get(func_name, [])
         copy_ops: list[dict[str, Any]] = []
         for src_expr, dest_expr, size_expr in re.findall(
             r"AppendTilesetAnimToBuffer\((.+?),\s*(.+?),\s*(.+?)\);",
@@ -686,14 +579,12 @@ def _parse_tileset_anim_data() -> dict[str, Any]:
         ):
             array_match = re.match(r"([A-Za-z0-9_]+)\[[^]]+\]", src_expr.strip())
             size_tiles_match = re.match(r"\s*(\d+)\s*\*\s*TILE_SIZE_4BPP\s*$", size_expr.strip())
-            dest_resolution = _parse_dest_resolution(dest_expr, vdest_arrays, param_names)
             copy_ops.append(
                 {
                     "source_expr": src_expr.strip(),
                     "frame_array": array_match.group(1) if array_match else None,
                     "dest_expr": dest_expr.strip(),
-                    "dest_tile_indices": dest_resolution.get("tile_indices", _parse_tile_destinations(dest_expr, vdest_arrays)),
-                    "dest_resolution": dest_resolution,
+                    "dest_tile_indices": _parse_tile_destinations(dest_expr, vdest_arrays),
                     "size_expr": size_expr.strip(),
                     "size_tiles": int(size_tiles_match.group(1)) if size_tiles_match else None,
                 }
@@ -735,8 +626,6 @@ def _parse_tileset_anim_data() -> dict[str, Any]:
                     {
                         "function": action_name,
                         "args": action_args.strip(),
-                        "call_args": [arg.strip() for arg in action_args.split(",") if arg.strip()] if action_args.strip() else [],
-                        "function_params": function_params.get(action_name, []),
                         "copy_ops": op["copy_ops"],
                         "palette_ops": op["palette_ops"],
                     }
@@ -1018,6 +907,9 @@ def run_extract_render(output_dir: Path, clean: bool) -> None:
                     for copy_op in action.get("copy_ops", []):
                         if copy_op.get("frame_array"):
                             referenced_frame_arrays.add(str(copy_op["frame_array"]))
+                    for palette_op in action.get("palette_ops", []):
+                        if palette_op.get("frame_array"):
+                            referenced_frame_arrays.add(str(palette_op["frame_array"]))
 
         referenced_symbols: set[str] = set()
         for array_name in referenced_frame_arrays:
@@ -1026,20 +918,14 @@ def run_extract_render(output_dir: Path, clean: bool) -> None:
         source_records: list[dict[str, Any]] = []
         symbol_to_index: dict[str, int] = {}
         source_dir = pair_dir / "tile_anim_sources"
-        generated_dir = source_dir / "_generated"
         source_dir.mkdir(parents=True, exist_ok=True)
-        missing_symbols: list[str] = []
         for symbol in sorted(referenced_symbols):
-            rel_candidates = tileset_anim_data["frame_sources"].get(symbol)
-            if not rel_candidates:
-                missing_symbols.append(symbol)
+            rel = tileset_anim_data["frame_sources"].get(symbol)
+            if not rel:
                 continue
-            try:
-                resolved = _resolve_anim_frame_source(symbol, rel_candidates, generated_dir)
-            except ValueError:
-                missing_symbols.append(symbol)
+            src_path = ROOT / rel
+            if not src_path.exists():
                 continue
-            src_path = resolved["payload_path"]
             index = len(source_records)
             extension = src_path.suffix or ".bin"
             out_name = f"{index:04d}_{symbol}{extension}"
@@ -1049,37 +935,24 @@ def run_extract_render(output_dir: Path, clean: bool) -> None:
                 {
                     "source_index": index,
                     "symbol": symbol,
-                    "source_path": resolved["source_path"],
-                    "source_candidates": resolved["source_candidates"],
-                    "payload_format": "4bpp_tile_bytes",
-                    "resolution_mode": resolved["mode"],
+                    "source_path": rel,
                     "render_path": out_path.relative_to(output_dir).as_posix(),
                     "size_bytes": src_path.stat().st_size,
                 }
             )
             symbol_to_index[symbol] = index
 
-        if missing_symbols:
-            raise ValueError(
-                "Failed to resolve animation frame payloads for symbols: "
-                + ", ".join(sorted(set(missing_symbols)))
-            )
-
         frame_arrays_json: dict[str, list[int | None]] = {}
         for array_name in sorted(referenced_frame_arrays):
             indices = [symbol_to_index.get(symbol) for symbol in tileset_anim_data["frame_arrays"].get(array_name, [])]
-            if any(index is None for index in indices):
-                raise ValueError(f"Unresolved frame array payload mapping for {array_name}: {indices}")
             frame_arrays_json[array_name] = indices
 
         tile_anims_path = pair_dir / "tile_anims.json"
-        frame_symbol_to_source = {record["symbol"]: record["source_index"] for record in source_records}
         tile_anims_payload = {
             "pair_id": pair_key,
             "programs": tileset_programs,
             "frame_arrays": frame_arrays_json,
             "frame_sources": source_records,
-            "frame_symbol_to_source": frame_symbol_to_source,
         }
         tile_anims_path.write_text(json.dumps(tile_anims_payload, indent=2) + "\n", encoding="utf-8")
 
