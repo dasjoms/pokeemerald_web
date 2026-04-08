@@ -48,6 +48,25 @@ type LayoutFile = {
   render_assets?: RenderAssetsRef;
 };
 
+type MapsIndexFile = {
+  maps: MapIndexEntry[];
+};
+
+type MapIndexEntry = {
+  group_index: number;
+  map_index: number;
+  layout_id: string;
+};
+
+type LayoutsIndexFile = {
+  layouts: LayoutIndexEntry[];
+};
+
+type LayoutIndexEntry = {
+  id: string;
+  decoded_path: string;
+};
+
 type AtlasFile = {
   pages: Array<{
     page: number;
@@ -108,10 +127,6 @@ const ENABLE_CLIENT_PREDICTION =
 const ENABLE_DEBUG_OVERLAY_DEFAULT =
   new URLSearchParams(window.location.search).get('debug') === '1';
 
-const MAP_ID_TO_LAYOUT_ID: Record<number, string> = {
-  1: 'LAYOUT_LITTLEROOT_TOWN',
-};
-
 const jsonAssetLoaders = import.meta.glob('../../assets/**/*.json');
 const imageAssetUrls = import.meta.glob('../../assets/**/*.png', {
   query: '?url',
@@ -136,6 +151,7 @@ let socket: WebSocket | null = null;
 let debugOverlayEnabled = ENABLE_DEBUG_OVERLAY_DEFAULT;
 const indexedAtlasPageCache = new Map<string, IndexedAtlasPages>();
 const metatileTextureCaches = new Map<string, MetatileTextureCache>();
+let mapIdToLayoutJsonPathPromise: Promise<Map<number, string>> | null = null;
 
 const appRoot = document.getElementById('app-root');
 if (!appRoot) {
@@ -302,12 +318,13 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
 }
 
 async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
-  const layoutId = MAP_ID_TO_LAYOUT_ID[snapshot.map_id];
-  if (!layoutId) {
+  const mapIdToLayoutJsonPath = await getMapIdToLayoutJsonPath();
+  const layoutJsonPath = mapIdToLayoutJsonPath.get(snapshot.map_id);
+  if (!layoutJsonPath) {
     throw new Error(`missing layout mapping for map id: ${snapshot.map_id}`);
   }
 
-  const layout = await loadJsonFromAssets<LayoutFile>(`layouts/${layoutId}.json`);
+  const layout = await loadJsonFromAssets<LayoutFile>(layoutJsonPath);
   const renderAssets = makeRenderAssetRef(layout);
   const atlas = await loadJsonFromAssets<AtlasFile>(renderAssets.atlas);
   const metatiles = await loadJsonFromAssets<MetatilesFile>(renderAssets.metatiles);
@@ -461,6 +478,39 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
       debugOverlayLayer.addChild(overlay);
     }
   }
+}
+
+function composeServerMapId(groupIndex: number, mapIndex: number): number {
+  return ((groupIndex & 0xff) << 8) | (mapIndex & 0xff);
+}
+
+async function getMapIdToLayoutJsonPath(): Promise<Map<number, string>> {
+  if (!mapIdToLayoutJsonPathPromise) {
+    mapIdToLayoutJsonPathPromise = (async () => {
+      const [mapsIndex, layoutsIndex] = await Promise.all([
+        loadJsonFromAssets<MapsIndexFile>('maps_index.json'),
+        loadJsonFromAssets<LayoutsIndexFile>('layouts_index.json'),
+      ]);
+      const layoutIdToDecodedPath = new Map<string, string>();
+      for (const layout of layoutsIndex.layouts) {
+        layoutIdToDecodedPath.set(layout.id, layout.decoded_path);
+      }
+
+      const mapIdToLayoutJsonPath = new Map<number, string>();
+      for (const map of mapsIndex.maps) {
+        const decodedPath = layoutIdToDecodedPath.get(map.layout_id);
+        if (!decodedPath) {
+          continue;
+        }
+
+        mapIdToLayoutJsonPath.set(composeServerMapId(map.group_index, map.map_index), decodedPath);
+      }
+
+      return mapIdToLayoutJsonPath;
+    })();
+  }
+
+  return mapIdToLayoutJsonPathPromise;
 }
 
 function bindWalkInput(): void {
