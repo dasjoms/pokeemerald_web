@@ -41,3 +41,23 @@ python3 -m rebuild.tools.map_assets.cli validate-render --output-dir rebuild/ass
     - every referenced tile index and palette index is in bounds for atlas/palette tables,
     - failures stop with contextual details (layout file + tileset IDs),
     - prints a summary report (layouts checked, metatiles resolved, unresolved count).
+
+## Player asset extractor / validator
+
+Use the rebuild-owned extractor to convert player avatar object-event definitions into rebuild-native artifacts:
+
+```bash
+python3 -m rebuild.tools.player_assets.cli validate
+python3 -m rebuild.tools.player_assets.cli extract --clean --output-dir rebuild/assets
+```
+
+### Commands
+
+- `validate`
+  - Checks Brendan/May player references from object event graphics/pic tables/graphics info/anim table definitions.
+  - Verifies required source assets and prints summary frame/dimension counts.
+
+- `extract`
+  - Writes artifacts under `rebuild/assets/players/` (or a custom output dir):
+    - `players_manifest.json` with versioned avatar metadata (atlas mapping, palettes, dimensions/anchor, face/walk/run directional animation bindings).
+    - Source player sprite sheets and palette files for Brendan/May and bridge reflection palette.
