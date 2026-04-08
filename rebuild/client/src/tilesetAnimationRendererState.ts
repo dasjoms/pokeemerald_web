@@ -1,30 +1,34 @@
 export type CopyTilesOpLike = {
   pageId: number;
   destLocalTileIndex: number;
-  sourceFrameLocalTileIndex: number;
+  sourcePayloadOffsetTiles: number;
   tileCount: number;
+};
+
+export type ActiveTileSwapSource = {
+  sourcePayloadTileIndex: number;
 };
 
 export function applyCopyTilesOpsToActiveSwaps(
   nextTileSwaps: Map<string, CopyTilesOpLike>,
-  activeTileSwaps: Map<string, number>,
+  activeTileSwaps: Map<string, ActiveTileSwapSource>,
 ): Set<string> {
   const dirtyTileKeys = new Set<string>();
-  const nextExpandedTileSwaps = new Map<string, number>();
+  const nextExpandedTileSwaps = new Map<string, ActiveTileSwapSource>();
 
   for (const op of nextTileSwaps.values()) {
     for (let offset = 0; offset < op.tileCount; offset += 1) {
       const destLocalTileIndex = op.destLocalTileIndex + offset;
-      const sourceLocalTileIndex = op.sourceFrameLocalTileIndex + offset;
-      nextExpandedTileSwaps.set(`${op.pageId}:${destLocalTileIndex}`, sourceLocalTileIndex);
+      const sourcePayloadTileIndex = op.sourcePayloadOffsetTiles + offset;
+      nextExpandedTileSwaps.set(`${op.pageId}:${destLocalTileIndex}`, { sourcePayloadTileIndex });
     }
   }
 
-  for (const [tileKey, nextSourceLocalTileIndex] of nextExpandedTileSwaps.entries()) {
-    if (activeTileSwaps.get(tileKey) !== nextSourceLocalTileIndex) {
+  for (const [tileKey, nextSource] of nextExpandedTileSwaps.entries()) {
+    if (activeTileSwaps.get(tileKey)?.sourcePayloadTileIndex !== nextSource.sourcePayloadTileIndex) {
       dirtyTileKeys.add(tileKey);
     }
-    activeTileSwaps.set(tileKey, nextSourceLocalTileIndex);
+    activeTileSwaps.set(tileKey, nextSource);
   }
 
   return dirtyTileKeys;

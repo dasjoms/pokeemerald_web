@@ -20,7 +20,7 @@ import {
 } from './metatileRenderer';
 import { MapRenderStratum, resolveMapRenderStratum } from './mapLayerComposition';
 import { createTilesetAnimationState, type TileAnimsFile } from './tilesetAnimation';
-import { applyCopyTilesOpsToActiveSwaps } from './tilesetAnimationRendererState';
+import { applyCopyTilesOpsToActiveSwaps, type ActiveTileSwapSource } from './tilesetAnimationRendererState';
 
 type ServerMessage =
   | { type: MessageType.SESSION_ACCEPTED; payload: { session_id: number; server_frame: number } }
@@ -132,7 +132,7 @@ type CopyTilesOp = {
   kind: 'copy_tiles';
   pageId: number;
   destLocalTileIndex: number;
-  sourceFrameLocalTileIndex: number;
+  sourcePayloadOffsetTiles: number;
   tileCount: number;
 };
 
@@ -174,6 +174,8 @@ type TilesetAnimationState = {
   queuedPaletteBlends: Map<string, BlendPaletteOp>;
   accumulatorMs: number;
   tickSerial: number;
+  framePayloadTileIndices: Uint8Array | null;
+  framePayloadTileCount: number;
 };
 
 type RenderedSubtileBinding = {
@@ -194,6 +196,11 @@ const ENABLE_DEBUG_OVERLAY_DEFAULT =
   new URLSearchParams(window.location.search).get('debug') === '1';
 
 const jsonAssetLoaders = import.meta.glob('../../assets/**/*.json');
+const binaryAssetUrls = import.meta.glob('../../assets/**/*.bin', {
+  query: '?url',
+  import: 'default',
+  eager: true,
+}) as Record<string, string>;
 const imageAssetUrls = import.meta.glob('../../assets/**/*.png', {
   query: '?url',
   import: 'default',
@@ -227,7 +234,7 @@ let activeIndexedAtlasPages: IndexedAtlasPages | null = null;
 const renderedSubtileBindings: RenderedSubtileBinding[] = [];
 const subtileBindingsByTile = new Map<string, RenderedSubtileBinding[]>();
 const subtileBindingsByPalette = new Map<string, RenderedSubtileBinding[]>();
-const activeTileSwaps = new Map<string, number>();
+const activeTileSwaps = new Map<string, ActiveTileSwapSource>();
 const activePaletteSwaps = new Map<string, CopyPaletteOp>();
 const activePaletteBlends = new Map<string, BlendPaletteOp>();
 const basePalettesBySource = new Map<string, number[][][]>();
@@ -312,6 +319,20 @@ async function resolveImageUrlFromAssets(repoRelativePath: string): Promise<stri
   }
 
   return imageUrl;
+}
+
+async function loadBinaryFromAssets(repoRelativePath: string): Promise<Uint8Array> {
+  const normalized = normalizeRepoRelative(repoRelativePath);
+  const modulePath = `../../assets/${normalized}`;
+  const binaryUrl = binaryAssetUrls[modulePath];
+  if (!binaryUrl) {
+    throw new Error(`missing binary asset at ${modulePath}`);
+  }
+  const response = await fetch(binaryUrl);
+  if (!response.ok) {
+    throw new Error(`failed to fetch binary asset ${modulePath}: ${response.status}`);
+  }
+  return new Uint8Array(await response.arrayBuffer());
 }
 
 function makeRenderAssetRef(layout: LayoutFile): RenderAssetsRef {
@@ -513,6 +534,19 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
 
   let animationState = tilesetAnimationStates.get(renderAssets.pair_id);
   if (!animationState) {
+    let framePayloadBlob: Uint8Array | null = null;
+    if (tileAnims?.frame_payload_blob) {
+      try {
+        framePayloadBlob = await loadBinaryFromAssets(`render/${renderAssets.pair_id}/${tileAnims.frame_payload_blob}`);
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.error(
+            `[tileset-parity] missing/invalid tile animation frame payload blob for pair=${renderAssets.pair_id}:`,
+            error,
+          );
+        }
+      }
+    }
     animationState = createTilesetAnimationState(
       tileAnims ?? {
         tile_anims_version: 2,
@@ -532,6 +566,7 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
         frame_arrays: {},
       },
       primaryTileCount,
+      framePayloadBlob,
     );
     tilesetAnimationStates.set(renderAssets.pair_id, animationState);
   }
@@ -568,7 +603,8 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
         const subtileTexture = textureCache.getTexture({
           atlasPages: indexedAtlasPages,
           pageId: sourcePage,
-          localTileIndex: resolveActiveTileSwap(sourcePage, localTileIndex),
+          localTileIndex,
+          sourceTileIndices: resolveFramePayloadTileIndices(animationState, sourcePage, localTileIndex),
           paletteIndex: resolveActivePaletteSwap(sourceTilesetName, subtile.palette_index),
           palettes: activePalettesBySource.get(sourceTilesetName) ?? sourcePalettes,
           animationKey: `${animationState.tickSerial}`,
@@ -642,12 +678,29 @@ function registerSubtileBinding(binding: RenderedSubtileBinding): void {
   }
 }
 
-function resolveActiveTileSwap(pageId: number, localTileIndex: number): number {
-  return activeTileSwaps.get(`${pageId}:${localTileIndex}`) ?? localTileIndex;
+function resolveActiveTileSwap(pageId: number, localTileIndex: number): ActiveTileSwapSource | null {
+  return activeTileSwaps.get(`${pageId}:${localTileIndex}`) ?? null;
 }
 
 function resolveActivePaletteSwap(sourceTilesetName: string, paletteIndex: number): number {
   return activePaletteSwaps.get(`${sourceTilesetName}:${paletteIndex}`)?.sourcePaletteIndex ?? paletteIndex;
+}
+
+function resolveFramePayloadTileIndices(
+  animationState: TilesetAnimationState,
+  pageId: number,
+  localTileIndex: number,
+): Uint8Array | undefined {
+  const swap = resolveActiveTileSwap(pageId, localTileIndex);
+  if (!swap || !animationState.framePayloadTileIndices) {
+    return undefined;
+  }
+  const start = swap.sourcePayloadTileIndex * 64;
+  const end = start + 64;
+  if (end > animationState.framePayloadTileIndices.length) {
+    return undefined;
+  }
+  return animationState.framePayloadTileIndices.subarray(start, end);
 }
 
 function tickTilesetAnimationClock(deltaMs: number): void {
@@ -814,7 +867,8 @@ function applyTilesetAnimationDiff(
     const texture = activeTextureCache.getTexture({
       atlasPages: activeIndexedAtlasPages,
       pageId: binding.pageId,
-      localTileIndex: resolveActiveTileSwap(binding.pageId, binding.localTileIndex),
+      localTileIndex: binding.localTileIndex,
+      sourceTileIndices: resolveFramePayloadTileIndices(animationState, binding.pageId, binding.localTileIndex),
       paletteIndex: resolveActivePaletteSwap(binding.sourceTileset, binding.paletteIndex),
       palettes: activePalettesBySource.get(binding.sourceTileset) ?? [],
       animationKey: `${animationState.tickSerial}`,
