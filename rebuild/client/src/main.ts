@@ -31,6 +31,12 @@ type LayoutTile = {
   behavior_id: number;
 };
 
+type DecodedMapChunk = {
+  width: number;
+  height: number;
+  tiles: LayoutTile[];
+};
+
 type RenderAssetsRef = {
   pair_id: string;
   atlas: string;
@@ -325,13 +331,14 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
   }
 
   const layout = await loadJsonFromAssets<LayoutFile>(layoutJsonPath);
+  const runtimeChunk = resolveRuntimeMapChunk(snapshot, layout);
   const renderAssets = makeRenderAssetRef(layout);
   const atlas = await loadJsonFromAssets<AtlasFile>(renderAssets.atlas);
   const metatiles = await loadJsonFromAssets<MetatilesFile>(renderAssets.metatiles);
   const palettes = await loadJsonFromAssets<PalettesFile>(renderAssets.palettes);
 
-  state.mapWidth = layout.width;
-  state.mapHeight = layout.height;
+  state.mapWidth = runtimeChunk.width;
+  state.mapHeight = runtimeChunk.height;
 
   mapBg3Layer.removeChildren();
   mapBg2Layer.removeChildren();
@@ -403,9 +410,9 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
   const primaryPalettes = palettesBySource.get(layout.primary_tileset) ?? [];
   const secondaryPalettes = palettesBySource.get(layout.secondary_tileset) ?? [];
 
-  for (let y = 0; y < layout.height; y += 1) {
-    for (let x = 0; x < layout.width; x += 1) {
-      const tile = layout.tiles[y * layout.width + x];
+  for (let y = 0; y < runtimeChunk.height; y += 1) {
+    for (let x = 0; x < runtimeChunk.width; x += 1) {
+      const tile = runtimeChunk.tiles[y * runtimeChunk.width + x];
       if (!tile) {
         continue;
       }
@@ -478,6 +485,103 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
       debugOverlayLayer.addChild(overlay);
     }
   }
+}
+
+function resolveRuntimeMapChunk(snapshot: WorldSnapshot, layout: LayoutFile): DecodedMapChunk {
+  try {
+    return decodeWorldSnapshotMapChunk(snapshot.map_chunk);
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.warn(
+        `[world-snapshot] using local layout fallback after map_chunk decode failure map_id=${snapshot.map_id} hash=${toHex(snapshot.map_chunk_hash)} reason=${String(error)}`,
+      );
+      return {
+        width: layout.width,
+        height: layout.height,
+        tiles: layout.tiles,
+      };
+    }
+
+    throw error;
+  }
+}
+
+function decodeWorldSnapshotMapChunk(rawChunk: Uint8Array): DecodedMapChunk {
+  if (rawChunk.length === 0) {
+    throw new Error('empty map_chunk payload');
+  }
+
+  const decoder = new TextDecoder();
+  const trimmed = decoder.decode(rawChunk).trimStart();
+  if (trimmed.startsWith('{')) {
+    const parsed = JSON.parse(trimmed) as Partial<DecodedMapChunk>;
+    if (
+      typeof parsed.width === 'number' &&
+      typeof parsed.height === 'number' &&
+      Array.isArray(parsed.tiles)
+    ) {
+      return validateDecodedChunk({
+        width: parsed.width,
+        height: parsed.height,
+        tiles: parsed.tiles as LayoutTile[],
+      });
+    }
+  }
+
+  if (rawChunk.length < 8) {
+    throw new Error(`map_chunk payload too short: ${rawChunk.length}`);
+  }
+
+  const width = readU16(rawChunk, 0);
+  const height = readU16(rawChunk, 2);
+  const tileCount = readU32(rawChunk, 4);
+  const payload = rawChunk.subarray(8);
+
+  if (payload.length === tileCount * 4) {
+    const tiles: LayoutTile[] = new Array(tileCount);
+    let offset = 0;
+    for (let i = 0; i < tileCount; i += 1) {
+      tiles[i] = {
+        metatile_id: readU16(payload, offset),
+        collision: readU8(payload, offset + 2),
+        behavior_id: readU8(payload, offset + 3),
+      };
+      offset += 4;
+    }
+    return validateDecodedChunk({ width, height, tiles });
+  }
+
+  if (payload.length === tileCount * 2) {
+    const tiles: LayoutTile[] = new Array(tileCount);
+    for (let i = 0; i < tileCount; i += 1) {
+      const raw = readU16(payload, i * 2);
+      tiles[i] = {
+        metatile_id: raw & 0x03ff,
+        collision: (raw >> 10) & 0x003f,
+        behavior_id: 0,
+      };
+    }
+    return validateDecodedChunk({ width, height, tiles });
+  }
+
+  throw new Error(
+    `map_chunk payload length did not match known schemas (payload=${payload.length}, tile_count=${tileCount})`,
+  );
+}
+
+function validateDecodedChunk(chunk: DecodedMapChunk): DecodedMapChunk {
+  const expectedTileCount = chunk.width * chunk.height;
+  if (chunk.tiles.length !== expectedTileCount) {
+    throw new Error(
+      `decoded map_chunk tile count mismatch: got=${chunk.tiles.length} expected=${expectedTileCount}`,
+    );
+  }
+
+  return chunk;
+}
+
+function toHex(raw: Uint8Array): string {
+  return Array.from(raw, (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
 function composeServerMapId(groupIndex: number, mapIndex: number): number {
