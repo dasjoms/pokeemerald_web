@@ -25,5 +25,3 @@ python3 -m rebuild.tools.map_assets.cli extract --clean --output-dir rebuild/ass
     - `meta/masks.json` from `include/global.fieldmap.h`.
     - `meta/metatile_behaviors.json` from `include/constants/metatile_behaviors.h`.
     - Per-layout decoded block data in `layouts/<LAYOUT_ID>.json` (metatile id/collision/elevation/behavior id).
-
-> Do not commit extracted asset output; regenerate locally as needed.
