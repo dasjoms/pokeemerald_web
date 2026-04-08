@@ -224,7 +224,7 @@ let activeIndexedAtlasPages: IndexedAtlasPages | null = null;
 const renderedSubtileBindings: RenderedSubtileBinding[] = [];
 const subtileBindingsByTile = new Map<string, RenderedSubtileBinding[]>();
 const subtileBindingsByPalette = new Map<string, RenderedSubtileBinding[]>();
-const activeTileSwaps = new Map<string, CopyTilesOp>();
+const activeTileSwaps = new Map<string, number>();
 const activePaletteSwaps = new Map<string, CopyPaletteOp>();
 const activePaletteBlends = new Map<string, BlendPaletteOp>();
 const basePalettesBySource = new Map<string, number[][][]>();
@@ -870,16 +870,7 @@ function registerSubtileBinding(binding: RenderedSubtileBinding): void {
 }
 
 function resolveActiveTileSwap(pageId: number, localTileIndex: number): number {
-  for (const op of activeTileSwaps.values()) {
-    if (op.pageId !== pageId) {
-      continue;
-    }
-    const offset = localTileIndex - op.destLocalTileIndex;
-    if (offset >= 0 && offset < op.tileCount) {
-      return op.sourceLocalTileIndex + offset;
-    }
-  }
-  return localTileIndex;
+  return activeTileSwaps.get(`${pageId}:${localTileIndex}`) ?? localTileIndex;
 }
 
 function resolveActivePaletteSwap(sourceTilesetName: string, paletteIndex: number): number {
@@ -963,29 +954,31 @@ function applyTilesetAnimationDiff(
 
   const dirtyBindings = new Set<RenderedSubtileBinding>();
 
-  for (const [key, next] of nextTileSwaps.entries()) {
-    const current = activeTileSwaps.get(key);
-    if (
-      !current ||
-      current.sourceLocalTileIndex !== next.sourceLocalTileIndex ||
-      current.tileCount !== next.tileCount
-    ) {
-      for (let offset = 0; offset < next.tileCount; offset += 1) {
-        const spanKey = `${next.pageId}:${next.destLocalTileIndex + offset}`;
-        for (const binding of subtileBindingsByTile.get(spanKey) ?? []) {
-          dirtyBindings.add(binding);
-        }
-      }
-      if (current) {
-        for (let offset = 0; offset < current.tileCount; offset += 1) {
-          const spanKey = `${current.pageId}:${current.destLocalTileIndex + offset}`;
-          for (const binding of subtileBindingsByTile.get(spanKey) ?? []) {
-            dirtyBindings.add(binding);
-          }
-        }
+  const nextExpandedTileSwaps = new Map<string, number>();
+  for (const op of nextTileSwaps.values()) {
+    for (let offset = 0; offset < op.tileCount; offset += 1) {
+      const destLocalTileIndex = op.destLocalTileIndex + offset;
+      const sourceLocalTileIndex = op.sourceLocalTileIndex + offset;
+      nextExpandedTileSwaps.set(`${op.pageId}:${destLocalTileIndex}`, sourceLocalTileIndex);
+    }
+  }
+  for (const [tileKey, nextSourceLocalTileIndex] of nextExpandedTileSwaps.entries()) {
+    if (activeTileSwaps.get(tileKey) !== nextSourceLocalTileIndex) {
+      for (const binding of subtileBindingsByTile.get(tileKey) ?? []) {
+        dirtyBindings.add(binding);
       }
     }
-    activeTileSwaps.set(key, next);
+  }
+  for (const tileKey of activeTileSwaps.keys()) {
+    if (!nextExpandedTileSwaps.has(tileKey)) {
+      for (const binding of subtileBindingsByTile.get(tileKey) ?? []) {
+        dirtyBindings.add(binding);
+      }
+    }
+  }
+  activeTileSwaps.clear();
+  for (const [tileKey, sourceLocalTileIndex] of nextExpandedTileSwaps.entries()) {
+    activeTileSwaps.set(tileKey, sourceLocalTileIndex);
   }
   for (const [key, next] of nextPaletteSwaps.entries()) {
     const current = activePaletteSwaps.get(key);
