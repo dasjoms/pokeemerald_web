@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::VecDeque;
 
 use tokio::sync::mpsc;
 
@@ -16,8 +16,9 @@ pub struct Session {
     pub connection_id: u64,
     pub player_id: String,
     pub player_state: PlayerState,
+    pub joined: bool,
     pub next_expected_input_seq: u32,
-    walk_inputs: BTreeMap<u32, WalkInput>,
+    walk_inputs: VecDeque<WalkInput>,
     outbound: mpsc::UnboundedSender<ServerMessage>,
 }
 
@@ -32,26 +33,19 @@ impl Session {
             connection_id,
             player_id,
             player_state,
+            joined: false,
             next_expected_input_seq: 0,
-            walk_inputs: BTreeMap::new(),
+            walk_inputs: VecDeque::new(),
             outbound,
         }
     }
 
     pub fn enqueue_walk_input(&mut self, input: WalkInput) {
-        self.walk_inputs.insert(input.input_seq, input);
+        self.walk_inputs.push_back(input);
     }
 
     pub fn take_ready_walk_inputs(&mut self) -> VecDeque<WalkInput> {
-        let mut ready = VecDeque::new();
-        loop {
-            let Some(input) = self.walk_inputs.remove(&self.next_expected_input_seq) else {
-                break;
-            };
-            self.next_expected_input_seq = self.next_expected_input_seq.saturating_add(1);
-            ready.push_back(input);
-        }
-        ready
+        std::mem::take(&mut self.walk_inputs)
     }
 
     pub fn send(

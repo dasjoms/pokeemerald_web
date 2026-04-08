@@ -11,6 +11,7 @@ pub type Facing = Direction;
 pub enum ClientMessage {
     JoinSession(JoinSession),
     WalkInput(WalkInput),
+    WalkInputInvalidDirection { input_seq: u32, client_time: u64 },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -39,6 +40,8 @@ pub enum ProtocolError {
     InvalidUtf8,
     #[error("invalid enum value")]
     InvalidEnum,
+    #[error("invalid direction value: {0}")]
+    InvalidDirection(u8),
     #[error("map_chunk_hash must be <= 255 bytes")]
     MapChunkHashTooLong,
 }
@@ -122,15 +125,20 @@ pub fn decode_client_message(frame: &[u8]) -> Result<ClientMessage, ProtocolErro
         }
         x if x == MessageType::WalkInput as u8 => {
             let (raw_direction, offset) = unpack_u8(payload, 0)?;
-            let direction = decode_direction(raw_direction)?;
             let (input_seq, offset) = unpack_u32(payload, offset)?;
             let (client_time, offset) = unpack_u64(payload, offset)?;
             ensure_done(payload, offset)?;
-            Ok(ClientMessage::WalkInput(WalkInput {
-                direction,
-                input_seq,
-                client_time,
-            }))
+            match decode_direction(raw_direction) {
+                Ok(direction) => Ok(ClientMessage::WalkInput(WalkInput {
+                    direction,
+                    input_seq,
+                    client_time,
+                })),
+                Err(_) => Ok(ClientMessage::WalkInputInvalidDirection {
+                    input_seq,
+                    client_time,
+                }),
+            }
         }
         _ => Err(ProtocolError::UnknownMessageType(message_type)),
     }
@@ -142,7 +150,7 @@ fn decode_direction(raw: u8) -> Result<Direction, ProtocolError> {
         1 => Ok(Direction::Down),
         2 => Ok(Direction::Left),
         3 => Ok(Direction::Right),
-        _ => Err(ProtocolError::InvalidEnum),
+        _ => Err(ProtocolError::InvalidDirection(raw)),
     }
 }
 
