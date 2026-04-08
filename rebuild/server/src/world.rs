@@ -8,7 +8,7 @@ use std::{
 use anyhow::{anyhow, Context};
 use serde::Deserialize;
 use tokio::sync::{mpsc, RwLock};
-use tracing::trace;
+use tracing::{error, trace};
 
 use crate::{
     movement::{
@@ -54,6 +54,7 @@ pub struct World {
     next_connection_id: AtomicU64,
     initial_map_id: String,
     maps: HashMap<String, MapData>,
+    protocol_map_ids: HashMap<String, u16>,
     sessions: RwLock<HashMap<u64, Session>>,
 }
 
@@ -67,7 +68,16 @@ impl World {
         let layouts_index = load_layouts_index(layouts_index_path)?;
 
         let mut known = HashMap::new();
+        let mut protocol_map_ids = HashMap::new();
         for map in maps_index.maps {
+            let protocol_map_id =
+                to_protocol_map_id(map.group_index, map.map_index).with_context(|| {
+                    format!(
+                        "invalid protocol map id for {} with group_index={} map_index={}",
+                        map.map_id, map.group_index, map.map_index
+                    )
+                })?;
+            protocol_map_ids.insert(map.map_id.clone(), protocol_map_id);
             known.insert(map.map_id.clone(), map);
         }
 
@@ -115,6 +125,7 @@ impl World {
             next_connection_id: AtomicU64::new(1),
             initial_map_id: initial_map_id.to_string(),
             maps: loaded,
+            protocol_map_ids,
             sessions: RwLock::new(HashMap::new()),
         })
     }
@@ -249,13 +260,27 @@ impl World {
             return Ok(());
         }
 
+        let session_map_id = session.player_state.map_id.clone();
+        let protocol_map_id = self
+            .protocol_map_ids
+            .get(&session_map_id)
+            .copied()
+            .ok_or_else(|| {
+                let message = format!(
+                    "failed to map session map id {} to protocol u16 for connection {}",
+                    session_map_id, connection_id
+                );
+                error!(connection_id, map_id = %session_map_id, "{message}");
+                anyhow!(message)
+            })?;
+
         session.joined = true;
         session.send(ServerMessage::SessionAccepted(SessionAccepted {
             session_id: session.connection_id as u32,
             server_frame: tick,
         }))?;
         session.send(ServerMessage::WorldSnapshot(WorldSnapshot {
-            map_id: 1,
+            map_id: protocol_map_id,
             player_pos: crate::protocol::Position {
                 x: session.player_state.tile_x,
                 y: session.player_state.tile_y,
@@ -527,6 +552,8 @@ struct MapsIndex {
 #[derive(Debug, Deserialize)]
 struct MapEntry {
     map_id: String,
+    group_index: u16,
+    map_index: u16,
     layout_id: String,
     #[serde(default)]
     connections: Vec<MapIndexConnection>,
@@ -590,4 +617,19 @@ impl From<MapIndexConnection> for MapConnection {
             target_map_id: value.target_map_id,
         }
     }
+}
+
+fn to_protocol_map_id(group_index: u16, map_index: u16) -> anyhow::Result<u16> {
+    if group_index > u8::MAX as u16 {
+        return Err(anyhow!(
+            "group index {group_index} is out of range for protocol map id"
+        ));
+    }
+    if map_index > u8::MAX as u16 {
+        return Err(anyhow!(
+            "map index {map_index} is out of range for protocol map id"
+        ));
+    }
+
+    Ok((group_index << 8) | map_index)
 }
