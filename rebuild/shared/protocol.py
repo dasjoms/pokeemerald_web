@@ -50,6 +50,7 @@ class RejectionReason(IntEnum):
     SEQUENCE_MISMATCH = 3
     NOT_JOINED = 4
     INVALID_DIRECTION = 5
+    FORCED_MOVEMENT_DISABLED = 6
 
 
 @dataclass(frozen=True)

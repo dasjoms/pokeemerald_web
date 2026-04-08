@@ -12,6 +12,7 @@ import {
   clampToMapBounds,
   reconcilePredictions,
 } from './prediction';
+import { rejectionReasonLabel } from './rejectionReason';
 
 type ServerMessage =
   | { type: MessageType.SESSION_ACCEPTED; payload: { session_id: number; server_frame: number } }
@@ -152,6 +153,11 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
   state.playerTileY = clampedAuthoritativeTile.y;
   state.facing = result.facing;
   state.lastAckServerTick = result.server_frame;
+  if (!result.accepted) {
+    console.info(
+      `[walk-reject] seq=${result.input_seq} reason=${rejectionReasonLabel(result.reason)}`,
+    );
+  }
 
   if (ENABLE_CLIENT_PREDICTION) {
     // Presentation-only client prediction: server WalkResult remains authoritative.

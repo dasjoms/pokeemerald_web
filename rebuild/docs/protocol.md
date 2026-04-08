@@ -125,6 +125,14 @@ iterate without changing envelope semantics.
 - `3 SEQUENCE_MISMATCH` — stale, duplicate, or skipped `input_seq`.
 - `4 NOT_JOINED` — movement received before successful join.
 - `5 INVALID_DIRECTION` — direction byte is unknown.
+- `6 FORCED_MOVEMENT_DISABLED` — tile requires forced-movement behavior that is
+  intentionally gated off in Phase 1.
+
+`FORCED_MOVEMENT_DISABLED` is a Phase 1 compatibility gate for tiles whose
+movement semantics are not yet implemented (for example forced walk arrows,
+currents, slide/ice, waterfall flow, and similar forced movement behaviors).
+Server must reject the input deterministically without changing
+`authoritative_pos`.
 
 For collision and out-of-bounds attempts, server must keep
 `authoritative_pos` unchanged from the last valid position and still advance

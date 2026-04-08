@@ -441,7 +441,7 @@ fn map_reject_reason(reason: MoveRejectReason) -> RejectionReason {
     match reason {
         MoveRejectReason::Collision => RejectionReason::Collision,
         MoveRejectReason::OutOfBounds => RejectionReason::OutOfBounds,
-        MoveRejectReason::ForcedMovementDisabled => RejectionReason::Collision,
+        MoveRejectReason::ForcedMovementDisabled => RejectionReason::ForcedMovementDisabled,
     }
 }
 
