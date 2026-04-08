@@ -19,6 +19,7 @@ from rebuild.shared.mapgrid import (
 
 ROOT = Path(__file__).resolve().parents[3]
 PRIMARY_METATILE_COUNT = 512
+NUM_TILES_IN_PRIMARY = 512
 METATILE_ENTRY_TILE_INDEX_MASK = 0x03FF
 METATILE_ENTRY_HFLIP_MASK = 0x0400
 METATILE_ENTRY_VFLIP_MASK = 0x0800
@@ -467,6 +468,182 @@ def pair_id(primary_tileset: str, secondary_tileset: str) -> str:
     return f"{primary_tileset}__{secondary_tileset}".replace("/", "_")
 
 
+def _parse_c_functions(content: str) -> dict[str, str]:
+    functions: dict[str, str] = {}
+    signature = re.compile(r"(?:static\s+)?void\s+([A-Za-z0-9_]+)\s*\([^)]*\)\s*\{", re.M)
+    for match in signature.finditer(content):
+        name = match.group(1)
+        brace_index = match.end() - 1
+        depth = 0
+        end = brace_index
+        while end < len(content):
+            char = content[end]
+            if char == "{":
+                depth += 1
+            elif char == "}":
+                depth -= 1
+                if depth == 0:
+                    break
+            end += 1
+        functions[name] = content[brace_index + 1 : end]
+    return functions
+
+
+def _parse_tile_offset_expr(expr: str) -> int | None:
+    normalized = expr.replace(" ", "")
+    if normalized.startswith("NUM_TILES_IN_PRIMARY+"):
+        try:
+            return NUM_TILES_IN_PRIMARY + int(normalized.split("+", 1)[1], 0)
+        except ValueError:
+            return None
+    try:
+        return int(normalized, 0)
+    except ValueError:
+        return None
+
+
+def _parse_tile_destinations(expr: str, vdest_arrays: dict[str, list[int]]) -> list[int]:
+    match = re.search(r"TILE_OFFSET_4BPP\(([^)]+)\)", expr)
+    if match:
+        tile_index = _parse_tile_offset_expr(match.group(1))
+        return [tile_index] if tile_index is not None else []
+
+    match = re.match(r"([A-Za-z0-9_]+)\[[^]]+\]", expr.strip())
+    if match:
+        return list(vdest_arrays.get(match.group(1), []))
+    return []
+
+
+def _parse_tileset_anim_data() -> dict[str, Any]:
+    tileset_anims = (ROOT / "src/tileset_anims.c").read_text(encoding="utf-8")
+    headers_h = (ROOT / "src/data/tilesets/headers.h").read_text(encoding="utf-8")
+    functions = _parse_c_functions(tileset_anims)
+
+    frame_sources = dict(
+        re.findall(
+            r"const\s+u16\s+([A-Za-z0-9_]+)\[]\s*=\s*INCBIN_U16\(\"([^\"]+)\"\);",
+            tileset_anims,
+        )
+    )
+
+    frame_arrays: dict[str, list[str]] = {}
+    for array_name, array_body in re.findall(
+        r"const\s+u16\s+\*const\s+([A-Za-z0-9_]+)\[]\s*=\s*\{(.*?)\};",
+        tileset_anims,
+        re.S,
+    ):
+        items = [item.strip() for item in array_body.split(",") if item.strip()]
+        frame_arrays[array_name] = items
+
+    vdest_arrays: dict[str, list[int]] = {}
+    for array_name, array_body in re.findall(
+        r"u16\s+\*const\s+([A-Za-z0-9_]+)\[]\s*=\s*\{(.*?)\};",
+        tileset_anims,
+        re.S,
+    ):
+        tile_indices: list[int] = []
+        for offset_expr in re.findall(r"TILE_OFFSET_4BPP\(([^)]+)\)", array_body):
+            tile_index = _parse_tile_offset_expr(offset_expr)
+            if tile_index is not None:
+                tile_indices.append(tile_index)
+        vdest_arrays[array_name] = tile_indices
+
+    tileset_to_callback: dict[str, str | None] = {}
+    for tileset_name, block_body in re.findall(
+        r"const\s+struct\s+Tileset\s+(gTileset_[A-Za-z0-9_]+)\s*=\s*\{(.*?)\};",
+        headers_h,
+        re.S,
+    ):
+        callback_match = re.search(r"\.callback\s*=\s*([A-Za-z0-9_]+|NULL)", block_body)
+        tileset_to_callback[tileset_name] = None if not callback_match or callback_match.group(1) == "NULL" else callback_match.group(1)
+
+    init_defs: dict[str, dict[str, Any]] = {}
+    for func_name, body in functions.items():
+        if not func_name.startswith("InitTilesetAnim_"):
+            continue
+        role_match = re.search(r"s(Primary|Secondary)TilesetAnimCallback\s*=\s*([A-Za-z0-9_]+|NULL)\s*;", body)
+        max_match = re.search(r"s(?:Primary|Secondary)TilesetAnimCounterMax\s*=\s*([^;]+);", body)
+        if role_match:
+            init_defs[func_name] = {
+                "role": role_match.group(1).lower(),
+                "program": None if role_match.group(2) == "NULL" else role_match.group(2),
+                "counter_max_expr": max_match.group(1).strip() if max_match else None,
+            }
+
+    queue_ops: dict[str, dict[str, Any]] = {}
+    for func_name, body in functions.items():
+        copy_ops: list[dict[str, Any]] = []
+        for src_expr, dest_expr, size_expr in re.findall(
+            r"AppendTilesetAnimToBuffer\((.+?),\s*(.+?),\s*(.+?)\);",
+            body,
+        ):
+            array_match = re.match(r"([A-Za-z0-9_]+)\[[^]]+\]", src_expr.strip())
+            size_tiles_match = re.match(r"\s*(\d+)\s*\*\s*TILE_SIZE_4BPP\s*$", size_expr.strip())
+            copy_ops.append(
+                {
+                    "source_expr": src_expr.strip(),
+                    "frame_array": array_match.group(1) if array_match else None,
+                    "dest_expr": dest_expr.strip(),
+                    "dest_tile_indices": _parse_tile_destinations(dest_expr, vdest_arrays),
+                    "size_expr": size_expr.strip(),
+                    "size_tiles": int(size_tiles_match.group(1)) if size_tiles_match else None,
+                }
+            )
+
+        palette_ops: list[dict[str, Any]] = []
+        for src_expr, palette_slot in re.findall(
+            r"CpuCopy16\((.+?),\s*&gPlttBufferUnfaded\[BG_PLTT_ID\((\d+)\)\],\s*PLTT_SIZE_4BPP\);",
+            body,
+        ):
+            array_match = re.match(r"([A-Za-z0-9_]+)\[[^]]+\]", src_expr.strip())
+            palette_ops.append(
+                {
+                    "source_expr": src_expr.strip(),
+                    "palette_slot": int(palette_slot),
+                    "frame_array": array_match.group(1) if array_match else None,
+                }
+            )
+
+        if copy_ops or palette_ops:
+            queue_ops[func_name] = {"copy_ops": copy_ops, "palette_ops": palette_ops}
+
+    schedules: dict[str, list[dict[str, Any]]] = {}
+    for func_name, body in functions.items():
+        if not func_name.startswith("TilesetAnim_"):
+            continue
+        events: list[dict[str, Any]] = []
+        for mod_str, eq_str, block_body, single_stmt in re.findall(
+            r"if\s*\(\s*timer\s*%\s*(\d+)\s*==\s*(\d+)\s*\)\s*(?:\{(.*?)\}|([^\n;]+;))",
+            body,
+            re.S,
+        ):
+            action_body = block_body if block_body else single_stmt
+            calls = re.findall(r"([A-Za-z0-9_]+)\(([^)]*)\);", action_body)
+            actions: list[dict[str, Any]] = []
+            for action_name, action_args in calls:
+                op = queue_ops.get(action_name, {"copy_ops": [], "palette_ops": []})
+                actions.append(
+                    {
+                        "function": action_name,
+                        "args": action_args.strip(),
+                        "copy_ops": op["copy_ops"],
+                        "palette_ops": op["palette_ops"],
+                    }
+                )
+            events.append({"gate": {"mod": int(mod_str), "eq": int(eq_str)}, "actions": actions})
+        if events:
+            schedules[func_name] = events
+
+    return {
+        "frame_sources": frame_sources,
+        "frame_arrays": frame_arrays,
+        "vdest_arrays": vdest_arrays,
+        "tileset_to_callback": tileset_to_callback,
+        "init_defs": init_defs,
+        "schedules": schedules,
+    }
+
+
 def validate_render_data(output_dir: Path) -> dict[str, int]:
     layouts_index = read_json(output_dir / "layouts_index.json")
     maps_index = read_json(output_dir / "maps_index.json")
@@ -504,6 +681,7 @@ def validate_render_data(output_dir: Path) -> dict[str, int]:
 
         primary_tile_count = atlas_tile_counts_by_page.get(0, 0)
         secondary_tile_count = atlas_tile_counts_by_page.get(1, 0)
+        total_tile_capacity = primary_tile_count + secondary_tile_count
 
         palette_counts = {
             str(tileset_block["source_tileset"]): len(tileset_block.get("palettes", []))
@@ -581,6 +759,21 @@ def validate_render_data(output_dir: Path) -> dict[str, int]:
             else:
                 metatiles_resolved += 1
 
+        tile_anims_rel = render_assets.get("tile_anims")
+        if tile_anims_rel:
+            tile_anims_json = read_json(output_dir / str(tile_anims_rel))
+            for program in tile_anims_json.get("programs", {}).values():
+                for event in program.get("events", []):
+                    for action in event.get("actions", []):
+                        for copy_op in action.get("copy_ops", []):
+                            for tile_index in copy_op.get("dest_tile_indices", []):
+                                if tile_index < 0 or tile_index >= total_tile_capacity:
+                                    unresolved.append(
+                                        f"{layout_id}: animation destination tile index {tile_index} out of bounds "
+                                        f"(pair={pair_id_value}, total_tile_capacity={total_tile_capacity}, "
+                                        f"program={program.get('program')}, action={action.get('function')})"
+                                    )
+
     if unresolved:
         print("Render data parity validation failed:")
         for issue in unresolved[:50]:
@@ -610,6 +803,7 @@ def run_extract_render(output_dir: Path, clean: bool) -> None:
     layout_index = read_json(output_dir / "layouts_index.json")
     tileset_attr_paths = parse_tileset_attr_file_map()
     tileset_metatile_paths = parse_tileset_metatile_file_map()
+    tileset_anim_data = _parse_tileset_anim_data()
 
     pair_to_layouts: dict[str, list[str]] = defaultdict(list)
     for layout_summary in layout_index["layouts"]:
@@ -692,11 +886,82 @@ def run_extract_render(output_dir: Path, clean: bool) -> None:
         )
         (pair_dir / "atlas.json").write_text(json.dumps({"pages": atlas_pages}, indent=2) + "\n", encoding="utf-8")
 
+        tileset_programs: dict[str, Any] = {}
+        for role, tileset_name in (("primary", primary_tileset), ("secondary", secondary_tileset)):
+            callback_name = tileset_anim_data["tileset_to_callback"].get(tileset_name)
+            init_def = tileset_anim_data["init_defs"].get(callback_name) if callback_name else None
+            program_name = init_def["program"] if init_def else None
+            events = tileset_anim_data["schedules"].get(program_name, []) if program_name else []
+            tileset_programs[role] = {
+                "source_tileset": tileset_name,
+                "callback": callback_name,
+                "program": program_name,
+                "counter_max_expr": init_def["counter_max_expr"] if init_def else None,
+                "events": events,
+            }
+
+        referenced_frame_arrays: set[str] = set()
+        for role_data in tileset_programs.values():
+            for event in role_data["events"]:
+                for action in event["actions"]:
+                    for copy_op in action.get("copy_ops", []):
+                        if copy_op.get("frame_array"):
+                            referenced_frame_arrays.add(str(copy_op["frame_array"]))
+                    for palette_op in action.get("palette_ops", []):
+                        if palette_op.get("frame_array"):
+                            referenced_frame_arrays.add(str(palette_op["frame_array"]))
+
+        referenced_symbols: set[str] = set()
+        for array_name in referenced_frame_arrays:
+            referenced_symbols.update(tileset_anim_data["frame_arrays"].get(array_name, []))
+
+        source_records: list[dict[str, Any]] = []
+        symbol_to_index: dict[str, int] = {}
+        source_dir = pair_dir / "tile_anim_sources"
+        source_dir.mkdir(parents=True, exist_ok=True)
+        for symbol in sorted(referenced_symbols):
+            rel = tileset_anim_data["frame_sources"].get(symbol)
+            if not rel:
+                continue
+            src_path = ROOT / rel
+            if not src_path.exists():
+                continue
+            index = len(source_records)
+            extension = src_path.suffix or ".bin"
+            out_name = f"{index:04d}_{symbol}{extension}"
+            out_path = source_dir / out_name
+            shutil.copy2(src_path, out_path)
+            source_records.append(
+                {
+                    "source_index": index,
+                    "symbol": symbol,
+                    "source_path": rel,
+                    "render_path": out_path.relative_to(output_dir).as_posix(),
+                    "size_bytes": src_path.stat().st_size,
+                }
+            )
+            symbol_to_index[symbol] = index
+
+        frame_arrays_json: dict[str, list[int | None]] = {}
+        for array_name in sorted(referenced_frame_arrays):
+            indices = [symbol_to_index.get(symbol) for symbol in tileset_anim_data["frame_arrays"].get(array_name, [])]
+            frame_arrays_json[array_name] = indices
+
+        tile_anims_path = pair_dir / "tile_anims.json"
+        tile_anims_payload = {
+            "pair_id": pair_key,
+            "programs": tileset_programs,
+            "frame_arrays": frame_arrays_json,
+            "frame_sources": source_records,
+        }
+        tile_anims_path.write_text(json.dumps(tile_anims_payload, indent=2) + "\n", encoding="utf-8")
+
         render_ref = {
             "pair_id": pair_key,
             "atlas": f"render/{pair_key}/atlas.json",
             "palettes": f"render/{pair_key}/palettes.json",
             "metatiles": f"render/{pair_key}/metatiles.json",
+            "tile_anims": f"render/{pair_key}/tile_anims.json",
         }
         for layout_id in layout_ids:
             layout_path = layout_root / f"{layout_id}.json"
