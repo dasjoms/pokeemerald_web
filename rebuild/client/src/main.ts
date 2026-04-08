@@ -959,13 +959,7 @@ function applyTilesetAnimationDiff(
         dirtyBindings.add(binding);
       }
     }
-  }
-  for (const key of activeTileSwaps.keys()) {
-    if (!nextTileSwaps.has(key)) {
-      for (const binding of subtileBindingsByTile.get(key) ?? []) {
-        dirtyBindings.add(binding);
-      }
-    }
+    activeTileSwaps.set(key, next);
   }
   for (const [key, next] of nextPaletteSwaps.entries()) {
     const current = activePaletteSwaps.get(key);
@@ -974,48 +968,51 @@ function applyTilesetAnimationDiff(
         dirtyBindings.add(binding);
       }
     }
-  }
-  for (const key of activePaletteSwaps.keys()) {
-    if (!nextPaletteSwaps.has(key)) {
-      for (const binding of subtileBindingsByPalette.get(key) ?? []) {
-        dirtyBindings.add(binding);
-      }
-    }
+    activePaletteSwaps.set(key, next);
   }
   for (const [key, next] of nextPaletteBlends.entries()) {
     const current = activePaletteBlends.get(key);
-    if (!current || current.sourcePaletteAIndex !== next.sourcePaletteAIndex || current.sourcePaletteBIndex !== next.sourcePaletteBIndex) {
+    if (
+      !current ||
+      current.sourcePaletteAIndex !== next.sourcePaletteAIndex ||
+      current.sourcePaletteBIndex !== next.sourcePaletteBIndex ||
+      current.coeffA !== next.coeffA ||
+      current.coeffB !== next.coeffB
+    ) {
       for (const binding of subtileBindingsByPalette.get(key) ?? []) {
         dirtyBindings.add(binding);
       }
     }
-  }
-  for (const key of activePaletteBlends.keys()) {
-    if (!nextPaletteBlends.has(key)) {
-      for (const binding of subtileBindingsByPalette.get(key) ?? []) {
-        dirtyBindings.add(binding);
-      }
-    }
-  }
-
-  activeTileSwaps.clear();
-  activePaletteSwaps.clear();
-  activePaletteBlends.clear();
-  for (const [key, op] of nextTileSwaps.entries()) {
-    activeTileSwaps.set(key, op);
-  }
-  for (const [key, op] of nextPaletteSwaps.entries()) {
-    activePaletteSwaps.set(key, op);
-  }
-  for (const [key, op] of nextPaletteBlends.entries()) {
-    activePaletteBlends.set(key, op);
+    activePaletteBlends.set(key, next);
   }
 
   for (const [tileset, basePalettes] of basePalettesBySource.entries()) {
     const mutablePalettes = basePalettes.map((colors) => colors.map((rgb) => [...rgb]));
     activePalettesBySource.set(tileset, mutablePalettes);
   }
-  for (const op of activePaletteBlends.values()) {
+  const paletteCopyKeys = [...activePaletteSwaps.keys()].sort();
+  for (const key of paletteCopyKeys) {
+    const op = activePaletteSwaps.get(key);
+    if (!op) {
+      continue;
+    }
+    const mutable = activePalettesBySource.get(op.tilesetName);
+    if (!mutable) {
+      continue;
+    }
+    const sourcePalette = mutable[op.sourcePaletteIndex];
+    if (!sourcePalette) {
+      continue;
+    }
+    mutable[op.destPaletteIndex] = sourcePalette.map((rgb) => [...rgb]);
+  }
+
+  const paletteBlendKeys = [...activePaletteBlends.keys()].sort();
+  for (const key of paletteBlendKeys) {
+    const op = activePaletteBlends.get(key);
+    if (!op) {
+      continue;
+    }
     const mutable = activePalettesBySource.get(op.tilesetName);
     if (!mutable) {
       continue;
