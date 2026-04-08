@@ -20,7 +20,7 @@ use crate::{
         Direction, PlayerAvatar, RejectionReason, ServerMessage, SessionAccepted, WalkInput,
         WalkResult, WorldSnapshot,
     },
-    session::{PlayerState, Session, SessionInit},
+    session::{ActiveWalkTransition, PlayerState, Session, SessionInit},
 };
 
 #[derive(Debug, Clone)]
@@ -293,10 +293,51 @@ impl World {
     pub async fn tick(&self) {
         let tick = self.tick.fetch_add(1, Ordering::SeqCst) + 1;
         let mut sessions = self.sessions.write().await;
+        const SERVER_TICK_MS: f32 = 50.0;
 
         for session in sessions.values_mut() {
-            let queued = session.take_ready_walk_inputs();
-            for input in queued {
+            if let Some(active_walk) = session.active_walk_transition.as_mut() {
+                active_walk.advance(SERVER_TICK_MS);
+                if active_walk.is_complete() {
+                    session.player_state.map_id = active_walk.target_map_id.clone();
+                    session.player_state.tile_x = active_walk.target_x;
+                    session.player_state.tile_y = active_walk.target_y;
+                    session.player_state.facing = active_walk.direction;
+
+                    if session.player_state.map_id != active_walk.start_map_id {
+                        match self
+                            .world_snapshot_for_player_state(&session.player_state, tick as u32)
+                        {
+                            Ok(snapshot) => {
+                                let _ = session.send(ServerMessage::WorldSnapshot(snapshot));
+                            }
+                            Err(error) => {
+                                error!(
+                                    connection_id = session.connection_id,
+                                    previous_map_id = %active_walk.start_map_id,
+                                    map_id = %session.player_state.map_id,
+                                    "failed to build world snapshot after map transition: {error:#}"
+                                );
+                            }
+                        }
+                    }
+                    session.active_walk_transition = None;
+                } else if cfg!(debug_assertions) {
+                    trace!(
+                        connection_id = session.connection_id,
+                        input_seq = active_walk.input_seq,
+                        direction = ?active_walk.direction,
+                        progress_pixels = active_walk.progress_pixels(),
+                        "walk transition advanced"
+                    );
+                }
+            }
+
+            if session.active_walk_transition.is_some() {
+                continue;
+            }
+
+            while let Some(input) = session.pop_walk_input() {
                 let previous_map_id = session.player_state.map_id.clone();
                 session.player_state.facing = input.direction;
 
@@ -355,11 +396,21 @@ impl World {
                     connected_destination,
                 ) {
                     MoveValidation::Accepted { next_x, next_y } => {
-                        session.player_state.tile_x = next_x;
-                        session.player_state.tile_y = next_y;
-                        if let Some(resolved) = connection {
-                            session.player_state.map_id = resolved.target_map_id;
-                        }
+                        let target_map_id = connection
+                            .as_ref()
+                            .map_or(previous_map_id.clone(), |resolved| {
+                                resolved.target_map_id.clone()
+                            });
+                        session.active_walk_transition = Some(ActiveWalkTransition::new(
+                            input.input_seq,
+                            previous_map_id.clone(),
+                            session.player_state.tile_x,
+                            session.player_state.tile_y,
+                            target_map_id,
+                            next_x,
+                            next_y,
+                            input.direction,
+                        ));
                         (true, RejectionReason::None)
                     }
                     MoveValidation::Rejected(reason) => (false, map_reject_reason(reason)),
@@ -379,20 +430,8 @@ impl World {
 
                 let _ = session.send(result);
 
-                if accepted && session.player_state.map_id != previous_map_id {
-                    match self.world_snapshot_for_player_state(&session.player_state, tick as u32) {
-                        Ok(snapshot) => {
-                            let _ = session.send(ServerMessage::WorldSnapshot(snapshot));
-                        }
-                        Err(error) => {
-                            error!(
-                                connection_id = session.connection_id,
-                                previous_map_id = %previous_map_id,
-                                map_id = %session.player_state.map_id,
-                                "failed to build world snapshot after map transition: {error:#}"
-                            );
-                        }
-                    }
+                if accepted {
+                    break;
                 }
             }
         }
