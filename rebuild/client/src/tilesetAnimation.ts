@@ -58,13 +58,25 @@ type TilesetAnimProgram = {
 };
 
 export type TileAnimsFile = {
+  tile_anims_version: number;
   pair_id: string;
   programs: {
     primary: TilesetAnimProgram;
     secondary: TilesetAnimProgram;
   };
-  frame_arrays: Record<string, Array<number | null>>;
+  frame_arrays: Record<string, number[]>;
+  frame_payloads?: Array<{
+    payload_id: number;
+    symbol_name: string;
+    payload_offset: number;
+    tile_count: number | null;
+    byte_count: number;
+    expected_copy_size_tiles: number[];
+  }>;
+  frame_payload_blob?: string;
 };
+
+const SUPPORTED_TILE_ANIMS_VERSION = 2;
 
 export type TilesetAnimationState = {
   pairId: string;
@@ -232,6 +244,11 @@ export function createTilesetAnimationState(
   tileAnims: TileAnimsFile,
   primaryTileCount: number,
 ): TilesetAnimationState {
+  if (tileAnims.tile_anims_version !== SUPPORTED_TILE_ANIMS_VERSION) {
+    throw new Error(
+      `Unsupported tile_anims_version=${tileAnims.tile_anims_version} for ${tileAnims.pair_id}; expected ${SUPPORTED_TILE_ANIMS_VERSION}`,
+    );
+  }
   const primaryCounterMax = parseCounterMax(tileAnims.programs.primary.counter_max_expr, 256);
   const secondaryExpr = tileAnims.programs.secondary.counter_max_expr;
   const secondaryCounterMax = parseCounterMax(secondaryExpr, primaryCounterMax);

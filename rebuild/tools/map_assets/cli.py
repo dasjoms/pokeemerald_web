@@ -52,6 +52,9 @@ class ResolvedAnimFrameSource:
     tile_count: int | None
 
 
+TILE_ANIMS_VERSION = 2
+
+
 def read_json(path: Path) -> Any:
     with path.open("r", encoding="utf-8") as f:
         return json.load(f)
@@ -528,15 +531,20 @@ def _parse_tile_destinations(expr: str, vdest_arrays: dict[str, list[int]]) -> l
 
 def _parse_tileset_anim_data() -> dict[str, Any]:
     tileset_anims = (ROOT / "src/tileset_anims.c").read_text(encoding="utf-8")
+    graphics_c = (ROOT / "src/graphics.c").read_text(encoding="utf-8")
     headers_h = (ROOT / "src/data/tilesets/headers.h").read_text(encoding="utf-8")
     functions = _parse_c_functions(tileset_anims)
 
-    frame_sources = dict(
-        re.findall(
-            r"const\s+u16\s+([A-Za-z0-9_]+)\[]\s*=\s*INCBIN_U16\(\"([^\"]+)\"\);",
-            tileset_anims,
+    frame_sources: dict[str, str] = {}
+    for source_text in (tileset_anims, graphics_c):
+        frame_sources.update(
+            dict(
+                re.findall(
+                    r'const\s+u16\s+([A-Za-z0-9_]+)\[]\s*=\s*INCBIN_U16\("([^"]+)"(?:\s*,\s*"[^"]+")?\);',
+                    source_text,
+                )
+            )
         )
-    )
 
     frame_arrays: dict[str, list[str]] = {}
     for array_name, array_body in re.findall(
@@ -819,10 +827,43 @@ def _resolve_anim_frame_source(symbol: str, rel: str) -> ResolvedAnimFrameSource
             tile_count=tile_count,
         )
 
+    if bin_path.suffix == ".gbapal":
+        pal_path = bin_path.with_suffix(".pal")
+        if pal_path.exists():
+            lines = [line.strip() for line in pal_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+            if len(lines) < 4 or lines[0] != "JASC-PAL":
+                raise ValueError(f"Unsupported palette format for animation frame source: {pal_path}")
+            color_count = int(lines[2], 10)
+            color_lines = lines[3 : 3 + color_count]
+            out = bytearray()
+            for color_line in color_lines:
+                r_str, g_str, b_str = color_line.split()
+                r = int(r_str, 10)
+                g = int(g_str, 10)
+                b = int(b_str, 10)
+                gba = ((r >> 3) & 0x1F) | (((g >> 3) & 0x1F) << 5) | (((b >> 3) & 0x1F) << 10)
+                out.extend(struct.pack("<H", gba))
+            return ResolvedAnimFrameSource(
+                symbol=symbol,
+                source_path=pal_path.relative_to(ROOT).as_posix(),
+                render_extension=".gbapal",
+                data=bytes(out),
+                width=None,
+                height=None,
+                tile_count=None,
+            )
+
     raise ValueError(
         f"Unable to resolve animation frame symbol {symbol}: neither {bin_path.relative_to(ROOT)} nor "
         f"{png_path.relative_to(ROOT)} exists"
     )
+
+
+def _infer_tile_count_from_payload_byte_length(byte_length: int) -> int | None:
+    tile_size = 32
+    if byte_length <= 0 or byte_length % tile_size != 0:
+        return None
+    return byte_length // tile_size
 
 
 def validate_render_data(output_dir: Path) -> dict[str, int]:
@@ -1082,12 +1123,17 @@ def run_extract_render(output_dir: Path, clean: bool) -> None:
             }
 
         referenced_frame_arrays: set[str] = set()
+        frame_array_expected_copy_sizes: dict[str, set[int]] = defaultdict(set)
         for role_data in tileset_programs.values():
             for event in role_data["events"]:
                 for action in event["actions"]:
                     for copy_op in action.get("copy_ops", []):
                         if copy_op.get("frame_array"):
-                            referenced_frame_arrays.add(str(copy_op["frame_array"]))
+                            frame_array_name = str(copy_op["frame_array"])
+                            referenced_frame_arrays.add(frame_array_name)
+                            size_tiles = copy_op.get("size_tiles")
+                            if isinstance(size_tiles, int) and size_tiles > 0:
+                                frame_array_expected_copy_sizes[frame_array_name].add(size_tiles)
                     for palette_op in action.get("palette_ops", []):
                         if palette_op.get("frame_array"):
                             referenced_frame_arrays.add(str(palette_op["frame_array"]))
@@ -1097,9 +1143,15 @@ def run_extract_render(output_dir: Path, clean: bool) -> None:
             referenced_symbols.update(tileset_anim_data["frame_arrays"].get(array_name, []))
 
         source_records: list[dict[str, Any]] = []
-        symbol_to_index: dict[str, int] = {}
+        symbol_to_payload_id: dict[str, int] = {}
+        symbol_expected_copy_sizes: dict[str, set[int]] = defaultdict(set)
+        for array_name, expected_sizes in frame_array_expected_copy_sizes.items():
+            for symbol in tileset_anim_data["frame_arrays"].get(array_name, []):
+                symbol_expected_copy_sizes[symbol].update(expected_sizes)
         source_dir = pair_dir / "tile_anim_sources"
         source_dir.mkdir(parents=True, exist_ok=True)
+        payload_blob = bytearray()
+        payload_records: list[dict[str, Any]] = []
         for symbol in sorted(referenced_symbols):
             rel = tileset_anim_data["frame_sources"].get(symbol)
             if not rel:
@@ -1110,9 +1162,10 @@ def run_extract_render(output_dir: Path, clean: bool) -> None:
             out_name = f"{index:04d}_{symbol}{extension}"
             out_path = source_dir / out_name
             out_path.write_bytes(resolved.data)
+            source_index = len(source_records)
             source_records.append(
                 {
-                    "source_index": index,
+                    "source_index": source_index,
                     "symbol_name": symbol,
                     "source_path": resolved.source_path,
                     "render_path": out_path.relative_to(output_dir).as_posix(),
@@ -1122,18 +1175,44 @@ def run_extract_render(output_dir: Path, clean: bool) -> None:
                     "byte_count": len(resolved.data),
                 }
             )
-            symbol_to_index[symbol] = index
+            payload_id = len(payload_records)
+            payload_offset = len(payload_blob)
+            payload_blob.extend(resolved.data)
+            payload_tile_count = resolved.tile_count
+            if payload_tile_count is None:
+                payload_tile_count = _infer_tile_count_from_payload_byte_length(len(resolved.data))
+            payload_records.append(
+                {
+                    "payload_id": payload_id,
+                    "symbol_name": symbol,
+                    "payload_offset": payload_offset,
+                    "tile_count": payload_tile_count,
+                    "byte_count": len(resolved.data),
+                    "expected_copy_size_tiles": sorted(symbol_expected_copy_sizes.get(symbol, set())),
+                }
+            )
+            symbol_to_payload_id[symbol] = payload_id
 
-        frame_arrays_json: dict[str, list[int | None]] = {}
+        frame_arrays_json: dict[str, list[int]] = {}
         for array_name in sorted(referenced_frame_arrays):
-            indices = [symbol_to_index.get(symbol) for symbol in tileset_anim_data["frame_arrays"].get(array_name, [])]
-            frame_arrays_json[array_name] = indices
+            payload_ids: list[int] = []
+            for symbol in tileset_anim_data["frame_arrays"].get(array_name, []):
+                if symbol not in symbol_to_payload_id:
+                    raise ValueError(f"Missing payload id for frame symbol {symbol} in {array_name}")
+                payload_ids.append(symbol_to_payload_id[symbol])
+            frame_arrays_json[array_name] = payload_ids
+
+        frame_blob_path = pair_dir / "tile_anim_frames.bin"
+        frame_blob_path.write_bytes(bytes(payload_blob))
 
         tile_anims_path = pair_dir / "tile_anims.json"
         tile_anims_payload = {
+            "tile_anims_version": TILE_ANIMS_VERSION,
             "pair_id": pair_key,
             "programs": tileset_programs,
             "frame_arrays": frame_arrays_json,
+            "frame_payloads": payload_records,
+            "frame_payload_blob": frame_blob_path.name,
             "frame_sources": source_records,
         }
         tile_anims_path.write_text(json.dumps(tile_anims_payload, indent=2) + "\n", encoding="utf-8")

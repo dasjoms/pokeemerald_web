@@ -1,6 +1,7 @@
 import type { TileAnimsFile } from './tilesetAnimation';
 
 export const GENERAL_FIXTURE: TileAnimsFile = {
+  tile_anims_version: 2,
   pair_id: 'gTileset_General__gTileset_Petalburg',
   programs: {
     primary: {
@@ -18,6 +19,7 @@ export const GENERAL_FIXTURE: TileAnimsFile = {
 };
 
 export const MAUVILLE_FIXTURE: TileAnimsFile = {
+  tile_anims_version: 2,
   pair_id: 'gTileset_General__gTileset_Mauville',
   programs: {
     primary: { source_tileset: 'gTileset_General', counter_max_expr: '256', events: [] },
@@ -34,6 +36,7 @@ export const MAUVILLE_FIXTURE: TileAnimsFile = {
 };
 
 export const SOOTOPOLIS_GYM_FIXTURE: TileAnimsFile = {
+  tile_anims_version: 2,
   pair_id: 'gTileset_General__gTileset_SootopolisGym',
   programs: {
     primary: { source_tileset: 'gTileset_General', counter_max_expr: '256', events: [] },
@@ -49,6 +52,7 @@ export const SOOTOPOLIS_GYM_FIXTURE: TileAnimsFile = {
 };
 
 export const BATTLE_DOME_FIXTURE: TileAnimsFile = {
+  tile_anims_version: 2,
   pair_id: 'gTileset_Building__gTileset_BattleDome',
   programs: {
     primary: { source_tileset: 'gTileset_Building', counter_max_expr: '256', events: [] },

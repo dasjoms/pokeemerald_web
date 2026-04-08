@@ -515,6 +515,7 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
   if (!animationState) {
     animationState = createTilesetAnimationState(
       tileAnims ?? {
+        tile_anims_version: 2,
         pair_id: renderAssets.pair_id,
         programs: {
           primary: {
