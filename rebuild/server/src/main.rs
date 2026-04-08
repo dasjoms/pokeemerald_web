@@ -14,7 +14,10 @@ use tokio::sync::mpsc;
 use tracing::{error, info, warn};
 
 use rebuild_server::{
-    protocol::{ClientMessage, ServerMessage, SessionAccepted, WorldSnapshot},
+    protocol::{
+        decode_client_message, encode_server_message, ClientMessage, Position, ServerMessage,
+        SessionAccepted, WorldSnapshot,
+    },
     world::World,
 };
 
@@ -65,14 +68,17 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
 
     let writer = tokio::spawn(async move {
         while let Some(message) = outgoing_rx.recv().await {
-            match serde_json::to_string(&message) {
+            match encode_server_message(&message) {
                 Ok(payload) => {
-                    if ws_tx.send(Message::Text(payload)).await.is_err() {
+                    if ws_tx.send(Message::Binary(payload)).await.is_err() {
                         break;
                     }
                 }
                 Err(err) => {
-                    error!(?err, "failed to serialize outgoing websocket message");
+                    error!(
+                        ?err,
+                        "failed to serialize outgoing websocket binary message"
+                    );
                 }
             }
         }
@@ -80,9 +86,8 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
 
     let session = state.world.create_session(outgoing_tx).await;
     let accepted = ServerMessage::SessionAccepted(SessionAccepted {
-        connection_id: session.connection_id,
-        player_id: session.player_id.clone(),
-        server_tick: state.world.current_tick().await,
+        session_id: session.connection_id as u32,
+        server_frame: state.world.current_tick().await as u32,
     });
     if session.send(accepted).is_err() {
         let _ = state.world.remove_session(session.connection_id).await;
@@ -91,13 +96,15 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
     }
 
     let snapshot = ServerMessage::WorldSnapshot(WorldSnapshot {
-        map_id: state.world.map().map_id.clone(),
-        map_width: state.world.map().width,
-        map_height: state.world.map().height,
-        player_tile_x: session.player_state.tile_x,
-        player_tile_y: session.player_state.tile_y,
+        map_id: 1,
+        player_pos: Position {
+            x: session.player_state.tile_x,
+            y: session.player_state.tile_y,
+        },
         facing: session.player_state.facing,
-        server_tick: state.world.current_tick().await,
+        map_chunk_hash: Vec::new(),
+        map_chunk: Vec::new(),
+        server_frame: state.world.current_tick().await as u32,
     });
 
     if session.send(snapshot).is_err() {
@@ -120,7 +127,7 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
         };
 
         match message {
-            Message::Text(text) => match serde_json::from_str::<ClientMessage>(&text) {
+            Message::Binary(payload) => match decode_client_message(&payload) {
                 Ok(ClientMessage::WalkInput(input)) => {
                     if let Err(err) = state
                         .world
@@ -134,6 +141,9 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                         );
                     }
                 }
+                Ok(ClientMessage::JoinSession(_)) => {
+                    // Session is currently auto-provisioned at connect time.
+                }
                 Err(err) => {
                     warn!(
                         ?err,
@@ -142,10 +152,16 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                     );
                 }
             },
+            Message::Text(_) => {
+                warn!(
+                    connection_id = session.connection_id,
+                    "ignoring text websocket frame; binary protocol is required"
+                );
+            }
             Message::Close(_) => {
                 break;
             }
-            Message::Ping(_) | Message::Pong(_) | Message::Binary(_) => {}
+            Message::Ping(_) | Message::Pong(_) => {}
         }
     }
 

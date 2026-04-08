@@ -10,7 +10,7 @@ use tokio::sync::{mpsc, RwLock};
 
 use crate::{
     movement::{validate_walk, MoveRejectReason, MoveValidation, MovementMap},
-    protocol::{Facing, ServerMessage, WalkInput, WalkRejectReason, WalkResult},
+    protocol::{Direction, RejectionReason, ServerMessage, WalkInput, WalkResult},
     session::{PlayerState, Session, SessionInit},
 };
 
@@ -66,7 +66,7 @@ impl World {
             PlayerState {
                 tile_x: spawn_x,
                 tile_y: spawn_y,
-                facing: Facing::Down,
+                facing: Direction::Down,
             },
             outbound,
         );
@@ -100,11 +100,11 @@ impl World {
         for session in sessions.values_mut() {
             let queued = session.take_ready_walk_inputs();
             for input in queued {
-                session.player_state.facing = input.facing;
+                session.player_state.facing = input.direction;
                 let (accepted, reason) = match validate_walk(
                     session.player_state.tile_x,
                     session.player_state.tile_y,
-                    input.facing,
+                    input.direction,
                     MovementMap {
                         width: self.map.width,
                         height: self.map.height,
@@ -115,7 +115,7 @@ impl World {
                     MoveValidation::Accepted { next_x, next_y } => {
                         session.player_state.tile_x = next_x;
                         session.player_state.tile_y = next_y;
-                        (true, WalkRejectReason::None)
+                        (true, RejectionReason::None)
                     }
                     MoveValidation::Rejected(reason) => (false, map_reject_reason(reason)),
                 };
@@ -123,11 +123,13 @@ impl World {
                 let result = ServerMessage::WalkResult(WalkResult {
                     input_seq: input.input_seq,
                     accepted,
-                    player_tile_x: session.player_state.tile_x,
-                    player_tile_y: session.player_state.tile_y,
+                    authoritative_pos: crate::protocol::Position {
+                        x: session.player_state.tile_x,
+                        y: session.player_state.tile_y,
+                    },
                     facing: session.player_state.facing,
                     reason,
-                    server_tick: tick,
+                    server_frame: tick as u32,
                 });
 
                 let _ = session.send(result);
@@ -136,11 +138,11 @@ impl World {
     }
 }
 
-fn map_reject_reason(reason: MoveRejectReason) -> WalkRejectReason {
+fn map_reject_reason(reason: MoveRejectReason) -> RejectionReason {
     match reason {
-        MoveRejectReason::Collision => WalkRejectReason::Collision,
-        MoveRejectReason::OutOfBounds => WalkRejectReason::OutOfBounds,
-        MoveRejectReason::ForcedMovementDisabled => WalkRejectReason::ForcedMovementDisabled,
+        MoveRejectReason::Collision => RejectionReason::Collision,
+        MoveRejectReason::OutOfBounds => RejectionReason::OutOfBounds,
+        MoveRejectReason::ForcedMovementDisabled => RejectionReason::Collision,
     }
 }
 impl MapData {

@@ -2,13 +2,13 @@ use std::collections::{BTreeMap, VecDeque};
 
 use tokio::sync::mpsc;
 
-use crate::protocol::{Facing, ServerMessage, WalkInput};
+use crate::protocol::{Direction, ServerMessage, WalkInput};
 
 #[derive(Debug, Clone)]
 pub struct PlayerState {
     pub tile_x: u16,
     pub tile_y: u16,
-    pub facing: Facing,
+    pub facing: Direction,
 }
 
 #[derive(Debug)]
