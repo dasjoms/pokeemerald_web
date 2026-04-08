@@ -21,7 +21,7 @@ function toExpected(op: CopyTilesOp): { dest_tile_offset: number; byte_count: nu
   return {
     dest_tile_offset: op.destLocalTileIndex,
     byte_count: 0,
-    frame_id: op.sourceLocalTileIndex - op.destLocalTileIndex,
+    frame_id: Math.floor((op.sourceFrameLocalTileIndex - op.destLocalTileIndex) / op.tileCount),
   };
 }
 
@@ -52,7 +52,12 @@ function simulateRenderedState(
     const ops = callback(tick, 256).ops ?? [];
     for (const op of ops) {
       if (op.kind !== 'copy_tiles') continue;
-      state.set(destKey(op.pageId, op.destLocalTileIndex), op.sourceLocalTileIndex - op.destLocalTileIndex);
+      for (let offset = 0; offset < op.tileCount; offset += 1) {
+        state.set(
+          destKey(op.pageId, op.destLocalTileIndex + offset),
+          op.sourceFrameLocalTileIndex + offset,
+        );
+      }
     }
     snapshots.set(tick, new Map(state));
   }
@@ -152,7 +157,57 @@ describe('tileset animation parity harness', () => {
     const callback = buildMauvilleSecondaryAnimations();
     const ops = (callback(16, 256).ops ?? []).filter((op): op is CopyTilesOp => op.kind === 'copy_tiles');
     expect(ops.map((op) => op.destLocalTileIndex)).toEqual([96, 128]);
-    expect(ops.map((op) => op.sourceLocalTileIndex - op.destLocalTileIndex)).toEqual([2, 2]);
+    expect(ops.map((op) => op.sourceFrameLocalTileIndex)).toEqual([104, 136]);
+  });
+
+  it('copies General 2x2 flower frame blobs as concrete per-tile mappings', () => {
+    const callback = buildGeneralPrimaryAnimations();
+    const tick0Ops = (callback(0, 256).ops ?? []).filter((op): op is CopyTilesOp => op.kind === 'copy_tiles');
+    const tick16Ops = (callback(16, 256).ops ?? []).filter((op): op is CopyTilesOp => op.kind === 'copy_tiles');
+    expect(tick0Ops).toHaveLength(1);
+    expect(tick16Ops).toHaveLength(1);
+
+    const [tick0] = tick0Ops;
+    const [tick16] = tick16Ops;
+    expect(tick0.sourceFrameLocalTileIndex).toBe(508);
+    expect(tick16.sourceFrameLocalTileIndex).toBe(512);
+    expect(Array.from({ length: 4 }, (_, offset) => ({
+      dest: tick16.destLocalTileIndex + offset,
+      source: tick16.sourceFrameLocalTileIndex + offset,
+    }))).toEqual([
+      { dest: 508, source: 512 },
+      { dest: 509, source: 513 },
+      { dest: 510, source: 514 },
+      { dest: 511, source: 515 },
+    ]);
+  });
+
+  it('copies Mauville 2x2 flower frame blobs as concrete per-tile mappings', () => {
+    const callback = buildMauvilleSecondaryAnimations();
+    const ops = (callback(16, 256).ops ?? []).filter((op): op is CopyTilesOp => op.kind === 'copy_tiles');
+    expect(ops).toHaveLength(2);
+
+    const firstBlob = Array.from({ length: 4 }, (_, offset) => ({
+      dest: ops[0]!.destLocalTileIndex + offset,
+      source: ops[0]!.sourceFrameLocalTileIndex + offset,
+    }));
+    const secondBlob = Array.from({ length: 4 }, (_, offset) => ({
+      dest: ops[1]!.destLocalTileIndex + offset,
+      source: ops[1]!.sourceFrameLocalTileIndex + offset,
+    }));
+
+    expect(firstBlob).toEqual([
+      { dest: 96, source: 104 },
+      { dest: 97, source: 105 },
+      { dest: 98, source: 106 },
+      { dest: 99, source: 107 },
+    ]);
+    expect(secondBlob).toEqual([
+      { dest: 128, source: 136 },
+      { dest: 129, source: 137 },
+      { dest: 130, source: 138 },
+      { dest: 131, source: 139 },
+    ]);
   });
 
   it('persists General primary flower rendered frame between sparse update ticks', () => {
@@ -160,16 +215,16 @@ describe('tileset animation parity harness', () => {
     const snapshots = simulateRenderedState(callback, 0, 49);
     const flowerKey = destKey(0, 508);
 
-    expect(snapshots.get(16)?.get(flowerKey)).toBe(1);
-    expect(snapshots.get(17)?.get(flowerKey)).toBe(1);
-    expect(snapshots.get(24)?.get(flowerKey)).toBe(1);
-    expect(snapshots.get(31)?.get(flowerKey)).toBe(1);
+    expect(snapshots.get(16)?.get(flowerKey)).toBe(512);
+    expect(snapshots.get(17)?.get(flowerKey)).toBe(512);
+    expect(snapshots.get(24)?.get(flowerKey)).toBe(512);
+    expect(snapshots.get(31)?.get(flowerKey)).toBe(512);
 
-    expect(snapshots.get(32)?.get(flowerKey)).toBe(0);
-    expect(snapshots.get(47)?.get(flowerKey)).toBe(0);
+    expect(snapshots.get(32)?.get(flowerKey)).toBe(508);
+    expect(snapshots.get(47)?.get(flowerKey)).toBe(508);
 
-    expect(snapshots.get(48)?.get(flowerKey)).toBe(2);
-    expect(snapshots.get(49)?.get(flowerKey)).toBe(2);
+    expect(snapshots.get(48)?.get(flowerKey)).toBe(516);
+    expect(snapshots.get(49)?.get(flowerKey)).toBe(516);
   });
 
   it('retains previously rendered frames for Rustboro destinations not updated this tick', () => {
@@ -179,19 +234,19 @@ describe('tileset animation parity harness', () => {
     const key388 = destKey(1, 388);
     const key448 = destKey(1, 448);
 
-    expect(snapshots.get(0)?.get(key384)).toBe(0);
-    expect(snapshots.get(0)?.get(key448)).toBe(0);
+    expect(snapshots.get(0)?.get(key384)).toBe(384);
+    expect(snapshots.get(0)?.get(key448)).toBe(448);
 
-    expect(snapshots.get(1)?.get(key388)).toBe(0);
-    expect(snapshots.get(1)?.get(key384)).toBe(0);
-    expect(snapshots.get(1)?.get(key448)).toBe(0);
+    expect(snapshots.get(1)?.get(key388)).toBe(388);
+    expect(snapshots.get(1)?.get(key384)).toBe(384);
+    expect(snapshots.get(1)?.get(key448)).toBe(448);
 
-    expect(snapshots.get(8)?.get(key384)).toBe(1);
-    expect(snapshots.get(8)?.get(key448)).toBe(1);
-    expect(snapshots.get(8)?.get(key388)).toBe(0);
+    expect(snapshots.get(8)?.get(key384)).toBe(388);
+    expect(snapshots.get(8)?.get(key448)).toBe(452);
+    expect(snapshots.get(8)?.get(key388)).toBe(388);
 
-    expect(snapshots.get(9)?.get(key388)).toBe(1);
-    expect(snapshots.get(9)?.get(key384)).toBe(1);
-    expect(snapshots.get(9)?.get(key448)).toBe(1);
+    expect(snapshots.get(9)?.get(key388)).toBe(392);
+    expect(snapshots.get(9)?.get(key384)).toBe(388);
+    expect(snapshots.get(9)?.get(key448)).toBe(452);
   });
 });

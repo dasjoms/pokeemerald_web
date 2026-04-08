@@ -16,7 +16,7 @@ describe('applyCopyTilesOpsToActiveSwaps', () => {
 
     applyCopyTilesOpsToActiveSwaps(
       asCopyMap([
-        { pageId: 0, destLocalTileIndex: 508, sourceLocalTileIndex: 509, tileCount: 1 },
+        { pageId: 0, destLocalTileIndex: 508, sourceFrameLocalTileIndex: 509, tileCount: 1 },
       ]),
       activeTileSwaps,
     );
@@ -35,8 +35,8 @@ describe('applyCopyTilesOpsToActiveSwaps', () => {
 
     const dirty = applyCopyTilesOpsToActiveSwaps(
       asCopyMap([
-        { pageId: 1, destLocalTileIndex: 384, sourceLocalTileIndex: 385, tileCount: 1 },
-        { pageId: 1, destLocalTileIndex: 388, sourceLocalTileIndex: 389, tileCount: 1 },
+        { pageId: 1, destLocalTileIndex: 384, sourceFrameLocalTileIndex: 385, tileCount: 1 },
+        { pageId: 1, destLocalTileIndex: 388, sourceFrameLocalTileIndex: 389, tileCount: 1 },
       ]),
       activeTileSwaps,
     );
