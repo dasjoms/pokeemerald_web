@@ -1,0 +1,408 @@
+{
+  "tick_ms": 16.6666666667,
+  "scenarios": [
+    {
+      "name": "idle_facing_all_directions",
+      "events": [
+        {
+          "tick": 0,
+          "action": "set_idle",
+          "direction": "DOWN"
+        },
+        {
+          "tick": 2,
+          "action": "set_idle",
+          "direction": "UP"
+        },
+        {
+          "tick": 4,
+          "action": "set_idle",
+          "direction": "LEFT"
+        },
+        {
+          "tick": 6,
+          "action": "set_idle",
+          "direction": "RIGHT"
+        }
+      ],
+      "expected": [
+        {
+          "anim_id": "anim_face_south",
+          "frame_index": 100,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_face_south",
+          "frame_index": 100,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_face_north",
+          "frame_index": 101,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_face_north",
+          "frame_index": 101,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_face_west",
+          "frame_index": 102,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_face_west",
+          "frame_index": 102,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_face_east",
+          "frame_index": 103,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_face_east",
+          "frame_index": 103,
+          "stride_phase": 0
+        }
+      ]
+    },
+    {
+      "name": "continuous_walking_all_directions",
+      "events": [
+        {
+          "tick": 0,
+          "action": "start_walk",
+          "direction": "DOWN"
+        },
+        {
+          "tick": 8,
+          "action": "start_walk",
+          "direction": "UP"
+        },
+        {
+          "tick": 16,
+          "action": "start_walk",
+          "direction": "LEFT"
+        },
+        {
+          "tick": 24,
+          "action": "start_walk",
+          "direction": "RIGHT"
+        }
+      ],
+      "expected": [
+        {
+          "anim_id": "anim_walk_south",
+          "frame_index": 200,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_walk_south",
+          "frame_index": 200,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_walk_south",
+          "frame_index": 201,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_walk_south",
+          "frame_index": 201,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_walk_south",
+          "frame_index": 202,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_walk_south",
+          "frame_index": 202,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_walk_south",
+          "frame_index": 203,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_walk_south",
+          "frame_index": 203,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_walk_north",
+          "frame_index": 210,
+          "stride_phase": 1
+        },
+        {
+          "anim_id": "anim_walk_north",
+          "frame_index": 210,
+          "stride_phase": 1
+        },
+        {
+          "anim_id": "anim_walk_north",
+          "frame_index": 211,
+          "stride_phase": 1
+        },
+        {
+          "anim_id": "anim_walk_north",
+          "frame_index": 211,
+          "stride_phase": 1
+        },
+        {
+          "anim_id": "anim_walk_north",
+          "frame_index": 212,
+          "stride_phase": 1
+        },
+        {
+          "anim_id": "anim_walk_north",
+          "frame_index": 212,
+          "stride_phase": 1
+        },
+        {
+          "anim_id": "anim_walk_north",
+          "frame_index": 213,
+          "stride_phase": 1
+        },
+        {
+          "anim_id": "anim_walk_north",
+          "frame_index": 213,
+          "stride_phase": 1
+        },
+        {
+          "anim_id": "anim_walk_west",
+          "frame_index": 220,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_walk_west",
+          "frame_index": 220,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_walk_west",
+          "frame_index": 221,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_walk_west",
+          "frame_index": 221,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_walk_west",
+          "frame_index": 222,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_walk_west",
+          "frame_index": 222,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_walk_west",
+          "frame_index": 223,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_walk_west",
+          "frame_index": 223,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_walk_east",
+          "frame_index": 230,
+          "stride_phase": 1
+        },
+        {
+          "anim_id": "anim_walk_east",
+          "frame_index": 230,
+          "stride_phase": 1
+        },
+        {
+          "anim_id": "anim_walk_east",
+          "frame_index": 231,
+          "stride_phase": 1
+        },
+        {
+          "anim_id": "anim_walk_east",
+          "frame_index": 231,
+          "stride_phase": 1
+        },
+        {
+          "anim_id": "anim_walk_east",
+          "frame_index": 232,
+          "stride_phase": 1
+        },
+        {
+          "anim_id": "anim_walk_east",
+          "frame_index": 232,
+          "stride_phase": 1
+        },
+        {
+          "anim_id": "anim_walk_east",
+          "frame_index": 233,
+          "stride_phase": 1
+        },
+        {
+          "anim_id": "anim_walk_east",
+          "frame_index": 233,
+          "stride_phase": 1
+        }
+      ]
+    },
+    {
+      "name": "turn_then_walk_transitions",
+      "events": [
+        {
+          "tick": 0,
+          "action": "set_idle",
+          "direction": "DOWN"
+        },
+        {
+          "tick": 1,
+          "action": "set_idle",
+          "direction": "LEFT"
+        },
+        {
+          "tick": 2,
+          "action": "start_walk",
+          "direction": "LEFT"
+        },
+        {
+          "tick": 6,
+          "action": "set_idle",
+          "direction": "UP"
+        },
+        {
+          "tick": 7,
+          "action": "start_walk",
+          "direction": "UP"
+        }
+      ],
+      "expected": [
+        {
+          "anim_id": "anim_face_south",
+          "frame_index": 100,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_face_west",
+          "frame_index": 102,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_walk_west",
+          "frame_index": 220,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_walk_west",
+          "frame_index": 220,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_walk_west",
+          "frame_index": 221,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_walk_west",
+          "frame_index": 221,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_face_north",
+          "frame_index": 101,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_walk_north",
+          "frame_index": 210,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_walk_north",
+          "frame_index": 210,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_walk_north",
+          "frame_index": 211,
+          "stride_phase": 0
+        }
+      ]
+    },
+    {
+      "name": "alternating_step_starts",
+      "events": [
+        {
+          "tick": 0,
+          "action": "start_walk",
+          "direction": "DOWN"
+        },
+        {
+          "tick": 2,
+          "action": "start_walk",
+          "direction": "DOWN"
+        },
+        {
+          "tick": 4,
+          "action": "start_walk",
+          "direction": "DOWN"
+        },
+        {
+          "tick": 6,
+          "action": "start_walk",
+          "direction": "DOWN"
+        }
+      ],
+      "expected": [
+        {
+          "anim_id": "anim_walk_south",
+          "frame_index": 200,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_walk_south",
+          "frame_index": 200,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_walk_south",
+          "frame_index": 202,
+          "stride_phase": 1
+        },
+        {
+          "anim_id": "anim_walk_south",
+          "frame_index": 202,
+          "stride_phase": 1
+        },
+        {
+          "anim_id": "anim_walk_south",
+          "frame_index": 200,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_walk_south",
+          "frame_index": 200,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_walk_south",
+          "frame_index": 202,
+          "stride_phase": 1
+        },
+        {
+          "anim_id": "anim_walk_south",
+          "frame_index": 202,
+          "stride_phase": 1
+        }
+      ]
+    }
+  ]
+}

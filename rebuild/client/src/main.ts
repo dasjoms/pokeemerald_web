@@ -277,6 +277,9 @@ const hud = {
   facing: document.querySelector<HTMLElement>('[data-hud="facing"]'),
   inputSeq: document.querySelector<HTMLElement>('[data-hud="inputSeq"]'),
   serverTick: document.querySelector<HTMLElement>('[data-hud="serverTick"]'),
+  animId: document.querySelector<HTMLElement>('[data-hud="animId"]'),
+  animFrame: document.querySelector<HTMLElement>('[data-hud="animFrame"]'),
+  stridePhase: document.querySelector<HTMLElement>('[data-hud="stridePhase"]'),
 };
 
 const app = new Application();
@@ -1397,4 +1400,21 @@ function renderHud(): void {
   hud.facing && (hud.facing.textContent = Direction[state.facing]);
   hud.inputSeq && (hud.inputSeq.textContent = `${Math.max(0, state.lastInputSeq - 1)}`);
   hud.serverTick && (hud.serverTick.textContent = `${state.lastAckServerTick}`);
+
+  const animationDebug = playerAnimation.getDebugState();
+  const debugValue = debugOverlayEnabled
+    ? {
+        animId: animationDebug.animId,
+        animFrame: `${animationDebug.frameIndex}`,
+        stridePhase: `${animationDebug.stridePhase}`,
+      }
+    : {
+        animId: 'hidden (toggle F3)',
+        animFrame: 'hidden (toggle F3)',
+        stridePhase: 'hidden (toggle F3)',
+      };
+
+  hud.animId && (hud.animId.textContent = debugValue.animId);
+  hud.animFrame && (hud.animFrame.textContent = debugValue.animFrame);
+  hud.stridePhase && (hud.stridePhase.textContent = debugValue.stridePhase);
 }

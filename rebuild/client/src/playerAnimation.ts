@@ -64,6 +64,14 @@ export type PlayerFrameSelection = {
   hFlip: boolean;
 };
 
+export type PlayerAnimationDebugState = {
+  animId: string;
+  frameIndex: number;
+  stridePhase: 0 | 1;
+  mode: AnimationKind;
+  direction: Cardinal;
+};
+
 export type PlayerAnimationAssets = {
   avatarId: string;
   frameWidth: number;
@@ -171,6 +179,7 @@ export class PlayerAnimationController {
   private frameCommandIndex = 0;
   private ticksUntilAdvance = 0;
   private tickAccumulatorMs = 0;
+  private stridePhase: 0 | 1 = 0;
 
   constructor(assets: PlayerAnimationAssets) {
     this.assets = assets;
@@ -183,6 +192,7 @@ export class PlayerAnimationController {
       direction: mapDirection(direction),
     };
     this.frameCommandIndex = 0;
+    this.stridePhase = 0;
     this.resetFrameTimer();
   }
 
@@ -191,6 +201,7 @@ export class PlayerAnimationController {
     if (this.mode.kind === 'walk') {
       this.frameCommandIndex =
         WALK_ALTERNATION_REMAP.get(this.frameCommandIndex) ?? this.frameCommandIndex;
+      this.stridePhase = this.stridePhase === 0 ? 1 : 0;
     }
 
     this.mode = {
@@ -224,6 +235,16 @@ export class PlayerAnimationController {
     return {
       texture,
       hFlip: command.h_flip,
+    };
+  }
+
+  getDebugState(): PlayerAnimationDebugState {
+    return {
+      animId: this.currentDirectionalAnimation().anim_cmd_symbol,
+      frameIndex: this.currentCommand().frame,
+      stridePhase: this.stridePhase,
+      mode: this.mode.kind,
+      direction: this.mode.direction,
     };
   }
 
