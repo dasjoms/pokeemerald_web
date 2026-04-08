@@ -262,48 +262,14 @@ impl World {
             return Ok(());
         }
 
-        let session_map_id = session.player_state.map_id.clone();
-        let protocol_map_id = self
-            .protocol_map_ids
-            .get(&session_map_id)
-            .copied()
-            .ok_or_else(|| {
-                let message = format!(
-                    "failed to map session map id {} to protocol u16 for connection {}",
-                    session_map_id, connection_id
-                );
-                error!(connection_id, map_id = %session_map_id, "{message}");
-                anyhow!(message)
-            })?;
-        let map_chunk = {
-            let map = self.maps.get(&session_map_id).ok_or_else(|| {
-                let message = format!(
-                    "failed to load map {} for world snapshot connection {}",
-                    session_map_id, connection_id
-                );
-                error!(connection_id, map_id = %session_map_id, "{message}");
-                anyhow!(message)
-            })?;
-            serialize_world_snapshot_map_chunk(map)
-        };
-        let map_chunk_hash = world_snapshot_map_chunk_hash(&map_chunk);
-
         session.joined = true;
         session.send(ServerMessage::SessionAccepted(SessionAccepted {
             session_id: session.connection_id as u32,
             server_frame: tick,
         }))?;
-        session.send(ServerMessage::WorldSnapshot(WorldSnapshot {
-            map_id: protocol_map_id,
-            player_pos: crate::protocol::Position {
-                x: session.player_state.tile_x,
-                y: session.player_state.tile_y,
-            },
-            facing: session.player_state.facing,
-            map_chunk_hash,
-            map_chunk,
-            server_frame: tick,
-        }))?;
+        session.send(ServerMessage::WorldSnapshot(
+            self.world_snapshot_for_player_state(&session.player_state, tick)?,
+        ))?;
 
         Ok(())
     }
@@ -315,6 +281,7 @@ impl World {
         for session in sessions.values_mut() {
             let queued = session.take_ready_walk_inputs();
             for input in queued {
+                let previous_map_id = session.player_state.map_id.clone();
                 session.player_state.facing = input.direction;
 
                 let Some(current_map) = self.maps.get(&session.player_state.map_id) else {
@@ -395,8 +362,61 @@ impl World {
                 });
 
                 let _ = session.send(result);
+
+                if accepted && session.player_state.map_id != previous_map_id {
+                    match self.world_snapshot_for_player_state(&session.player_state, tick as u32) {
+                        Ok(snapshot) => {
+                            let _ = session.send(ServerMessage::WorldSnapshot(snapshot));
+                        }
+                        Err(error) => {
+                            error!(
+                                connection_id = session.connection_id,
+                                previous_map_id = %previous_map_id,
+                                map_id = %session.player_state.map_id,
+                                "failed to build world snapshot after map transition: {error:#}"
+                            );
+                        }
+                    }
+                }
             }
         }
+    }
+
+    fn world_snapshot_for_player_state(
+        &self,
+        player_state: &PlayerState,
+        server_frame: u32,
+    ) -> anyhow::Result<WorldSnapshot> {
+        let session_map_id = player_state.map_id.clone();
+        let protocol_map_id = self
+            .protocol_map_ids
+            .get(&session_map_id)
+            .copied()
+            .ok_or_else(|| {
+                anyhow!(
+                    "failed to map session map id {} to protocol u16",
+                    session_map_id
+                )
+            })?;
+        let map_chunk = {
+            let map = self.maps.get(&session_map_id).ok_or_else(|| {
+                anyhow!("failed to load map {} for world snapshot", session_map_id)
+            })?;
+            serialize_world_snapshot_map_chunk(map)
+        };
+        let map_chunk_hash = world_snapshot_map_chunk_hash(&map_chunk);
+
+        Ok(WorldSnapshot {
+            map_id: protocol_map_id,
+            player_pos: crate::protocol::Position {
+                x: player_state.tile_x,
+                y: player_state.tile_y,
+            },
+            facing: player_state.facing,
+            map_chunk_hash,
+            map_chunk,
+            server_frame,
+        })
     }
 
     fn resolve_connected_destination(
