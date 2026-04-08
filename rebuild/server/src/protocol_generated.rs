@@ -37,6 +37,14 @@ pub enum RejectionReason {
     ForcedMovementDisabled = 6,
 }
 
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum PlayerAvatar {
+    Brendan = 0,
+    May = 1,
+}
+
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Position {
     pub x: u16,
@@ -59,6 +67,7 @@ pub struct WalkInput {
 pub struct SessionAccepted {
     pub session_id: u32,
     pub server_frame: u32,
+    pub avatar: PlayerAvatar,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
@@ -66,6 +75,7 @@ pub struct WorldSnapshot {
     pub map_id: u16,
     pub player_pos: Position,
     pub facing: Direction,
+    pub avatar: PlayerAvatar,
     pub map_chunk_hash: Vec<u8>,
     pub map_chunk: Vec<u8>,
     pub server_frame: u32,

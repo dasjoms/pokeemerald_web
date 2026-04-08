@@ -17,8 +17,8 @@ use crate::{
         MovementMap,
     },
     protocol::{
-        Direction, RejectionReason, ServerMessage, SessionAccepted, WalkInput, WalkResult,
-        WorldSnapshot,
+        Direction, PlayerAvatar, RejectionReason, ServerMessage, SessionAccepted, WalkInput,
+        WalkResult, WorldSnapshot,
     },
     session::{PlayerState, Session, SessionInit},
 };
@@ -57,7 +57,13 @@ pub struct World {
     initial_map_id: String,
     maps: HashMap<String, MapData>,
     protocol_map_ids: HashMap<String, u16>,
+    player_profiles: RwLock<HashMap<String, PlayerProfile>>,
     sessions: RwLock<HashMap<u64, Session>>,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct PlayerProfile {
+    avatar: PlayerAvatar,
 }
 
 impl World {
@@ -128,6 +134,7 @@ impl World {
             initial_map_id: initial_map_id.to_string(),
             maps: loaded,
             protocol_map_ids,
+            player_profiles: RwLock::new(HashMap::new()),
             sessions: RwLock::new(HashMap::new()),
         })
     }
@@ -161,6 +168,7 @@ impl World {
                 tile_x: spawn_x,
                 tile_y: spawn_y,
                 facing: Direction::Down,
+                avatar: PlayerAvatar::Brendan,
             },
             outbound,
         );
@@ -251,8 +259,13 @@ impl World {
         Ok(())
     }
 
-    pub async fn join_session(&self, connection_id: u64) -> anyhow::Result<()> {
+    pub async fn join_session(
+        &self,
+        connection_id: u64,
+        requested_player_id: &str,
+    ) -> anyhow::Result<()> {
         let tick = self.current_tick().await as u32;
+        let profile = self.load_or_create_profile(requested_player_id).await;
         let mut sessions = self.sessions.write().await;
         let session = sessions
             .get_mut(&connection_id)
@@ -262,10 +275,13 @@ impl World {
             return Ok(());
         }
 
+        session.player_id = requested_player_id.to_string();
+        session.player_state.avatar = profile.avatar;
         session.joined = true;
         session.send(ServerMessage::SessionAccepted(SessionAccepted {
             session_id: session.connection_id as u32,
             server_frame: tick,
+            avatar: session.player_state.avatar,
         }))?;
         session.send(ServerMessage::WorldSnapshot(
             self.world_snapshot_for_player_state(&session.player_state, tick)?,
@@ -413,10 +429,20 @@ impl World {
                 y: player_state.tile_y,
             },
             facing: player_state.facing,
+            avatar: player_state.avatar,
             map_chunk_hash,
             map_chunk,
             server_frame,
         })
+    }
+
+    async fn load_or_create_profile(&self, player_id: &str) -> PlayerProfile {
+        let mut profiles = self.player_profiles.write().await;
+        *profiles
+            .entry(player_id.to_string())
+            .or_insert_with(|| PlayerProfile {
+                avatar: avatar_for_player_id(player_id),
+            })
     }
 
     fn resolve_connected_destination(
@@ -484,6 +510,19 @@ impl World {
             reason,
             server_frame,
         })
+    }
+}
+
+fn avatar_for_player_id(player_id: &str) -> PlayerAvatar {
+    let mut hash = 0u8;
+    for byte in player_id.bytes() {
+        hash ^= byte;
+    }
+
+    if hash & 1 == 0 {
+        PlayerAvatar::Brendan
+    } else {
+        PlayerAvatar::May
     }
 }
 

@@ -2,8 +2,10 @@ import { Application, Container, Graphics, Sprite, TextureSource, TextureStyle }
 import {
   Direction,
   MessageType,
+  PlayerAvatar,
   PROTOCOL_VERSION,
   RejectionReason,
+  type SessionAccepted,
   type WalkResult,
   type WorldSnapshot,
 } from './protocol_generated';
@@ -27,7 +29,7 @@ import {
 } from './playerAnimation';
 
 type ServerMessage =
-  | { type: MessageType.SESSION_ACCEPTED; payload: { session_id: number; server_frame: number } }
+  | { type: MessageType.SESSION_ACCEPTED; payload: SessionAccepted }
   | { type: MessageType.WORLD_SNAPSHOT; payload: WorldSnapshot }
   | { type: MessageType.WALK_RESULT; payload: WalkResult };
 
@@ -194,9 +196,6 @@ const TILE_SIZE = 16;
 const SUBTILE_SIZE = 8;
 const RENDER_SCALE = 4;
 const TILESET_ANIMATION_STEP_MS = 1000 / 60;
-const PLAYER_ANIMATION_AVATAR_ID = new URLSearchParams(window.location.search).get('avatar') === 'may'
-  ? 'may'
-  : 'brendan';
 const ENABLE_CLIENT_PREDICTION =
   new URLSearchParams(window.location.search).get('predict') === '1';
 const ENABLE_DEBUG_OVERLAY_DEFAULT =
@@ -286,12 +285,13 @@ gameContainer.addChild(worldContainer);
 app.stage.addChild(gameContainer);
 debugOverlayLayer.visible = debugOverlayEnabled;
 
-const playerAnimationAssets = await loadPlayerAnimationAssets({
-  avatarId: PLAYER_ANIMATION_AVATAR_ID,
+let activeAvatar: PlayerAvatar = PlayerAvatar.BRENDAN;
+let playerAnimationAssets = await loadPlayerAnimationAssets({
+  avatarId: avatarToAssetId(activeAvatar),
   loadJsonFromAssets,
   resolveImageUrlFromAssets,
 });
-const playerAnimation = new PlayerAnimationController(playerAnimationAssets);
+let playerAnimation = new PlayerAnimationController(playerAnimationAssets);
 const initialPlayerFrame = playerAnimation.getCurrentFrame();
 const playerSprite = new Sprite(initialPlayerFrame.texture);
 playerSprite.scale.x = initialPlayerFrame.hFlip ? -1 : 1;
@@ -394,6 +394,7 @@ async function connectWebSocket(): Promise<void> {
 
 async function handleServerMessage(message: ServerMessage): Promise<void> {
   if (message.type === MessageType.SESSION_ACCEPTED) {
+    await applyAuthoritativeAvatar(message.payload.avatar);
     state.lastAckServerTick = message.payload.server_frame;
     renderHud();
     return;
@@ -405,6 +406,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     state.playerTileX = snapshot.player_pos.x;
     state.playerTileY = snapshot.player_pos.y;
     state.facing = snapshot.facing;
+    await applyAuthoritativeAvatar(snapshot.avatar);
     playerAnimation.setIdle(snapshot.facing);
     state.lastAckServerTick = snapshot.server_frame;
     pendingPredictedInputs.clear();
@@ -1154,6 +1156,7 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
       payload: {
         session_id: readU32(payload, 0),
         server_frame: readU32(payload, 4),
+        avatar: readU8(payload, 8) as PlayerAvatar,
       },
     };
   }
@@ -1167,6 +1170,8 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
     const y = readU16(payload, offset);
     offset += 2;
     const facing = readU8(payload, offset) as Direction;
+    offset += 1;
+    const avatar = readU8(payload, offset) as PlayerAvatar;
     offset += 1;
     const serverFrame = readU32(payload, offset);
     offset += 4;
@@ -1185,6 +1190,7 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
         map_id: mapId,
         player_pos: { x, y },
         facing,
+        avatar,
         map_chunk_hash: mapChunkHash,
         map_chunk: mapChunk,
         server_frame: serverFrame,
@@ -1210,6 +1216,29 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
   }
 
   throw new Error(`unsupported message type: ${messageType}`);
+}
+
+function avatarToAssetId(avatar: PlayerAvatar): 'brendan' | 'may' {
+  return avatar === PlayerAvatar.MAY ? 'may' : 'brendan';
+}
+
+async function applyAuthoritativeAvatar(avatar: PlayerAvatar): Promise<void> {
+  if (avatar === activeAvatar) {
+    return;
+  }
+
+  activeAvatar = avatar;
+  playerAnimationAssets = await loadPlayerAnimationAssets({
+    avatarId: avatarToAssetId(avatar),
+    loadJsonFromAssets,
+    resolveImageUrlFromAssets,
+  });
+  playerAnimation = new PlayerAnimationController(playerAnimationAssets);
+  playerAnimation.setIdle(state.facing);
+  playerSprite.anchor.set(
+    playerAnimationAssets.anchorX / playerAnimationAssets.frameWidth,
+    playerAnimationAssets.anchorY / playerAnimationAssets.frameHeight,
+  );
 }
 
 function readU8(raw: Uint8Array, offset: number): number {

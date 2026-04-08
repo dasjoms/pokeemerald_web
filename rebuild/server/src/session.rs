@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 
 use tokio::sync::mpsc;
 
-use crate::protocol::{Direction, ServerMessage, WalkInput};
+use crate::protocol::{Direction, PlayerAvatar, ServerMessage, WalkInput};
 
 #[derive(Debug, Clone)]
 pub struct PlayerState {
@@ -10,6 +10,7 @@ pub struct PlayerState {
     pub tile_x: u16,
     pub tile_y: u16,
     pub facing: Direction,
+    pub avatar: PlayerAvatar,
 }
 
 #[derive(Debug)]

@@ -4,7 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 from textwrap import dedent
 
-from protocol import PROTOCOL_VERSION, Direction, MessageType, RejectionReason
+from protocol import PROTOCOL_VERSION, Direction, MessageType, PlayerAvatar, RejectionReason
 
 ROOT = Path(__file__).resolve().parents[1]
 SERVER_OUT = ROOT / "server" / "src" / "protocol_generated.rs"
@@ -52,6 +52,14 @@ pub enum RejectionReason {{
     ForcedMovementDisabled = {int(RejectionReason.FORCED_MOVEMENT_DISABLED)},
 }}
 
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum PlayerAvatar {{
+    Brendan = {int(PlayerAvatar.BRENDAN)},
+    May = {int(PlayerAvatar.MAY)},
+}}
+
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Position {{
     pub x: u16,
@@ -74,6 +82,7 @@ pub struct WalkInput {{
 pub struct SessionAccepted {{
     pub session_id: u32,
     pub server_frame: u32,
+    pub avatar: PlayerAvatar,
 }}
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
@@ -81,6 +90,7 @@ pub struct WorldSnapshot {{
     pub map_id: u16,
     pub player_pos: Position,
     pub facing: Direction,
+    pub avatar: PlayerAvatar,
     pub map_chunk_hash: Vec<u8>,
     pub map_chunk: Vec<u8>,
     pub server_frame: u32,
@@ -137,14 +147,20 @@ export enum RejectionReason {{
   FORCED_MOVEMENT_DISABLED = {int(RejectionReason.FORCED_MOVEMENT_DISABLED)},
 }}
 
+export enum PlayerAvatar {{
+  BRENDAN = {int(PlayerAvatar.BRENDAN)},
+  MAY = {int(PlayerAvatar.MAY)},
+}}
+
 export type Position = {{ x: number; y: number }};
 export type JoinSession = {{ player_id: string }};
 export type WalkInput = {{ direction: Direction; input_seq: number; client_time: bigint }};
-export type SessionAccepted = {{ session_id: number; server_frame: number }};
+export type SessionAccepted = {{ session_id: number; server_frame: number; avatar: PlayerAvatar }};
 export type WorldSnapshot = {{
   map_id: number;
   player_pos: Position;
   facing: Direction;
+  avatar: PlayerAvatar;
   map_chunk_hash: Uint8Array;
   map_chunk: Uint8Array;
   server_frame: number;

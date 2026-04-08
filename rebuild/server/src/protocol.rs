@@ -2,8 +2,8 @@
 mod protocol_generated;
 
 pub use protocol_generated::{
-    Direction, JoinSession, MessageType, Position, RejectionReason, SessionAccepted, WalkInput,
-    WalkResult, WorldDelta, WorldSnapshot, PROTOCOL_VERSION,
+    Direction, JoinSession, MessageType, PlayerAvatar, Position, RejectionReason, SessionAccepted,
+    WalkInput, WalkResult, WorldDelta, WorldSnapshot, PROTOCOL_VERSION,
 };
 pub type Facing = Direction;
 
@@ -53,6 +53,7 @@ pub fn encode_server_message(message: &ServerMessage) -> Result<Vec<u8>, Protoco
             [
                 msg.session_id.to_le_bytes().as_slice(),
                 msg.server_frame.to_le_bytes().as_slice(),
+                &[msg.avatar as u8],
             ]
             .concat(),
         ),
@@ -66,6 +67,7 @@ pub fn encode_server_message(message: &ServerMessage) -> Result<Vec<u8>, Protoco
             payload.extend_from_slice(&msg.player_pos.x.to_le_bytes());
             payload.extend_from_slice(&msg.player_pos.y.to_le_bytes());
             payload.push(msg.facing as u8);
+            payload.push(msg.avatar as u8);
             payload.extend_from_slice(&msg.server_frame.to_le_bytes());
             payload.push(msg.map_chunk_hash.len() as u8);
             payload.extend_from_slice(&msg.map_chunk_hash);
