@@ -18,8 +18,6 @@ use crate::{
     session::{PlayerState, Session, SessionInit},
 };
 
-const DEFAULT_MAP_ID: &str = "MAP_LITTLEROOT_TOWN";
-
 #[derive(Debug, Clone)]
 pub struct MapData {
     pub map_id: String,
@@ -38,8 +36,8 @@ pub struct World {
 }
 
 impl World {
-    pub fn load_littleroot(layout_path: &str) -> anyhow::Result<Self> {
-        let map = MapData::from_layout_file(layout_path)?;
+    pub fn load_from_layout(map_id: impl Into<String>, layout_path: &str) -> anyhow::Result<Self> {
+        let map = MapData::from_layout_file(map_id, layout_path)?;
         Ok(Self {
             tick: AtomicU64::new(0),
             next_connection_id: AtomicU64::new(1),
@@ -264,8 +262,9 @@ fn map_reject_reason(reason: MoveRejectReason) -> RejectionReason {
         MoveRejectReason::ForcedMovementDisabled => RejectionReason::Collision,
     }
 }
+
 impl MapData {
-    fn from_layout_file(layout_path: &str) -> anyhow::Result<Self> {
+    fn from_layout_file(map_id: impl Into<String>, layout_path: &str) -> anyhow::Result<Self> {
         let raw = fs::read_to_string(layout_path)
             .with_context(|| format!("failed to read map layout at {layout_path}"))?;
         let decoded: LayoutArtifact = serde_json::from_str(&raw)
@@ -287,7 +286,7 @@ impl MapData {
         }
 
         Ok(Self {
-            map_id: DEFAULT_MAP_ID.to_string(),
+            map_id: map_id.into(),
             width: decoded.width,
             height: decoded.height,
             collision,

@@ -1,5 +1,6 @@
-use std::{net::SocketAddr, sync::Arc, time::Duration};
+use std::{env, net::SocketAddr, path::Path, sync::Arc, time::Duration};
 
+use anyhow::{anyhow, Context};
 use axum::{
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
@@ -10,6 +11,7 @@ use axum::{
     Router,
 };
 use futures::{SinkExt, StreamExt};
+use serde::Deserialize;
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
 
@@ -17,6 +19,11 @@ use rebuild_server::{
     protocol::{decode_client_message, encode_server_message, ClientMessage, ServerMessage},
     world::World,
 };
+
+const DEFAULT_INITIAL_MAP_ID: &str = "MAP_LITTLEROOT_TOWN";
+const INITIAL_MAP_ENV_VAR: &str = "REBUILD_INITIAL_MAP";
+const MAPS_INDEX_PATH: &str = "../assets/maps_index.json";
+const LAYOUTS_INDEX_PATH: &str = "../assets/layouts_index.json";
 
 #[derive(Clone)]
 struct AppState {
@@ -29,8 +36,18 @@ async fn main() -> anyhow::Result<()> {
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
 
-    let world = Arc::new(World::load_littleroot(
-        "../assets/layouts/LAYOUT_LITTLEROOT_TOWN.json",
+    let initial_map_id = resolve_initial_map_id()?;
+    let startup_map = resolve_startup_map(&initial_map_id)?;
+    info!(
+        map_id = %startup_map.map_id,
+        layout_id = %startup_map.layout_id,
+        layout_path = %startup_map.layout_path,
+        "loaded startup map configuration"
+    );
+
+    let world = Arc::new(World::load_from_layout(
+        startup_map.map_id,
+        &startup_map.layout_path,
     )?);
 
     let simulation_world = Arc::clone(&world);
@@ -53,6 +70,114 @@ async fn main() -> anyhow::Result<()> {
     axum::serve(listener, app).await?;
 
     Ok(())
+}
+
+fn resolve_initial_map_id() -> anyhow::Result<String> {
+    let mut args = env::args().skip(1);
+    while let Some(arg) = args.next() {
+        if arg == "--initial-map" {
+            let map_id = args
+                .next()
+                .ok_or_else(|| anyhow!("missing value for --initial-map"))?;
+            return Ok(map_id);
+        }
+
+        if let Some(map_id) = arg.strip_prefix("--initial-map=") {
+            if map_id.is_empty() {
+                return Err(anyhow!("--initial-map cannot be empty"));
+            }
+            return Ok(map_id.to_string());
+        }
+    }
+
+    if let Ok(map_id) = env::var(INITIAL_MAP_ENV_VAR) {
+        let trimmed = map_id.trim();
+        if trimmed.is_empty() {
+            return Err(anyhow!("{INITIAL_MAP_ENV_VAR} cannot be empty"));
+        }
+        return Ok(trimmed.to_string());
+    }
+
+    Ok(DEFAULT_INITIAL_MAP_ID.to_string())
+}
+
+fn resolve_startup_map(selected_map_id: &str) -> anyhow::Result<StartupMapConfig> {
+    let maps_index = load_maps_index(MAPS_INDEX_PATH)?;
+    let map_entry = maps_index
+        .maps
+        .iter()
+        .find(|map| map.map_id == selected_map_id)
+        .ok_or_else(|| anyhow!("map id {selected_map_id} was not found in {MAPS_INDEX_PATH}"))?;
+
+    let layouts_index = load_layouts_index(LAYOUTS_INDEX_PATH)?;
+    let layout_entry = layouts_index
+        .layouts
+        .iter()
+        .find(|layout| layout.id == map_entry.layout_id)
+        .ok_or_else(|| {
+            anyhow!(
+                "layout id {} (from map {}) was not found in {}",
+                map_entry.layout_id,
+                map_entry.map_id,
+                LAYOUTS_INDEX_PATH
+            )
+        })?;
+
+    let layout_path = format!("../assets/{}", layout_entry.decoded_path);
+    if !Path::new(&layout_path).is_file() {
+        return Err(anyhow!(
+            "decoded layout artifact does not exist for layout {} at {}",
+            layout_entry.id,
+            layout_path
+        ));
+    }
+
+    Ok(StartupMapConfig {
+        map_id: map_entry.map_id.clone(),
+        layout_id: layout_entry.id.clone(),
+        layout_path,
+    })
+}
+
+fn load_maps_index(path: &str) -> anyhow::Result<MapsIndex> {
+    let raw = std::fs::read_to_string(path)
+        .with_context(|| format!("failed to read maps index at {path}"))?;
+    serde_json::from_str(&raw).with_context(|| format!("failed to parse maps index at {path}"))
+}
+
+fn load_layouts_index(path: &str) -> anyhow::Result<LayoutsIndex> {
+    let raw = std::fs::read_to_string(path)
+        .with_context(|| format!("failed to read layouts index at {path}"))?;
+    serde_json::from_str(&raw).with_context(|| format!("failed to parse layouts index at {path}"))
+}
+
+#[derive(Debug)]
+struct StartupMapConfig {
+    map_id: String,
+    layout_id: String,
+    layout_path: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct MapsIndex {
+    maps: Vec<MapEntry>,
+}
+
+#[derive(Debug, Deserialize)]
+struct MapEntry {
+    map_id: String,
+    layout_id: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct LayoutsIndex {
+    layouts: Vec<LayoutEntry>,
+}
+
+#[derive(Debug, Deserialize)]
+struct LayoutEntry {
+    id: String,
+    decoded_path: String,
 }
 
 async fn ws_handler(ws: WebSocketUpgrade, State(state): State<AppState>) -> impl IntoResponse {
