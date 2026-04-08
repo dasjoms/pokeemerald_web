@@ -20,7 +20,11 @@ import {
   MetatileTextureCache,
   type IndexedAtlasPages,
 } from './metatileRenderer';
-import { MapRenderStratum, resolveMapRenderStratum } from './mapLayerComposition';
+import {
+  MapRenderStratum,
+  MetatileLayerType,
+  resolveMapRenderStratum,
+} from './mapLayerComposition';
 import { createTilesetAnimationState, type TileAnimsFile } from './tilesetAnimation';
 import { applyCopyTilesOpsToActiveSwaps, type ActiveTileSwapSource } from './tilesetAnimationRendererState';
 import {
@@ -288,13 +292,15 @@ appRoot.appendChild(app.canvas);
 const gameContainer = new Container();
 const worldContainer = new Container();
 const mapBg3Layer = new Container();
+const actorBelowBg2Layer = new Container();
 const mapBg2Layer = new Container();
-const actorLayer = new Container();
+const actorBetweenBg2Bg1Layer = new Container();
 const mapBg1Layer = new Container();
 const debugOverlayLayer = new Container();
 worldContainer.addChild(mapBg3Layer);
+worldContainer.addChild(actorBelowBg2Layer);
 worldContainer.addChild(mapBg2Layer);
-worldContainer.addChild(actorLayer);
+worldContainer.addChild(actorBetweenBg2Bg1Layer);
 worldContainer.addChild(mapBg1Layer);
 worldContainer.addChild(debugOverlayLayer);
 gameContainer.scale.set(RENDER_SCALE, RENDER_SCALE);
@@ -317,7 +323,9 @@ playerSprite.anchor.set(
   playerAnimationAssets.anchorX / playerAnimationAssets.frameWidth,
   playerAnimationAssets.anchorY / playerAnimationAssets.frameHeight,
 );
-actorLayer.addChild(playerSprite);
+actorBetweenBg2Bg1Layer.addChild(playerSprite);
+let playerActiveActorLayer = actorBetweenBg2Bg1Layer;
+let activeMapMetatileLayerTypes: (number | undefined)[] = [];
 
 app.ticker.add(() => {
   tickWalkTransition(app.ticker.deltaMS);
@@ -512,6 +520,10 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
   mapBg2Layer.removeChildren();
   mapBg1Layer.removeChildren();
   debugOverlayLayer.removeChildren();
+  actorBelowBg2Layer.removeChildren();
+  actorBetweenBg2Bg1Layer.removeChildren();
+  actorBetweenBg2Bg1Layer.addChild(playerSprite);
+  playerActiveActorLayer = actorBetweenBg2Bg1Layer;
   renderedSubtileBindings.length = 0;
   subtileBindingsByTile.clear();
   subtileBindingsByPalette.clear();
@@ -543,6 +555,7 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
   activeTextureCache = textureCache;
   activeIndexedAtlasPages = indexedAtlasPages;
   activeTilesetAnimationPairId = renderAssets.pair_id;
+  activeMapMetatileLayerTypes = new Array(runtimeChunk.width * runtimeChunk.height);
 
   const primaryPage = atlas.pages[0];
   if (!primaryPage) {
@@ -646,6 +659,7 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
       if (!metatile) {
         continue;
       }
+      activeMapMetatileLayerTypes[y * runtimeChunk.width + x] = metatile.layer_type;
 
       const sourcePalettes = isPrimaryMetatile ? primaryPalettes : secondaryPalettes;
       const sortedSubtiles = [...metatile.subtiles].sort((a, b) => a.layer_order - b.layer_order);
@@ -1298,8 +1312,34 @@ function applyPredictedWalk(direction: Direction, inputSeq: number): void {
 }
 
 function positionPlayerSprite(): void {
+  updatePlayerActorLayer();
   playerSprite.x = state.renderTileX * TILE_SIZE + TILE_SIZE / 2;
   playerSprite.y = state.renderTileY * TILE_SIZE + TILE_SIZE;
+}
+
+function updatePlayerActorLayer(): void {
+  const resolvedLayer = resolveActorLayerForPlayer();
+  if (resolvedLayer === playerActiveActorLayer) {
+    return;
+  }
+
+  playerActiveActorLayer.removeChild(playerSprite);
+  resolvedLayer.addChild(playerSprite);
+  playerActiveActorLayer = resolvedLayer;
+}
+
+function resolveActorLayerForPlayer(): Container {
+  const tileX = Math.round(state.renderTileX);
+  const tileY = Math.round(state.renderTileY);
+  if (tileX < 0 || tileY < 0 || tileX >= state.mapWidth || tileY >= state.mapHeight) {
+    return actorBetweenBg2Bg1Layer;
+  }
+
+  const layerType = activeMapMetatileLayerTypes[tileY * state.mapWidth + tileX];
+  if (layerType === MetatileLayerType.COVERED) {
+    return actorBelowBg2Layer;
+  }
+  return actorBetweenBg2Bg1Layer;
 }
 
 function presentPlayerAnimationFrame(): void {
