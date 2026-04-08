@@ -1,4 +1,4 @@
-import { Application, Container, Graphics, Sprite, TextureSource, TextureStyle } from 'pixi.js';
+import { Application, Assets, Container, Graphics, Sprite, TextureSource, TextureStyle } from 'pixi.js';
 import {
   Direction,
   MessageType,
@@ -198,6 +198,16 @@ type RenderedSubtileBinding = {
   sourceTileset: string;
 };
 
+type PlayersManifestFile = {
+  avatars: Array<{
+    avatar_id: 'brendan' | 'may';
+    sheet_sources: {
+      normal: { source_path: string };
+      running: { source_path: string };
+    };
+  }>;
+};
+
 const TILE_SIZE = 16;
 const SUBTILE_SIZE = 8;
 const RENDER_SCALE = 4;
@@ -285,6 +295,7 @@ const hud = {
 const app = new Application();
 TextureStyle.defaultOptions.scaleMode = 'nearest';
 TextureSource.defaultOptions.scaleMode = 'nearest';
+await preloadPlayerAvatarSheets();
 await app.init({
   background: '#0f172a',
   antialias: false,
@@ -373,6 +384,39 @@ async function resolveImageUrlFromAssets(repoRelativePath: string): Promise<stri
   }
 
   return imageUrl;
+}
+
+function resolvePlayerSheetPngPathFromManifest(sourcePath: string): string {
+  return sourcePath
+    .replace(/^graphics\/object_events\/pics\/people\//, 'players/')
+    .replace(/\.4bpp$/i, '.png');
+}
+
+async function preloadPlayerAvatarSheets(): Promise<void> {
+  const manifest = await loadJsonFromAssets<PlayersManifestFile>('players/players_manifest.json');
+  const targetAvatarIds = new Set(['brendan', 'may']);
+  const preloadUrls: string[] = [];
+
+  for (const avatar of manifest.avatars) {
+    if (!targetAvatarIds.has(avatar.avatar_id)) {
+      continue;
+    }
+
+    preloadUrls.push(
+      await resolveImageUrlFromAssets(
+        resolvePlayerSheetPngPathFromManifest(avatar.sheet_sources.normal.source_path),
+      ),
+    );
+    preloadUrls.push(
+      await resolveImageUrlFromAssets(
+        resolvePlayerSheetPngPathFromManifest(avatar.sheet_sources.running.source_path),
+      ),
+    );
+  }
+
+  if (preloadUrls.length > 0) {
+    await Assets.load(preloadUrls);
+  }
 }
 
 async function loadBinaryFromAssets(repoRelativePath: string): Promise<Uint8Array> {
