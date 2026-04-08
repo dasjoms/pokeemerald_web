@@ -47,6 +47,7 @@ type AtlasFile = {
     page: number;
     source_tileset: string;
     path: string;
+    logical_tile_count?: number;
   }>;
 };
 
@@ -123,6 +124,7 @@ const state: ClientWorldState = {
 };
 
 const pendingPredictedInputs = new Map<number, Direction>();
+let hasLoggedPrimaryTileCountMismatch = false;
 let socket: WebSocket | null = null;
 let debugOverlayEnabled = ENABLE_DEBUG_OVERLAY_DEFAULT;
 
@@ -337,9 +339,24 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
   if (!primaryTexture) {
     throw new Error(`missing loaded texture for atlas page ${primaryPage.page}`);
   }
-  const primaryTileCount =
+  const dimensionDerivedPrimaryTileCount =
     Math.floor(primaryTexture.width / SUBTILE_SIZE) *
     Math.floor(primaryTexture.height / SUBTILE_SIZE);
+  const metadataPrimaryTileCount = primaryPage.logical_tile_count;
+  const primaryTileCount = metadataPrimaryTileCount ?? dimensionDerivedPrimaryTileCount;
+
+  if (
+    import.meta.env.DEV &&
+    typeof metadataPrimaryTileCount === 'number' &&
+    metadataPrimaryTileCount !== dimensionDerivedPrimaryTileCount &&
+    !hasLoggedPrimaryTileCountMismatch
+  ) {
+    hasLoggedPrimaryTileCountMismatch = true;
+    console.warn(
+      `[atlas] logical_tile_count mismatch for page ${primaryPage.page}: ` +
+        `metadata=${metadataPrimaryTileCount}, dimensions=${dimensionDerivedPrimaryTileCount}`,
+    );
+  }
 
   const metatilesBySource = new Map<string, Metatile[]>();
   for (const entry of metatiles.tilesets) {
