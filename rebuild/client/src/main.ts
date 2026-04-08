@@ -125,21 +125,34 @@ type ClientWorldState = {
   lastAckServerTick: number;
 };
 
-type TileSwapOperation = {
+type CopyTilesOp = {
+  kind: 'copy_tiles';
   pageId: number;
   destLocalTileIndex: number;
   sourceLocalTileIndex: number;
 };
 
-type PaletteSwapOperation = {
+type CopyPaletteOp = {
+  kind: 'copy_palette';
   tilesetName: string;
   destPaletteIndex: number;
   sourcePaletteIndex: number;
 };
 
+type BlendPaletteOp = {
+  kind: 'blend_palette';
+  tilesetName: string;
+  destPaletteIndex: number;
+  sourcePaletteAIndex: number;
+  sourcePaletteBIndex: number;
+  coeffA: number;
+  coeffB: number;
+};
+
+type TilesetAnimOp = CopyTilesOp | CopyPaletteOp | BlendPaletteOp;
+
 type TilesetAnimCallback = (counter: number, primaryCounterMax: number) => {
-  tileSwaps?: TileSwapOperation[];
-  paletteSwaps?: PaletteSwapOperation[];
+  ops?: TilesetAnimOp[];
 };
 
 type TilesetAnimationState = {
@@ -152,6 +165,9 @@ type TilesetAnimationState = {
   secondaryCounterMax: number;
   primaryCallback: TilesetAnimCallback | null;
   secondaryCallback: TilesetAnimCallback | null;
+  queuedTileCopies: Map<string, CopyTilesOp>;
+  queuedPaletteCopies: Map<string, CopyPaletteOp>;
+  queuedPaletteBlends: Map<string, BlendPaletteOp>;
   accumulatorMs: number;
   tickSerial: number;
 };
@@ -162,7 +178,6 @@ type RenderedSubtileBinding = {
   localTileIndex: number;
   paletteIndex: number;
   sourceTileset: string;
-  palettes: number[][][];
 };
 
 const TILE_SIZE = 16;
@@ -208,8 +223,13 @@ let activeIndexedAtlasPages: IndexedAtlasPages | null = null;
 const renderedSubtileBindings: RenderedSubtileBinding[] = [];
 const subtileBindingsByTile = new Map<string, RenderedSubtileBinding[]>();
 const subtileBindingsByPalette = new Map<string, RenderedSubtileBinding[]>();
-const activeTileSwaps = new Map<string, TileSwapOperation>();
-const activePaletteSwaps = new Map<string, PaletteSwapOperation>();
+const activeTileSwaps = new Map<string, CopyTilesOp>();
+const activePaletteSwaps = new Map<string, CopyPaletteOp>();
+const activePaletteBlends = new Map<string, BlendPaletteOp>();
+const basePalettesBySource = new Map<string, number[][][]>();
+const activePalettesBySource = new Map<string, number[][][]>();
+const ENABLE_BATTLE_DOME_NO_BLEND =
+  new URLSearchParams(window.location.search).get('battleDomeNoBlend') === '1';
 
 const appRoot = document.getElementById('app-root');
 if (!appRoot) {
@@ -253,6 +273,7 @@ actorLayer.addChild(playerSprite);
 
 app.ticker.add(() => {
   tickTilesetAnimationClock(app.ticker.deltaMS);
+  presentTilesetAnimation();
   positionPlayerSprite();
   updateCamera();
   renderHud();
@@ -329,12 +350,12 @@ const secondaryTilesetAnimInitByName = new Map<
 >([
   ['gTileset_Petalburg', makeTilesetAnimSecondaryInit(null)],
   ['gTileset_Rustboro', makeTilesetAnimSecondaryInit(buildRustboroSecondaryAnimations())],
-  ['gTileset_Dewford', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(8, (timer) => ({
-    tileSwaps: [makeCyclicTileSwap(1, 170, 6, timer)],
-  })))],
-  ['gTileset_Slateport', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(16, (timer) => ({
-    tileSwaps: [makeCyclicTileSwap(1, 160, 8, timer)],
-  })))],
+  ['gTileset_Dewford', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(8, (timer) => [
+    makeCyclicTileSwap(1, 170, 6, timer),
+  ]))],
+  ['gTileset_Slateport', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(16, (timer) => [
+    makeCyclicTileSwap(1, 160, 8, timer),
+  ]))],
   ['gTileset_Mauville', makeTilesetAnimSecondaryInit(buildMauvilleSecondaryAnimations(), { syncWithPrimary: true })],
   ['gTileset_Lavaridge', makeTilesetAnimSecondaryInit(buildLavaridgeSecondaryAnimations())],
   ['gTileset_Fallarbor', makeTilesetAnimSecondaryInit(null)],
@@ -343,34 +364,34 @@ const secondaryTilesetAnimInitByName = new Map<
   ['gTileset_Mossdeep', makeTilesetAnimSecondaryInit(null)],
   ['gTileset_EverGrande', makeTilesetAnimSecondaryInit(buildEverGrandeSecondaryAnimations())],
   ['gTileset_Pacifidlog', makeTilesetAnimSecondaryInit(buildPacifidlogSecondaryAnimations(), { syncWithPrimary: true })],
-  ['gTileset_Sootopolis', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(16, (timer) => ({
-    tileSwaps: [makeCyclicTileSwap(1, 240, 96, timer)],
-  })))],
-  ['gTileset_BattleFrontierOutsideWest', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(8, (timer) => ({
-    tileSwaps: [makeCyclicTileSwap(1, 264, 3, timer)],
-  })))],
-  ['gTileset_BattleFrontierOutsideEast', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(8, (timer) => ({
-    tileSwaps: [makeCyclicTileSwap(1, 304, 3, timer)],
-  })))],
-  ['gTileset_Underwater', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(16, (timer) => ({
-    tileSwaps: [makeCyclicTileSwap(1, 496, 4, timer)],
-  })), { max: 128 })],
-  ['gTileset_SootopolisGym', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(8, (timer) => ({
-    tileSwaps: [makeCyclicTileSwap(1, 464, 20, timer), makeCyclicTileSwap(1, 496, 12, timer)],
-  })), { max: 240 })],
-  ['gTileset_Cave', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(16, (timer) => ({
-    tileSwaps: [makeCyclicTileSwap(1, 416, 4, timer)],
-  })))],
+  ['gTileset_Sootopolis', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(16, (timer) => [
+    makeCyclicTileSwap(1, 240, 96, timer),
+  ]))],
+  ['gTileset_BattleFrontierOutsideWest', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(8, (timer) => [
+    makeCyclicTileSwap(1, 264, 3, timer),
+  ]))],
+  ['gTileset_BattleFrontierOutsideEast', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(8, (timer) => [
+    makeCyclicTileSwap(1, 304, 3, timer),
+  ]))],
+  ['gTileset_Underwater', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(16, (timer) => [
+    makeCyclicTileSwap(1, 496, 4, timer),
+  ]), { max: 128 })],
+  ['gTileset_SootopolisGym', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(8, (timer) => [
+    makeCyclicTileSwap(1, 464, 20, timer), makeCyclicTileSwap(1, 496, 12, timer),
+  ]), { max: 240 })],
+  ['gTileset_Cave', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(16, (timer) => [
+    makeCyclicTileSwap(1, 416, 4, timer),
+  ]))],
   ['gTileset_EliteFour', makeTilesetAnimSecondaryInit(buildEliteFourSecondaryAnimations(), { max: 128 })],
-  ['gTileset_MauvilleGym', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(2, (timer) => ({
-    tileSwaps: [makeCyclicTileSwap(1, 144, 16, timer)],
-  })))],
-  ['gTileset_BikeShop', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(4, (timer) => ({
-    tileSwaps: [makeCyclicTileSwap(1, 496, 9, timer)],
-  })))],
-  ['gTileset_BattlePyramid', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(8, (timer) => ({
-    tileSwaps: [makeCyclicTileSwap(1, 135, 8, timer), makeCyclicTileSwap(1, 151, 8, timer)],
-  })))],
+  ['gTileset_MauvilleGym', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(2, (timer) => [
+    makeCyclicTileSwap(1, 144, 16, timer),
+  ]))],
+  ['gTileset_BikeShop', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(4, (timer) => [
+    makeCyclicTileSwap(1, 496, 9, timer),
+  ]))],
+  ['gTileset_BattlePyramid', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(8, (timer) => [
+    makeCyclicTileSwap(1, 135, 8, timer), makeCyclicTileSwap(1, 151, 8, timer),
+  ]))],
   ['gTileset_BattleDome', makeTilesetAnimSecondaryInit(buildBattleDomeSecondaryAnimations(), { max: 32 })],
 ]);
 
@@ -395,26 +416,30 @@ function createTilesetAnimationState(layout: LayoutFile, pairId: string): Tilese
     secondaryCounterMax: secondary.secondaryCounterMax,
     primaryCallback,
     secondaryCallback: secondary.secondaryCallback,
+    queuedTileCopies: new Map(),
+    queuedPaletteCopies: new Map(),
+    queuedPaletteBlends: new Map(),
     accumulatorMs: 0,
     tickSerial: 0,
   };
 }
 
-function makeCyclicTileSwap(pageId: number, baseTileIndex: number, tileCount: number, frame: number): TileSwapOperation {
+function makeCyclicTileSwap(pageId: number, baseTileIndex: number, tileCount: number, frame: number): CopyTilesOp {
   const normalizedFrame = ((frame % tileCount) + tileCount) % tileCount;
   return {
+    kind: 'copy_tiles',
     pageId,
     destLocalTileIndex: baseTileIndex,
     sourceLocalTileIndex: baseTileIndex + normalizedFrame,
   };
 }
 
-function buildSimpleModuloAnimation(modulo: number, onFrame: (timerDiv: number) => { tileSwaps?: TileSwapOperation[]; paletteSwaps?: PaletteSwapOperation[] }): TilesetAnimCallback {
+function buildSimpleModuloAnimation(modulo: number, onFrame: (timerDiv: number) => TilesetAnimOp[]): TilesetAnimCallback {
   return (counter) => {
     if (counter % modulo !== 0) {
       return {};
     }
-    return onFrame(Math.floor(counter / modulo));
+    return { ops: onFrame(Math.floor(counter / modulo)) };
   };
 }
 
@@ -424,28 +449,28 @@ function buildGeneralPrimaryAnimations(): TilesetAnimCallback {
     const timerDiv = Math.floor(counter / 16);
     if (phase === 0) {
       const sequence = [0, 1, 0, 2];
-      return { tileSwaps: [{ pageId: 0, destLocalTileIndex: 508, sourceLocalTileIndex: 508 + sequence[timerDiv % sequence.length] }] };
+      return { ops: [{ kind: 'copy_tiles', pageId: 0, destLocalTileIndex: 508, sourceLocalTileIndex: 508 + sequence[timerDiv % sequence.length] }] };
     }
     if (phase === 1) {
-      return { tileSwaps: [makeCyclicTileSwap(0, 432, 30, timerDiv)] };
+      return { ops: [makeCyclicTileSwap(0, 432, 30, timerDiv)] };
     }
     if (phase === 2) {
-      return { tileSwaps: [makeCyclicTileSwap(0, 464, 10, timerDiv)] };
+      return { ops: [makeCyclicTileSwap(0, 464, 10, timerDiv)] };
     }
     if (phase === 3) {
-      return { tileSwaps: [makeCyclicTileSwap(0, 496, 6, timerDiv)] };
+      return { ops: [makeCyclicTileSwap(0, 496, 6, timerDiv)] };
     }
     if (phase === 4) {
-      return { tileSwaps: [makeCyclicTileSwap(0, 480, 10, timerDiv)] };
+      return { ops: [makeCyclicTileSwap(0, 480, 10, timerDiv)] };
     }
     return {};
   };
 }
 
 function buildBuildingPrimaryAnimations(): TilesetAnimCallback {
-  return buildSimpleModuloAnimation(8, (timerDiv) => ({
-    tileSwaps: [makeCyclicTileSwap(0, 496, 4, timerDiv)],
-  }));
+  return buildSimpleModuloAnimation(8, (timerDiv) => [
+    makeCyclicTileSwap(0, 496, 4, timerDiv),
+  ]);
 }
 
 function buildRustboroSecondaryAnimations(): TilesetAnimCallback {
@@ -456,7 +481,7 @@ function buildRustboroSecondaryAnimations(): TilesetAnimCallback {
     if (phase === 0) {
       tileSwaps.push(makeCyclicTileSwap(1, 448, 4, timerDiv));
     }
-    return { tileSwaps };
+    return { ops: tileSwaps };
   };
 }
 
@@ -465,7 +490,7 @@ function buildMauvilleSecondaryAnimations(): TilesetAnimCallback {
     const phase = counter % 8;
     const timerDiv = Math.floor(counter / 8);
     return {
-      tileSwaps: [
+      ops: [
         makeCyclicTileSwap(1, 96 + phase * 4, 4, timerDiv),
         makeCyclicTileSwap(1, 128 + phase * 4, 4, timerDiv),
       ],
@@ -479,14 +504,14 @@ function buildLavaridgeSecondaryAnimations(): TilesetAnimCallback {
     const timerDiv = Math.floor(counter / 16);
     if (phase === 0) {
       return {
-        tileSwaps: [
+        ops: [
           makeCyclicTileSwap(1, 288, 4, timerDiv),
           makeCyclicTileSwap(1, 292, 4, timerDiv + 2),
         ],
       };
     }
     if (phase === 1) {
-      return { tileSwaps: [makeCyclicTileSwap(1, 160, 4, timerDiv)] };
+      return { ops: [makeCyclicTileSwap(1, 160, 4, timerDiv)] };
     }
     return {};
   };
@@ -496,7 +521,7 @@ function buildEverGrandeSecondaryAnimations(): TilesetAnimCallback {
   return (counter) => {
     const phase = counter % 8;
     const timerDiv = Math.floor(counter / 8);
-    return { tileSwaps: [makeCyclicTileSwap(1, 272 + phase * 4, 4, timerDiv)] };
+    return { ops: [makeCyclicTileSwap(1, 272 + phase * 4, 4, timerDiv)] };
   };
 }
 
@@ -505,10 +530,10 @@ function buildPacifidlogSecondaryAnimations(): TilesetAnimCallback {
     const phase = counter % 16;
     const timerDiv = Math.floor(counter / 16);
     if (phase === 0) {
-      return { tileSwaps: [makeCyclicTileSwap(1, 464, 30, timerDiv)] };
+      return { ops: [makeCyclicTileSwap(1, 464, 30, timerDiv)] };
     }
     if (phase === 1) {
-      return { tileSwaps: [makeCyclicTileSwap(1, 496, 8, timerDiv)] };
+      return { ops: [makeCyclicTileSwap(1, 496, 8, timerDiv)] };
     }
     return {};
   };
@@ -516,14 +541,14 @@ function buildPacifidlogSecondaryAnimations(): TilesetAnimCallback {
 
 function buildEliteFourSecondaryAnimations(): TilesetAnimCallback {
   return (counter) => {
-    const tileSwaps: TileSwapOperation[] = [];
+    const tileSwaps: CopyTilesOp[] = [];
     if (counter % 64 === 0) {
       tileSwaps.push(makeCyclicTileSwap(1, 480, 4, Math.floor(counter / 64)));
     }
     if (counter % 8 === 1) {
       tileSwaps.push(makeCyclicTileSwap(1, 504, 1, Math.floor(counter / 8)));
     }
-    return { tileSwaps };
+    return { ops: tileSwaps };
   };
 }
 
@@ -533,12 +558,26 @@ function buildBattleDomeSecondaryAnimations(): TilesetAnimCallback {
       return {};
     }
     const phase = Math.floor(counter / 8) % 4;
-    return {
-      paletteSwaps: [
-        {
+    if (ENABLE_BATTLE_DOME_NO_BLEND) {
+      return {
+        ops: [{
+          kind: 'copy_palette',
           tilesetName: 'gTileset_BattleDome',
           destPaletteIndex: 8,
           sourcePaletteIndex: 8 + phase,
+        }],
+      };
+    }
+    return {
+      ops: [
+        {
+          kind: 'blend_palette',
+          tilesetName: 'gTileset_BattleDome',
+          destPaletteIndex: 8,
+          sourcePaletteAIndex: 8 + phase,
+          sourcePaletteBIndex: 8 + ((phase + 1) % 4),
+          coeffA: 8,
+          coeffB: 8,
         },
       ],
     };
@@ -641,6 +680,9 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
   subtileBindingsByPalette.clear();
   activeTileSwaps.clear();
   activePaletteSwaps.clear();
+  activePaletteBlends.clear();
+  basePalettesBySource.clear();
+  activePalettesBySource.clear();
 
   let indexedAtlasPages = indexedAtlasPageCache.get(renderAssets.pair_id);
   if (!indexedAtlasPages) {
@@ -699,10 +741,13 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
 
   const palettesBySource = new Map<string, number[][][]>();
   for (const entry of palettes.tilesets) {
+    const decoded = entry.palettes.map((palette) => palette.colors);
     palettesBySource.set(
       entry.source_tileset,
-      entry.palettes.map((palette) => palette.colors),
+      decoded,
     );
+    basePalettesBySource.set(entry.source_tileset, decoded);
+    activePalettesBySource.set(entry.source_tileset, decoded.map((colors) => colors.map((rgb) => [...rgb])));
   }
 
   const primaryMetatiles = metatilesBySource.get(layout.primary_tileset) ?? [];
@@ -750,7 +795,7 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
           pageId: sourcePage,
           localTileIndex: resolveActiveTileSwap(sourcePage, localTileIndex),
           paletteIndex: resolveActivePaletteSwap(sourceTilesetName, subtile.palette_index),
-          palettes: sourcePalettes,
+          palettes: activePalettesBySource.get(sourceTilesetName) ?? sourcePalettes,
           animationKey: `${animationState.tickSerial}`,
         });
         if (!subtileTexture) {
@@ -764,7 +809,6 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
           localTileIndex,
           paletteIndex: subtile.palette_index,
           sourceTileset: sourceTilesetName,
-          palettes: sourcePalettes,
         });
         const subtileX = subtile.subtile_index % 2;
         const subtileY = Math.floor(subtile.subtile_index / 2) % 2;
@@ -851,8 +895,9 @@ function tickTilesetAnimationClock(deltaMs: number): void {
 }
 
 function stepTilesetAnimation(animationState: TilesetAnimationState): void {
-  const nextTileSwaps = new Map<string, TileSwapOperation>();
-  const nextPaletteSwaps = new Map<string, PaletteSwapOperation>();
+  const nextTileSwaps = new Map<string, CopyTilesOp>();
+  const nextPaletteSwaps = new Map<string, CopyPaletteOp>();
+  const nextPaletteBlends = new Map<string, BlendPaletteOp>();
 
   animationState.primaryCounter =
     (animationState.primaryCounter + 1) % Math.max(animationState.primaryCounterMax, 1);
@@ -865,21 +910,40 @@ function stepTilesetAnimation(animationState: TilesetAnimationState): void {
   );
   const secondaryOps = animationState.secondaryCallback?.(
     animationState.secondaryCounter,
-    animationState.primaryCounterMax,
+    animationState.secondaryCounterMax,
   );
-  for (const op of [...(primaryOps?.tileSwaps ?? []), ...(secondaryOps?.tileSwaps ?? [])]) {
-    nextTileSwaps.set(`${op.pageId}:${op.destLocalTileIndex}`, op);
-  }
-  for (const op of [...(primaryOps?.paletteSwaps ?? []), ...(secondaryOps?.paletteSwaps ?? [])]) {
-    nextPaletteSwaps.set(`${op.tilesetName}:${op.destPaletteIndex}`, op);
+  for (const op of [...(primaryOps?.ops ?? []), ...(secondaryOps?.ops ?? [])]) {
+    if (op.kind === 'copy_tiles') {
+      nextTileSwaps.set(`${op.pageId}:${op.destLocalTileIndex}`, op);
+    } else if (op.kind === 'copy_palette') {
+      nextPaletteSwaps.set(`${op.tilesetName}:${op.destPaletteIndex}`, op);
+    } else {
+      nextPaletteBlends.set(`${op.tilesetName}:${op.destPaletteIndex}`, op);
+    }
   }
 
-  applyTilesetAnimationDiff(nextTileSwaps, nextPaletteSwaps, animationState);
+  animationState.queuedTileCopies = nextTileSwaps;
+  animationState.queuedPaletteCopies = nextPaletteSwaps;
+  animationState.queuedPaletteBlends = nextPaletteBlends;
+}
+
+function presentTilesetAnimation(): void {
+  const animationState = activeTilesetAnimationState;
+  if (!animationState) {
+    return;
+  }
+  applyTilesetAnimationDiff(
+    animationState.queuedTileCopies,
+    animationState.queuedPaletteCopies,
+    animationState.queuedPaletteBlends,
+    animationState,
+  );
 }
 
 function applyTilesetAnimationDiff(
-  nextTileSwaps: Map<string, TileSwapOperation>,
-  nextPaletteSwaps: Map<string, PaletteSwapOperation>,
+  nextTileSwaps: Map<string, CopyTilesOp>,
+  nextPaletteSwaps: Map<string, CopyPaletteOp>,
+  nextPaletteBlends: Map<string, BlendPaletteOp>,
   animationState: TilesetAnimationState,
 ): void {
   if (!activeIndexedAtlasPages || !activeTextureCache || activeTilesetAnimationPairId !== animationState.pairId) {
@@ -918,14 +982,58 @@ function applyTilesetAnimationDiff(
       }
     }
   }
+  for (const [key, next] of nextPaletteBlends.entries()) {
+    const current = activePaletteBlends.get(key);
+    if (!current || current.sourcePaletteAIndex !== next.sourcePaletteAIndex || current.sourcePaletteBIndex !== next.sourcePaletteBIndex) {
+      for (const binding of subtileBindingsByPalette.get(key) ?? []) {
+        dirtyBindings.add(binding);
+      }
+    }
+  }
+  for (const key of activePaletteBlends.keys()) {
+    if (!nextPaletteBlends.has(key)) {
+      for (const binding of subtileBindingsByPalette.get(key) ?? []) {
+        dirtyBindings.add(binding);
+      }
+    }
+  }
 
   activeTileSwaps.clear();
   activePaletteSwaps.clear();
+  activePaletteBlends.clear();
   for (const [key, op] of nextTileSwaps.entries()) {
     activeTileSwaps.set(key, op);
   }
   for (const [key, op] of nextPaletteSwaps.entries()) {
     activePaletteSwaps.set(key, op);
+  }
+  for (const [key, op] of nextPaletteBlends.entries()) {
+    activePaletteBlends.set(key, op);
+  }
+
+  for (const [tileset, basePalettes] of basePalettesBySource.entries()) {
+    const mutablePalettes = basePalettes.map((colors) => colors.map((rgb) => [...rgb]));
+    activePalettesBySource.set(tileset, mutablePalettes);
+  }
+  for (const op of activePaletteBlends.values()) {
+    const mutable = activePalettesBySource.get(op.tilesetName);
+    if (!mutable) {
+      continue;
+    }
+    const paletteA = mutable[op.sourcePaletteAIndex];
+    const paletteB = mutable[op.sourcePaletteBIndex];
+    if (!paletteA || !paletteB) {
+      continue;
+    }
+    const mix = paletteA.map((rgbA, idx) => {
+      const rgbB = paletteB[idx] ?? rgbA;
+      return [
+        Math.round(((rgbA[0] ?? 0) * op.coeffA + (rgbB[0] ?? 0) * op.coeffB) / 16),
+        Math.round(((rgbA[1] ?? 0) * op.coeffA + (rgbB[1] ?? 0) * op.coeffB) / 16),
+        Math.round(((rgbA[2] ?? 0) * op.coeffA + (rgbB[2] ?? 0) * op.coeffB) / 16),
+      ];
+    });
+    mutable[op.destPaletteIndex] = mix;
   }
 
   if (dirtyBindings.size === 0) {
@@ -939,7 +1047,7 @@ function applyTilesetAnimationDiff(
       pageId: binding.pageId,
       localTileIndex: resolveActiveTileSwap(binding.pageId, binding.localTileIndex),
       paletteIndex: resolveActivePaletteSwap(binding.sourceTileset, binding.paletteIndex),
-      palettes: binding.palettes,
+      palettes: activePalettesBySource.get(binding.sourceTileset) ?? [],
       animationKey: `${animationState.tickSerial}`,
     });
     if (texture) {
