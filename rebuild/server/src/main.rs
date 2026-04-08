@@ -1,6 +1,6 @@
-use std::{env, net::SocketAddr, path::Path, sync::Arc, time::Duration};
+use std::{env, net::SocketAddr, sync::Arc, time::Duration};
 
-use anyhow::{anyhow, Context};
+use anyhow::anyhow;
 use axum::{
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
@@ -11,7 +11,6 @@ use axum::{
     Router,
 };
 use futures::{SinkExt, StreamExt};
-use serde::Deserialize;
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
 
@@ -37,18 +36,12 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let initial_map_id = resolve_initial_map_id()?;
-    let startup_map = resolve_startup_map(&initial_map_id)?;
-    info!(
-        map_id = %startup_map.map_id,
-        layout_id = %startup_map.layout_id,
-        layout_path = %startup_map.layout_path,
-        "loaded startup map configuration"
-    );
-
-    let world = Arc::new(World::load_from_layout(
-        startup_map.map_id,
-        &startup_map.layout_path,
+    let world = Arc::new(World::load_from_assets(
+        &initial_map_id,
+        MAPS_INDEX_PATH,
+        LAYOUTS_INDEX_PATH,
     )?);
+    info!(map_id = %initial_map_id, "loaded startup map configuration");
 
     let simulation_world = Arc::clone(&world);
     tokio::spawn(async move {
@@ -101,85 +94,6 @@ fn resolve_initial_map_id() -> anyhow::Result<String> {
     Ok(DEFAULT_INITIAL_MAP_ID.to_string())
 }
 
-fn resolve_startup_map(selected_map_id: &str) -> anyhow::Result<StartupMapConfig> {
-    let maps_index = load_maps_index(MAPS_INDEX_PATH)?;
-    let map_entry = maps_index
-        .maps
-        .iter()
-        .find(|map| map.map_id == selected_map_id)
-        .ok_or_else(|| anyhow!("map id {selected_map_id} was not found in {MAPS_INDEX_PATH}"))?;
-
-    let layouts_index = load_layouts_index(LAYOUTS_INDEX_PATH)?;
-    let layout_entry = layouts_index
-        .layouts
-        .iter()
-        .find(|layout| layout.id == map_entry.layout_id)
-        .ok_or_else(|| {
-            anyhow!(
-                "layout id {} (from map {}) was not found in {}",
-                map_entry.layout_id,
-                map_entry.map_id,
-                LAYOUTS_INDEX_PATH
-            )
-        })?;
-
-    let layout_path = format!("../assets/{}", layout_entry.decoded_path);
-    if !Path::new(&layout_path).is_file() {
-        return Err(anyhow!(
-            "decoded layout artifact does not exist for layout {} at {}",
-            layout_entry.id,
-            layout_path
-        ));
-    }
-
-    Ok(StartupMapConfig {
-        map_id: map_entry.map_id.clone(),
-        layout_id: layout_entry.id.clone(),
-        layout_path,
-    })
-}
-
-fn load_maps_index(path: &str) -> anyhow::Result<MapsIndex> {
-    let raw = std::fs::read_to_string(path)
-        .with_context(|| format!("failed to read maps index at {path}"))?;
-    serde_json::from_str(&raw).with_context(|| format!("failed to parse maps index at {path}"))
-}
-
-fn load_layouts_index(path: &str) -> anyhow::Result<LayoutsIndex> {
-    let raw = std::fs::read_to_string(path)
-        .with_context(|| format!("failed to read layouts index at {path}"))?;
-    serde_json::from_str(&raw).with_context(|| format!("failed to parse layouts index at {path}"))
-}
-
-#[derive(Debug)]
-struct StartupMapConfig {
-    map_id: String,
-    layout_id: String,
-    layout_path: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct MapsIndex {
-    maps: Vec<MapEntry>,
-}
-
-#[derive(Debug, Deserialize)]
-struct MapEntry {
-    map_id: String,
-    layout_id: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct LayoutsIndex {
-    layouts: Vec<LayoutEntry>,
-}
-
-#[derive(Debug, Deserialize)]
-struct LayoutEntry {
-    id: String,
-    decoded_path: String,
-}
-
 async fn ws_handler(ws: WebSocketUpgrade, State(state): State<AppState>) -> impl IntoResponse {
     ws.on_upgrade(move |socket| handle_socket(socket, state))
 }
@@ -206,7 +120,13 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
         }
     });
 
-    let session = state.world.create_session(outgoing_tx).await;
+    let session = match state.world.create_session(outgoing_tx).await {
+        Ok(session) => session,
+        Err(err) => {
+            warn!(?err, "failed to create session");
+            return;
+        }
+    };
 
     while let Some(frame_result) = ws_rx.next().await {
         let message = match frame_result {

@@ -144,12 +144,46 @@ def load_map_group_index() -> dict[str, Any]:
                     "map_id": map_json.get("id"),
                     "layout_id": map_json.get("layout"),
                     "map_json_path": str(map_json_path.relative_to(ROOT)),
+                    "connections": normalize_connections(map_json.get("connections")),
                 }
             )
     return {
         "group_order": groups["group_order"],
         "maps": map_entries,
     }
+
+
+def normalize_connections(raw_connections: Any) -> list[dict[str, Any]]:
+    if not raw_connections:
+        return []
+
+    normalized: list[dict[str, Any]] = []
+    for raw in raw_connections:
+        if not isinstance(raw, dict):
+            continue
+
+        direction = str(raw.get("direction", "")).strip().lower()
+        if direction not in {"up", "down", "left", "right"}:
+            continue
+
+        target_map_id = str(raw.get("map", "")).strip()
+        if not target_map_id:
+            continue
+
+        try:
+            offset = int(raw.get("offset", 0))
+        except (TypeError, ValueError):
+            continue
+
+        normalized.append(
+            {
+                "direction": direction,
+                "offset": offset,
+                "target_map_id": target_map_id,
+            }
+        )
+
+    return normalized
 
 
 def decode_layout(

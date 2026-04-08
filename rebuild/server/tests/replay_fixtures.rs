@@ -116,6 +116,7 @@ fn littleroot_movement_replay_fixtures_remain_deterministic() {
                     collision: &source_map.collision,
                     behavior: &source_map.behavior,
                 },
+                None,
             );
             match result {
                 MoveValidation::Accepted { next_x, next_y } => {

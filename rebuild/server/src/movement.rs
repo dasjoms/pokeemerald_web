@@ -65,12 +65,35 @@ pub struct MovementMap<'a> {
     pub behavior: &'a [u8],
 }
 
-pub fn validate_walk(x: u16, y: u16, facing: Direction, map: MovementMap<'_>) -> MoveValidation {
+#[derive(Debug, Clone, Copy)]
+pub struct ConnectedDestination {
+    pub x: u16,
+    pub y: u16,
+    pub collision_bits: u8,
+    pub behavior_id: u8,
+}
+
+pub fn validate_walk(
+    x: u16,
+    y: u16,
+    facing: Direction,
+    map: MovementMap<'_>,
+    connected_destination: Option<ConnectedDestination>,
+) -> MoveValidation {
     let source = tile_query(x as i32, y as i32, &map);
     let (dx, dy) = facing_delta(facing);
     let destination = tile_query(source.x + dx, source.y + dy, &map);
-
-    if !destination.in_bounds {
+    let destination = if destination.in_bounds {
+        destination
+    } else if let Some(connected) = connected_destination {
+        TileQuery {
+            x: connected.x as i32,
+            y: connected.y as i32,
+            in_bounds: true,
+            collision_bits: connected.collision_bits,
+            behavior_id: connected.behavior_id,
+        }
+    } else {
         trace_walk_attempt(
             facing,
             source,
@@ -78,7 +101,7 @@ pub fn validate_walk(x: u16, y: u16, facing: Direction, map: MovementMap<'_>) ->
             "rejected: out_of_bounds_without_map_connection",
         );
         return MoveValidation::Rejected(MoveRejectReason::OutOfBounds);
-    }
+    };
 
     if destination.collision_bits != 0 {
         trace_walk_attempt(
@@ -110,6 +133,15 @@ pub fn validate_walk(x: u16, y: u16, facing: Direction, map: MovementMap<'_>) ->
     }
 }
 
+pub fn facing_delta(facing: Direction) -> (i32, i32) {
+    match facing {
+        Direction::Up => (0, -1),
+        Direction::Down => (0, 1),
+        Direction::Left => (-1, 0),
+        Direction::Right => (1, 0),
+    }
+}
+
 fn tile_query(x: i32, y: i32, map: &MovementMap<'_>) -> TileQuery {
     let in_bounds = x >= 0 && y >= 0 && x < map.width as i32 && y < map.height as i32;
     if !in_bounds {
@@ -129,15 +161,6 @@ fn tile_query(x: i32, y: i32, map: &MovementMap<'_>) -> TileQuery {
         in_bounds,
         collision_bits: map.collision.get(index).copied().unwrap_or(1),
         behavior_id: map.behavior.get(index).copied().unwrap_or(MB_INVALID),
-    }
-}
-
-fn facing_delta(facing: Direction) -> (i32, i32) {
-    match facing {
-        Direction::Up => (0, -1),
-        Direction::Down => (0, 1),
-        Direction::Left => (-1, 0),
-        Direction::Right => (1, 0),
     }
 }
 
@@ -220,7 +243,13 @@ mod tests {
 
     #[test]
     fn accepts_basic_walk() {
-        let result = validate_walk(0, 0, Direction::Right, map(&[0, 0, 0, 0], &[0, 0, 0, 0]));
+        let result = validate_walk(
+            0,
+            0,
+            Direction::Right,
+            map(&[0, 0, 0, 0], &[0, 0, 0, 0]),
+            None,
+        );
         assert_eq!(
             result,
             MoveValidation::Accepted {
@@ -232,7 +261,13 @@ mod tests {
 
     #[test]
     fn rejects_collision_tiles() {
-        let result = validate_walk(0, 0, Direction::Right, map(&[0, 1, 0, 0], &[0, 0, 0, 0]));
+        let result = validate_walk(
+            0,
+            0,
+            Direction::Right,
+            map(&[0, 1, 0, 0], &[0, 0, 0, 0]),
+            None,
+        );
         assert_eq!(
             result,
             MoveValidation::Rejected(MoveRejectReason::Collision)
@@ -241,10 +276,33 @@ mod tests {
 
     #[test]
     fn rejects_out_of_bounds_tiles() {
-        let result = validate_walk(0, 0, Direction::Up, map(&[0, 0, 0, 0], &[0, 0, 0, 0]));
+        let result = validate_walk(0, 0, Direction::Up, map(&[0, 0, 0, 0], &[0, 0, 0, 0]), None);
         assert_eq!(
             result,
             MoveValidation::Rejected(MoveRejectReason::OutOfBounds)
+        );
+    }
+
+    #[test]
+    fn accepts_connected_destinations() {
+        let result = validate_walk(
+            0,
+            0,
+            Direction::Up,
+            map(&[0, 0, 0, 0], &[0, 0, 0, 0]),
+            Some(ConnectedDestination {
+                x: 1,
+                y: 1,
+                collision_bits: 0,
+                behavior_id: 0,
+            }),
+        );
+        assert_eq!(
+            result,
+            MoveValidation::Accepted {
+                next_x: 1,
+                next_y: 1,
+            }
         );
     }
 
@@ -255,6 +313,7 @@ mod tests {
             0,
             Direction::Right,
             map(&[0, 0, 0, 0], &[0, MB_WALK_EAST, 0, 0]),
+            None,
         );
         assert_eq!(
             result,
