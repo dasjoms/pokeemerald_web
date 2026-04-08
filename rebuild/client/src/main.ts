@@ -19,6 +19,7 @@ import {
   type IndexedAtlasPages,
 } from './metatileRenderer';
 import { MapRenderStratum, resolveMapRenderStratum } from './mapLayerComposition';
+import { createTilesetAnimationState, type TileAnimsFile } from './tilesetAnimation';
 import { applyCopyTilesOpsToActiveSwaps } from './tilesetAnimationRendererState';
 
 type ServerMessage =
@@ -43,6 +44,7 @@ type RenderAssetsRef = {
   atlas: string;
   palettes: string;
   metatiles: string;
+  tile_anims: string;
 };
 
 type LayoutFile = {
@@ -230,9 +232,6 @@ const activePaletteSwaps = new Map<string, CopyPaletteOp>();
 const activePaletteBlends = new Map<string, BlendPaletteOp>();
 const basePalettesBySource = new Map<string, number[][][]>();
 const activePalettesBySource = new Map<string, number[][][]>();
-const ENABLE_BATTLE_DOME_NO_BLEND =
-  new URLSearchParams(window.location.search).get('battleDomeNoBlend') === '1';
-
 const appRoot = document.getElementById('app-root');
 if (!appRoot) {
   throw new Error('missing #app-root container');
@@ -326,272 +325,7 @@ function makeRenderAssetRef(layout: LayoutFile): RenderAssetsRef {
     atlas: `render/${pairId}/atlas.json`,
     palettes: `render/${pairId}/palettes.json`,
     metatiles: `render/${pairId}/metatiles.json`,
-  };
-}
-
-function makeTilesetAnimSecondaryInit(
-  callback: TilesetAnimCallback | null,
-  options?: { syncWithPrimary?: boolean; max?: number },
-): (primaryCounterMax: number, primaryCounter: number) => Pick<
-  TilesetAnimationState,
-  'secondaryCallback' | 'secondaryCounter' | 'secondaryCounterMax'
-> {
-  return (primaryCounterMax, primaryCounter) => ({
-    secondaryCallback: callback,
-    secondaryCounter: options?.syncWithPrimary ? primaryCounter : 0,
-    secondaryCounterMax: options?.max ?? primaryCounterMax,
-  });
-}
-
-const secondaryTilesetAnimInitByName = new Map<
-  string,
-  (primaryCounterMax: number, primaryCounter: number) => Pick<
-    TilesetAnimationState,
-    'secondaryCallback' | 'secondaryCounter' | 'secondaryCounterMax'
-  >
->([
-  ['gTileset_Petalburg', makeTilesetAnimSecondaryInit(null)],
-  ['gTileset_Rustboro', makeTilesetAnimSecondaryInit(buildRustboroSecondaryAnimations())],
-  ['gTileset_Dewford', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(8, (timer) => [
-    makeCyclicTileSwap(1, 170, 6, timer),
-  ]))],
-  ['gTileset_Slateport', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(16, (timer) => [
-    makeCyclicTileSwap(1, 160, 8, timer),
-  ]))],
-  ['gTileset_Mauville', makeTilesetAnimSecondaryInit(buildMauvilleSecondaryAnimations(), { syncWithPrimary: true })],
-  ['gTileset_Lavaridge', makeTilesetAnimSecondaryInit(buildLavaridgeSecondaryAnimations())],
-  ['gTileset_Fallarbor', makeTilesetAnimSecondaryInit(null)],
-  ['gTileset_Fortree', makeTilesetAnimSecondaryInit(null)],
-  ['gTileset_Lilycove', makeTilesetAnimSecondaryInit(null)],
-  ['gTileset_Mossdeep', makeTilesetAnimSecondaryInit(null)],
-  ['gTileset_EverGrande', makeTilesetAnimSecondaryInit(buildEverGrandeSecondaryAnimations())],
-  ['gTileset_Pacifidlog', makeTilesetAnimSecondaryInit(buildPacifidlogSecondaryAnimations(), { syncWithPrimary: true })],
-  ['gTileset_Sootopolis', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(16, (timer) => [
-    makeCyclicTileSwap(1, 240, 96, timer),
-  ]))],
-  ['gTileset_BattleFrontierOutsideWest', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(8, (timer) => [
-    makeCyclicTileSwap(1, 264, 3, timer),
-  ]))],
-  ['gTileset_BattleFrontierOutsideEast', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(8, (timer) => [
-    makeCyclicTileSwap(1, 304, 3, timer),
-  ]))],
-  ['gTileset_Underwater', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(16, (timer) => [
-    makeCyclicTileSwap(1, 496, 4, timer),
-  ]), { max: 128 })],
-  ['gTileset_SootopolisGym', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(8, (timer) => [
-    makeCyclicTileSwap(1, 464, 20, timer), makeCyclicTileSwap(1, 496, 12, timer),
-  ]), { max: 240 })],
-  ['gTileset_Cave', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(16, (timer) => [
-    makeCyclicTileSwap(1, 416, 4, timer),
-  ]))],
-  ['gTileset_EliteFour', makeTilesetAnimSecondaryInit(buildEliteFourSecondaryAnimations(), { max: 128 })],
-  ['gTileset_MauvilleGym', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(2, (timer) => [
-    makeCyclicTileSwap(1, 144, 16, timer),
-  ]))],
-  ['gTileset_BikeShop', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(4, (timer) => [
-    makeCyclicTileSwap(1, 496, 9, timer),
-  ]))],
-  ['gTileset_BattlePyramid', makeTilesetAnimSecondaryInit(buildSimpleModuloAnimation(8, (timer) => [
-    makeCyclicTileSwap(1, 135, 8, timer), makeCyclicTileSwap(1, 151, 8, timer),
-  ]))],
-  ['gTileset_BattleDome', makeTilesetAnimSecondaryInit(buildBattleDomeSecondaryAnimations(), { max: 32 })],
-]);
-
-function createTilesetAnimationState(layout: LayoutFile, pairId: string): TilesetAnimationState {
-  const primaryCallback =
-    layout.primary_tileset === 'gTileset_General'
-      ? buildGeneralPrimaryAnimations()
-      : layout.primary_tileset === 'gTileset_Building'
-        ? buildBuildingPrimaryAnimations()
-        : null;
-  const primaryCounterMax = 256;
-  const secondaryInit = secondaryTilesetAnimInitByName.get(layout.secondary_tileset) ?? makeTilesetAnimSecondaryInit(null);
-  const secondary = secondaryInit(primaryCounterMax, 0);
-
-  return {
-    pairId,
-    primaryTileset: layout.primary_tileset,
-    secondaryTileset: layout.secondary_tileset,
-    primaryCounter: 0,
-    primaryCounterMax,
-    secondaryCounter: secondary.secondaryCounter,
-    secondaryCounterMax: secondary.secondaryCounterMax,
-    primaryCallback,
-    secondaryCallback: secondary.secondaryCallback,
-    queuedTileCopies: new Map(),
-    queuedPaletteCopies: new Map(),
-    queuedPaletteBlends: new Map(),
-    accumulatorMs: 0,
-    tickSerial: 0,
-  };
-}
-
-function makeCyclicTileSwap(pageId: number, baseTileIndex: number, tileCount: number, frame: number): CopyTilesOp {
-  const normalizedFrame = ((frame % tileCount) + tileCount) % tileCount;
-  return {
-    kind: 'copy_tiles',
-    pageId,
-    destLocalTileIndex: baseTileIndex,
-    sourceFrameLocalTileIndex: baseTileIndex + normalizedFrame * tileCount,
-    tileCount,
-  };
-}
-
-function buildSimpleModuloAnimation(modulo: number, onFrame: (timerDiv: number) => TilesetAnimOp[]): TilesetAnimCallback {
-  return (counter) => {
-    if (counter % modulo !== 0) {
-      return {};
-    }
-    return { ops: onFrame(Math.floor(counter / modulo)) };
-  };
-}
-
-function buildGeneralPrimaryAnimations(): TilesetAnimCallback {
-  return (counter) => {
-    const phase = counter % 16;
-    const timerDiv = Math.floor(counter / 16);
-    if (phase === 0) {
-      const sequence = [0, 1, 0, 2];
-      return {
-        ops: [{
-          kind: 'copy_tiles',
-          pageId: 0,
-          destLocalTileIndex: 508,
-          sourceFrameLocalTileIndex: 508 + sequence[timerDiv % sequence.length] * 4,
-          tileCount: 4,
-        }],
-      };
-    }
-    if (phase === 1) {
-      return { ops: [makeCyclicTileSwap(0, 432, 30, timerDiv)] };
-    }
-    if (phase === 2) {
-      return { ops: [makeCyclicTileSwap(0, 464, 10, timerDiv)] };
-    }
-    if (phase === 3) {
-      return { ops: [makeCyclicTileSwap(0, 496, 6, timerDiv)] };
-    }
-    if (phase === 4) {
-      return { ops: [makeCyclicTileSwap(0, 480, 10, timerDiv)] };
-    }
-    return {};
-  };
-}
-
-function buildBuildingPrimaryAnimations(): TilesetAnimCallback {
-  return buildSimpleModuloAnimation(8, (timerDiv) => [
-    makeCyclicTileSwap(0, 496, 4, timerDiv),
-  ]);
-}
-
-function buildRustboroSecondaryAnimations(): TilesetAnimCallback {
-  return (counter) => {
-    const phase = counter % 8;
-    const timerDiv = Math.floor(counter / 8);
-    const tileSwaps = [makeCyclicTileSwap(1, 384 + phase * 4, 4, timerDiv)];
-    if (phase === 0) {
-      tileSwaps.push(makeCyclicTileSwap(1, 448, 4, timerDiv));
-    }
-    return { ops: tileSwaps };
-  };
-}
-
-function buildMauvilleSecondaryAnimations(): TilesetAnimCallback {
-  return (counter) => {
-    const phase = counter % 8;
-    const timerDiv = Math.floor(counter / 8);
-    return {
-      ops: [
-        makeCyclicTileSwap(1, 96 + phase * 4, 4, timerDiv),
-        makeCyclicTileSwap(1, 128 + phase * 4, 4, timerDiv),
-      ],
-    };
-  };
-}
-
-function buildLavaridgeSecondaryAnimations(): TilesetAnimCallback {
-  return (counter) => {
-    const phase = counter % 16;
-    const timerDiv = Math.floor(counter / 16);
-    if (phase === 0) {
-      return {
-        ops: [
-          makeCyclicTileSwap(1, 288, 4, timerDiv),
-          makeCyclicTileSwap(1, 292, 4, timerDiv + 2),
-        ],
-      };
-    }
-    if (phase === 1) {
-      return { ops: [makeCyclicTileSwap(1, 160, 4, timerDiv)] };
-    }
-    return {};
-  };
-}
-
-function buildEverGrandeSecondaryAnimations(): TilesetAnimCallback {
-  return (counter) => {
-    const phase = counter % 8;
-    const timerDiv = Math.floor(counter / 8);
-    return { ops: [makeCyclicTileSwap(1, 272 + phase * 4, 4, timerDiv)] };
-  };
-}
-
-function buildPacifidlogSecondaryAnimations(): TilesetAnimCallback {
-  return (counter) => {
-    const phase = counter % 16;
-    const timerDiv = Math.floor(counter / 16);
-    if (phase === 0) {
-      return { ops: [makeCyclicTileSwap(1, 464, 30, timerDiv)] };
-    }
-    if (phase === 1) {
-      return { ops: [makeCyclicTileSwap(1, 496, 8, timerDiv)] };
-    }
-    return {};
-  };
-}
-
-function buildEliteFourSecondaryAnimations(): TilesetAnimCallback {
-  return (counter) => {
-    const tileSwaps: CopyTilesOp[] = [];
-    if (counter % 64 === 0) {
-      tileSwaps.push(makeCyclicTileSwap(1, 480, 4, Math.floor(counter / 64)));
-    }
-    if (counter % 8 === 1) {
-      tileSwaps.push(makeCyclicTileSwap(1, 504, 1, Math.floor(counter / 8)));
-    }
-    return { ops: tileSwaps };
-  };
-}
-
-function buildBattleDomeSecondaryAnimations(): TilesetAnimCallback {
-  return (counter) => {
-    if (counter % 8 !== 0) {
-      return {};
-    }
-    const phase = Math.floor(counter / 8) % 4;
-    if (ENABLE_BATTLE_DOME_NO_BLEND) {
-      return {
-        ops: [{
-          kind: 'copy_palette',
-          tilesetName: 'gTileset_BattleDome',
-          destPaletteIndex: 8,
-          sourcePaletteIndex: 8 + phase,
-        }],
-      };
-    }
-    return {
-      ops: [
-        {
-          kind: 'blend_palette',
-          tilesetName: 'gTileset_BattleDome',
-          destPaletteIndex: 8,
-          sourcePaletteAIndex: 8 + phase,
-          sourcePaletteBIndex: 8 + ((phase + 1) % 4),
-          coeffA: 8,
-          coeffB: 8,
-        },
-      ],
-    };
+    tile_anims: `render/${pairId}/tile_anims.json`,
   };
 }
 
@@ -678,6 +412,17 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
   const atlas = await loadJsonFromAssets<AtlasFile>(renderAssets.atlas);
   const metatiles = await loadJsonFromAssets<MetatilesFile>(renderAssets.metatiles);
   const palettes = await loadJsonFromAssets<PalettesFile>(renderAssets.palettes);
+  let tileAnims: TileAnimsFile | null = null;
+  try {
+    tileAnims = await loadJsonFromAssets<TileAnimsFile>(renderAssets.tile_anims);
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error(
+        `[tileset-parity] missing/invalid tile animation program for pair=${renderAssets.pair_id}:`,
+        error,
+      );
+    }
+  }
 
   state.mapWidth = runtimeChunk.width;
   state.mapHeight = runtimeChunk.height;
@@ -768,7 +513,25 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
 
   let animationState = tilesetAnimationStates.get(renderAssets.pair_id);
   if (!animationState) {
-    animationState = createTilesetAnimationState(layout, renderAssets.pair_id);
+    animationState = createTilesetAnimationState(
+      tileAnims ?? {
+        pair_id: renderAssets.pair_id,
+        programs: {
+          primary: {
+            source_tileset: layout.primary_tileset,
+            counter_max_expr: '256',
+            events: [],
+          },
+          secondary: {
+            source_tileset: layout.secondary_tileset,
+            counter_max_expr: 'sPrimaryTilesetAnimCounterMax',
+            events: [],
+          },
+        },
+        frame_arrays: {},
+      },
+      primaryTileCount,
+    );
     tilesetAnimationStates.set(renderAssets.pair_id, animationState);
   }
   activeTilesetAnimationState = animationState;
