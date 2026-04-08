@@ -47,10 +47,10 @@ Initial implementation is intentionally narrow:
 - Must load overworld map.
 - Must render the world in browser.
 - Must accept and process **walking inputs only**.
-- Must allow walking through the world with correct validation.
+- Must allow walking through the overworld maps with correct validation.
 
 Out of scope for phase 1:
-- warps,
+- warps to interior maps,
 - non-walking button interactions,
 - additional gameplay systems.
 
