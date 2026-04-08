@@ -1,4 +1,4 @@
-import { Application, Container, Graphics, Sprite } from 'pixi.js';
+import { Application, Container, Graphics, Sprite, TextureSource, TextureStyle } from 'pixi.js';
 import {
   Direction,
   MessageType,
@@ -254,6 +254,8 @@ const hud = {
 };
 
 const app = new Application();
+TextureStyle.defaultOptions.scaleMode = 'nearest';
+TextureSource.defaultOptions.scaleMode = 'nearest';
 await app.init({
   background: '#0f172a',
   antialias: false,
