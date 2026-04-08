@@ -6,6 +6,7 @@ import json
 import re
 import shutil
 import struct
+import zlib
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -38,6 +39,17 @@ class LayoutRecord:
     secondary_tileset: str
     border_filepath: str
     blockdata_filepath: str
+
+
+@dataclass(frozen=True)
+class ResolvedAnimFrameSource:
+    symbol: str
+    source_path: str
+    render_extension: str
+    data: bytes
+    width: int | None
+    height: int | None
+    tile_count: int | None
 
 
 def read_json(path: Path) -> Any:
@@ -644,6 +656,175 @@ def _parse_tileset_anim_data() -> dict[str, Any]:
     }
 
 
+def _paeth_predictor(a: int, b: int, c: int) -> int:
+    p = a + b - c
+    pa = abs(p - a)
+    pb = abs(p - b)
+    pc = abs(p - c)
+    if pa <= pb and pa <= pc:
+        return a
+    if pb <= pc:
+        return b
+    return c
+
+
+def _read_png_indexed_pixels(path: Path) -> tuple[int, int, list[int]]:
+    raw = path.read_bytes()
+    if raw[:8] != b"\x89PNG\r\n\x1a\n":
+        raise ValueError(f"Invalid PNG signature: {path}")
+
+    pos = 8
+    width: int | None = None
+    height: int | None = None
+    bit_depth: int | None = None
+    color_type: int | None = None
+    interlace: int | None = None
+    idat_parts: list[bytes] = []
+    plte: bytes | None = None
+
+    while pos + 8 <= len(raw):
+        length = int.from_bytes(raw[pos : pos + 4], "big")
+        chunk_type = raw[pos + 4 : pos + 8]
+        chunk_data = raw[pos + 8 : pos + 8 + length]
+        pos += 12 + length
+        if chunk_type == b"IHDR":
+            width = int.from_bytes(chunk_data[0:4], "big")
+            height = int.from_bytes(chunk_data[4:8], "big")
+            bit_depth = chunk_data[8]
+            color_type = chunk_data[9]
+            interlace = chunk_data[12]
+        elif chunk_type == b"PLTE":
+            plte = chunk_data
+        elif chunk_type == b"IDAT":
+            idat_parts.append(chunk_data)
+        elif chunk_type == b"IEND":
+            break
+
+    if width is None or height is None or bit_depth is None or color_type is None or interlace is None:
+        raise ValueError(f"Missing IHDR in PNG: {path}")
+    if color_type != 3:
+        raise ValueError(f"PNG fallback requires indexed-color PNG (color type 3): {path}")
+    if bit_depth not in {1, 2, 4, 8}:
+        raise ValueError(f"Unsupported indexed PNG bit depth {bit_depth}: {path}")
+    if interlace != 0:
+        raise ValueError(f"Unsupported interlaced PNG for animation fallback: {path}")
+    if plte is None:
+        raise ValueError(f"Indexed PNG missing PLTE chunk: {path}")
+    if not idat_parts:
+        raise ValueError(f"PNG missing IDAT chunk(s): {path}")
+
+    packed = zlib.decompress(b"".join(idat_parts))
+    bits_per_row = width * bit_depth
+    stride = (bits_per_row + 7) // 8
+    expected_len = height * (1 + stride)
+    if len(packed) != expected_len:
+        raise ValueError(f"Unexpected PNG scanline size in {path}: got {len(packed)}, expected {expected_len}")
+
+    rows: list[bytearray] = []
+    i = 0
+    for _ in range(height):
+        filter_type = packed[i]
+        i += 1
+        row = bytearray(packed[i : i + stride])
+        i += stride
+        prev = rows[-1] if rows else bytearray(stride)
+        if filter_type == 0:
+            pass
+        elif filter_type == 1:
+            for x in range(stride):
+                left = row[x - 1] if x > 0 else 0
+                row[x] = (row[x] + left) & 0xFF
+        elif filter_type == 2:
+            for x in range(stride):
+                row[x] = (row[x] + prev[x]) & 0xFF
+        elif filter_type == 3:
+            for x in range(stride):
+                left = row[x - 1] if x > 0 else 0
+                up = prev[x]
+                row[x] = (row[x] + ((left + up) // 2)) & 0xFF
+        elif filter_type == 4:
+            for x in range(stride):
+                left = row[x - 1] if x > 0 else 0
+                up = prev[x]
+                up_left = prev[x - 1] if x > 0 else 0
+                row[x] = (row[x] + _paeth_predictor(left, up, up_left)) & 0xFF
+        else:
+            raise ValueError(f"Unsupported PNG filter type {filter_type} in {path}")
+        rows.append(row)
+
+    pixels: list[int] = []
+    if bit_depth == 8:
+        for row in rows:
+            pixels.extend(row[:width])
+    else:
+        mask = (1 << bit_depth) - 1
+        per_byte = 8 // bit_depth
+        for row in rows:
+            row_pixels: list[int] = []
+            for byte in row:
+                for p in range(per_byte):
+                    shift = 8 - bit_depth * (p + 1)
+                    row_pixels.append((byte >> shift) & mask)
+            pixels.extend(row_pixels[:width])
+
+    return width, height, pixels
+
+
+def _encode_indexed_png_to_4bpp_tiles(path: Path) -> tuple[bytes, int, int, int]:
+    width, height, pixels = _read_png_indexed_pixels(path)
+    if width % 8 != 0 or height % 8 != 0:
+        raise ValueError(f"PNG fallback dimensions must be multiples of 8: {path} ({width}x{height})")
+
+    out = bytearray()
+    for tile_y in range(0, height, 8):
+        for tile_x in range(0, width, 8):
+            for y in range(8):
+                row_start = (tile_y + y) * width + tile_x
+                for x in range(0, 8, 2):
+                    lo = pixels[row_start + x]
+                    hi = pixels[row_start + x + 1]
+                    if lo > 0xF or hi > 0xF:
+                        raise ValueError(
+                            f"PNG fallback contains palette index > 15 in {path} at pixel ({tile_x + x}, {tile_y + y})"
+                        )
+                    out.append(lo | (hi << 4))
+
+    tile_count = (width // 8) * (height // 8)
+    return bytes(out), width, height, tile_count
+
+
+def _resolve_anim_frame_source(symbol: str, rel: str) -> ResolvedAnimFrameSource:
+    bin_path = ROOT / rel
+    if bin_path.exists():
+        return ResolvedAnimFrameSource(
+            symbol=symbol,
+            source_path=rel,
+            render_extension=bin_path.suffix or ".bin",
+            data=bin_path.read_bytes(),
+            width=None,
+            height=None,
+            tile_count=None,
+        )
+
+    png_path = bin_path.with_suffix(".png")
+    if png_path.exists():
+        data, width, height, tile_count = _encode_indexed_png_to_4bpp_tiles(png_path)
+        return ResolvedAnimFrameSource(
+            symbol=symbol,
+            source_path=png_path.relative_to(ROOT).as_posix(),
+            render_extension=".4bpp",
+            data=data,
+            width=width,
+            height=height,
+            tile_count=tile_count,
+        )
+
+    raise ValueError(
+        f"Unable to resolve animation frame symbol {symbol}: neither {bin_path.relative_to(ROOT)} nor "
+        f"{png_path.relative_to(ROOT)} exists"
+    )
+
+
 def validate_render_data(output_dir: Path) -> dict[str, int]:
     layouts_index = read_json(output_dir / "layouts_index.json")
     maps_index = read_json(output_dir / "maps_index.json")
@@ -922,22 +1103,23 @@ def run_extract_render(output_dir: Path, clean: bool) -> None:
         for symbol in sorted(referenced_symbols):
             rel = tileset_anim_data["frame_sources"].get(symbol)
             if not rel:
-                continue
-            src_path = ROOT / rel
-            if not src_path.exists():
-                continue
+                raise ValueError(f"Missing frame source mapping for animation symbol {symbol}")
+            resolved = _resolve_anim_frame_source(symbol, rel)
             index = len(source_records)
-            extension = src_path.suffix or ".bin"
+            extension = resolved.render_extension
             out_name = f"{index:04d}_{symbol}{extension}"
             out_path = source_dir / out_name
-            shutil.copy2(src_path, out_path)
+            out_path.write_bytes(resolved.data)
             source_records.append(
                 {
                     "source_index": index,
-                    "symbol": symbol,
-                    "source_path": rel,
+                    "symbol_name": symbol,
+                    "source_path": resolved.source_path,
                     "render_path": out_path.relative_to(output_dir).as_posix(),
-                    "size_bytes": src_path.stat().st_size,
+                    "width": resolved.width,
+                    "height": resolved.height,
+                    "tile_count": resolved.tile_count,
+                    "byte_count": len(resolved.data),
                 }
             )
             symbol_to_index[symbol] = index
