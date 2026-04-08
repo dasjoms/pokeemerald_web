@@ -130,6 +130,7 @@ type CopyTilesOp = {
   pageId: number;
   destLocalTileIndex: number;
   sourceLocalTileIndex: number;
+  tileCount: number;
 };
 
 type CopyPaletteOp = {
@@ -431,6 +432,7 @@ function makeCyclicTileSwap(pageId: number, baseTileIndex: number, tileCount: nu
     pageId,
     destLocalTileIndex: baseTileIndex,
     sourceLocalTileIndex: baseTileIndex + normalizedFrame,
+    tileCount,
   };
 }
 
@@ -449,7 +451,7 @@ function buildGeneralPrimaryAnimations(): TilesetAnimCallback {
     const timerDiv = Math.floor(counter / 16);
     if (phase === 0) {
       const sequence = [0, 1, 0, 2];
-      return { ops: [{ kind: 'copy_tiles', pageId: 0, destLocalTileIndex: 508, sourceLocalTileIndex: 508 + sequence[timerDiv % sequence.length] }] };
+      return { ops: [{ kind: 'copy_tiles', pageId: 0, destLocalTileIndex: 508, sourceLocalTileIndex: 508 + sequence[timerDiv % sequence.length], tileCount: 4 }] };
     }
     if (phase === 1) {
       return { ops: [makeCyclicTileSwap(0, 432, 30, timerDiv)] };
@@ -868,7 +870,16 @@ function registerSubtileBinding(binding: RenderedSubtileBinding): void {
 }
 
 function resolveActiveTileSwap(pageId: number, localTileIndex: number): number {
-  return activeTileSwaps.get(`${pageId}:${localTileIndex}`)?.sourceLocalTileIndex ?? localTileIndex;
+  for (const op of activeTileSwaps.values()) {
+    if (op.pageId !== pageId) {
+      continue;
+    }
+    const offset = localTileIndex - op.destLocalTileIndex;
+    if (offset >= 0 && offset < op.tileCount) {
+      return op.sourceLocalTileIndex + offset;
+    }
+  }
+  return localTileIndex;
 }
 
 function resolveActivePaletteSwap(sourceTilesetName: string, paletteIndex: number): number {
@@ -954,9 +965,24 @@ function applyTilesetAnimationDiff(
 
   for (const [key, next] of nextTileSwaps.entries()) {
     const current = activeTileSwaps.get(key);
-    if (!current || current.sourceLocalTileIndex !== next.sourceLocalTileIndex) {
-      for (const binding of subtileBindingsByTile.get(key) ?? []) {
-        dirtyBindings.add(binding);
+    if (
+      !current ||
+      current.sourceLocalTileIndex !== next.sourceLocalTileIndex ||
+      current.tileCount !== next.tileCount
+    ) {
+      for (let offset = 0; offset < next.tileCount; offset += 1) {
+        const spanKey = `${next.pageId}:${next.destLocalTileIndex + offset}`;
+        for (const binding of subtileBindingsByTile.get(spanKey) ?? []) {
+          dirtyBindings.add(binding);
+        }
+      }
+      if (current) {
+        for (let offset = 0; offset < current.tileCount; offset += 1) {
+          const spanKey = `${current.pageId}:${current.destLocalTileIndex + offset}`;
+          for (const binding of subtileBindingsByTile.get(spanKey) ?? []) {
+            dirtyBindings.add(binding);
+          }
+        }
       }
     }
     activeTileSwaps.set(key, next);
