@@ -49,6 +49,7 @@ pub enum RejectionReason {{
     SequenceMismatch = {int(RejectionReason.SEQUENCE_MISMATCH)},
     NotJoined = {int(RejectionReason.NOT_JOINED)},
     InvalidDirection = {int(RejectionReason.INVALID_DIRECTION)},
+    ForcedMovementDisabled = {int(RejectionReason.FORCED_MOVEMENT_DISABLED)},
 }}
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
@@ -133,6 +134,7 @@ export enum RejectionReason {{
   SEQUENCE_MISMATCH = {int(RejectionReason.SEQUENCE_MISMATCH)},
   NOT_JOINED = {int(RejectionReason.NOT_JOINED)},
   INVALID_DIRECTION = {int(RejectionReason.INVALID_DIRECTION)},
+  FORCED_MOVEMENT_DISABLED = {int(RejectionReason.FORCED_MOVEMENT_DISABLED)},
 }}
 
 export type Position = {{ x: number; y: number }};

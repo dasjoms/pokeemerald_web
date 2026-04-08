@@ -34,6 +34,7 @@ pub enum RejectionReason {
     SequenceMismatch = 3,
     NotJoined = 4,
     InvalidDirection = 5,
+    ForcedMovementDisabled = 6,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
