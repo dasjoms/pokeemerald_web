@@ -105,10 +105,11 @@ const MAP_ID_TO_LAYOUT_ID: Record<number, string> = {
 };
 
 const jsonAssetLoaders = import.meta.glob('../../assets/**/*.json');
-const imageAssetLoaders = import.meta.glob('../../assets/**/*.png', {
+const imageAssetUrls = import.meta.glob('../../assets/**/*.png', {
   query: '?url',
   import: 'default',
-});
+  eager: true,
+}) as Record<string, string>;
 
 const state: ClientWorldState = {
   mapId: 0,
@@ -191,12 +192,12 @@ async function loadJsonFromAssets<T>(repoRelativePath: string): Promise<T> {
 async function resolveImageUrlFromAssets(repoRelativePath: string): Promise<string> {
   const normalized = normalizeRepoRelative(repoRelativePath);
   const modulePath = `../../assets/${normalized}`;
-  const loader = imageAssetLoaders[modulePath];
-  if (!loader) {
+  const imageUrl = imageAssetUrls[modulePath];
+  if (!imageUrl) {
     throw new Error(`missing image asset at ${modulePath}`);
   }
 
-  return (await loader()) as string;
+  return imageUrl;
 }
 
 function makeRenderAssetRef(layout: LayoutFile): RenderAssetsRef {
