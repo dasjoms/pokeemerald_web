@@ -1,4 +1,4 @@
-import { Application, Container, Graphics } from 'pixi.js';
+import { Application, Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
 import {
   Direction,
   MessageType,
@@ -20,14 +20,65 @@ type ServerMessage =
   | { type: MessageType.WALK_RESULT; payload: WalkResult };
 
 type LayoutTile = {
+  metatile_id: number;
   collision: number;
+  behavior_id: number;
+};
+
+type RenderAssetsRef = {
+  pair_id: string;
+  atlas: string;
+  palettes: string;
+  metatiles: string;
 };
 
 type LayoutFile = {
   id: string;
   width: number;
   height: number;
+  primary_tileset: string;
+  secondary_tileset: string;
   tiles: LayoutTile[];
+  render_assets?: RenderAssetsRef;
+};
+
+type AtlasFile = {
+  pages: Array<{
+    page: number;
+    source_tileset: string;
+    path: string;
+  }>;
+};
+
+type PaletteSet = {
+  source_tileset: string;
+  palettes: Array<{ colors: number[][] }>;
+};
+
+type PalettesFile = {
+  tilesets: PaletteSet[];
+};
+
+type MetatileSubtile = {
+  subtile_index: number;
+  tile_index: number;
+  palette_index: number;
+  hflip: boolean;
+  vflip: boolean;
+  layer: number;
+  layer_order: number;
+};
+
+type Metatile = {
+  metatile_index: number;
+  subtiles: MetatileSubtile[];
+};
+
+type MetatilesFile = {
+  tilesets: Array<{
+    source_tileset: string;
+    metatiles: Metatile[];
+  }>;
 };
 
 type ClientWorldState = {
@@ -42,13 +93,22 @@ type ClientWorldState = {
 };
 
 const TILE_SIZE = 16;
+const SUBTILE_SIZE = 8;
 const PLAYER_SIZE = 12;
 const ENABLE_CLIENT_PREDICTION =
   new URLSearchParams(window.location.search).get('predict') === '1';
+const ENABLE_DEBUG_OVERLAY_DEFAULT =
+  new URLSearchParams(window.location.search).get('debug') === '1';
 
-const MAP_ID_TO_LAYOUT: Record<number, string> = {
-  1: '/maps/LAYOUT_LITTLEROOT_TOWN.json',
+const MAP_ID_TO_LAYOUT_ID: Record<number, string> = {
+  1: 'LAYOUT_LITTLEROOT_TOWN',
 };
+
+const jsonAssetLoaders = import.meta.glob('../../assets/**/*.json');
+const imageAssetLoaders = import.meta.glob('../../assets/**/*.png', {
+  query: '?url',
+  import: 'default',
+});
 
 const state: ClientWorldState = {
   mapId: 0,
@@ -63,6 +123,7 @@ const state: ClientWorldState = {
 
 const pendingPredictedInputs = new Map<number, Direction>();
 let socket: WebSocket | null = null;
+let debugOverlayEnabled = ENABLE_DEBUG_OVERLAY_DEFAULT;
 
 const appRoot = document.getElementById('app-root');
 if (!appRoot) {
@@ -86,11 +147,16 @@ await app.init({
 appRoot.appendChild(app.canvas);
 
 const worldContainer = new Container();
-const mapLayer = new Container();
+const mapGroundLayer = new Container();
 const actorLayer = new Container();
-worldContainer.addChild(mapLayer);
+const mapTopLayer = new Container();
+const debugOverlayLayer = new Container();
+worldContainer.addChild(mapGroundLayer);
 worldContainer.addChild(actorLayer);
+worldContainer.addChild(mapTopLayer);
+worldContainer.addChild(debugOverlayLayer);
 app.stage.addChild(worldContainer);
+debugOverlayLayer.visible = debugOverlayEnabled;
 
 const playerSprite = new Graphics()
   .rect(0, 0, PLAYER_SIZE, PLAYER_SIZE)
@@ -106,7 +172,48 @@ app.ticker.add(() => {
 connectWebSocket();
 bindWalkInput();
 
-function connectWebSocket(): void {
+function normalizeRepoRelative(path: string): string {
+  return path.replace(/\\/g, '/').replace(/^\/?rebuild\/assets\//, '');
+}
+
+async function loadJsonFromAssets<T>(repoRelativePath: string): Promise<T> {
+  const normalized = normalizeRepoRelative(repoRelativePath);
+  const modulePath = `../../assets/${normalized}`;
+  const loader = jsonAssetLoaders[modulePath];
+  if (!loader) {
+    throw new Error(`missing json asset at ${modulePath}`);
+  }
+
+  const loaded = (await loader()) as { default: T };
+  return loaded.default;
+}
+
+async function resolveImageUrlFromAssets(repoRelativePath: string): Promise<string> {
+  const normalized = normalizeRepoRelative(repoRelativePath);
+  const modulePath = `../../assets/${normalized}`;
+  const loader = imageAssetLoaders[modulePath];
+  if (!loader) {
+    throw new Error(`missing image asset at ${modulePath}`);
+  }
+
+  return (await loader()) as string;
+}
+
+function makeRenderAssetRef(layout: LayoutFile): RenderAssetsRef {
+  if (layout.render_assets) {
+    return layout.render_assets;
+  }
+
+  const pairId = `${layout.primary_tileset}__${layout.secondary_tileset}`;
+  return {
+    pair_id: pairId,
+    atlas: `render/${pairId}/atlas.json`,
+    palettes: `render/${pairId}/palettes.json`,
+    metatiles: `render/${pairId}/metatiles.json`,
+  };
+}
+
+async function connectWebSocket(): Promise<void> {
   socket = new WebSocket('ws://127.0.0.1:8080/ws');
   socket.binaryType = 'arraybuffer';
 
@@ -173,35 +280,170 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
   }
 }
 
+function paletteToTint(palette: number[][] | undefined): number {
+  if (!palette || palette.length < 2) {
+    return 0xffffff;
+  }
+
+  const [r, g, b] = palette[1];
+  return ((r & 0xff) << 16) | ((g & 0xff) << 8) | (b & 0xff);
+}
+
 async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
-  const layoutPath = MAP_ID_TO_LAYOUT[snapshot.map_id];
-  if (!layoutPath) {
+  const layoutId = MAP_ID_TO_LAYOUT_ID[snapshot.map_id];
+  if (!layoutId) {
     throw new Error(`missing layout mapping for map id: ${snapshot.map_id}`);
   }
 
-  const response = await fetch(layoutPath);
-  const layout = (await response.json()) as LayoutFile;
+  const layout = await loadJsonFromAssets<LayoutFile>(`layouts/${layoutId}.json`);
+  const renderAssets = makeRenderAssetRef(layout);
+  const atlas = await loadJsonFromAssets<AtlasFile>(renderAssets.atlas);
+  const metatiles = await loadJsonFromAssets<MetatilesFile>(renderAssets.metatiles);
+  const palettes = await loadJsonFromAssets<PalettesFile>(renderAssets.palettes);
 
   state.mapWidth = layout.width;
   state.mapHeight = layout.height;
 
-  mapLayer.removeChildren();
+  mapGroundLayer.removeChildren();
+  mapTopLayer.removeChildren();
+  debugOverlayLayer.removeChildren();
+
+  const pageTextures = new Map<number, Texture>();
+  const tileTextureCache = new Map<string, Texture>();
+  for (const page of atlas.pages) {
+    const textureUrl = await resolveImageUrlFromAssets(page.path);
+    pageTextures.set(page.page, Texture.from(textureUrl));
+  }
+
+  const primaryPage = atlas.pages[0];
+  if (!primaryPage) {
+    throw new Error(`missing primary atlas page for ${layout.id}`);
+  }
+  const primaryTexture = pageTextures.get(primaryPage.page);
+  if (!primaryTexture) {
+    throw new Error(`missing loaded texture for atlas page ${primaryPage.page}`);
+  }
+  const primaryTileCount =
+    Math.floor(primaryTexture.width / SUBTILE_SIZE) *
+    Math.floor(primaryTexture.height / SUBTILE_SIZE);
+
+  const metatilesBySource = new Map<string, Metatile[]>();
+  for (const entry of metatiles.tilesets) {
+    metatilesBySource.set(entry.source_tileset, entry.metatiles);
+  }
+
+  const palettesBySource = new Map<string, number[][][]>();
+  for (const entry of palettes.tilesets) {
+    palettesBySource.set(
+      entry.source_tileset,
+      entry.palettes.map((palette) => palette.colors),
+    );
+  }
+
+  const primaryMetatiles = metatilesBySource.get(layout.primary_tileset) ?? [];
+  const secondaryMetatiles = metatilesBySource.get(layout.secondary_tileset) ?? [];
+  const primaryPalettes = palettesBySource.get(layout.primary_tileset) ?? [];
+  const secondaryPalettes = palettesBySource.get(layout.secondary_tileset) ?? [];
 
   for (let y = 0; y < layout.height; y += 1) {
     for (let x = 0; x < layout.width; x += 1) {
       const tile = layout.tiles[y * layout.width + x];
-      const baseColor = tile.collision === 0 ? 0x4ade80 : 0x64748b;
-      const g = new Graphics()
+      if (!tile) {
+        continue;
+      }
+
+      const isPrimaryMetatile = tile.metatile_id < primaryMetatiles.length;
+      const metatile = isPrimaryMetatile
+        ? primaryMetatiles[tile.metatile_id]
+        : secondaryMetatiles[tile.metatile_id - primaryMetatiles.length];
+      if (!metatile) {
+        continue;
+      }
+
+      const sourcePalettes = isPrimaryMetatile ? primaryPalettes : secondaryPalettes;
+      const sortedSubtiles = [...metatile.subtiles].sort((a, b) => {
+        if (a.layer !== b.layer) {
+          return a.layer - b.layer;
+        }
+        return a.layer_order - b.layer_order;
+      });
+
+      for (const subtile of sortedSubtiles) {
+        const sourcePage = subtile.tile_index >= primaryTileCount ? 1 : 0;
+        const sourceTexture = pageTextures.get(sourcePage);
+        if (!sourceTexture) {
+          continue;
+        }
+
+        const localTileIndex =
+          sourcePage === 0 ? subtile.tile_index : subtile.tile_index - primaryTileCount;
+        if (localTileIndex < 0) {
+          continue;
+        }
+
+        const atlasColumns = Math.floor(sourceTexture.width / SUBTILE_SIZE);
+        const srcX = (localTileIndex % atlasColumns) * SUBTILE_SIZE;
+        const srcY = Math.floor(localTileIndex / atlasColumns) * SUBTILE_SIZE;
+        if (srcY >= sourceTexture.height) {
+          continue;
+        }
+
+        const cacheKey = `${sourcePage}:${localTileIndex}`;
+        let subtileTexture = tileTextureCache.get(cacheKey);
+        if (!subtileTexture) {
+          subtileTexture = new Texture({
+            source: sourceTexture.source,
+            frame: new Rectangle(srcX, srcY, SUBTILE_SIZE, SUBTILE_SIZE),
+          });
+          tileTextureCache.set(cacheKey, subtileTexture);
+        }
+
+        const sprite = new Sprite(subtileTexture);
+        const subtileX = subtile.subtile_index % 2;
+        const subtileY = Math.floor(subtile.subtile_index / 2) % 2;
+        sprite.x = x * TILE_SIZE + subtileX * SUBTILE_SIZE;
+        sprite.y = y * TILE_SIZE + subtileY * SUBTILE_SIZE;
+
+        if (subtile.hflip) {
+          sprite.scale.x = -1;
+          sprite.x += SUBTILE_SIZE;
+        }
+        if (subtile.vflip) {
+          sprite.scale.y = -1;
+          sprite.y += SUBTILE_SIZE;
+        }
+
+        const palette = sourcePalettes[subtile.palette_index];
+        sprite.tint = paletteToTint(palette);
+
+        if (subtile.layer === 0) {
+          mapGroundLayer.addChild(sprite);
+        } else {
+          mapTopLayer.addChild(sprite);
+        }
+      }
+
+      const overlayColor = tile.collision === 0 ? 0x16a34a : 0xdc2626;
+      const overlay = new Graphics()
         .rect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
-        .fill({ color: baseColor })
-        .stroke({ color: 0x0f172a, width: 1 });
-      mapLayer.addChild(g);
+        .fill({ color: overlayColor, alpha: 0.25 })
+        .stroke({ color: 0x0f172a, width: 1, alpha: 0.35 });
+      overlay.visible = debugOverlayEnabled;
+      overlay.label = `collision=${tile.collision} behavior=${tile.behavior_id}`;
+      debugOverlayLayer.addChild(overlay);
     }
   }
 }
 
 function bindWalkInput(): void {
   window.addEventListener('keydown', (event) => {
+    if (event.key === 'F3') {
+      event.preventDefault();
+      debugOverlayEnabled = !debugOverlayEnabled;
+      debugOverlayLayer.visible = debugOverlayEnabled;
+      return;
+    }
+
     const direction = keyToDirection(event.key);
     if (direction === null) {
       return;
