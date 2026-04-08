@@ -1,5 +1,6 @@
-import { Assets, Rectangle, Texture } from 'pixi.js';
+import { Rectangle, Texture } from 'pixi.js';
 import { Direction } from './protocol_generated';
+import { decodeIndexed4bppPngFromUrl } from './metatileRenderer';
 
 type Cardinal = 'south' | 'north' | 'west' | 'east';
 type AnimationKind = 'face' | 'walk';
@@ -116,10 +117,12 @@ export async function loadPlayerAnimationAssets(
     loadBaseTexture(
       options.resolveImageUrlFromAssets,
       resolveSheetPngPathFromManifest(avatar.sheet_sources.normal.source_path),
+      avatar.palettes.normal.colors,
     ),
     loadBaseTexture(
       options.resolveImageUrlFromAssets,
       resolveSheetPngPathFromManifest(avatar.sheet_sources.running.source_path),
+      avatar.palettes.normal.colors,
     ),
   ]);
 
@@ -168,10 +171,77 @@ function resolveSheetPngPathFromManifest(sourcePath: string): string {
 async function loadBaseTexture(
   resolveImageUrlFromAssets: PlayerAnimationLoadOptions['resolveImageUrlFromAssets'],
   repoRelativePath: string,
+  paletteColors: string[],
 ): Promise<Texture> {
   const imageUrl = await resolveImageUrlFromAssets(repoRelativePath);
-  const texture = await Assets.load<Texture>(imageUrl);
+  const decodedSheet = await decodeIndexed4bppPngFromUrl(imageUrl, Number.MAX_SAFE_INTEGER);
+  const texture = bakeIndexedPlayerSheetTexture(
+    decodedSheet.width,
+    decodedSheet.height,
+    decodedSheet.tileIndices,
+    paletteColors,
+  );
   return texture;
+}
+
+export function buildPlayerSheetRgba(
+  width: number,
+  height: number,
+  indices: Uint8Array,
+  paletteColors: string[],
+): Uint8ClampedArray {
+  const expectedSize = width * height;
+  if (indices.length !== expectedSize) {
+    throw new Error(`player sheet indices length mismatch: expected=${expectedSize}, actual=${indices.length}`);
+  }
+
+  const rgba = new Uint8ClampedArray(expectedSize * 4);
+  for (let index = 0; index < indices.length; index += 1) {
+    const paletteIndex = indices[index] ?? 0;
+    const [r, g, b] = parseHexPaletteColor(paletteColors[paletteIndex]);
+    const outOffset = index * 4;
+    rgba[outOffset] = r;
+    rgba[outOffset + 1] = g;
+    rgba[outOffset + 2] = b;
+    rgba[outOffset + 3] = paletteIndex === 0 ? 0 : 0xff;
+  }
+  return rgba;
+}
+
+function bakeIndexedPlayerSheetTexture(
+  width: number,
+  height: number,
+  indices: Uint8Array,
+  paletteColors: string[],
+): Texture {
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    throw new Error('Failed to create 2D context for player sheet texture baking');
+  }
+
+  ctx.imageSmoothingEnabled = false;
+  const rgba = buildPlayerSheetRgba(width, height, indices, paletteColors);
+  ctx.putImageData(new ImageData(rgba, width, height), 0, 0);
+  const texture = Texture.from(canvas);
+  texture.source.scaleMode = 'nearest';
+  return texture;
+}
+
+function parseHexPaletteColor(color: string | undefined): [number, number, number] {
+  if (!color) {
+    return [0, 0, 0];
+  }
+
+  const match = /^#?([0-9a-f]{6})$/i.exec(color.trim());
+  if (!match) {
+    return [0, 0, 0];
+  }
+
+  const packed = Number.parseInt(match[1], 16);
+  return [(packed >> 16) & 0xff, (packed >> 8) & 0xff, packed & 0xff];
 }
 
 export class PlayerAnimationController {
