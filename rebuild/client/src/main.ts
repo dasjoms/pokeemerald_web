@@ -236,14 +236,21 @@ type MapTileRenderPriorityContext = {
 type WalkInputController = {
   handleKeyDown: (event: KeyboardEvent) => void;
   handleKeyUp: (event: KeyboardEvent) => void;
-  toggleMovementMode: () => void;
+  cycleTraversalTestMode: () => void;
   tick: () => void;
   markWalkResultReceived: (result: WalkResult) => void;
   markWalkTransitionCompleted: () => void;
   hasPendingAcceptedOrDispatchableStep: () => boolean;
+  getTraversalTestMode: () => TraversalTestMode;
   getMovementMode: () => MovementMode;
   reset: () => void;
 };
+
+enum TraversalTestMode {
+  ON_FOOT,
+  MACH,
+  ACRO,
+}
 
 const TILE_SIZE = 16;
 const SUBTILE_SIZE = 8;
@@ -1214,12 +1221,12 @@ function bindWalkInput(): void {
       void toggleDebugAvatar();
       return;
     }
-    if (event.key === 'b' || event.key === 'B') {
+    if (event.key === 'F5') {
       event.preventDefault();
       if (event.repeat) {
         return;
       }
-      walkInputController.toggleMovementMode();
+      walkInputController.cycleTraversalTestMode();
       return;
     }
     walkInputController.handleKeyDown(event);
@@ -1278,7 +1285,19 @@ function createWalkInputController(config: {
   let activeIntent: Direction | null = null;
   let bufferedIntent: Direction | null = null;
   let hasPendingWalkRequest = false;
-  let movementMode: MovementMode = MovementMode.WALK;
+  let traversalTestMode: TraversalTestMode = TraversalTestMode.ON_FOOT;
+
+  const traversalTestModeToMovementMode = (mode: TraversalTestMode): MovementMode => {
+    switch (mode) {
+      case TraversalTestMode.MACH:
+        return MovementMode.MACH_BIKE;
+      case TraversalTestMode.ACRO:
+        return MovementMode.ACRO_CRUISE;
+      case TraversalTestMode.ON_FOOT:
+      default:
+        return MovementMode.WALK;
+    }
+  };
 
   const removeDirectionFromOrder = (direction: Direction): void => {
     const index = directionOrder.indexOf(direction);
@@ -1312,6 +1331,7 @@ function createWalkInputController(config: {
   };
 
   const sendIntent = (direction: Direction): void => {
+    const movementMode = traversalTestModeToMovementMode(traversalTestMode);
     config.onFacingIntent(direction);
     config.sendWalkInput(direction, movementMode);
     activeIntent = direction;
@@ -1395,9 +1415,18 @@ function createWalkInputController(config: {
 
       maybeDispatchIntent(performance.now());
     },
-    toggleMovementMode(): void {
-      movementMode =
-        movementMode === MovementMode.WALK ? MovementMode.RUN : MovementMode.WALK;
+    cycleTraversalTestMode(): void {
+      switch (traversalTestMode) {
+        case TraversalTestMode.ON_FOOT:
+          traversalTestMode = TraversalTestMode.MACH;
+          return;
+        case TraversalTestMode.MACH:
+          traversalTestMode = TraversalTestMode.ACRO;
+          return;
+        case TraversalTestMode.ACRO:
+        default:
+          traversalTestMode = TraversalTestMode.ON_FOOT;
+      }
     },
     handleKeyUp(event: KeyboardEvent): void {
       const direction = keyToDirection(event.key);
@@ -1430,14 +1459,17 @@ function createWalkInputController(config: {
     hasPendingAcceptedOrDispatchableStep(): boolean {
       return hasPendingAcceptedOrDispatchableStep(performance.now());
     },
+    getTraversalTestMode(): TraversalTestMode {
+      return traversalTestMode;
+    },
     getMovementMode(): MovementMode {
-      return movementMode;
+      return traversalTestModeToMovementMode(traversalTestMode);
     },
     reset(): void {
       hasPendingWalkRequest = false;
       activeIntent = null;
       bufferedIntent = null;
-      movementMode = MovementMode.WALK;
+      traversalTestMode = TraversalTestMode.ON_FOOT;
       heldDirections.clear();
       heldDirectionPressedAtMs.clear();
       directionOrder.length = 0;
@@ -1753,8 +1785,11 @@ function renderHud(): void {
   hud.mapId && (hud.mapId.textContent = `${state.mapId}`);
   hud.tile && (hud.tile.textContent = `${state.playerTileX}, ${state.playerTileY}`);
   hud.facing && (hud.facing.textContent = Direction[state.facing]);
-  hud.movementMode &&
-    (hud.movementMode.textContent = MovementMode[walkInputController.getMovementMode()]);
+  if (hud.movementMode) {
+    const traversalTestMode = walkInputController.getTraversalTestMode();
+    const movementMode = walkInputController.getMovementMode();
+    hud.movementMode.textContent = `${TraversalTestMode[traversalTestMode]} (${MovementMode[movementMode]})`;
+  }
   hud.inputSeq && (hud.inputSeq.textContent = `${Math.max(0, state.lastInputSeq - 1)}`);
   hud.serverTick && (hud.serverTick.textContent = `${state.lastAckServerTick}`);
 
