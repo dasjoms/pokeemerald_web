@@ -123,6 +123,13 @@ pub enum BikeTransitionType {{
     HopMoving = {int(BikeTransitionType.HOP_MOVING)},
     SideJump = {int(BikeTransitionType.SIDE_JUMP)},
     TurnJump = {int(BikeTransitionType.TURN_JUMP)},
+    NormalToWheelie = {int(BikeTransitionType.NORMAL_TO_WHEELIE)},
+    WheelieToNormal = {int(BikeTransitionType.WHEELIE_TO_NORMAL)},
+    WheelieHoppingStanding = {int(BikeTransitionType.WHEELIE_HOPPING_STANDING)},
+    WheelieHoppingMoving = {int(BikeTransitionType.WHEELIE_HOPPING_MOVING)},
+    WheelieMoving = {int(BikeTransitionType.WHEELIE_MOVING)},
+    WheelieRisingMoving = {int(BikeTransitionType.WHEELIE_RISING_MOVING)},
+    WheelieLoweringMoving = {int(BikeTransitionType.WHEELIE_LOWERING_MOVING)},
 }}
 
 #[repr(u8)]
@@ -295,6 +302,13 @@ export enum BikeTransitionType {{
   HOP_MOVING = {int(BikeTransitionType.HOP_MOVING)},
   SIDE_JUMP = {int(BikeTransitionType.SIDE_JUMP)},
   TURN_JUMP = {int(BikeTransitionType.TURN_JUMP)},
+  NORMAL_TO_WHEELIE = {int(BikeTransitionType.NORMAL_TO_WHEELIE)},
+  WHEELIE_TO_NORMAL = {int(BikeTransitionType.WHEELIE_TO_NORMAL)},
+  WHEELIE_HOPPING_STANDING = {int(BikeTransitionType.WHEELIE_HOPPING_STANDING)},
+  WHEELIE_HOPPING_MOVING = {int(BikeTransitionType.WHEELIE_HOPPING_MOVING)},
+  WHEELIE_MOVING = {int(BikeTransitionType.WHEELIE_MOVING)},
+  WHEELIE_RISING_MOVING = {int(BikeTransitionType.WHEELIE_RISING_MOVING)},
+  WHEELIE_LOWERING_MOVING = {int(BikeTransitionType.WHEELIE_LOWERING_MOVING)},
 }}
 
 export enum RejectionReason {{
