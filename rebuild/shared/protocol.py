@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from enum import IntEnum
 import struct
 
-PROTOCOL_VERSION = 6
+PROTOCOL_VERSION = 7
 
 _HEADER = struct.Struct("<HBI")  # protocol_version, message_type, payload_len
 _U8 = struct.Struct("<B")
@@ -47,6 +47,14 @@ class Direction(IntEnum):
 class MovementMode(IntEnum):
     WALK = 0
     RUN = 1
+
+
+class StepSpeed(IntEnum):
+    STEP1 = 0
+    STEP2 = 1
+    STEP3 = 2
+    STEP4 = 3
+    STEP8 = 4
 
 
 class HeldButtons(IntEnum):
@@ -146,6 +154,7 @@ class WorldSnapshot:
     server_frame: int
     traversal_state: TraversalState
     preferred_bike_type: TraversalState
+    authoritative_step_speed: StepSpeed | None = None
     mach_speed_stage: int | None = None
     acro_substate: AcroBikeSubstate | None = None
     bike_transition: BikeTransitionType | None = None
@@ -162,6 +171,7 @@ class WalkResult:
     server_frame: int
     traversal_state: TraversalState
     preferred_bike_type: TraversalState
+    authoritative_step_speed: StepSpeed | None = None
     mach_speed_stage: int | None = None
     acro_substate: AcroBikeSubstate | None = None
     bike_transition: BikeTransitionType | None = None
@@ -244,6 +254,7 @@ def _encode_payload(message: WireMessage) -> tuple[MessageType, bytes]:
             raise ProtocolError("map_chunk_hash must be <= 255 bytes")
 
         runtime_payload, runtime_flags = _encode_bike_runtime(
+            message.authoritative_step_speed,
             message.mach_speed_stage,
             message.acro_substate,
             message.bike_transition,
@@ -270,6 +281,7 @@ def _encode_payload(message: WireMessage) -> tuple[MessageType, bytes]:
 
     if isinstance(message, WalkResult):
         runtime_payload, runtime_flags = _encode_bike_runtime(
+            message.authoritative_step_speed,
             message.mach_speed_stage,
             message.acro_substate,
             message.bike_transition,
@@ -362,6 +374,7 @@ def _decode_payload(message_type: MessageType, payload: bytes) -> WireMessage:
             server_frame=server_frame,
             traversal_state=TraversalState(traversal_state),
             preferred_bike_type=TraversalState(preferred_bike_type),
+            authoritative_step_speed=runtime.step_speed,
             mach_speed_stage=runtime.mach_speed_stage,
             acro_substate=runtime.acro_substate,
             bike_transition=runtime.bike_transition,
@@ -390,6 +403,7 @@ def _decode_payload(message_type: MessageType, payload: bytes) -> WireMessage:
             server_frame=server_frame,
             traversal_state=TraversalState(traversal_state),
             preferred_bike_type=TraversalState(preferred_bike_type),
+            authoritative_step_speed=runtime.step_speed,
             mach_speed_stage=runtime.mach_speed_stage,
             acro_substate=runtime.acro_substate,
             bike_transition=runtime.bike_transition,
@@ -408,12 +422,14 @@ def _decode_payload(message_type: MessageType, payload: bytes) -> WireMessage:
 
 @dataclass(frozen=True)
 class _DecodedBikeRuntime:
+    step_speed: StepSpeed | None
     mach_speed_stage: int | None
     acro_substate: AcroBikeSubstate | None
     bike_transition: BikeTransitionType | None
 
 
 def _encode_bike_runtime(
+    step_speed: StepSpeed | None,
     mach_speed_stage: int | None,
     acro_substate: AcroBikeSubstate | None,
     bike_transition: BikeTransitionType | None,
@@ -421,6 +437,9 @@ def _encode_bike_runtime(
     flags = 0
     payload = bytearray()
 
+    if step_speed is not None:
+        flags |= 0b1000
+        payload.extend(_U8.pack(int(step_speed)))
     if mach_speed_stage is not None:
         flags |= 0b001
         payload.extend(_U8.pack(mach_speed_stage))
@@ -437,10 +456,14 @@ def _encode_bike_runtime(
 def _decode_bike_runtime(raw: bytes, offset: int) -> tuple[_DecodedBikeRuntime, int]:
     flags, offset = _unpack_u8(raw, offset)
 
+    step_speed = None
     mach_speed_stage = None
     acro_substate = None
     bike_transition = None
 
+    if flags & 0b1000:
+        value, offset = _unpack_u8(raw, offset)
+        step_speed = StepSpeed(value)
     if flags & 0b001:
         mach_speed_stage, offset = _unpack_u8(raw, offset)
     if flags & 0b010:
@@ -452,6 +475,7 @@ def _decode_bike_runtime(raw: bytes, offset: int) -> tuple[_DecodedBikeRuntime, 
 
     return (
         _DecodedBikeRuntime(
+            step_speed=step_speed,
             mach_speed_stage=mach_speed_stage,
             acro_substate=acro_substate,
             bike_transition=bike_transition,

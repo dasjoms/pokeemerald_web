@@ -16,12 +16,12 @@ use crate::{
     movement::{
         facing_delta, get_player_speed, mach_speed_tier_for_frame_counter, player_speed_step_speed,
         should_force_muddy_slope_slide_back, validate_walk_with_context, ConnectedDestination,
-        MoveRejectReason, MoveValidation, MovementMap, PlayerSpeed, TraversalContext,
-        WALK_SAMPLE_MS,
+        MoveRejectReason, MoveValidation, MovementMap, PlayerSpeed, StepSpeed as MovementStepSpeed,
+        TraversalContext, WALK_SAMPLE_MS,
     },
     protocol::{
         AcroBikeSubstate, BikeTransitionType, DebugTraversalAction, DebugTraversalInput, Direction,
-        MovementMode, PlayerAvatar, RejectionReason, ServerMessage, SessionAccepted,
+        MovementMode, PlayerAvatar, RejectionReason, ServerMessage, SessionAccepted, StepSpeed,
         TraversalState, WalkInput, WalkResult, WorldSnapshot,
     },
     session::{
@@ -463,6 +463,9 @@ impl World {
                         server_frame: tick as u32,
                         traversal_state: session.player_state.traversal_state,
                         preferred_bike_type: session.player_state.preferred_bike_type,
+                        authoritative_step_speed: Some(player_step_speed_for_snapshot(
+                            &session.player_state,
+                        )),
                         mach_speed_stage: bike_mach_speed_for_traversal(&session.player_state),
                         acro_substate: bike_acro_substate_for_traversal(&session.player_state),
                         bike_transition: Some(session.player_state.bike_runtime.last_transition),
@@ -615,6 +618,7 @@ impl World {
                     server_frame: tick as u32,
                     traversal_state: session.player_state.traversal_state,
                     preferred_bike_type: session.player_state.preferred_bike_type,
+                    authoritative_step_speed: Some(step_speed_to_protocol(step_speed)),
                     mach_speed_stage: bike_mach_speed_for_traversal(&session.player_state),
                     acro_substate: bike_acro_substate_for_traversal(&session.player_state),
                     bike_transition: Some(session.player_state.bike_runtime.last_transition),
@@ -685,6 +689,7 @@ impl World {
             server_frame,
             traversal_state: player_state.traversal_state,
             preferred_bike_type: player_state.preferred_bike_type,
+            authoritative_step_speed: Some(player_step_speed_for_snapshot(player_state)),
             mach_speed_stage: bike_mach_speed_for_traversal(player_state),
             acro_substate: bike_acro_substate_for_traversal(player_state),
             bike_transition: Some(player_state.bike_runtime.last_transition),
@@ -767,6 +772,7 @@ impl World {
             server_frame,
             traversal_state: session.player_state.traversal_state,
             preferred_bike_type: session.player_state.preferred_bike_type,
+            authoritative_step_speed: Some(player_step_speed_for_snapshot(&session.player_state)),
             mach_speed_stage: bike_mach_speed_for_traversal(&session.player_state),
             acro_substate: bike_acro_substate_for_traversal(&session.player_state),
             bike_transition: Some(session.player_state.bike_runtime.last_transition),
@@ -777,6 +783,25 @@ impl World {
 
 fn bike_effect_flags_for_snapshot(player_state: &PlayerState) -> u8 {
     bike_effect_flags_from_transition(player_state.bike_runtime.last_transition)
+}
+
+fn player_step_speed_for_snapshot(player_state: &PlayerState) -> StepSpeed {
+    let player_speed = get_player_speed(
+        player_state.traversal_state,
+        MovementMode::Walk,
+        player_state.bike_runtime.bike_frame_counter,
+    );
+    step_speed_to_protocol(player_speed_step_speed(player_speed))
+}
+
+fn step_speed_to_protocol(step_speed: MovementStepSpeed) -> StepSpeed {
+    match step_speed {
+        MovementStepSpeed::Step1 => StepSpeed::Step1,
+        MovementStepSpeed::Step2 => StepSpeed::Step2,
+        MovementStepSpeed::Step3 => StepSpeed::Step3,
+        MovementStepSpeed::Step4 => StepSpeed::Step4,
+        MovementStepSpeed::Step8 => StepSpeed::Step8,
+    }
 }
 
 fn bike_effect_flags_for_step(

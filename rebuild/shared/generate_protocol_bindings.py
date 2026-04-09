@@ -15,6 +15,7 @@ from protocol import (
     MovementMode,
     PlayerAvatar,
     RejectionReason,
+    StepSpeed,
     TraversalState,
 )
 
@@ -58,6 +59,17 @@ pub enum Direction {{
 pub enum MovementMode {{
     Walk = {int(MovementMode.WALK)},
     Run = {int(MovementMode.RUN)},
+}}
+
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum StepSpeed {{
+    Step1 = {int(StepSpeed.STEP1)},
+    Step2 = {int(StepSpeed.STEP2)},
+    Step3 = {int(StepSpeed.STEP3)},
+    Step4 = {int(StepSpeed.STEP4)},
+    Step8 = {int(StepSpeed.STEP8)},
 }}
 
 #[repr(u8)]
@@ -177,6 +189,7 @@ pub struct WorldSnapshot {{
     pub server_frame: u32,
     pub traversal_state: TraversalState,
     pub preferred_bike_type: TraversalState,
+    pub authoritative_step_speed: Option<StepSpeed>,
     pub mach_speed_stage: Option<u8>,
     pub acro_substate: Option<AcroBikeSubstate>,
     pub bike_transition: Option<BikeTransitionType>,
@@ -193,6 +206,7 @@ pub struct WalkResult {{
     pub server_frame: u32,
     pub traversal_state: TraversalState,
     pub preferred_bike_type: TraversalState,
+    pub authoritative_step_speed: Option<StepSpeed>,
     pub mach_speed_stage: Option<u8>,
     pub acro_substate: Option<AcroBikeSubstate>,
     pub bike_transition: Option<BikeTransitionType>,
@@ -234,6 +248,14 @@ export enum Direction {{
 export enum MovementMode {{
   WALK = {int(MovementMode.WALK)},
   RUN = {int(MovementMode.RUN)},
+}}
+
+export enum StepSpeed {{
+  STEP1 = {int(StepSpeed.STEP1)},
+  STEP2 = {int(StepSpeed.STEP2)},
+  STEP3 = {int(StepSpeed.STEP3)},
+  STEP4 = {int(StepSpeed.STEP4)},
+  STEP8 = {int(StepSpeed.STEP8)},
 }}
 
 export enum HeldButtons {{
@@ -313,6 +335,7 @@ export type WorldSnapshot = {{
   server_frame: number;
   traversal_state: TraversalState;
   preferred_bike_type: TraversalState;
+  authoritative_step_speed?: StepSpeed;
   mach_speed_stage?: number;
   acro_substate?: AcroBikeSubstate;
   bike_transition?: BikeTransitionType;
@@ -327,6 +350,7 @@ export type WalkResult = {{
   server_frame: number;
   traversal_state: TraversalState;
   preferred_bike_type: TraversalState;
+  authoritative_step_speed?: StepSpeed;
   mach_speed_stage?: number;
   acro_substate?: AcroBikeSubstate;
   bike_transition?: BikeTransitionType;
