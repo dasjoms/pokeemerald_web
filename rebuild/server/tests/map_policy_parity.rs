@@ -5,6 +5,7 @@ use rebuild_server::{
     protocol::{Direction, MovementMode, ServerMessage, WalkInput},
     world::World,
 };
+use serde::Deserialize;
 use tokio::sync::mpsc;
 
 fn test_asset_paths() -> (String, String) {
@@ -17,6 +18,23 @@ fn test_asset_paths() -> (String, String) {
             .to_string_lossy()
             .into_owned(),
     )
+}
+
+fn fixture_path(name: &str) -> String {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("tests")
+        .join("fixtures")
+        .join(name)
+        .to_string_lossy()
+        .into_owned()
+}
+
+#[derive(Debug, Deserialize)]
+struct CrackedFloorLaneFixture {
+    name: String,
+    map_id: String,
+    tiles: Vec<[u16; 2]>,
 }
 
 fn reverse(direction: Direction) -> Direction {
@@ -179,4 +197,35 @@ async fn run_inputs_fallback_to_walk_timing_when_running_is_disallowed() {
 async fn run_inputs_keep_run_timing_when_running_is_allowed() {
     let second_tick = second_accepted_tick_for_run_inputs("MAP_LITTLEROOT_TOWN").await;
     assert_eq!(second_tick, 9);
+}
+
+#[tokio::test]
+async fn sky_pillar_cracked_floor_lane_fixtures_match_behavior_tiles() {
+    let (maps_index, layouts_index) = test_asset_paths();
+    let fixture_raw = std::fs::read_to_string(fixture_path("sky_pillar_cracked_floor_lanes.json"))
+        .expect("fixture file should be readable");
+    let fixtures: Vec<CrackedFloorLaneFixture> =
+        serde_json::from_str(&fixture_raw).expect("fixture file should parse");
+
+    for fixture in fixtures {
+        let world = World::load_from_assets(&fixture.map_id, &maps_index, &layouts_index)
+            .expect("world should load for sky pillar fixture");
+        let map = world
+            .map(&fixture.map_id)
+            .expect("fixture map should be loaded");
+
+        for [x, y] in fixture.tiles {
+            let index = y as usize * map.width as usize + x as usize;
+            let behavior = map
+                .behavior
+                .get(index)
+                .copied()
+                .expect("fixture coordinate should stay in bounds");
+            assert_eq!(
+                behavior, 0xD2,
+                "fixture {} tile ({x}, {y}) drifted from cracked-floor behavior in {}",
+                fixture.name, fixture.map_id
+            );
+        }
+    }
 }

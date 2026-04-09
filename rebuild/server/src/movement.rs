@@ -43,6 +43,7 @@ pub enum MoveRejectReason {
 pub struct TraversalContext {
     pub traversal_state: TraversalState,
     pub movement_mode: MovementMode,
+    pub bike_frame_counter: u8,
     pub acro_substate: Option<AcroBikeSubstate>,
 }
 
@@ -110,6 +111,7 @@ pub fn validate_walk(
         TraversalContext {
             traversal_state: TraversalState::OnFoot,
             movement_mode: MovementMode::Walk,
+            bike_frame_counter: 0,
             acro_substate: None,
         },
     )
@@ -213,6 +215,15 @@ pub const WALK_NORMAL_STEP_PIXELS_PER_SAMPLE: u8 = 1;
 pub const WALK_STEP_SPEED: StepSpeed = StepSpeed::Step1;
 pub const RUN_STEP_SPEED: StepSpeed = StepSpeed::Step2;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum PlayerSpeed {
+    Standing,
+    Normal,
+    Fast,
+    Faster,
+    Fastest,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StepSpeed {
     Step1,
@@ -257,6 +268,41 @@ impl StepSpeed {
 
 pub fn normal_walk_samples_per_tile() -> u16 {
     StepSpeed::Step1.samples_per_tile()
+}
+
+pub const fn player_speed_step_speed(speed: PlayerSpeed) -> StepSpeed {
+    match speed {
+        PlayerSpeed::Standing | PlayerSpeed::Normal => StepSpeed::Step1,
+        PlayerSpeed::Fast => StepSpeed::Step2,
+        PlayerSpeed::Faster => StepSpeed::Step3,
+        PlayerSpeed::Fastest => StepSpeed::Step4,
+    }
+}
+
+pub const fn mach_speed_tier_for_frame_counter(bike_frame_counter: u8) -> PlayerSpeed {
+    match bike_frame_counter {
+        0 => PlayerSpeed::Normal,
+        1 => PlayerSpeed::Fast,
+        _ => PlayerSpeed::Fastest,
+    }
+}
+
+pub const fn get_player_speed(
+    traversal_state: TraversalState,
+    movement_mode: MovementMode,
+    bike_frame_counter: u8,
+) -> PlayerSpeed {
+    match traversal_state {
+        TraversalState::OnFoot => {
+            if matches!(movement_mode, MovementMode::Run) {
+                PlayerSpeed::Fast
+            } else {
+                PlayerSpeed::Normal
+            }
+        }
+        TraversalState::MachBike => mach_speed_tier_for_frame_counter(bike_frame_counter),
+        TraversalState::AcroBike => PlayerSpeed::Faster,
+    }
 }
 
 pub fn step_progress_pixels(elapsed_samples: u16, speed: StepSpeed) -> u16 {
@@ -404,12 +450,15 @@ fn movement_behavior_gate_reject_reason(
     facing: Direction,
     traversal_context: TraversalContext,
 ) -> Option<&'static str> {
+    let player_speed = get_player_speed(
+        traversal_context.traversal_state,
+        traversal_context.movement_mode,
+        traversal_context.bike_frame_counter,
+    );
+
     if source_behavior_id == MB_MUDDY_SLOPE {
-        let mud_slide_allowed = matches!(facing, Direction::Up)
-            && is_fastest_player_speed(
-                traversal_context.traversal_state,
-                traversal_context.movement_mode,
-            );
+        let mud_slide_allowed =
+            matches!(facing, Direction::Up) && matches!(player_speed, PlayerSpeed::Fastest);
         if !mud_slide_allowed {
             return Some("rejected: muddy_slope_slide_back_rule");
         }
@@ -422,24 +471,12 @@ fn movement_behavior_gate_reject_reason(
     }
 
     if source_behavior_id == MB_CRACKED_FLOOR || destination_behavior_id == MB_CRACKED_FLOOR {
-        if !is_fastest_player_speed(
-            traversal_context.traversal_state,
-            traversal_context.movement_mode,
-        ) {
+        if !matches!(player_speed, PlayerSpeed::Fastest) {
             return Some("rejected: cracked_floor_requires_fastest_speed");
         }
     }
 
     None
-}
-
-fn is_fastest_player_speed(traversal_state: TraversalState, movement_mode: MovementMode) -> bool {
-    match traversal_state {
-        TraversalState::OnFoot => matches!(movement_mode, MovementMode::Run),
-        TraversalState::MachBike | TraversalState::AcroBike => {
-            matches!(movement_mode, MovementMode::Run)
-        }
-    }
 }
 
 fn trace_walk_attempt(facing: Direction, source: TileQuery, destination: TileQuery, reason: &str) {
@@ -478,6 +515,7 @@ mod tests {
         TraversalContext {
             traversal_state: TraversalState::OnFoot,
             movement_mode: MovementMode::Walk,
+            bike_frame_counter: 0,
             acro_substate: None,
         }
     }

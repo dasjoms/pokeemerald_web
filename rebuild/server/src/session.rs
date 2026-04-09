@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 use tokio::sync::mpsc;
 
 use crate::{
-    movement::{movement_mode_step_speed, step_progress_pixels, StepSpeed, WALK_SAMPLE_MS},
+    movement::{step_progress_pixels, StepSpeed, WALK_SAMPLE_MS},
     protocol::{
         AcroBikeSubstate, BikeTransitionType, Direction, MovementMode, PlayerAvatar, ServerMessage,
         TraversalState, WalkInput,
@@ -21,23 +21,73 @@ pub struct PlayerState {
     pub avatar: PlayerAvatar,
     pub traversal_state: TraversalState,
     pub bike_runtime: BikeRuntimeState,
+    pub cracked_floor: CrackedFloorRuntimeState,
 }
 
 #[derive(Debug, Clone)]
 pub struct BikeRuntimeState {
     pub mach_speed_stage: u8,
-    pub mach_speed_counter: u8,
+    pub bike_frame_counter: u8,
+    pub speed_tier: u8,
+    pub mach_dir_traveling: Option<Direction>,
     pub acro_state: AcroBikeSubstate,
     pub last_transition: BikeTransitionType,
     pub acro_input_history: VecDeque<Direction>,
     pub acro_history_timer_ms: u16,
 }
 
+#[derive(Debug, Clone)]
+pub struct CrackedFloorRuntimeState {
+    pub prev_map_id: String,
+    pub prev_x: u16,
+    pub prev_y: u16,
+    pub pending_floors: [PendingCrackedFloor; 2],
+    pub failed_speed_gate: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct PendingCrackedFloor {
+    pub map_id: String,
+    pub x: u16,
+    pub y: u16,
+    pub delay_steps: u8,
+    pub collapsed: bool,
+}
+
+impl Default for CrackedFloorRuntimeState {
+    fn default() -> Self {
+        Self {
+            prev_map_id: String::new(),
+            prev_x: 0,
+            prev_y: 0,
+            pending_floors: [
+                PendingCrackedFloor::default(),
+                PendingCrackedFloor::default(),
+            ],
+            failed_speed_gate: false,
+        }
+    }
+}
+
+impl Default for PendingCrackedFloor {
+    fn default() -> Self {
+        Self {
+            map_id: String::new(),
+            x: 0,
+            y: 0,
+            delay_steps: 0,
+            collapsed: false,
+        }
+    }
+}
+
 impl Default for BikeRuntimeState {
     fn default() -> Self {
         Self {
             mach_speed_stage: 0,
-            mach_speed_counter: 0,
+            bike_frame_counter: 0,
+            speed_tier: 1,
+            mach_dir_traveling: None,
             acro_state: AcroBikeSubstate::None,
             last_transition: BikeTransitionType::None,
             acro_input_history: VecDeque::with_capacity(8),
@@ -73,8 +123,8 @@ impl ActiveWalkTransition {
         target_y: u16,
         direction: Direction,
         movement_mode: MovementMode,
+        speed: StepSpeed,
     ) -> Self {
-        let speed = movement_mode_step_speed(movement_mode);
         Self {
             input_seq,
             start_map_id,
