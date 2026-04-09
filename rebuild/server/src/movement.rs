@@ -1,6 +1,7 @@
 use crate::protocol::{Direction, MovementMode};
 
 const MB_INVALID: u8 = u8::MAX;
+const MB_NO_RUNNING: u8 = 0x0A;
 const MB_WALK_EAST: u8 = 0x40;
 const MB_WALK_WEST: u8 = 0x41;
 const MB_WALK_NORTH: u8 = 0x42;
@@ -16,10 +17,24 @@ const MB_NORTHWARD_CURRENT: u8 = 0x52;
 const MB_SOUTHWARD_CURRENT: u8 = 0x53;
 const MB_WATERFALL: u8 = 0x13;
 const MB_ICE: u8 = 0x20;
+const MB_JUMP_EAST: u8 = 0x38;
+const MB_JUMP_WEST: u8 = 0x39;
+const MB_JUMP_NORTH: u8 = 0x3A;
+const MB_JUMP_SOUTH: u8 = 0x3B;
+const MB_JUMP_NORTHEAST: u8 = 0x3C;
+const MB_JUMP_NORTHWEST: u8 = 0x3D;
+const MB_JUMP_SOUTHEAST: u8 = 0x3E;
+const MB_JUMP_SOUTHWEST: u8 = 0x3F;
+const MB_BIKE_BRIDGE_OVER_BARRIER: u8 = 0x7F;
 const MB_SECRET_BASE_JUMP_MAT: u8 = 0xBB;
 const MB_SECRET_BASE_SPIN_MAT: u8 = 0xBC;
 pub const MB_MUDDY_SLOPE: u8 = 0xD0;
+const MB_BUMPY_SLOPE: u8 = 0xD1;
 const MB_CRACKED_FLOOR: u8 = 0xD2;
+const MB_ISOLATED_VERTICAL_RAIL: u8 = 0xD3;
+const MB_ISOLATED_HORIZONTAL_RAIL: u8 = 0xD4;
+const MB_VERTICAL_RAIL: u8 = 0xD5;
+const MB_HORIZONTAL_RAIL: u8 = 0xD6;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MoveValidation {
@@ -70,6 +85,22 @@ pub struct MovementMap<'a> {
     pub behavior: &'a [u8],
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BikeSubstate {
+    None,
+    Mach,
+    AcroNeutral,
+    AcroWheeliePrep,
+    AcroWheelieMove,
+    AcroHop,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MovementContext {
+    pub movement_mode: MovementMode,
+    pub bike_substate: BikeSubstate,
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct ConnectedDestination {
     pub x: u16,
@@ -84,6 +115,27 @@ pub fn validate_walk(
     facing: Direction,
     map: MovementMap<'_>,
     connected_destination: Option<ConnectedDestination>,
+) -> MoveValidation {
+    validate_movement(
+        x,
+        y,
+        facing,
+        map,
+        connected_destination,
+        MovementContext {
+            movement_mode: MovementMode::Walk,
+            bike_substate: BikeSubstate::None,
+        },
+    )
+}
+
+pub fn validate_movement(
+    x: u16,
+    y: u16,
+    facing: Direction,
+    map: MovementMap<'_>,
+    connected_destination: Option<ConnectedDestination>,
+    context: MovementContext,
 ) -> MoveValidation {
     let source = tile_query(x as i32, y as i32, &map);
     let (dx, dy) = facing_delta(facing);
@@ -118,6 +170,11 @@ pub fn validate_walk(
         return MoveValidation::Rejected(MoveRejectReason::Collision);
     }
 
+    if let Some(reason) = bike_tile_rule_reject_reason(context, facing, source, destination) {
+        trace_walk_attempt(facing, source, destination, reason);
+        return MoveValidation::Rejected(MoveRejectReason::ForcedMovementDisabled);
+    }
+
     if let Some(forced_class) = forced_movement_class(source.behavior_id)
         .or_else(|| forced_movement_class(destination.behavior_id))
     {
@@ -136,6 +193,125 @@ pub fn validate_walk(
         next_x: destination.x as u16,
         next_y: destination.y as u16,
     }
+}
+
+fn bike_tile_rule_reject_reason(
+    context: MovementContext,
+    facing: Direction,
+    source: TileQuery,
+    destination: TileQuery,
+) -> Option<&'static str> {
+    if !is_bike_mode(context.movement_mode) {
+        return None;
+    }
+
+    if destination.behavior_id == MB_NO_RUNNING {
+        return Some("rejected: bike_disallowed_on_no_running_tile");
+    }
+
+    if destination.behavior_id == MB_BUMPY_SLOPE
+        && !matches!(
+            context.bike_substate,
+            BikeSubstate::AcroWheelieMove | BikeSubstate::AcroHop
+        )
+    {
+        return Some("rejected: acro_bumpy_slope_requires_wheelie_or_hop");
+    }
+
+    if is_rail_behavior(destination.behavior_id)
+        && !matches!(
+            context.bike_substate,
+            BikeSubstate::AcroWheelieMove | BikeSubstate::AcroHop
+        )
+    {
+        return Some("rejected: rail_requires_acro_wheelie_or_hop_state");
+    }
+
+    if rail_requires_vertical_direction(source.behavior_id)
+        || rail_requires_vertical_direction(destination.behavior_id)
+    {
+        if !matches!(facing, Direction::Up | Direction::Down) {
+            return Some("rejected: vertical_rail_requires_vertical_input");
+        }
+    }
+
+    if rail_requires_horizontal_direction(source.behavior_id)
+        || rail_requires_horizontal_direction(destination.behavior_id)
+    {
+        if !matches!(facing, Direction::Left | Direction::Right) {
+            return Some("rejected: horizontal_rail_requires_horizontal_input");
+        }
+    }
+
+    if let Some(required_dir) = jump_behavior_required_direction(destination.behavior_id) {
+        if required_dir != facing {
+            return Some("rejected: ledge_direction_mismatch_for_bike_hop");
+        }
+        if context.bike_substate != BikeSubstate::AcroHop {
+            return Some("rejected: bike_ledge_requires_acro_hop_state");
+        }
+    }
+
+    if is_diagonal_jump_behavior(destination.behavior_id) {
+        return Some("rejected: unsupported_diagonal_ledge_behavior");
+    }
+
+    if destination.behavior_id == MB_BIKE_BRIDGE_OVER_BARRIER
+        && !matches!(context.movement_mode, MovementMode::MachBike)
+    {
+        return Some("rejected: bike_bridge_requires_mach_bike_mode");
+    }
+
+    None
+}
+
+const fn is_bike_mode(mode: MovementMode) -> bool {
+    matches!(
+        mode,
+        MovementMode::MachBike
+            | MovementMode::AcroCruise
+            | MovementMode::AcroWheeliePrep
+            | MovementMode::AcroWheelieMove
+            | MovementMode::BunnyHop
+    )
+}
+
+const fn is_rail_behavior(behavior_id: u8) -> bool {
+    matches!(
+        behavior_id,
+        MB_ISOLATED_VERTICAL_RAIL
+            | MB_ISOLATED_HORIZONTAL_RAIL
+            | MB_VERTICAL_RAIL
+            | MB_HORIZONTAL_RAIL
+    )
+}
+
+const fn rail_requires_vertical_direction(behavior_id: u8) -> bool {
+    matches!(behavior_id, MB_ISOLATED_VERTICAL_RAIL | MB_VERTICAL_RAIL)
+}
+
+const fn rail_requires_horizontal_direction(behavior_id: u8) -> bool {
+    matches!(
+        behavior_id,
+        MB_ISOLATED_HORIZONTAL_RAIL | MB_HORIZONTAL_RAIL
+    )
+}
+
+const fn jump_behavior_required_direction(behavior_id: u8) -> Option<Direction> {
+    match behavior_id {
+        MB_JUMP_EAST => Some(Direction::Right),
+        MB_JUMP_WEST => Some(Direction::Left),
+        MB_JUMP_NORTH => Some(Direction::Up),
+        MB_JUMP_SOUTH => Some(Direction::Down),
+        _ => None,
+    }
+}
+
+const fn is_diagonal_jump_behavior(behavior_id: u8) -> bool {
+    matches!(
+        behavior_id,
+        MB_JUMP_NORTHEAST | MB_JUMP_NORTHWEST | MB_JUMP_SOUTHEAST | MB_JUMP_SOUTHWEST
+    )
 }
 
 pub fn tile_probe(map: MovementMap<'_>, x: u16, y: u16) -> TileProbe {
@@ -388,6 +564,63 @@ mod tests {
             Direction::Right,
             map(&[0, 0, 0, 0], &[0, MB_WALK_EAST, 0, 0]),
             None,
+        );
+        assert_eq!(
+            result,
+            MoveValidation::Rejected(MoveRejectReason::ForcedMovementDisabled)
+        );
+    }
+
+    #[test]
+    fn rejects_bike_on_no_running_tiles() {
+        let result = validate_movement(
+            0,
+            0,
+            Direction::Right,
+            map(&[0, 0, 0, 0], &[0, MB_NO_RUNNING, 0, 0]),
+            None,
+            MovementContext {
+                movement_mode: MovementMode::MachBike,
+                bike_substate: BikeSubstate::Mach,
+            },
+        );
+        assert_eq!(
+            result,
+            MoveValidation::Rejected(MoveRejectReason::ForcedMovementDisabled)
+        );
+    }
+
+    #[test]
+    fn rejects_non_wheelie_entry_to_rails() {
+        let result = validate_movement(
+            0,
+            0,
+            Direction::Right,
+            map(&[0, 0, 0, 0], &[0, MB_HORIZONTAL_RAIL, 0, 0]),
+            None,
+            MovementContext {
+                movement_mode: MovementMode::AcroCruise,
+                bike_substate: BikeSubstate::AcroNeutral,
+            },
+        );
+        assert_eq!(
+            result,
+            MoveValidation::Rejected(MoveRejectReason::ForcedMovementDisabled)
+        );
+    }
+
+    #[test]
+    fn rejects_wrong_direction_on_rails() {
+        let result = validate_movement(
+            0,
+            1,
+            Direction::Up,
+            map(&[0, 0, 0, 0], &[MB_HORIZONTAL_RAIL, 0, MB_HORIZONTAL_RAIL, 0]),
+            None,
+            MovementContext {
+                movement_mode: MovementMode::AcroWheelieMove,
+                bike_substate: BikeSubstate::AcroWheelieMove,
+            },
         );
         assert_eq!(
             result,
