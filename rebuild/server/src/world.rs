@@ -15,9 +15,9 @@ use crate::{
     map_chunk::{serialize_world_snapshot_map_chunk, world_snapshot_map_chunk_hash},
     movement::{
         facing_delta, get_player_speed, mach_speed_tier_for_frame_counter, player_speed_step_speed,
-        should_force_muddy_slope_slide_back, validate_walk_with_context, ConnectedDestination,
-        MoveRejectReason, MoveValidation, MovementMap, PlayerSpeed, StepSpeed as MovementStepSpeed,
-        TraversalContext, WALK_SAMPLE_MS,
+        should_force_muddy_slope_slide_back, validate_walk_with_context, CollisionOutcome,
+        ConnectedDestination, MoveRejectReason, MoveValidation, MovementMap, PlayerSpeed,
+        StepSpeed as MovementStepSpeed, TraversalContext, WALK_SAMPLE_MS,
     },
     protocol::{
         AcroBikeSubstate, BikeTransitionType, DebugTraversalAction, DebugTraversalInput, Direction,
@@ -585,7 +585,7 @@ impl World {
                         behavior_id: resolved.destination_behavior,
                     });
 
-                let (accepted, reason, authoritative_x, authoritative_y) =
+                let (accepted, reason, authoritative_x, authoritative_y, collision_outcome) =
                     match validate_walk_with_context(
                         session.player_state.tile_x,
                         session.player_state.tile_y,
@@ -607,7 +607,11 @@ impl World {
                             acro_substate: bike_acro_substate_for_traversal(&session.player_state),
                         },
                     ) {
-                        MoveValidation::Accepted { next_x, next_y } => {
+                        MoveValidation::Accepted {
+                            next_x,
+                            next_y,
+                            collision,
+                        } => {
                             let target_map_id = connection
                                 .as_ref()
                                 .map_or(previous_map_id.clone(), |resolved| {
@@ -625,13 +629,14 @@ impl World {
                                 resolved_movement_mode,
                                 step_speed,
                             ));
-                            (true, RejectionReason::None, next_x, next_y)
+                            (true, RejectionReason::None, next_x, next_y, collision)
                         }
-                        MoveValidation::Rejected(reason) => (
+                        MoveValidation::Rejected { reason, collision } => (
                             false,
                             map_reject_reason(reason),
                             session.player_state.tile_x,
                             session.player_state.tile_y,
+                            collision,
                         ),
                     };
 
@@ -666,6 +671,10 @@ impl World {
 
                 if accepted {
                     update_bike_runtime_after_step(&mut session.player_state, movement_direction);
+                    apply_bike_transition_for_collision_outcome(
+                        &mut session.player_state,
+                        collision_outcome,
+                    );
                     cracked_floor_per_step_callback(
                         &mut session.player_state,
                         current_map,
@@ -679,6 +688,7 @@ impl World {
                         &mut session.player_state,
                         reason,
                         source_behavior,
+                        collision_outcome,
                     );
                 }
             }
@@ -938,6 +948,7 @@ fn reset_bike_runtime_on_reject(
     player_state: &mut PlayerState,
     reason: RejectionReason,
     source_behavior: u8,
+    collision: CollisionOutcome,
 ) {
     if matches!(player_state.traversal_state, TraversalState::MachBike) {
         player_state.bike_runtime.bike_frame_counter = player_state
@@ -953,6 +964,7 @@ fn reset_bike_runtime_on_reject(
     if matches!(player_state.traversal_state, TraversalState::AcroBike)
         && matches!(reason, RejectionReason::Collision)
         && source_behavior == MB_BUMPY_SLOPE
+        && matches!(collision, CollisionOutcome::Impassable)
     {
         player_state
             .bike_runtime
@@ -976,6 +988,30 @@ fn reset_bike_runtime_on_reject(
             AcroState::BunnyHop => AcroBikeSubstate::BunnyHop,
             AcroState::WheelieMoving => AcroBikeSubstate::MovingWheelie,
         };
+    } else if matches!(player_state.traversal_state, TraversalState::AcroBike)
+        && matches!(reason, RejectionReason::Collision)
+        && matches!(collision, CollisionOutcome::Impassable)
+        && matches!(
+            player_state.bike_runtime.acro_runtime.state,
+            AcroState::WheelieMoving | AcroState::BunnyHop
+        )
+    {
+        player_state.bike_runtime.acro_runtime.state = AcroState::WheelieStanding;
+        player_state.bike_runtime.acro_state = AcroBikeSubstate::StandingWheelie;
+        player_state.bike_runtime.last_transition = BikeTransitionType::WheelieIdle;
+    }
+}
+
+fn apply_bike_transition_for_collision_outcome(
+    player_state: &mut PlayerState,
+    collision: CollisionOutcome,
+) {
+    if !matches!(collision, CollisionOutcome::LedgeJump) {
+        return;
+    }
+
+    if matches!(player_state.traversal_state, TraversalState::MachBike) {
+        player_state.bike_runtime.last_transition = BikeTransitionType::Hop;
     }
 }
 
@@ -1552,7 +1588,12 @@ mod tests {
         player.bike_runtime.acro_state = AcroBikeSubstate::MovingWheelie;
 
         let map = bumpy_slope_map();
-        reset_bike_runtime_on_reject(&mut player, RejectionReason::Collision, map.behavior[0]);
+        reset_bike_runtime_on_reject(
+            &mut player,
+            RejectionReason::Collision,
+            map.behavior[0],
+            CollisionOutcome::Impassable,
+        );
 
         assert_eq!(
             player.bike_runtime.acro_state,
@@ -1566,6 +1607,45 @@ mod tests {
             player.bike_runtime.acro_runtime.state,
             AcroState::WheelieStanding
         );
+    }
+
+    #[test]
+    fn blocked_wheelie_collision_uses_idle_response_off_bumpy_slope() {
+        let mut player = test_player_state();
+        player.traversal_state = TraversalState::AcroBike;
+        player.bike_runtime.acro_runtime.state = AcroState::WheelieMoving;
+        player.bike_runtime.acro_state = AcroBikeSubstate::MovingWheelie;
+
+        reset_bike_runtime_on_reject(
+            &mut player,
+            RejectionReason::Collision,
+            0,
+            CollisionOutcome::Impassable,
+        );
+
+        assert_eq!(
+            player.bike_runtime.acro_state,
+            AcroBikeSubstate::StandingWheelie
+        );
+        assert_eq!(
+            player.bike_runtime.last_transition,
+            BikeTransitionType::WheelieIdle
+        );
+        assert_eq!(
+            player.bike_runtime.acro_runtime.state,
+            AcroState::WheelieStanding
+        );
+    }
+
+    #[test]
+    fn mach_bike_ledge_collision_sets_hop_transition() {
+        let mut player = test_player_state();
+        player.traversal_state = TraversalState::MachBike;
+        player.bike_runtime.last_transition = BikeTransitionType::None;
+
+        apply_bike_transition_for_collision_outcome(&mut player, CollisionOutcome::LedgeJump);
+
+        assert_eq!(player.bike_runtime.last_transition, BikeTransitionType::Hop);
     }
 
     #[test]

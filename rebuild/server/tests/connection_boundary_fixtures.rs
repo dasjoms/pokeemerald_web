@@ -84,7 +84,7 @@ fn boundary_connection_fixtures_match_parity_expectations() {
         );
 
         match result {
-            MoveValidation::Accepted { next_x, next_y } => {
+            MoveValidation::Accepted { next_x, next_y, .. } => {
                 assert!(
                     fixture.expected.accepted,
                     "fixture {} unexpectedly accepted",
@@ -103,7 +103,7 @@ fn boundary_connection_fixtures_match_parity_expectations() {
                     fixture.name
                 );
             }
-            MoveValidation::Rejected(reason) => {
+            MoveValidation::Rejected { reason, .. } => {
                 assert!(
                     !fixture.expected.accepted,
                     "fixture {} unexpectedly rejected",

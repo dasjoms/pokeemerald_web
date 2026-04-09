@@ -94,12 +94,12 @@ fn acro_puzzle_fixture_is_solvable_under_authoritative_validation() {
                 },
             );
             match result {
-                MoveValidation::Accepted { next_x, next_y } => {
+                MoveValidation::Accepted { next_x, next_y, .. } => {
                     x = next_x;
                     y = next_y;
                     acceptance.push(true);
                 }
-                MoveValidation::Rejected(_) => {
+                MoveValidation::Rejected { .. } => {
                     acceptance.push(false);
                 }
             }

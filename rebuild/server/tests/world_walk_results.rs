@@ -63,8 +63,8 @@ async fn accepted_walk_result_reports_destination_coordinates_immediately() {
             },
             None,
         ) {
-            MoveValidation::Accepted { next_x, next_y } => Some((direction, next_x, next_y)),
-            MoveValidation::Rejected(_) => None,
+            MoveValidation::Accepted { next_x, next_y, .. } => Some((direction, next_x, next_y)),
+            MoveValidation::Rejected { .. } => None,
         }
     })
     .expect("spawn must have at least one walkable adjacent tile");
