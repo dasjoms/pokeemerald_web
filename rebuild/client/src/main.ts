@@ -351,6 +351,7 @@ app.stage.addChild(gameContainer);
 debugOverlayLayer.visible = debugOverlayEnabled;
 
 let activeAvatar: PlayerAvatar = PlayerAvatar.BRENDAN;
+let debugAvatarOverride: PlayerAvatar | null = null;
 let playerAnimationAssets = await loadPlayerAnimationAssets({
   avatarId: avatarToAssetId(activeAvatar),
   loadJsonFromAssets,
@@ -1201,6 +1202,14 @@ function bindWalkInput(): void {
       debugOverlayLayer.visible = debugOverlayEnabled;
       return;
     }
+    if (event.key === 'F4') {
+      event.preventDefault();
+      if (event.repeat) {
+        return;
+      }
+      void toggleDebugAvatar();
+      return;
+    }
     if (event.key === 'b' || event.key === 'B') {
       event.preventDefault();
       if (event.repeat) {
@@ -1563,10 +1572,25 @@ function avatarToAssetId(avatar: PlayerAvatar): 'brendan' | 'may' {
 }
 
 async function applyAuthoritativeAvatar(avatar: PlayerAvatar): Promise<void> {
+  if (debugAvatarOverride !== null) {
+    return;
+  }
+
   if (avatar === activeAvatar) {
     return;
   }
 
+  await applyAvatarAssets(avatar);
+}
+
+async function toggleDebugAvatar(): Promise<void> {
+  const nextAvatar =
+    activeAvatar === PlayerAvatar.BRENDAN ? PlayerAvatar.MAY : PlayerAvatar.BRENDAN;
+  debugAvatarOverride = nextAvatar;
+  await applyAvatarAssets(nextAvatar);
+}
+
+async function applyAvatarAssets(avatar: PlayerAvatar): Promise<void> {
   activeAvatar = avatar;
   playerAnimationAssets = await loadPlayerAnimationAssets({
     avatarId: avatarToAssetId(avatar),
