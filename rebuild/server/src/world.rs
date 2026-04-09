@@ -14,7 +14,7 @@ use crate::{
     map_chunk::{serialize_world_snapshot_map_chunk, world_snapshot_map_chunk_hash},
     movement::{
         facing_delta, validate_walk, ConnectedDestination, MoveRejectReason, MoveValidation,
-        MovementMap,
+        MovementMap, WALK_SAMPLE_MS,
     },
     protocol::{
         Direction, PlayerAvatar, RejectionReason, ServerMessage, SessionAccepted, WalkInput,
@@ -306,7 +306,7 @@ impl World {
     pub async fn tick(&self) {
         let tick = self.tick.fetch_add(1, Ordering::SeqCst) + 1;
         let mut sessions = self.sessions.write().await;
-        const SERVER_TICK_MS: f32 = 50.0;
+        const SERVER_TICK_MS: f32 = WALK_SAMPLE_MS;
 
         for session in sessions.values_mut() {
             if let Some(active_walk) = session.active_walk_transition.as_mut() {

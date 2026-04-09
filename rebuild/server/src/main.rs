@@ -15,6 +15,7 @@ use tokio::sync::mpsc;
 use tracing::{error, info, warn};
 
 use rebuild_server::{
+    movement::WALK_SAMPLE_MS,
     protocol::{decode_client_message, encode_server_message, ClientMessage, ServerMessage},
     world::World,
 };
@@ -45,7 +46,8 @@ async fn main() -> anyhow::Result<()> {
 
     let simulation_world = Arc::clone(&world);
     tokio::spawn(async move {
-        let mut interval = tokio::time::interval(Duration::from_millis(50));
+        let mut interval =
+            tokio::time::interval(Duration::from_secs_f64((WALK_SAMPLE_MS / 1000.0) as f64));
         loop {
             interval.tick().await;
             simulation_world.tick().await;
