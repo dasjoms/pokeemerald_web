@@ -8,6 +8,7 @@ import {
   type WalkTransition,
   type WalkTransitionMutableState,
 } from './walkTransitionPipeline';
+import { createWalkInputController } from './input';
 import {
   AcroBikeSubstate,
   BikeTransitionType,
@@ -217,6 +218,72 @@ describe('main movement pipeline integration', () => {
 
     expect(actualAnimIds).toEqual(sequence.map((entry) => entry.expectedAnimId));
   });
+
+  it.each([
+    {
+      label: 'Mach bike',
+      speed: { traversalState: TraversalState.MACH_BIKE, movementMode: MovementMode.WALK, machSpeedStage: 2 },
+    },
+    {
+      label: 'Acro bike',
+      speed: { traversalState: TraversalState.ACRO_BIKE, movementMode: MovementMode.WALK },
+    },
+  ])(
+    'dispatches follow-up inputs at authoritative $label ack cadence, independent from local interpolation completion',
+    ({ speed }) => {
+      const nowSpy = vi.spyOn(performance, 'now');
+      const sentDirections: Direction[] = [];
+      let nowMs = 10_000;
+      nowSpy.mockImplementation(() => nowMs);
+
+      const controller = createWalkInputController({
+        sendWalkInput: (direction) => {
+          sentDirections.push(direction);
+        },
+        isMovementLocked: () => false,
+        onFacingIntent: () => {},
+      });
+
+      controller.handleKeyDown({
+        key: 'ArrowRight',
+        repeat: false,
+        preventDefault: () => {},
+      } as KeyboardEvent);
+
+      nowMs += 100;
+      controller.tick();
+      expect(sentDirections).toEqual([Direction.RIGHT]);
+
+      const footWalkDurationMs = authoritativeStepDurationMs({
+        traversalState: TraversalState.ON_FOOT,
+        movementMode: MovementMode.WALK,
+      });
+      const bikeDurationMs = authoritativeStepDurationMs(speed);
+      expect(bikeDurationMs).toBeLessThan(footWalkDurationMs);
+
+      nowMs += bikeDurationMs;
+      controller.markWalkResultReceived({
+        input_seq: 0,
+        accepted: true,
+        authoritative_pos: { x: 6, y: 8 },
+        facing: Direction.RIGHT,
+        reason: RejectionReason.NONE,
+        server_frame: 42,
+        traversal_state: speed.traversalState,
+        preferred_bike_type: TraversalState.MACH_BIKE,
+        mach_speed_stage: speed.traversalState === TraversalState.MACH_BIKE ? 2 : undefined,
+        bike_effect_flags: 0,
+      });
+      expect(sentDirections).toEqual([Direction.RIGHT, Direction.RIGHT]);
+
+      // Local interpolation completion callback may run later, but should not gate dispatch cadence.
+      nowMs += footWalkDurationMs - bikeDurationMs;
+      controller.markWalkTransitionCompleted();
+      expect(sentDirections).toEqual([Direction.RIGHT, Direction.RIGHT]);
+
+      nowSpy.mockRestore();
+    },
+  );
 });
 
 function makeMockAssets(): PlayerAnimationAssets {
