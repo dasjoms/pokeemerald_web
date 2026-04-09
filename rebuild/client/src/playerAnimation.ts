@@ -460,7 +460,7 @@ export class PlayerAnimationController {
   private resolveAcroStationaryActionId(): string {
     switch (this.bikeTransition) {
       case BikeTransitionType.WHEELIE_IDLE:
-        return 'acro_wheelie_in_place';
+        return 'acro_wheelie_face';
       case BikeTransitionType.WHEELIE_POP:
       case BikeTransitionType.NORMAL_TO_WHEELIE:
       case BikeTransitionType.ENTER_WHEELIE:
@@ -479,7 +479,7 @@ export class PlayerAnimationController {
     }
 
     if (this.acroSubstate === AcroBikeSubstate.STANDING_WHEELIE) {
-      return 'acro_wheelie_in_place';
+      return 'acro_wheelie_face';
     }
     if (this.acroSubstate === AcroBikeSubstate.BUNNY_HOP) {
       return 'acro_bunny_hop_back_wheel';
