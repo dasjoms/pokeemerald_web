@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { Direction } from './protocol_generated';
+import { BikeTransitionType, Direction, TraversalState } from './protocol_generated';
 
 type FixtureDirection = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
 type FixtureAction = 'set_idle' | 'start_walk' | 'start_run';
@@ -49,7 +49,12 @@ type PlayerAnimationAssets = {
       anim_table_symbol: string;
       actions: Record<
         string,
-        Record<string, { action_id?: string; anim_cmd_symbol: string; frames: Array<{ duration: number; frame: number; h_flip: boolean }> }>
+        Record<string, {
+          action_id?: string;
+          anim_cmd_symbol: string;
+          loop_mode?: 'loop' | 'end_hold';
+          frames: Array<{ duration: number; frame: number; h_flip: boolean }>;
+        }>
         
       >;
     }
@@ -59,6 +64,11 @@ type PlayerAnimationAssets = {
 
 type PlayerAnimationControllerCtor = new (assets: PlayerAnimationAssets) => {
   setFacing: (direction: Direction) => void;
+  setTraversalState: (state: {
+    traversalState: TraversalState;
+    machSpeedStage?: number;
+    bikeTransition?: BikeTransitionType;
+  }) => void;
   stopMoving: (direction: Direction) => void;
   applyPendingModeChanges: () => void;
   startWalkStep: (direction: Direction) => void;
@@ -155,6 +165,28 @@ describe('player animation parity fixtures', () => {
       animId: 'anim_face_south',
       frameIndex: 100,
     });
+  });
+
+  it('holds the final frame for end_hold actions instead of looping', () => {
+    const controller = new PlayerAnimationController(makeMockAssets());
+    controller.setTraversalState({
+      traversalState: TraversalState.ACRO_BIKE,
+      bikeTransition: BikeTransitionType.WHEELIE_POP,
+    });
+    controller.stopMoving(Direction.RIGHT);
+    controller.applyPendingModeChanges();
+
+    expect(controller.getDebugState()).toMatchObject({
+      animId: 'anim_acro_pop_wheelie_stationary_east',
+      frameIndex: 400,
+    });
+
+    controller.tick(1000 / 60);
+    controller.tick(1000 / 60);
+    expect(controller.getDebugState().frameIndex).toBe(401);
+
+    controller.tick((1000 / 60) * 16);
+    expect(controller.getDebugState().frameIndex).toBe(401);
   });
 });
 
@@ -261,6 +293,8 @@ function makeMockAssets(): PlayerAnimationAssets {
     310, 311, 312, 313,
     320, 321, 322, 323,
     330, 331, 332, 333,
+    400, 401, 402, 403,
+    404, 405, 406, 407,
   ]) {
     frameTextures.set(frame, {});
   }
@@ -298,7 +332,52 @@ function makeMockAssets(): PlayerAnimationAssets {
       },
       acro_bike: {
         anim_table_symbol: 'sAnimTable_AcroBike',
-        actions: {},
+        actions: {
+          face: {
+            south: { action_id: 'face', anim_cmd_symbol: 'anim_face_south', frames: [{ duration: 16, frame: 100, h_flip: false }] },
+            north: { action_id: 'face', anim_cmd_symbol: 'anim_face_north', frames: [{ duration: 16, frame: 101, h_flip: false }] },
+            west: { action_id: 'face', anim_cmd_symbol: 'anim_face_west', frames: [{ duration: 16, frame: 102, h_flip: false }] },
+            east: { action_id: 'face', anim_cmd_symbol: 'anim_face_east', frames: [{ duration: 16, frame: 103, h_flip: false }] },
+          },
+          acro_pop_wheelie_stationary: {
+            south: {
+              action_id: 'acro_pop_wheelie_stationary',
+              anim_cmd_symbol: 'anim_acro_pop_wheelie_stationary_south',
+              loop_mode: 'end_hold',
+              frames: [
+                { duration: 2, frame: 402, h_flip: false },
+                { duration: 2, frame: 403, h_flip: false },
+              ],
+            },
+            north: {
+              action_id: 'acro_pop_wheelie_stationary',
+              anim_cmd_symbol: 'anim_acro_pop_wheelie_stationary_north',
+              loop_mode: 'end_hold',
+              frames: [
+                { duration: 2, frame: 404, h_flip: false },
+                { duration: 2, frame: 405, h_flip: false },
+              ],
+            },
+            west: {
+              action_id: 'acro_pop_wheelie_stationary',
+              anim_cmd_symbol: 'anim_acro_pop_wheelie_stationary_west',
+              loop_mode: 'end_hold',
+              frames: [
+                { duration: 2, frame: 406, h_flip: false },
+                { duration: 2, frame: 407, h_flip: false },
+              ],
+            },
+            east: {
+              action_id: 'acro_pop_wheelie_stationary',
+              anim_cmd_symbol: 'anim_acro_pop_wheelie_stationary_east',
+              loop_mode: 'end_hold',
+              frames: [
+                { duration: 2, frame: 400, h_flip: false },
+                { duration: 2, frame: 401, h_flip: false },
+              ],
+            },
+          },
+        },
       },
     },
     frameTextures,
