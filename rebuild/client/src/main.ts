@@ -227,8 +227,9 @@ type MapTileRenderPriorityContext = {
 type WalkInputController = {
   handleKeyDown: (event: KeyboardEvent) => void;
   handleKeyUp: (event: KeyboardEvent) => void;
-  tick: (deltaMs: number) => void;
-  markWalkResultReceived: () => void;
+  tick: () => void;
+  markWalkResultReceived: (result: WalkResult) => void;
+  markWalkTransitionCompleted: () => void;
   reset: () => void;
 };
 
@@ -266,7 +267,6 @@ const state: ClientWorldState = {
 };
 
 const WALK_STEP_DURATION_MS = (1000 / 60) * 16;
-const WALK_INPUT_CADENCE_MS = WALK_STEP_DURATION_MS;
 let activeWalkTransition:
   | {
       startX: number;
@@ -354,7 +354,6 @@ let playerAnimationAssets = await loadPlayerAnimationAssets({
 });
 let playerAnimation = new PlayerAnimationController(playerAnimationAssets);
 const walkInputController = createWalkInputController({
-  cadenceMs: WALK_INPUT_CADENCE_MS,
   sendWalkInput,
   isMovementLocked: () => activeWalkTransition !== null,
   onFacingIntent: (direction) => {
@@ -378,7 +377,7 @@ let activeMapTileRenderPriorityContexts: (MapTileRenderPriorityContext | undefin
 let playerObjectRenderPriorityState: PlayerObjectRenderPriorityState = 'normal';
 
 app.ticker.add(() => {
-  walkInputController.tick(app.ticker.deltaMS);
+  walkInputController.tick();
   tickWalkTransition(app.ticker.deltaMS);
   playerAnimation.tick(app.ticker.deltaMS);
   presentPlayerAnimationFrame();
@@ -530,7 +529,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
   }
 
   const result = message.payload;
-  walkInputController.markWalkResultReceived();
+  walkInputController.markWalkResultReceived(result);
   const clampedAuthoritativeTile = clampToMapBounds(
     {
       x: result.authoritative_pos.x,
@@ -1235,14 +1234,14 @@ function sendWalkInput(direction: Direction): void {
 }
 
 function createWalkInputController(config: {
-  cadenceMs: number;
   sendWalkInput: (direction: Direction) => void;
   isMovementLocked: () => boolean;
   onFacingIntent: (direction: Direction) => void;
 }): WalkInputController {
   const heldDirections = new Set<Direction>();
   const directionOrder: Direction[] = [];
-  let elapsedSinceLastEmissionMs = config.cadenceMs;
+  let activeIntent: Direction | null = null;
+  let bufferedIntent: Direction | null = null;
   let hasPendingWalkRequest = false;
 
   const removeDirectionFromOrder = (direction: Direction): void => {
@@ -1260,6 +1259,35 @@ function createWalkInputController(config: {
       }
     }
     return null;
+  };
+
+  const canDispatchNewIntent = (): boolean =>
+    !hasPendingWalkRequest && !config.isMovementLocked() && activeIntent === null;
+
+  const sendIntent = (direction: Direction): void => {
+    config.onFacingIntent(direction);
+    config.sendWalkInput(direction);
+    activeIntent = direction;
+    hasPendingWalkRequest = true;
+  };
+
+  const maybeDispatchIntent = (): void => {
+    if (!canDispatchNewIntent()) {
+      return;
+    }
+
+    if (bufferedIntent !== null && heldDirections.has(bufferedIntent)) {
+      const buffered = bufferedIntent;
+      bufferedIntent = null;
+      sendIntent(buffered);
+      return;
+    }
+
+    const heldDirection = getActiveDirection();
+    if (heldDirection !== null) {
+      bufferedIntent = null;
+      sendIntent(heldDirection);
+    }
   };
 
   return {
@@ -1281,8 +1309,14 @@ function createWalkInputController(config: {
 
       if (isFirstPressForDirection) {
         config.onFacingIntent(direction);
-        elapsedSinceLastEmissionMs = config.cadenceMs;
       }
+
+      if (canDispatchNewIntent()) {
+        sendIntent(direction);
+        return;
+      }
+
+      bufferedIntent = direction;
     },
     handleKeyUp(event: KeyboardEvent): void {
       const direction = keyToDirection(event.key);
@@ -1293,30 +1327,28 @@ function createWalkInputController(config: {
       event.preventDefault();
       heldDirections.delete(direction);
       removeDirectionFromOrder(direction);
+      if (bufferedIntent === direction) {
+        bufferedIntent = null;
+      }
     },
-    tick(deltaMs: number): void {
-      elapsedSinceLastEmissionMs += Math.max(0, deltaMs);
-      const direction = getActiveDirection();
-      if (direction === null) {
-        return;
-      }
-      if (hasPendingWalkRequest || config.isMovementLocked()) {
-        return;
-      }
-      if (elapsedSinceLastEmissionMs < config.cadenceMs) {
-        return;
-      }
-
-      config.sendWalkInput(direction);
-      elapsedSinceLastEmissionMs = 0;
-      hasPendingWalkRequest = true;
+    tick(): void {
+      maybeDispatchIntent();
     },
-    markWalkResultReceived(): void {
+    markWalkResultReceived(result: WalkResult): void {
       hasPendingWalkRequest = false;
+      if (!result.accepted) {
+        activeIntent = null;
+        maybeDispatchIntent();
+      }
+    },
+    markWalkTransitionCompleted(): void {
+      activeIntent = null;
+      maybeDispatchIntent();
     },
     reset(): void {
       hasPendingWalkRequest = false;
-      elapsedSinceLastEmissionMs = config.cadenceMs;
+      activeIntent = null;
+      bufferedIntent = null;
       heldDirections.clear();
       directionOrder.length = 0;
     },
@@ -1580,6 +1612,7 @@ function tickWalkTransition(deltaMs: number): void {
     state.renderTileY = activeWalkTransition.targetY;
     playerAnimation.setIdle(activeWalkTransition.facing);
     activeWalkTransition = null;
+    walkInputController.markWalkTransitionCompleted();
   }
 }
 
