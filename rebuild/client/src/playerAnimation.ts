@@ -432,12 +432,16 @@ export class PlayerAnimationController {
       ) {
         return 'acro_standing_wheelie_back_wheel';
       }
-      if (this.bikeTransition === BikeTransitionType.WHEELIE_POP) {
+      if (
+        this.bikeTransition === BikeTransitionType.WHEELIE_POP ||
+        this.bikeTransition === BikeTransitionType.NORMAL_TO_WHEELIE
+      ) {
         return 'acro_standing_wheelie_front_wheel';
       }
       if (
         this.bikeTransition === BikeTransitionType.HOP ||
         this.bikeTransition === BikeTransitionType.HOP_STANDING ||
+        this.bikeTransition === BikeTransitionType.WHEELIE_HOPPING_STANDING ||
         this.acroSubstate === AcroBikeSubstate.BUNNY_HOP
       ) {
         return 'acro_bunny_hop_back_wheel';
@@ -451,6 +455,7 @@ export class PlayerAnimationController {
       }
       if (
         this.bikeTransition === BikeTransitionType.HOP_MOVING ||
+        this.bikeTransition === BikeTransitionType.WHEELIE_HOPPING_MOVING ||
         this.bikeTransition === BikeTransitionType.SIDE_JUMP ||
         this.bikeTransition === BikeTransitionType.TURN_JUMP
       ) {
