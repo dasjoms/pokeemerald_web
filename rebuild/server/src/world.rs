@@ -383,7 +383,7 @@ impl World {
                         behavior_id: resolved.destination_behavior,
                     });
 
-                let (accepted, reason) = match validate_walk(
+                let (accepted, reason, authoritative_x, authoritative_y) = match validate_walk(
                     session.player_state.tile_x,
                     session.player_state.tile_y,
                     input.direction,
@@ -411,17 +411,22 @@ impl World {
                             next_y,
                             input.direction,
                         ));
-                        (true, RejectionReason::None)
+                        (true, RejectionReason::None, next_x, next_y)
                     }
-                    MoveValidation::Rejected(reason) => (false, map_reject_reason(reason)),
+                    MoveValidation::Rejected(reason) => (
+                        false,
+                        map_reject_reason(reason),
+                        session.player_state.tile_x,
+                        session.player_state.tile_y,
+                    ),
                 };
 
                 let result = ServerMessage::WalkResult(WalkResult {
                     input_seq: input.input_seq,
                     accepted,
                     authoritative_pos: crate::protocol::Position {
-                        x: session.player_state.tile_x,
-                        y: session.player_state.tile_y,
+                        x: authoritative_x,
+                        y: authoritative_y,
                     },
                     facing: session.player_state.facing,
                     reason,
