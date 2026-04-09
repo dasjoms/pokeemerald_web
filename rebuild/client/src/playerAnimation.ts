@@ -4,7 +4,21 @@ import { decodeIndexed4bppPngFromUrl } from './metatileRenderer';
 
 type Cardinal = 'south' | 'north' | 'west' | 'east';
 type AnimationKind = 'face' | 'walk' | 'run';
-type SpriteSheetKind = 'normal' | 'running';
+type BikeModeKind = 'mach' | 'acro';
+type BikeActionKind = 'face' | 'ride';
+type SpriteSheetKind = 'normal' | 'running' | 'mach_bike' | 'acro_bike';
+
+export type PlayerAnimationActionId =
+  | 'face'
+  | 'walk'
+  | 'run'
+  | 'mach_travel'
+  | 'mach_turn'
+  | 'acro_travel'
+  | 'acro_turn'
+  | 'acro_wheelie'
+  | 'acro_wheelie_move'
+  | 'acro_hop';
 
 type AnimationFrameMeta = {
   duration: number;
@@ -17,16 +31,20 @@ type DirectionalAnimationMeta = {
   frames: AnimationFrameMeta[];
 };
 
+type AtlasFrameEntry = {
+  rect: { x: number; y: number; w: number; h: number };
+  sheet_symbol: string;
+};
+
 type AvatarDefinition = {
   avatar_id: string;
   animation_bindings: Record<AnimationKind, Record<Cardinal, DirectionalAnimationMeta>>;
-  frame_atlas: Record<
-    string,
-    {
-      rect: { x: number; y: number; w: number; h: number };
-      sheet_symbol: string;
-    }
+  bike_animation_bindings?: Record<
+    BikeModeKind,
+    Record<BikeActionKind, Record<Cardinal, DirectionalAnimationMeta>>
   >;
+  frame_atlas: Record<string, AtlasFrameEntry>;
+  frame_atlas_variants?: Partial<Record<'mach_bike' | 'acro_bike', Record<string, AtlasFrameEntry>>>;
   graphics: {
     width: number;
     height: number;
@@ -47,12 +65,14 @@ type AvatarDefinition = {
       source_path?: string;
     };
   };
-  sheet_sources: Record<
-    SpriteSheetKind,
-    {
-      source_path: string;
-      symbol: string;
-    }
+  sheet_sources: Partial<
+    Record<
+      SpriteSheetKind,
+      {
+        source_path: string;
+        symbol: string;
+      }
+    >
   >;
 };
 
@@ -69,8 +89,13 @@ export type PlayerAnimationDebugState = {
   animId: string;
   frameIndex: number;
   stridePhase: 0 | 1;
-  mode: AnimationKind;
+  mode: PlayerAnimationActionId;
   direction: Cardinal;
+};
+
+type PlayerAnimationActionBinding = {
+  directionalBindings: Record<Cardinal, DirectionalAnimationMeta>;
+  frameTextures: Map<number, Texture>;
 };
 
 export type PlayerAnimationAssets = {
@@ -84,6 +109,7 @@ export type PlayerAnimationAssets = {
   reflectionPaletteSourcePath: string | null;
   directionalBindings: AvatarDefinition['animation_bindings'];
   frameTextures: Map<number, Texture>;
+  actionBindings?: Partial<Record<PlayerAnimationActionId, PlayerAnimationActionBinding>>;
 };
 
 type PlayerAnimationLoadOptions = {
@@ -93,7 +119,7 @@ type PlayerAnimationLoadOptions = {
 };
 
 type PlayerAnimationMode = {
-  kind: AnimationKind;
+  actionId: PlayerAnimationActionId;
   direction: Cardinal;
 };
 
@@ -113,28 +139,98 @@ export async function loadPlayerAnimationAssets(
     throw new Error(`missing player avatar metadata for avatar_id=${options.avatarId}`);
   }
 
-  const [walkingBaseTexture, runningBaseTexture] = await Promise.all([
-    loadBaseTexture(
+  const sheetTexturesBySymbol = new Map<string, Texture>();
+  const sheetSources = Object.values(avatar.sheet_sources);
+  for (const sheetSource of sheetSources) {
+    if (!sheetSource) {
+      continue;
+    }
+    const sheetTexture = await loadBaseTexture(
       options.resolveImageUrlFromAssets,
-      resolveSheetPngPathFromManifest(avatar.sheet_sources.normal.source_path),
+      resolveSheetPngPathFromManifest(sheetSource.source_path),
       avatar.palettes.normal.colors,
-    ),
-    loadBaseTexture(
-      options.resolveImageUrlFromAssets,
-      resolveSheetPngPathFromManifest(avatar.sheet_sources.running.source_path),
-      avatar.palettes.normal.colors,
-    ),
-  ]);
+    );
+    sheetTexturesBySymbol.set(sheetSource.symbol, sheetTexture);
+  }
 
-  const normalSheetSymbol = avatar.sheet_sources.normal.symbol;
-  const runningSheetSymbol = avatar.sheet_sources.running.symbol;
-  const sheetTexturesBySymbol = new Map<string, Texture>([
-    [normalSheetSymbol, walkingBaseTexture],
-    [runningSheetSymbol, runningBaseTexture],
-  ]);
+  const defaultFrameTextures = createFrameTextureMap(avatar.frame_atlas, sheetTexturesBySymbol);
+  const machFrameTextures = avatar.frame_atlas_variants?.mach_bike
+    ? createFrameTextureMap(avatar.frame_atlas_variants.mach_bike, sheetTexturesBySymbol)
+    : defaultFrameTextures;
+  const acroFrameTextures = avatar.frame_atlas_variants?.acro_bike
+    ? createFrameTextureMap(avatar.frame_atlas_variants.acro_bike, sheetTexturesBySymbol)
+    : defaultFrameTextures;
 
+  const actionBindings: Partial<Record<PlayerAnimationActionId, PlayerAnimationActionBinding>> = {
+    face: {
+      directionalBindings: avatar.animation_bindings.face,
+      frameTextures: defaultFrameTextures,
+    },
+    walk: {
+      directionalBindings: avatar.animation_bindings.walk,
+      frameTextures: defaultFrameTextures,
+    },
+    run: {
+      directionalBindings: avatar.animation_bindings.run,
+      frameTextures: defaultFrameTextures,
+    },
+  };
+
+  if (avatar.bike_animation_bindings?.mach) {
+    actionBindings.mach_travel = {
+      directionalBindings: avatar.bike_animation_bindings.mach.ride,
+      frameTextures: machFrameTextures,
+    };
+    actionBindings.mach_turn = {
+      directionalBindings: avatar.bike_animation_bindings.mach.face,
+      frameTextures: machFrameTextures,
+    };
+  }
+
+  if (avatar.bike_animation_bindings?.acro) {
+    actionBindings.acro_travel = {
+      directionalBindings: avatar.bike_animation_bindings.acro.ride,
+      frameTextures: acroFrameTextures,
+    };
+    actionBindings.acro_turn = {
+      directionalBindings: avatar.bike_animation_bindings.acro.face,
+      frameTextures: acroFrameTextures,
+    };
+    actionBindings.acro_wheelie = {
+      directionalBindings: avatar.bike_animation_bindings.acro.face,
+      frameTextures: acroFrameTextures,
+    };
+    actionBindings.acro_wheelie_move = {
+      directionalBindings: avatar.bike_animation_bindings.acro.ride,
+      frameTextures: acroFrameTextures,
+    };
+    actionBindings.acro_hop = {
+      directionalBindings: avatar.bike_animation_bindings.acro.face,
+      frameTextures: acroFrameTextures,
+    };
+  }
+
+  return {
+    avatarId: avatar.avatar_id,
+    frameWidth: avatar.graphics.width,
+    frameHeight: avatar.graphics.height,
+    anchorX: avatar.graphics.anchor.x,
+    anchorY: avatar.graphics.anchor.y,
+    paletteColors: avatar.palettes.normal.colors,
+    reflectionPaletteColors: avatar.palettes.reflection?.colors ?? null,
+    reflectionPaletteSourcePath: avatar.palettes.reflection?.source_path ?? null,
+    directionalBindings: avatar.animation_bindings,
+    frameTextures: defaultFrameTextures,
+    actionBindings,
+  };
+}
+
+function createFrameTextureMap(
+  frameAtlas: Record<string, AtlasFrameEntry>,
+  sheetTexturesBySymbol: Map<string, Texture>,
+): Map<number, Texture> {
   const frameTextures = new Map<number, Texture>();
-  for (const [frameIdRaw, atlasEntry] of Object.entries(avatar.frame_atlas)) {
+  for (const [frameIdRaw, atlasEntry] of Object.entries(frameAtlas)) {
     const frameId = Number(frameIdRaw);
     if (Number.isNaN(frameId)) {
       continue;
@@ -158,18 +254,7 @@ export async function loadPlayerAnimationAssets(
     frameTextures.set(frameId, texture);
   }
 
-  return {
-    avatarId: avatar.avatar_id,
-    frameWidth: avatar.graphics.width,
-    frameHeight: avatar.graphics.height,
-    anchorX: avatar.graphics.anchor.x,
-    anchorY: avatar.graphics.anchor.y,
-    paletteColors: avatar.palettes.normal.colors,
-    reflectionPaletteColors: avatar.palettes.reflection?.colors ?? null,
-    reflectionPaletteSourcePath: avatar.palettes.reflection?.source_path ?? null,
-    directionalBindings: avatar.animation_bindings,
-    frameTextures,
-  };
+  return frameTextures;
 }
 
 function resolveSheetPngPathFromManifest(sourcePath: string): string {
@@ -255,16 +340,17 @@ function parseHexPaletteColor(color: string | undefined): [number, number, numbe
 }
 
 export class PlayerAnimationController {
-  private readonly assets: PlayerAnimationAssets;
-  private mode: PlayerAnimationMode = { kind: 'face', direction: 'south' };
+  private readonly actionBindings: Record<PlayerAnimationActionId, PlayerAnimationActionBinding>;
+  private mode: PlayerAnimationMode = { actionId: 'face', direction: 'south' };
   private pendingMode: PlayerAnimationMode | null = null;
   private frameCommandIndex = 0;
   private ticksUntilAdvance = 0;
   private tickAccumulatorMs = 0;
   private stridePhase: 0 | 1 = 0;
+  private cadenceTicksPerFrame: number | null = null;
 
-  constructor(assets: PlayerAnimationAssets) {
-    this.assets = assets;
+  constructor(private readonly assets: PlayerAnimationAssets) {
+    this.actionBindings = this.resolveActionBindings();
     this.resetFrameTimer();
   }
 
@@ -275,9 +361,10 @@ export class PlayerAnimationController {
 
   stopMoving(direction: Direction): void {
     this.pendingMode = {
-      kind: 'face',
+      actionId: 'face',
       direction: mapDirection(direction),
     };
+    this.cadenceTicksPerFrame = null;
   }
 
   applyPendingModeChanges(): void {
@@ -296,26 +383,41 @@ export class PlayerAnimationController {
   }
 
   startWalkStep(direction: Direction): void {
-    this.startStep(direction, 'walk');
+    this.startActionStep(direction, 'walk');
   }
 
   startRunStep(direction: Direction): void {
-    this.startStep(direction, 'run');
+    this.startActionStep(direction, 'run');
   }
 
   startStep(direction: Direction, mode: 'walk' | 'run'): void {
+    this.startActionStep(direction, mode);
+  }
+
+  startActionStep(
+    direction: Direction,
+    actionId: PlayerAnimationActionId,
+    cadenceMs?: number,
+  ): void {
     this.pendingMode = null;
     const cardinal = mapDirection(direction);
-    if (this.mode.kind === mode) {
+    if (this.mode.actionId === actionId) {
       this.frameCommandIndex =
         WALK_ALTERNATION_REMAP.get(this.frameCommandIndex) ?? this.frameCommandIndex;
       this.stridePhase = this.stridePhase === 0 ? 1 : 0;
     }
 
     this.mode = {
-      kind: mode,
+      actionId,
       direction: cardinal,
     };
+
+    if (typeof cadenceMs === 'number' && cadenceMs > 0) {
+      const cadenceTicks = cadenceMs / TICK_60HZ_MS;
+      const frameCount = Math.max(1, this.currentDirectionalAnimation().frames.length);
+      this.cadenceTicksPerFrame = cadenceTicks / frameCount;
+    }
+
     this.resetFrameTimer();
   }
 
@@ -335,7 +437,7 @@ export class PlayerAnimationController {
 
   getCurrentFrame(): PlayerFrameSelection {
     const command = this.currentCommand();
-    const texture = this.assets.frameTextures.get(command.frame);
+    const texture = this.currentActionBinding().frameTextures.get(command.frame);
     if (!texture) {
       throw new Error(`missing texture for player frame ${command.frame}`);
     }
@@ -351,8 +453,58 @@ export class PlayerAnimationController {
       animId: this.currentDirectionalAnimation().anim_cmd_symbol,
       frameIndex: this.currentCommand().frame,
       stridePhase: this.stridePhase,
-      mode: this.mode.kind,
+      mode: this.mode.actionId,
       direction: this.mode.direction,
+    };
+  }
+
+  private resolveActionBindings(): Record<PlayerAnimationActionId, PlayerAnimationActionBinding> {
+    const legacy: Record<PlayerAnimationActionId, PlayerAnimationActionBinding> = {
+      face: {
+        directionalBindings: this.assets.directionalBindings.face,
+        frameTextures: this.assets.frameTextures,
+      },
+      walk: {
+        directionalBindings: this.assets.directionalBindings.walk,
+        frameTextures: this.assets.frameTextures,
+      },
+      run: {
+        directionalBindings: this.assets.directionalBindings.run,
+        frameTextures: this.assets.frameTextures,
+      },
+      mach_travel: {
+        directionalBindings: this.assets.directionalBindings.run,
+        frameTextures: this.assets.frameTextures,
+      },
+      mach_turn: {
+        directionalBindings: this.assets.directionalBindings.face,
+        frameTextures: this.assets.frameTextures,
+      },
+      acro_travel: {
+        directionalBindings: this.assets.directionalBindings.run,
+        frameTextures: this.assets.frameTextures,
+      },
+      acro_turn: {
+        directionalBindings: this.assets.directionalBindings.face,
+        frameTextures: this.assets.frameTextures,
+      },
+      acro_wheelie: {
+        directionalBindings: this.assets.directionalBindings.face,
+        frameTextures: this.assets.frameTextures,
+      },
+      acro_wheelie_move: {
+        directionalBindings: this.assets.directionalBindings.run,
+        frameTextures: this.assets.frameTextures,
+      },
+      acro_hop: {
+        directionalBindings: this.assets.directionalBindings.face,
+        frameTextures: this.assets.frameTextures,
+      },
+    };
+
+    return {
+      ...legacy,
+      ...this.assets.actionBindings,
     };
   }
 
@@ -368,7 +520,7 @@ export class PlayerAnimationController {
   }
 
   private resetFrameTimer(): void {
-    this.ticksUntilAdvance = Math.max(1, this.currentCommand().duration);
+    this.ticksUntilAdvance = Math.max(1, this.cadenceTicksPerFrame ?? this.currentCommand().duration);
   }
 
   private currentCommand(): AnimationFrameMeta {
@@ -381,7 +533,11 @@ export class PlayerAnimationController {
   }
 
   private currentDirectionalAnimation(): DirectionalAnimationMeta {
-    return this.assets.directionalBindings[this.mode.kind][this.mode.direction];
+    return this.currentActionBinding().directionalBindings[this.mode.direction];
+  }
+
+  private currentActionBinding(): PlayerAnimationActionBinding {
+    return this.actionBindings[this.mode.actionId];
   }
 }
 
