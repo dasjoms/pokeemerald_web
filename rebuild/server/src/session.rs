@@ -202,8 +202,39 @@ impl Session {
     }
 
     pub fn apply_held_input_state(&mut self, input: HeldInputState) {
-        self.held_direction = input.held_direction;
-        self.held_buttons = input.held_buttons;
+        if let Some(direction) = input.held_direction {
+            self.press_direction(direction);
+        } else {
+            self.release_direction();
+        }
+        self.set_held_buttons(input.held_buttons);
+    }
+
+    pub fn press_direction(&mut self, direction: Direction) {
+        self.held_direction = Some(direction);
+    }
+
+    pub fn release_direction(&mut self) {
+        self.held_direction = None;
+    }
+
+    pub fn press_buttons(&mut self, buttons: u8) {
+        self.held_buttons |= buttons;
+    }
+
+    pub fn release_buttons(&mut self, buttons: u8) {
+        self.held_buttons &= !buttons;
+    }
+
+    pub fn set_held_buttons(&mut self, new_buttons: u8) {
+        let pressed = new_buttons & !self.held_buttons;
+        let released = self.held_buttons & !new_buttons;
+        if pressed != 0 {
+            self.press_buttons(pressed);
+        }
+        if released != 0 {
+            self.release_buttons(released);
+        }
     }
 
     pub fn walk_inputs_len(&self) -> usize {

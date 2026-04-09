@@ -1714,6 +1714,69 @@ mod tests {
     }
 
     #[test]
+    fn direction_release_while_bike_idle_clears_authoritative_held_direction() {
+        let mut player = test_player_state();
+        player.traversal_state = TraversalState::AcroBike;
+        player.bike_runtime.acro_runtime.state = AcroState::WheelieStanding;
+
+        update_bike_runtime_per_tick(
+            &mut player,
+            Some(Direction::Right),
+            crate::protocol::HeldButtons::B as u8,
+        );
+        assert_eq!(
+            player.bike_runtime.acro_runtime.held_direction,
+            Some(Direction::Right)
+        );
+
+        update_bike_runtime_per_tick(&mut player, None, crate::protocol::HeldButtons::B as u8);
+        assert_eq!(player.bike_runtime.acro_runtime.held_direction, None);
+    }
+
+    #[test]
+    fn releasing_b_while_in_bunny_hop_clears_hold_and_exits_wheelie_flow() {
+        let mut player = test_player_state();
+        player.traversal_state = TraversalState::AcroBike;
+        player.bike_runtime.acro_runtime.state = AcroState::BunnyHop;
+        player.bike_runtime.acro_state = AcroBikeSubstate::BunnyHop;
+
+        update_bike_runtime_per_tick(&mut player, None, crate::protocol::HeldButtons::B as u8);
+        assert!(player.bike_runtime.acro_runtime.holding_b);
+
+        update_bike_runtime_per_tick(&mut player, None, 0);
+        assert!(!player.bike_runtime.acro_runtime.holding_b);
+        assert_eq!(player.bike_runtime.acro_runtime.state, AcroState::Normal);
+        assert_eq!(
+            player.bike_runtime.last_transition,
+            BikeTransitionType::WheelieToNormal
+        );
+    }
+
+    #[test]
+    fn idle_ticks_do_not_keep_stale_held_direction_or_buttons() {
+        let mut player = test_player_state();
+        player.traversal_state = TraversalState::AcroBike;
+
+        update_bike_runtime_per_tick(
+            &mut player,
+            Some(Direction::Left),
+            crate::protocol::HeldButtons::B as u8,
+        );
+        assert_eq!(
+            player.bike_runtime.acro_runtime.held_direction,
+            Some(Direction::Left)
+        );
+        assert!(player.bike_runtime.acro_runtime.holding_b);
+
+        update_bike_runtime_per_tick(&mut player, None, 0);
+        update_bike_runtime_per_tick(&mut player, None, 0);
+        update_bike_runtime_per_tick(&mut player, None, 0);
+
+        assert_eq!(player.bike_runtime.acro_runtime.held_direction, None);
+        assert!(!player.bike_runtime.acro_runtime.holding_b);
+    }
+
+    #[test]
     fn blocked_wheelie_collision_uses_idle_response_off_bumpy_slope() {
         let mut player = test_player_state();
         player.traversal_state = TraversalState::AcroBike;
