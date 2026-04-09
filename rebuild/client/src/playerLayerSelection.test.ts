@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   resolvePlayerLayerSampleTile,
-  resolvePlayerRenderPriorityAtTile,
+  resolvePlayerRenderPriority,
   type PlayerLayerTileContext,
 } from './playerLayerSelection';
 
@@ -58,7 +58,10 @@ describe('Littleroot walk transition layer regression', () => {
 
   function resolveStratumForRoundedRenderTile(renderTileX: number): 'below-bg2' | 'between-bg2-bg1' {
     const sampledTileContext = Math.round(renderTileX) >= 11 ? coveredTile : normalTile;
-    return resolvePlayerRenderPriorityAtTile(sampledTileContext);
+    return resolvePlayerRenderPriority({
+      objectPriorityState: 'normal',
+      tileContext: sampledTileContext,
+    });
   }
 
   it('does not drop the full player below BG2 mid-step when crossing a covered/decorative-adjacent edge', () => {
@@ -66,9 +69,12 @@ describe('Littleroot walk transition layer regression', () => {
     // into a covered tile with nearby decorative covered metatiles can flap strata when
     // sampling via Math.round(renderTileX).
     expect(resolveStratumForRoundedRenderTile(10.51)).toBe('between-bg2-bg1');
-    expect(resolvePlayerRenderPriorityAtTile(decorativeCoveredAdjacentTile)).toBe(
-      'between-bg2-bg1',
-    );
+    expect(
+      resolvePlayerRenderPriority({
+        objectPriorityState: 'normal',
+        tileContext: decorativeCoveredAdjacentTile,
+      }),
+    ).toBe('between-bg2-bg1');
 
     const sampleDuringStep = resolvePlayerLayerSampleTile({
       playerTileX: 11,
@@ -82,7 +88,10 @@ describe('Littleroot walk transition layer regression', () => {
         durationMs: 267,
       },
     });
-    const stratumDuringStep = resolvePlayerRenderPriorityAtTile(normalTile);
+    const stratumDuringStep = resolvePlayerRenderPriority({
+      objectPriorityState: 'normal',
+      tileContext: normalTile,
+    });
     expect(sampleDuringStep).toEqual({ x: 10, y: 14 });
     expect(stratumDuringStep).toBe('between-bg2-bg1');
 
@@ -91,8 +100,41 @@ describe('Littleroot walk transition layer regression', () => {
       playerTileY: 14,
       activeWalkTransition: null,
     });
-    const stratumAfterStep = resolvePlayerRenderPriorityAtTile(coveredTile);
+    const stratumAfterStep = resolvePlayerRenderPriority({
+      objectPriorityState: 'normal',
+      tileContext: coveredTile,
+    });
     expect(sampleAfterStep).toEqual({ x: 11, y: 14 });
     expect(stratumAfterStep).toBe('between-bg2-bg1');
+  });
+
+  it('keeps the player visible on Littleroot covered tiles with behavior 0', () => {
+    const littlerootCoveredBehavior0: PlayerLayerTileContext = {
+      metatileLayerType: 1,
+      behaviorId: 0,
+      layer1SubtileMask: 0b0011,
+    };
+
+    expect(
+      resolvePlayerRenderPriority({
+        objectPriorityState: 'normal',
+        tileContext: littlerootCoveredBehavior0,
+      }),
+    ).toBe('between-bg2-bg1');
+  });
+});
+
+describe('resolvePlayerRenderPriority', () => {
+  it('renders below BG2 only for explicit object priority state', () => {
+    expect(
+      resolvePlayerRenderPriority({
+        objectPriorityState: 'below-bg2',
+      }),
+    ).toBe('below-bg2');
+    expect(
+      resolvePlayerRenderPriority({
+        objectPriorityState: 'normal',
+      }),
+    ).toBe('between-bg2-bg1');
   });
 });
