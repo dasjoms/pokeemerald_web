@@ -948,9 +948,20 @@ fn cracked_floor_per_step_callback(
     player_state.cracked_floor.prev_x = x;
     player_state.cracked_floor.prev_y = y;
 
+    let stepped_on_collapsed_floor = player_state
+        .cracked_floor
+        .pending_floors
+        .iter()
+        .any(|pending| {
+            pending.collapsed
+                && pending.map_id == player_state.map_id
+                && pending.x == x
+                && pending.y == y
+        });
+
     let idx = y as usize * map.width as usize + x as usize;
     let behavior = map.behavior.get(idx).copied().unwrap_or_default();
-    if behavior == MB_CRACKED_FLOOR_HOLE {
+    if behavior == MB_CRACKED_FLOOR_HOLE || stepped_on_collapsed_floor {
         player_state.cracked_floor.failed_speed_gate = true;
     }
 
@@ -1235,6 +1246,62 @@ mod tests {
         assert_eq!(player.cracked_floor.pending_floors[0].delay_steps, 1);
         cracked_floor_per_step_callback(&mut player, &map, 3, 0, PlayerSpeed::Normal);
         assert!(player.cracked_floor.pending_floors[0].collapsed);
+    }
+
+    #[test]
+    fn cracked_floor_callback_preserves_fastest_path_without_speed_gate_failure() {
+        let mut player = test_player_state();
+        let map = MapData {
+            map_id: "MAP_SKY_PILLAR_2F".to_string(),
+            width: 4,
+            height: 1,
+            metatile_id: vec![0; 4],
+            collision: vec![0; 4],
+            behavior: vec![
+                MB_CRACKED_FLOOR,
+                MB_CRACKED_FLOOR,
+                MB_CRACKED_FLOOR,
+                MB_CRACKED_FLOOR,
+            ],
+            allow_cycling: true,
+            allow_running: true,
+            connections: vec![],
+        };
+
+        cracked_floor_per_step_callback(&mut player, &map, 0, 0, PlayerSpeed::Fastest);
+        cracked_floor_per_step_callback(&mut player, &map, 1, 0, PlayerSpeed::Fastest);
+        cracked_floor_per_step_callback(&mut player, &map, 2, 0, PlayerSpeed::Fastest);
+        cracked_floor_per_step_callback(&mut player, &map, 3, 0, PlayerSpeed::Fastest);
+
+        assert!(!player.cracked_floor.failed_speed_gate);
+        assert!(player.cracked_floor.pending_floors[0].collapsed);
+        assert_eq!(player.cracked_floor.pending_floors[1].delay_steps, 1);
+    }
+
+    #[test]
+    fn cracked_floor_callback_treats_collapsed_runtime_tiles_as_holes() {
+        let mut player = test_player_state();
+        let map = MapData {
+            map_id: "MAP_SKY_PILLAR_2F".to_string(),
+            width: 4,
+            height: 1,
+            metatile_id: vec![0; 4],
+            collision: vec![0; 4],
+            behavior: vec![MB_CRACKED_FLOOR, 0, 0, 0],
+            allow_cycling: true,
+            allow_running: true,
+            connections: vec![],
+        };
+
+        cracked_floor_per_step_callback(&mut player, &map, 0, 0, PlayerSpeed::Fast);
+        cracked_floor_per_step_callback(&mut player, &map, 1, 0, PlayerSpeed::Normal);
+        cracked_floor_per_step_callback(&mut player, &map, 2, 0, PlayerSpeed::Normal);
+        cracked_floor_per_step_callback(&mut player, &map, 3, 0, PlayerSpeed::Normal);
+        assert!(player.cracked_floor.pending_floors[0].collapsed);
+
+        player.cracked_floor.failed_speed_gate = false;
+        cracked_floor_per_step_callback(&mut player, &map, 0, 0, PlayerSpeed::Fastest);
+        assert!(player.cracked_floor.failed_speed_gate);
     }
 
     #[test]
