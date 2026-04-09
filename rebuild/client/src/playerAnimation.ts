@@ -189,13 +189,13 @@ export function buildPlayerSheetRgba(
   height: number,
   indices: Uint8Array,
   paletteColors: string[],
-): Uint8ClampedArray {
+): Uint8ClampedArray<ArrayBuffer> {
   const expectedSize = width * height;
   if (indices.length !== expectedSize) {
     throw new Error(`player sheet indices length mismatch: expected=${expectedSize}, actual=${indices.length}`);
   }
 
-  const rgba = new Uint8ClampedArray(expectedSize * 4);
+  const rgba = new Uint8ClampedArray(new ArrayBuffer(expectedSize * 4));
   for (let index = 0; index < indices.length; index += 1) {
     const paletteIndex = indices[index] ?? 0;
     const [r, g, b] = parseHexPaletteColor(paletteColors[paletteIndex]);
