@@ -16,5 +16,13 @@ export function rejectionReasonLabel(reason: RejectionReason): string {
       return 'INVALID_DIRECTION';
     case RejectionReason.FORCED_MOVEMENT_DISABLED:
       return 'FORCED_MOVEMENT_DISABLED';
+    case RejectionReason.BIKE_INVALID_STATE_TRANSITION:
+      return 'BIKE_INVALID_STATE_TRANSITION';
+    case RejectionReason.BIKE_TURN_TOO_SHARP:
+      return 'BIKE_TURN_TOO_SHARP';
+    case RejectionReason.BIKE_WHEELIE_WINDOW_EXPIRED:
+      return 'BIKE_WHEELIE_WINDOW_EXPIRED';
+    case RejectionReason.BIKE_TILE_REQUIRES_MACH:
+      return 'BIKE_TILE_REQUIRES_MACH';
   }
 }
