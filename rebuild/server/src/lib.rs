@@ -1,4 +1,3 @@
-pub mod bike;
 pub mod map_chunk;
 pub mod movement;
 pub mod protocol;
