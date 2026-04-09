@@ -348,8 +348,12 @@ export class PlayerAnimationController {
     }
 
     this.tickAccumulatorMs -= ticksToRun * TICK_60HZ_MS;
-    ticksToRun = Math.min(ticksToRun, 8);
-    for (let tick = 0; tick < ticksToRun; tick += 1) {
+    this.tickTicks(Math.min(ticksToRun, 8));
+  }
+
+  tickTicks(ticksToRun: number): void {
+    const clampedTicksToRun = Math.max(0, Math.min(256, ticksToRun));
+    for (let tick = 0; tick < clampedTicksToRun; tick += 1) {
       this.stepOneTick();
     }
   }

@@ -38,6 +38,7 @@ import {
   loadPlayerAnimationAssets,
   PlayerAnimationController,
 } from './playerAnimation';
+import { PlayerMovementActionRuntime } from './playerMovementActionRuntime';
 import {
   startAuthoritativeWalkTransition as createAuthoritativeWalkTransition,
   tickWalkTransition as tickWalkTransitionState,
@@ -373,6 +374,8 @@ let playerAnimationAssets = await loadPlayerAnimationAssets({
   resolveImageUrlFromAssets,
 });
 let playerAnimation = new PlayerAnimationController(playerAnimationAssets);
+const playerMovementActionRuntime = new PlayerMovementActionRuntime();
+let visualRuntimeLastServerFrame: number | null = null;
 const walkInputController = createWalkInputController({
   sendWalkInput,
   sendHeldInputState,
@@ -402,7 +405,6 @@ app.ticker.add(() => {
   walkInputController.tick();
   tickWalkTransition(app.ticker.deltaMS);
   playerAnimation.applyPendingModeChanges();
-  playerAnimation.tick(app.ticker.deltaMS);
   presentPlayerAnimationFrame();
   tickTilesetAnimationClock(app.ticker.deltaMS);
   presentTilesetAnimation();
@@ -522,6 +524,7 @@ async function connectWebSocket(): Promise<void> {
 
 async function handleServerMessage(message: ServerMessage): Promise<void> {
   if (message.type === MessageType.SESSION_ACCEPTED) {
+    syncVisualRuntimesToServerFrame(message.payload.server_frame);
     await applyAuthoritativeAvatar(message.payload.avatar);
     state.lastAckServerTick = message.payload.server_frame;
     renderHud();
@@ -543,6 +546,10 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     state.machSpeedStage = snapshot.mach_speed_stage;
     state.acroSubstate = snapshot.acro_substate;
     state.bikeTransition = snapshot.bike_transition;
+    playerMovementActionRuntime.setAuthoritativeInput({
+      traversalState: state.traversalState,
+      bikeTransition: state.bikeTransition,
+    });
     bikeEffectRenderer.clear();
     await applyAuthoritativeAvatar(snapshot.avatar);
     playerAnimation.setTraversalState({
@@ -552,6 +559,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
       bikeTransition: state.bikeTransition,
     });
     playerAnimation.stopMoving(snapshot.facing);
+    syncVisualRuntimesToServerFrame(snapshot.server_frame);
     state.lastAckServerTick = snapshot.server_frame;
     pendingPredictedInputs.clear();
     pendingMovementModesByInputSeq.clear();
@@ -577,6 +585,11 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
       acroSubstate: state.acroSubstate,
       bikeTransition: state.bikeTransition,
     });
+    playerMovementActionRuntime.setAuthoritativeInput({
+      traversalState: state.traversalState,
+      bikeTransition: state.bikeTransition,
+    });
+    syncVisualRuntimesToServerFrame(delta.server_frame);
     state.lastAckServerTick = delta.server_frame;
     return;
   }
@@ -613,6 +626,10 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     traversalState: state.traversalState,
     machSpeedStage: state.machSpeedStage,
     acroSubstate: state.acroSubstate,
+    bikeTransition: state.bikeTransition,
+  });
+  playerMovementActionRuntime.setAuthoritativeInput({
+    traversalState: state.traversalState,
     bikeTransition: state.bikeTransition,
   });
   if (result.accepted) {
@@ -658,6 +675,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
       serverFrame: result.server_frame,
     });
   }
+  syncVisualRuntimesToServerFrame(result.server_frame);
   state.lastAckServerTick = result.server_frame;
   if (!result.accepted) {
     console.info(
@@ -1669,10 +1687,27 @@ async function applyAvatarAssets(avatar: PlayerAvatar): Promise<void> {
     bikeTransition: state.bikeTransition,
   });
   playerAnimation.stopMoving(state.facing);
+  visualRuntimeLastServerFrame = state.lastAckServerTick;
   playerSprite.anchor.set(
     playerAnimationAssets.anchorX / playerAnimationAssets.frameWidth,
     playerAnimationAssets.anchorY / playerAnimationAssets.frameHeight,
   );
+}
+
+function syncVisualRuntimesToServerFrame(serverFrame: number): void {
+  if (visualRuntimeLastServerFrame === null) {
+    visualRuntimeLastServerFrame = serverFrame;
+    return;
+  }
+
+  if (serverFrame <= visualRuntimeLastServerFrame) {
+    return;
+  }
+
+  const deltaFrames = Math.min(120, serverFrame - visualRuntimeLastServerFrame);
+  playerAnimation.tickTicks(deltaFrames);
+  playerMovementActionRuntime.tickTicks(deltaFrames);
+  visualRuntimeLastServerFrame = serverFrame;
 }
 
 function readU8(raw: Uint8Array, offset: number): number {
@@ -1729,8 +1764,9 @@ function resolveAnimationStepMode({
 
 function positionPlayerSprite(): void {
   updatePlayerActorLayer();
+  const movementActionVisual = playerMovementActionRuntime.getVisualState();
   playerSprite.x = state.renderTileX * TILE_SIZE + TILE_SIZE / 2;
-  playerSprite.y = state.renderTileY * TILE_SIZE + TILE_SIZE;
+  playerSprite.y = state.renderTileY * TILE_SIZE + TILE_SIZE + movementActionVisual.yOffsetPx;
 }
 
 function updatePlayerActorLayer(): void {
