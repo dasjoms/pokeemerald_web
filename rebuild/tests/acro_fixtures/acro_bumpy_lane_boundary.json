@@ -1,0 +1,47 @@
+{
+  "name": "acro_bumpy_lane_boundary",
+  "map": {
+    "width": 7,
+    "height": 1,
+    "collision": [0, 0, 0, 0, 0, 0, 0],
+    "behavior": [0, 209, 0, 209, 0, 0, 0]
+  },
+  "initial": {
+    "x": 0,
+    "y": 0,
+    "facing": "RIGHT"
+  },
+  "inputs": [
+    { "hold_b": true }, { "hold_b": true }, { "hold_b": true }, { "hold_b": true }, { "hold_b": true },
+    { "hold_b": true }, { "hold_b": true }, { "hold_b": true }, { "hold_b": true }, { "hold_b": true },
+    { "hold_b": true }, { "hold_b": true }, { "hold_b": true }, { "hold_b": true }, { "hold_b": true },
+    { "hold_b": true }, { "hold_b": true }, { "hold_b": true }, { "hold_b": true }, { "hold_b": true },
+    { "hold_b": true }, { "hold_b": true }, { "hold_b": true }, { "hold_b": true }, { "hold_b": true },
+    { "hold_b": true }, { "hold_b": true }, { "hold_b": true }, { "hold_b": true }, { "hold_b": true },
+    { "hold_b": true }, { "hold_b": true }, { "hold_b": true }, { "hold_b": true }, { "hold_b": true },
+    { "hold_b": true }, { "hold_b": true }, { "hold_b": true }, { "hold_b": true }, { "hold_b": true },
+    { "direction": "RIGHT", "hold_b": true },
+    { "hold_b": false },
+    { "direction": "RIGHT", "hold_b": false },
+    { "hold_b": true }, { "hold_b": true }, { "hold_b": true }, { "hold_b": true }, { "hold_b": true },
+    { "hold_b": true }, { "hold_b": true }, { "hold_b": true }, { "hold_b": true }, { "hold_b": true },
+    { "hold_b": true }, { "hold_b": true }, { "hold_b": true }, { "hold_b": true }, { "hold_b": true },
+    { "hold_b": true }, { "hold_b": true }, { "hold_b": true }, { "hold_b": true }, { "hold_b": true },
+    { "hold_b": true }, { "hold_b": true }, { "hold_b": true }, { "hold_b": true }, { "hold_b": true },
+    { "hold_b": true }, { "hold_b": true }, { "hold_b": true }, { "hold_b": true }, { "hold_b": true },
+    { "hold_b": true }, { "hold_b": true }, { "hold_b": true }, { "hold_b": true }, { "hold_b": true },
+    { "hold_b": true }, { "hold_b": true }, { "hold_b": true }, { "hold_b": true },
+    { "direction": "RIGHT", "hold_b": true },
+    { "hold_b": true },
+    { "direction": "RIGHT", "hold_b": true },
+    { "direction": "RIGHT", "hold_b": false }
+  ],
+  "expected": {
+    "attempt_acceptance": [true, true, true, true, true],
+    "final": {
+      "x": 5,
+      "y": 0,
+      "facing": "RIGHT"
+    }
+  }
+}
