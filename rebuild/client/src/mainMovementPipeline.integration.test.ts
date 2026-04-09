@@ -804,7 +804,7 @@ function makeMockAssets(): PlayerAnimationAssets {
       west: { anim_cmd_symbol: 'anim_acro_end_wheelie_moving_west', frames: [{ duration: 2, frame: 502, h_flip: false }] },
       east: { anim_cmd_symbol: 'anim_acro_end_wheelie_moving_east', frames: [{ duration: 2, frame: 503, h_flip: false }] },
     },
-  };
+  } satisfies PlayerAnimationAssets['animationSets']['on_foot']['actions'];
 
   const frameTextures = new Map<number, unknown>();
   for (const frame of [
