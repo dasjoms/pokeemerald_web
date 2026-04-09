@@ -4,7 +4,7 @@ mod protocol_generated;
 pub use protocol_generated::{
     AcroBikeSubstate, BikeTransitionType, DebugTraversalAction, DebugTraversalInput, Direction,
     HeldButtons, JoinSession, MessageType, MovementMode, PlayerAvatar, Position, RejectionReason,
-    SessionAccepted, TraversalState, WalkInput, WalkResult, WorldDelta, WorldSnapshot,
+    SessionAccepted, StepSpeed, TraversalState, WalkInput, WalkResult, WorldDelta, WorldSnapshot,
     PROTOCOL_VERSION,
 };
 pub type Facing = Direction;
@@ -78,6 +78,7 @@ pub fn encode_server_message(message: &ServerMessage) -> Result<Vec<u8>, Protoco
             payload.push(msg.preferred_bike_type as u8);
             encode_bike_runtime(
                 &mut payload,
+                msg.authoritative_step_speed,
                 msg.mach_speed_stage,
                 msg.acro_substate,
                 msg.bike_transition,
@@ -101,6 +102,7 @@ pub fn encode_server_message(message: &ServerMessage) -> Result<Vec<u8>, Protoco
             payload.push(msg.preferred_bike_type as u8);
             encode_bike_runtime(
                 &mut payload,
+                msg.authoritative_step_speed,
                 msg.mach_speed_stage,
                 msg.acro_substate,
                 msg.bike_transition,
@@ -207,11 +209,15 @@ fn decode_movement_mode(raw: u8) -> Result<MovementMode, ProtocolError> {
 
 fn encode_bike_runtime(
     payload: &mut Vec<u8>,
+    authoritative_step_speed: Option<StepSpeed>,
     mach_speed_stage: Option<u8>,
     acro_substate: Option<AcroBikeSubstate>,
     bike_transition: Option<BikeTransitionType>,
 ) {
     let mut flags = 0u8;
+    if authoritative_step_speed.is_some() {
+        flags |= 0b1000;
+    }
     if mach_speed_stage.is_some() {
         flags |= 0b001;
     }
@@ -222,6 +228,9 @@ fn encode_bike_runtime(
         flags |= 0b100;
     }
     payload.push(flags);
+    if let Some(speed) = authoritative_step_speed {
+        payload.push(speed as u8);
+    }
     if let Some(speed) = mach_speed_stage {
         payload.push(speed);
     }

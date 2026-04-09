@@ -42,6 +42,7 @@ fn server_walk_result_decodes_in_shared_python_runtime() {
         server_frame: 88,
         traversal_state: TraversalState::OnFoot,
         preferred_bike_type: TraversalState::MachBike,
+        authoritative_step_speed: None,
         mach_speed_stage: None,
         acro_substate: None,
         bike_transition: Some(BikeTransitionType::None),
@@ -96,6 +97,7 @@ fn walk_result_wire_encoding_with_forced_movement_disabled_is_canonical() {
         server_frame: 0x0a0b_0c0d,
         traversal_state: TraversalState::OnFoot,
         preferred_bike_type: TraversalState::OnFoot,
+        authoritative_step_speed: None,
         mach_speed_stage: None,
         acro_substate: None,
         bike_transition: Some(BikeTransitionType::None),
@@ -105,7 +107,7 @@ fn walk_result_wire_encoding_with_forced_movement_disabled_is_canonical() {
 
     assert_eq!(
         hex::encode(&frame),
-        "0600831400000004030201002211443302060d0c0b0a0000040000"
+        "0700831400000004030201002211443302060d0c0b0a0000040000"
     );
 
     let status = Command::new("python3")

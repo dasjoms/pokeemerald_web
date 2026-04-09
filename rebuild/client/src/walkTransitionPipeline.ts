@@ -1,4 +1,4 @@
-import { Direction, MovementMode, TraversalState } from './protocol_generated';
+import { Direction, MovementMode, StepSpeed, TraversalState } from './protocol_generated';
 
 const SERVER_MOVEMENT_SAMPLE_MS = 1000 / 60;
 
@@ -33,12 +33,30 @@ function stepSamplesToDurationMs(stepSamples: number): number {
 }
 
 export type AuthoritativeStepSpeedInput = {
+  authoritativeStepSpeed?: StepSpeed;
   traversalState: TraversalState;
   machSpeedStage?: number;
   movementMode: MovementMode;
 };
 
 export function authoritativeStepDurationMs(input: AuthoritativeStepSpeedInput): number {
+  if (input.authoritativeStepSpeed !== undefined) {
+    switch (input.authoritativeStepSpeed) {
+      case StepSpeed.STEP8:
+        return stepSamplesToDurationMs(2);
+      case StepSpeed.STEP4:
+        return stepSamplesToDurationMs(4);
+      case StepSpeed.STEP3:
+        return stepSamplesToDurationMs(6);
+      case StepSpeed.STEP2:
+        return stepSamplesToDurationMs(8);
+      case StepSpeed.STEP1:
+      default:
+        return stepSamplesToDurationMs(16);
+    }
+  }
+
+  // Backward-compat fallback for packets from older servers that don't send step speed.
   switch (input.traversalState) {
     case TraversalState.MACH_BIKE:
       if ((input.machSpeedStage ?? 0) <= 0) {

@@ -9,6 +9,7 @@ import {
   PlayerAvatar,
   PROTOCOL_VERSION,
   RejectionReason,
+  StepSpeed,
   TraversalState,
   type SessionAccepted,
   type WalkResult,
@@ -155,6 +156,7 @@ type ClientWorldState = {
   facing: Direction;
   traversalState: TraversalState;
   preferredBikeType: TraversalState;
+  authoritativeStepSpeed?: StepSpeed;
   machSpeedStage?: number;
   acroSubstate?: AcroBikeSubstate;
   bikeTransition?: BikeTransitionType;
@@ -524,6 +526,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     state.facing = snapshot.facing;
     state.traversalState = snapshot.traversal_state;
     state.preferredBikeType = snapshot.preferred_bike_type;
+    state.authoritativeStepSpeed = snapshot.authoritative_step_speed;
     state.machSpeedStage = snapshot.mach_speed_stage;
     state.acroSubstate = snapshot.acro_substate;
     state.bikeTransition = snapshot.bike_transition;
@@ -566,6 +569,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
   state.facing = result.facing;
   state.traversalState = result.traversal_state;
   state.preferredBikeType = result.preferred_bike_type;
+  state.authoritativeStepSpeed = result.authoritative_step_speed;
   state.machSpeedStage = result.mach_speed_stage;
   state.acroSubstate = result.acro_substate;
   state.bikeTransition = result.bike_transition;
@@ -581,6 +585,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     startAuthoritativeWalkTransition(
       result.facing,
       resolveAuthoritativeStepSpeedInput(
+        result.authoritative_step_speed,
         result.traversal_state,
         result.mach_speed_stage,
         acceptedMovementMode,
@@ -1414,7 +1419,9 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
     offset += 1;
     const bikeRuntimeFlags = readU8(payload, offset);
     offset += 1;
-
+    // Optional for compatibility with older servers that don't include step speed.
+    const authoritativeStepSpeed =
+      bikeRuntimeFlags & 0b1000 ? (readU8(payload, offset++) as StepSpeed) : undefined;
     const machSpeedStage = bikeRuntimeFlags & 0b001 ? readU8(payload, offset++) : undefined;
     const acroSubstate =
       bikeRuntimeFlags & 0b010 ? (readU8(payload, offset++) as AcroBikeSubstate) : undefined;
@@ -1444,6 +1451,7 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
         server_frame: serverFrame,
         traversal_state: traversalState,
         preferred_bike_type: preferredBikeType,
+        authoritative_step_speed: authoritativeStepSpeed,
         mach_speed_stage: machSpeedStage,
         acro_substate: acroSubstate,
         bike_transition: bikeTransition,
@@ -1474,6 +1482,9 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
     offset += 1;
     const bikeRuntimeFlags = readU8(payload, offset);
     offset += 1;
+    // Optional for compatibility with older servers that don't include step speed.
+    const authoritativeStepSpeed =
+      bikeRuntimeFlags & 0b1000 ? (readU8(payload, offset++) as StepSpeed) : undefined;
     const machSpeedStage = bikeRuntimeFlags & 0b001 ? readU8(payload, offset++) : undefined;
     const acroSubstate =
       bikeRuntimeFlags & 0b010 ? (readU8(payload, offset++) as AcroBikeSubstate) : undefined;
@@ -1493,6 +1504,7 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
         server_frame: serverFrame,
         traversal_state: traversalState,
         preferred_bike_type: preferredBikeType,
+        authoritative_step_speed: authoritativeStepSpeed,
         mach_speed_stage: machSpeedStage,
         acro_substate: acroSubstate,
         bike_transition: bikeTransition,
@@ -1664,18 +1676,21 @@ function startAuthoritativeWalkTransition(
 }
 
 function resolveAuthoritativeStepSpeedInput(
+  authoritativeStepSpeed: StepSpeed | undefined,
   traversalState: TraversalState,
   machSpeedStage: number | undefined,
   movementMode: MovementMode,
 ): AuthoritativeStepSpeedInput {
   if (traversalState === TraversalState.ON_FOOT) {
     return {
+      authoritativeStepSpeed,
       traversalState,
       movementMode,
     };
   }
 
   return {
+    authoritativeStepSpeed,
     traversalState,
     machSpeedStage,
     movementMode: MovementMode.WALK,
