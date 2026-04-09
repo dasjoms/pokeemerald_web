@@ -398,6 +398,16 @@ impl World {
             {
                 session.player_state.bike_runtime.last_transition = BikeTransitionType::None;
             }
+            let on_bumpy_slope = self.maps.get(&session.player_state.map_id).and_then(|map| {
+                let idx = session.player_state.tile_y as usize * map.width as usize
+                    + session.player_state.tile_x as usize;
+                map.behavior.get(idx).copied()
+            }) == Some(0xD1);
+            session
+                .player_state
+                .bike_runtime
+                .acro_runtime
+                .set_on_bumpy_slope(on_bumpy_slope);
             update_bike_runtime_per_tick(
                 &mut session.player_state,
                 session.held_direction,

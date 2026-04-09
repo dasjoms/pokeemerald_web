@@ -112,6 +112,7 @@ pub struct AcroRuntime {
     pub holding_b: bool,
     pub new_dir_backup: Option<Direction>,
     pub movement_direction: Direction,
+    pub on_bumpy_slope: bool,
     pending_action: Option<AcroAnimationAction>,
 }
 
@@ -129,6 +130,7 @@ impl Default for AcroRuntime {
             holding_b: false,
             new_dir_backup: None,
             movement_direction: Direction::Down,
+            on_bumpy_slope: false,
             pending_action: None,
         }
     }
@@ -138,6 +140,10 @@ impl AcroRuntime {
     pub fn set_held_input(&mut self, held_direction: Option<Direction>, holding_b: bool) {
         self.held_direction = held_direction;
         self.holding_b = holding_b;
+    }
+
+    pub fn set_on_bumpy_slope(&mut self, on_bumpy_slope: bool) {
+        self.on_bumpy_slope = on_bumpy_slope;
     }
 
     pub fn advance_tick(&mut self) {
@@ -252,6 +258,7 @@ impl AcroRuntime {
             if self.holding_b {
                 self.running_state = RunningState::NotMoving;
                 self.state = AcroState::WheelieStanding;
+                self.bike_frame_counter = 1;
                 return AcroAnimationAction::NormalToWheelie;
             }
             self.running_state = RunningState::NotMoving;
@@ -311,8 +318,10 @@ impl AcroRuntime {
             self.bike_frame_counter = self.bike_frame_counter.saturating_add(1);
         } else {
             self.bike_frame_counter = 0;
-            self.state = AcroState::Normal;
-            return AcroAnimationAction::WheelieToNormal;
+            if !self.on_bumpy_slope {
+                self.state = AcroState::Normal;
+                return AcroAnimationAction::WheelieToNormal;
+            }
         }
 
         if self.bike_frame_counter >= 40 {
@@ -340,9 +349,14 @@ impl AcroRuntime {
         facing_direction: Direction,
     ) -> AcroAnimationAction {
         if !self.holding_b {
+            self.bike_frame_counter = 0;
+            if self.on_bumpy_slope {
+                self.state = AcroState::WheelieStanding;
+                return self.handle_input_wheelie_standing(requested_direction, facing_direction);
+            }
+
             self.state = AcroState::Normal;
             self.running_state = RunningState::NotMoving;
-            self.bike_frame_counter = 0;
             return AcroAnimationAction::WheelieToNormal;
         }
 
@@ -366,6 +380,11 @@ impl AcroRuntime {
         facing_direction: Direction,
     ) -> AcroAnimationAction {
         if !self.holding_b {
+            if self.on_bumpy_slope {
+                self.state = AcroState::WheelieStanding;
+                return self.handle_input_wheelie_standing(requested_direction, facing_direction);
+            }
+
             self.state = AcroState::Normal;
             if requested_direction.is_none() {
                 self.running_state = RunningState::NotMoving;
@@ -384,7 +403,7 @@ impl AcroRuntime {
         let Some(new_direction) = requested_direction else {
             self.state = AcroState::WheelieStanding;
             self.running_state = RunningState::NotMoving;
-            self.bike_frame_counter = 0;
+            self.bike_frame_counter = 1;
             return AcroAnimationAction::WheelieIdle;
         };
 
@@ -697,6 +716,23 @@ mod tests {
         assert_eq!(
             runtime.take_pending_action(),
             Some(AcroAnimationAction::WheelieToNormal)
+        );
+    }
+
+    #[test]
+    fn releasing_b_on_bumpy_slope_preserves_wheelie_flow() {
+        let mut runtime = AcroRuntime {
+            state: AcroState::WheelieMoving,
+            on_bumpy_slope: true,
+            ..Default::default()
+        };
+
+        runtime.set_held_input(Some(Direction::Right), false);
+        runtime.advance_tick();
+        assert_eq!(runtime.state, AcroState::WheelieStanding);
+        assert_eq!(
+            runtime.take_pending_action(),
+            Some(AcroAnimationAction::WheelieIdle)
         );
     }
 
