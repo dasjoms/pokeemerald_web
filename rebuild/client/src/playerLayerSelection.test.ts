@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildLayerSubtileOccupancy,
+  encodeSubtileSlotBit,
   resolvePlayerLayerSampleTile,
   resolvePlayerRenderPriority,
   type PlayerLayerTileContext,
@@ -43,17 +45,26 @@ describe('Littleroot walk transition layer regression', () => {
   const normalTile: PlayerLayerTileContext = {
     metatileLayerType: undefined,
     behaviorId: 0,
+    layer0SubtileMask: 0,
     layer1SubtileMask: 0,
+    hasLayer0: false,
+    hasLayer1: false,
   };
   const coveredTile: PlayerLayerTileContext = {
     metatileLayerType: 1,
     behaviorId: 0,
+    layer0SubtileMask: 0,
     layer1SubtileMask: 0,
+    hasLayer0: false,
+    hasLayer1: false,
   };
   const decorativeCoveredAdjacentTile: PlayerLayerTileContext = {
     metatileLayerType: 1,
     behaviorId: 33,
+    layer0SubtileMask: 0,
     layer1SubtileMask: 0b0001,
+    hasLayer0: false,
+    hasLayer1: true,
   };
 
   function resolveStratumForRoundedRenderTile(renderTileX: number): 'below-bg2' | 'between-bg2-bg1' {
@@ -112,7 +123,10 @@ describe('Littleroot walk transition layer regression', () => {
     const littlerootCoveredBehavior0: PlayerLayerTileContext = {
       metatileLayerType: 1,
       behaviorId: 0,
+      layer0SubtileMask: 0,
       layer1SubtileMask: 0b0011,
+      hasLayer0: false,
+      hasLayer1: true,
     };
 
     expect(
@@ -121,6 +135,35 @@ describe('Littleroot walk transition layer regression', () => {
         tileContext: littlerootCoveredBehavior0,
       }),
     ).toBe('between-bg2-bg1');
+  });
+});
+
+describe('subtile occupancy encoding', () => {
+  it('keeps subtile slots 4..7 distinct from 0..3', () => {
+    const occupancy = buildLayerSubtileOccupancy([
+      { subtile_index: 0, layer: 0 },
+      { subtile_index: 4, layer: 0 },
+      { subtile_index: 7, layer: 1 },
+    ]);
+
+    expect(occupancy.layer0SubtileMask).toBe(encodeSubtileSlotBit(0) | encodeSubtileSlotBit(4));
+    expect(occupancy.layer1SubtileMask).toBe(encodeSubtileSlotBit(7));
+    expect(occupancy.hasLayer0).toBe(true);
+    expect(occupancy.hasLayer1).toBe(true);
+  });
+
+  it('does not merge layer slots that share the same low two bits', () => {
+    const occupancy = buildLayerSubtileOccupancy([
+      { subtile_index: 1, layer: 0 },
+      { subtile_index: 5, layer: 0 },
+      { subtile_index: 1, layer: 1 },
+      { subtile_index: 5, layer: 1 },
+    ]);
+
+    expect(occupancy.layer0SubtileMask).toBe(encodeSubtileSlotBit(1) | encodeSubtileSlotBit(5));
+    expect(occupancy.layer1SubtileMask).toBe(encodeSubtileSlotBit(1) | encodeSubtileSlotBit(5));
+    expect(occupancy.layer0SubtileMask & encodeSubtileSlotBit(5)).not.toBe(0);
+    expect(occupancy.layer1SubtileMask & encodeSubtileSlotBit(5)).not.toBe(0);
   });
 });
 
