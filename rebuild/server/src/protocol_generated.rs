@@ -61,6 +61,13 @@ pub enum BikeTransitionType {
     EnterWheelie = 3,
     ExitWheelie = 4,
     Hop = 5,
+    WheelieIdle = 6,
+    WheeliePop = 7,
+    WheelieEnd = 8,
+    HopStanding = 9,
+    HopMoving = 10,
+    SideJump = 11,
+    TurnJump = 12,
 }
 
 #[repr(u8)]

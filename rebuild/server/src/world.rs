@@ -11,6 +11,7 @@ use tokio::sync::{mpsc, RwLock};
 use tracing::{error, trace};
 
 use crate::{
+    acro::{AcroAnimationAction, AcroState},
     map_chunk::{serialize_world_snapshot_map_chunk, world_snapshot_map_chunk_hash},
     movement::{
         facing_delta, get_player_speed, mach_speed_tier_for_frame_counter, player_speed_step_speed,
@@ -512,7 +513,11 @@ impl World {
                 let _ = session.send(result);
 
                 if accepted {
-                    update_bike_runtime_after_step(&mut session.player_state, input.direction);
+                    update_bike_runtime_after_step(
+                        &mut session.player_state,
+                        input.direction,
+                        resolved_movement_mode,
+                    );
                     cracked_floor_per_step_callback(
                         &mut session.player_state,
                         current_map,
@@ -682,7 +687,11 @@ fn reset_bike_runtime_on_reject(player_state: &mut PlayerState) {
     }
 }
 
-fn update_bike_runtime_after_step(player_state: &mut PlayerState, direction: Direction) {
+fn update_bike_runtime_after_step(
+    player_state: &mut PlayerState,
+    direction: Direction,
+    movement_mode: MovementMode,
+) {
     match player_state.traversal_state {
         TraversalState::OnFoot => {
             player_state.bike_runtime.bike_frame_counter = 0;
@@ -692,6 +701,7 @@ fn update_bike_runtime_after_step(player_state: &mut PlayerState, direction: Dir
                     as u8;
             player_state.bike_runtime.mach_dir_traveling = None;
             player_state.bike_runtime.acro_state = AcroBikeSubstate::None;
+            player_state.bike_runtime.acro_runtime = Default::default();
         }
         TraversalState::MachBike => {
             if player_state.bike_runtime.mach_dir_traveling == Some(direction) {
@@ -709,42 +719,31 @@ fn update_bike_runtime_after_step(player_state: &mut PlayerState, direction: Dir
                     as u8;
         }
         TraversalState::AcroBike => {
-            const ACRO_HISTORY_CAPACITY: usize = 8;
-            const ACRO_HISTORY_RESET_MS: u16 = 350;
-            player_state.bike_runtime.acro_history_timer_ms = player_state
-                .bike_runtime
-                .acro_history_timer_ms
-                .saturating_add(WALK_SAMPLE_MS as u16);
-            if player_state.bike_runtime.acro_history_timer_ms > ACRO_HISTORY_RESET_MS {
-                player_state.bike_runtime.acro_input_history.clear();
-                player_state.bike_runtime.acro_history_timer_ms = 0;
-            }
-            if player_state.bike_runtime.acro_input_history.len() >= ACRO_HISTORY_CAPACITY {
-                let _ = player_state.bike_runtime.acro_input_history.pop_front();
-            }
-            player_state
-                .bike_runtime
-                .acro_input_history
-                .push_back(direction);
-            let trailing_same_direction = player_state
-                .bike_runtime
-                .acro_input_history
-                .iter()
-                .rev()
-                .take_while(|&&sample| sample == direction)
-                .count();
-            player_state.bike_runtime.acro_state = if trailing_same_direction >= 2 {
-                AcroBikeSubstate::MovingWheelie
-            } else {
-                AcroBikeSubstate::None
-            };
-            player_state.bike_runtime.last_transition = if matches!(
-                player_state.bike_runtime.acro_state,
-                AcroBikeSubstate::MovingWheelie
-            ) {
-                BikeTransitionType::EnterWheelie
-            } else {
-                BikeTransitionType::None
+            let action = player_state.bike_runtime.acro_runtime.apply_step(
+                player_state.facing,
+                direction,
+                matches!(movement_mode, MovementMode::Run),
+            );
+
+            player_state.bike_runtime.acro_state =
+                match player_state.bike_runtime.acro_runtime.state {
+                    AcroState::Normal
+                    | AcroState::Turning
+                    | AcroState::SideJump
+                    | AcroState::TurnJump => AcroBikeSubstate::None,
+                    AcroState::WheelieStanding => AcroBikeSubstate::StandingWheelie,
+                    AcroState::BunnyHop => AcroBikeSubstate::BunnyHop,
+                    AcroState::WheelieMoving => AcroBikeSubstate::MovingWheelie,
+                };
+            player_state.bike_runtime.last_transition = match action {
+                AcroAnimationAction::None => BikeTransitionType::None,
+                AcroAnimationAction::WheelieIdle => BikeTransitionType::WheelieIdle,
+                AcroAnimationAction::WheeliePop => BikeTransitionType::WheeliePop,
+                AcroAnimationAction::WheelieEnd => BikeTransitionType::WheelieEnd,
+                AcroAnimationAction::HopStanding => BikeTransitionType::HopStanding,
+                AcroAnimationAction::HopMoving => BikeTransitionType::HopMoving,
+                AcroAnimationAction::SideJump => BikeTransitionType::SideJump,
+                AcroAnimationAction::TurnJump => BikeTransitionType::TurnJump,
             };
         }
     }
@@ -1038,16 +1037,16 @@ mod tests {
     #[test]
     fn mach_bike_frame_counter_accelerates_and_slows_on_direction_change() {
         let mut player = test_player_state();
-        update_bike_runtime_after_step(&mut player, Direction::Right);
+        update_bike_runtime_after_step(&mut player, Direction::Right, MovementMode::Walk);
         assert_eq!(player.bike_runtime.bike_frame_counter, 0);
 
-        update_bike_runtime_after_step(&mut player, Direction::Right);
+        update_bike_runtime_after_step(&mut player, Direction::Right, MovementMode::Walk);
         assert_eq!(player.bike_runtime.bike_frame_counter, 1);
 
-        update_bike_runtime_after_step(&mut player, Direction::Right);
+        update_bike_runtime_after_step(&mut player, Direction::Right, MovementMode::Walk);
         assert_eq!(player.bike_runtime.bike_frame_counter, 2);
 
-        update_bike_runtime_after_step(&mut player, Direction::Left);
+        update_bike_runtime_after_step(&mut player, Direction::Left, MovementMode::Walk);
         assert_eq!(player.bike_runtime.bike_frame_counter, 1);
     }
 

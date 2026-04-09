@@ -3,6 +3,7 @@ use std::collections::VecDeque;
 use tokio::sync::mpsc;
 
 use crate::{
+    acro::AcroRuntime,
     movement::{step_progress_pixels, StepSpeed, WALK_SAMPLE_MS},
     protocol::{
         AcroBikeSubstate, BikeTransitionType, Direction, MovementMode, PlayerAvatar, ServerMessage,
@@ -32,8 +33,7 @@ pub struct BikeRuntimeState {
     pub mach_dir_traveling: Option<Direction>,
     pub acro_state: AcroBikeSubstate,
     pub last_transition: BikeTransitionType,
-    pub acro_input_history: VecDeque<Direction>,
-    pub acro_history_timer_ms: u16,
+    pub acro_runtime: AcroRuntime,
 }
 
 #[derive(Debug, Clone)]
@@ -90,8 +90,7 @@ impl Default for BikeRuntimeState {
             mach_dir_traveling: None,
             acro_state: AcroBikeSubstate::None,
             last_transition: BikeTransitionType::None,
-            acro_input_history: VecDeque::with_capacity(8),
-            acro_history_timer_ms: 0,
+            acro_runtime: AcroRuntime::default(),
         }
     }
 }
