@@ -2,10 +2,11 @@
 mod protocol_generated;
 
 pub use protocol_generated::{
-    AcroBikeSubstate, BikeTransitionType, DebugTraversalAction, DebugTraversalInput, Direction,
-    HeldButtons, HeldInputState, JoinSession, MessageType, MovementMode, PlayerAction,
-    PlayerActionInput, PlayerAvatar, Position, RejectionReason, SessionAccepted, StepSpeed,
-    TraversalState, WalkInput, WalkResult, WorldDelta, WorldSnapshot, PROTOCOL_VERSION,
+    AcroBikeSubstate, BikeRuntimeDelta, BikeTransitionType, DebugTraversalAction,
+    DebugTraversalInput, Direction, HeldButtons, HeldInputState, JoinSession, MessageType,
+    MovementMode, PlayerAction, PlayerActionInput, PlayerAvatar, Position, RejectionReason,
+    SessionAccepted, StepSpeed, TraversalState, WalkInput, WalkResult, WorldDelta, WorldSnapshot,
+    PROTOCOL_VERSION,
 };
 pub type Facing = Direction;
 
@@ -25,6 +26,7 @@ pub enum ServerMessage {
     WorldSnapshot(WorldSnapshot),
     WalkResult(WalkResult),
     WorldDelta(WorldDelta),
+    BikeRuntimeDelta(BikeRuntimeDelta),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -118,6 +120,19 @@ pub fn encode_server_message(message: &ServerMessage) -> Result<Vec<u8>, Protoco
             payload.extend_from_slice(&msg.server_frame.to_le_bytes());
             push_bytes(&mut payload, &msg.delta_blob);
             (MessageType::WorldDelta, payload)
+        }
+        ServerMessage::BikeRuntimeDelta(msg) => {
+            let mut payload = Vec::new();
+            payload.extend_from_slice(&msg.server_frame.to_le_bytes());
+            payload.push(msg.traversal_state as u8);
+            encode_bike_runtime(
+                &mut payload,
+                msg.authoritative_step_speed,
+                msg.mach_speed_stage,
+                msg.acro_substate,
+                msg.bike_transition,
+            );
+            (MessageType::BikeRuntimeDelta, payload)
         }
     };
 

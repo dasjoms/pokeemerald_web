@@ -2,6 +2,7 @@ import { Application, Assets, Container, Graphics, Sprite, TextureSource, Textur
 import {
   AcroBikeSubstate,
   BikeTransitionType,
+  type BikeRuntimeDelta,
   DebugTraversalAction,
   Direction,
   MessageType,
@@ -61,7 +62,8 @@ import {
 type ServerMessage =
   | { type: MessageType.SESSION_ACCEPTED; payload: SessionAccepted }
   | { type: MessageType.WORLD_SNAPSHOT; payload: WorldSnapshot }
-  | { type: MessageType.WALK_RESULT; payload: WalkResult };
+  | { type: MessageType.WALK_RESULT; payload: WalkResult }
+  | { type: MessageType.BIKE_RUNTIME_DELTA; payload: BikeRuntimeDelta };
 
 type LayoutTile = {
   metatile_id: number;
@@ -559,7 +561,30 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     return;
   }
 
+  if (message.type === MessageType.BIKE_RUNTIME_DELTA) {
+    const delta = message.payload;
+    if (delta.server_frame < state.lastAckServerTick) {
+      return;
+    }
+    state.traversalState = delta.traversal_state;
+    state.authoritativeStepSpeed = delta.authoritative_step_speed;
+    state.machSpeedStage = delta.mach_speed_stage;
+    state.acroSubstate = delta.acro_substate;
+    state.bikeTransition = delta.bike_transition;
+    playerAnimation.setTraversalState({
+      traversalState: state.traversalState,
+      machSpeedStage: state.machSpeedStage,
+      acroSubstate: state.acroSubstate,
+      bikeTransition: state.bikeTransition,
+    });
+    state.lastAckServerTick = delta.server_frame;
+    return;
+  }
+
   const result = message.payload;
+  if (result.server_frame < state.lastAckServerTick) {
+    return;
+  }
   walkInputController.markWalkResultReceived(result);
   const acceptedMovementMode =
     pendingMovementModesByInputSeq.get(result.input_seq) ?? MovementMode.WALK;
@@ -1571,6 +1596,34 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
         acro_substate: acroSubstate,
         bike_transition: bikeTransition,
         bike_effect_flags: bikeEffectFlags,
+      },
+    };
+  }
+
+  if (messageType === MessageType.BIKE_RUNTIME_DELTA) {
+    let offset = 0;
+    const serverFrame = readU32(payload, offset);
+    offset += 4;
+    const traversalState = readU8(payload, offset) as TraversalState;
+    offset += 1;
+    const bikeRuntimeFlags = readU8(payload, offset);
+    offset += 1;
+    const authoritativeStepSpeed =
+      bikeRuntimeFlags & 0b1000 ? (readU8(payload, offset++) as StepSpeed) : undefined;
+    const machSpeedStage = bikeRuntimeFlags & 0b001 ? readU8(payload, offset++) : undefined;
+    const acroSubstate =
+      bikeRuntimeFlags & 0b010 ? (readU8(payload, offset++) as AcroBikeSubstate) : undefined;
+    const bikeTransition =
+      bikeRuntimeFlags & 0b100 ? (readU8(payload, offset++) as BikeTransitionType) : undefined;
+    return {
+      type: MessageType.BIKE_RUNTIME_DELTA,
+      payload: {
+        server_frame: serverFrame,
+        traversal_state: traversalState,
+        authoritative_step_speed: authoritativeStepSpeed,
+        mach_speed_stage: machSpeedStage,
+        acro_substate: acroSubstate,
+        bike_transition: bikeTransition,
       },
     };
   }

@@ -21,10 +21,10 @@ use crate::{
         StepSpeed as MovementStepSpeed, TraversalContext, WALK_SAMPLE_MS,
     },
     protocol::{
-        AcroBikeSubstate, BikeTransitionType, DebugTraversalAction, DebugTraversalInput, Direction,
-        HeldInputState, MovementMode, PlayerAction, PlayerActionInput, PlayerAvatar,
-        RejectionReason, ServerMessage, SessionAccepted, StepSpeed, TraversalState, WalkInput,
-        WalkResult, WorldSnapshot,
+        AcroBikeSubstate, BikeRuntimeDelta, BikeTransitionType, DebugTraversalAction,
+        DebugTraversalInput, Direction, HeldInputState, MovementMode, PlayerAction,
+        PlayerActionInput, PlayerAvatar, RejectionReason, ServerMessage, SessionAccepted,
+        StepSpeed, TraversalState, WalkInput, WalkResult, WorldSnapshot,
     },
     session::{
         ActiveWalkTransition, BikeRuntimeState, CrackedFloorRuntimeState, PlayerState, Session,
@@ -420,6 +420,9 @@ impl World {
         const SERVER_TICK_MS: f32 = WALK_SAMPLE_MS;
 
         for session in sessions.values_mut() {
+            let previous_traversal_state = session.player_state.traversal_state;
+            let previous_acro_substate = bike_acro_substate_for_traversal(&session.player_state);
+            let previous_bike_transition = session.player_state.bike_runtime.last_transition;
             if !session
                 .player_state
                 .bike_runtime
@@ -442,6 +445,24 @@ impl World {
                 session.held_direction,
                 session.held_buttons,
             );
+            let current_acro_substate = bike_acro_substate_for_traversal(&session.player_state);
+            let current_bike_transition = session.player_state.bike_runtime.last_transition;
+            let traversal_changed =
+                session.player_state.traversal_state != previous_traversal_state;
+            let runtime_changed = current_acro_substate != previous_acro_substate
+                || current_bike_transition != previous_bike_transition;
+            if session.joined && (traversal_changed || runtime_changed) {
+                let _ = session.send(ServerMessage::BikeRuntimeDelta(BikeRuntimeDelta {
+                    server_frame: tick as u32,
+                    traversal_state: session.player_state.traversal_state,
+                    authoritative_step_speed: Some(player_step_speed_for_snapshot(
+                        &session.player_state,
+                    )),
+                    mach_speed_stage: bike_mach_speed_for_traversal(&session.player_state),
+                    acro_substate: current_acro_substate,
+                    bike_transition: Some(current_bike_transition),
+                }));
+            }
 
             if let Some(active_walk) = session.active_walk_transition.as_mut() {
                 active_walk.advance(SERVER_TICK_MS);
