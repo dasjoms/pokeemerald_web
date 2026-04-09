@@ -219,6 +219,45 @@ describe('main movement pipeline integration', () => {
     expect(actualAnimIds).toEqual(sequence.map((entry) => entry.expectedAnimId));
   });
 
+  it('renders idle acro held-B transition deltas without relying on accepted walk results', () => {
+    const playerAnimation = new PlayerAnimationController(makeMockAssets());
+    const startStepSpy = vi.spyOn(playerAnimation, 'startStep');
+    const direction = Direction.RIGHT;
+
+    playerAnimation.stopMoving(direction);
+    playerAnimation.applyPendingModeChanges();
+
+    playerAnimation.setTraversalState({
+      traversalState: TraversalState.ACRO_BIKE,
+      acroSubstate: AcroBikeSubstate.STANDING_WHEELIE,
+      bikeTransition: BikeTransitionType.NORMAL_TO_WHEELIE,
+    });
+    playerAnimation.stopMoving(direction);
+    playerAnimation.applyPendingModeChanges();
+    expect(playerAnimation.getDebugState().animId).toBe('anim_acro_pop_wheelie_stationary_east');
+
+    for (let tick = 0; tick < 39; tick += 1) {
+      playerAnimation.setTraversalState({
+        traversalState: TraversalState.ACRO_BIKE,
+        acroSubstate: AcroBikeSubstate.STANDING_WHEELIE,
+        bikeTransition: BikeTransitionType.NONE,
+      });
+      playerAnimation.stopMoving(direction);
+      playerAnimation.applyPendingModeChanges();
+    }
+    expect(playerAnimation.getDebugState().animId).toBe('anim_acro_wheelie_in_place_east');
+
+    playerAnimation.setTraversalState({
+      traversalState: TraversalState.ACRO_BIKE,
+      acroSubstate: AcroBikeSubstate.BUNNY_HOP,
+      bikeTransition: BikeTransitionType.WHEELIE_HOPPING_STANDING,
+    });
+    playerAnimation.stopMoving(direction);
+    playerAnimation.applyPendingModeChanges();
+    expect(playerAnimation.getDebugState().animId).toBe('anim_acro_bunny_hop_back_east');
+    expect(startStepSpy).not.toHaveBeenCalled();
+  });
+
   it.each([
     {
       bikeTransition: BikeTransitionType.NONE,
