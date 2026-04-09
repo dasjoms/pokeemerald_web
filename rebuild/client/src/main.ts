@@ -400,8 +400,19 @@ let playerActiveActorLayer = actorBetweenBg2Bg1Layer;
 let activeMapTileRenderPriorityContexts: (MapTileRenderPriorityContext | undefined)[] = [];
 let playerObjectRenderPriorityState: PlayerObjectRenderPriorityState = 'normal';
 const bikeEffectRenderer = new BikeEffectRenderer(bikeEffectsLayer, TILE_SIZE);
+const VISUAL_RUNTIME_TICK_MS = 1000 / 60;
+let visualRuntimeTickAccumulatorMs = 0;
 
 app.ticker.add(() => {
+  visualRuntimeTickAccumulatorMs = Math.min(
+    visualRuntimeTickAccumulatorMs + app.ticker.deltaMS,
+    VISUAL_RUNTIME_TICK_MS * 120,
+  );
+  while (visualRuntimeTickAccumulatorMs >= VISUAL_RUNTIME_TICK_MS) {
+    playerAnimation.tickTicks(1);
+    playerMovementActionRuntime.tickTicks(1);
+    visualRuntimeTickAccumulatorMs -= VISUAL_RUNTIME_TICK_MS;
+  }
   walkInputController.tick();
   tickWalkTransition(app.ticker.deltaMS);
   playerAnimation.applyPendingModeChanges();
@@ -1704,9 +1715,6 @@ function syncVisualRuntimesToServerFrame(serverFrame: number): void {
     return;
   }
 
-  const deltaFrames = Math.min(120, serverFrame - visualRuntimeLastServerFrame);
-  playerAnimation.tickTicks(deltaFrames);
-  playerMovementActionRuntime.tickTicks(deltaFrames);
   visualRuntimeLastServerFrame = serverFrame;
 }
 
