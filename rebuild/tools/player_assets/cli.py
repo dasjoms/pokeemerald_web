@@ -124,6 +124,30 @@ ACRO_BIKE_ACTIONS = {
         "west": "ANIM_BUNNY_HOP_FRONT_WHEEL_WEST",
         "east": "ANIM_BUNNY_HOP_FRONT_WHEEL_EAST",
     },
+    "acro_side_jump_front_wheel": {
+        "south": "ANIM_BUNNY_HOP_FRONT_WHEEL_SOUTH",
+        "north": "ANIM_BUNNY_HOP_FRONT_WHEEL_NORTH",
+        "west": "ANIM_BUNNY_HOP_FRONT_WHEEL_WEST",
+        "east": "ANIM_BUNNY_HOP_FRONT_WHEEL_EAST",
+    },
+    "acro_turn_jump_front_wheel": {
+        "south": "ANIM_BUNNY_HOP_FRONT_WHEEL_SOUTH",
+        "north": "ANIM_BUNNY_HOP_FRONT_WHEEL_NORTH",
+        "west": "ANIM_BUNNY_HOP_FRONT_WHEEL_WEST",
+        "east": "ANIM_BUNNY_HOP_FRONT_WHEEL_EAST",
+    },
+    "acro_ledge_hop_front_wheel": {
+        "south": "ANIM_BUNNY_HOP_FRONT_WHEEL_SOUTH",
+        "north": "ANIM_BUNNY_HOP_FRONT_WHEEL_NORTH",
+        "west": "ANIM_BUNNY_HOP_FRONT_WHEEL_WEST",
+        "east": "ANIM_BUNNY_HOP_FRONT_WHEEL_EAST",
+    },
+    "acro_ledge_hop_back_wheel": {
+        "south": "ANIM_BUNNY_HOP_BACK_WHEEL_SOUTH",
+        "north": "ANIM_BUNNY_HOP_BACK_WHEEL_NORTH",
+        "west": "ANIM_BUNNY_HOP_BACK_WHEEL_WEST",
+        "east": "ANIM_BUNNY_HOP_BACK_WHEEL_EAST",
+    },
     "acro_standing_wheelie_back_wheel": {
         "south": "ANIM_STANDING_WHEELIE_BACK_WHEEL_SOUTH",
         "north": "ANIM_STANDING_WHEELIE_BACK_WHEEL_NORTH",
@@ -141,6 +165,36 @@ ACRO_BIKE_ACTIONS = {
         "north": "ANIM_MOVING_WHEELIE_NORTH",
         "west": "ANIM_MOVING_WHEELIE_WEST",
         "east": "ANIM_MOVING_WHEELIE_EAST",
+    },
+    "acro_wheelie_in_place": {
+        "south": "ANIM_STANDING_WHEELIE_BACK_WHEEL_SOUTH",
+        "north": "ANIM_STANDING_WHEELIE_BACK_WHEEL_NORTH",
+        "west": "ANIM_STANDING_WHEELIE_BACK_WHEEL_WEST",
+        "east": "ANIM_STANDING_WHEELIE_BACK_WHEEL_EAST",
+    },
+    "acro_pop_wheelie_stationary": {
+        "south": "ANIM_STANDING_WHEELIE_FRONT_WHEEL_SOUTH",
+        "north": "ANIM_STANDING_WHEELIE_FRONT_WHEEL_NORTH",
+        "west": "ANIM_STANDING_WHEELIE_FRONT_WHEEL_WEST",
+        "east": "ANIM_STANDING_WHEELIE_FRONT_WHEEL_EAST",
+    },
+    "acro_pop_wheelie_moving": {
+        "south": "ANIM_STANDING_WHEELIE_FRONT_WHEEL_SOUTH",
+        "north": "ANIM_STANDING_WHEELIE_FRONT_WHEEL_NORTH",
+        "west": "ANIM_STANDING_WHEELIE_FRONT_WHEEL_WEST",
+        "east": "ANIM_STANDING_WHEELIE_FRONT_WHEEL_EAST",
+    },
+    "acro_end_wheelie_stationary": {
+        "south": "ANIM_STANDING_WHEELIE_BACK_WHEEL_SOUTH",
+        "north": "ANIM_STANDING_WHEELIE_BACK_WHEEL_NORTH",
+        "west": "ANIM_STANDING_WHEELIE_BACK_WHEEL_WEST",
+        "east": "ANIM_STANDING_WHEELIE_BACK_WHEEL_EAST",
+    },
+    "acro_end_wheelie_moving": {
+        "south": "ANIM_STANDING_WHEELIE_BACK_WHEEL_SOUTH",
+        "north": "ANIM_STANDING_WHEELIE_BACK_WHEEL_NORTH",
+        "west": "ANIM_STANDING_WHEELIE_BACK_WHEEL_WEST",
+        "east": "ANIM_STANDING_WHEELIE_BACK_WHEEL_EAST",
     },
 }
 
