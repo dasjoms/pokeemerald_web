@@ -146,6 +146,19 @@ impl Default for AcroRuntime {
 }
 
 impl AcroRuntime {
+    pub fn handle_bumpy_slope_mount_transition(
+        &mut self,
+        facing_direction: Direction,
+    ) -> AcroAnimationAction {
+        self.on_bumpy_slope = true;
+        self.state = AcroState::WheelieStanding;
+        self.running_state = RunningState::NotMoving;
+        self.bike_frame_counter = 0;
+        self.movement_direction = facing_direction;
+        self.pending_action = None;
+        AcroAnimationAction::WheelieIdle
+    }
+
     pub fn set_held_input(&mut self, held_direction: Option<Direction>, holding_b: bool) {
         self.held_direction = held_direction;
         self.holding_b = holding_b;
@@ -234,6 +247,21 @@ impl AcroRuntime {
         let action = self.handle_input(Some(requested_direction), facing_direction);
         self.movement_direction = requested_direction;
         action
+    }
+
+    pub fn handle_wheelie_collision_response(&mut self) -> Option<AcroAnimationAction> {
+        if !self.on_bumpy_slope {
+            return None;
+        }
+
+        if matches!(self.state, AcroState::WheelieMoving) {
+            self.state = AcroState::WheelieStanding;
+            self.running_state = RunningState::NotMoving;
+            self.bike_frame_counter = 0;
+            return Some(AcroAnimationAction::WheelieIdle);
+        }
+
+        None
     }
 
     fn handle_input(
@@ -809,6 +837,31 @@ mod tests {
             runtime.take_pending_action(),
             Some(AcroAnimationAction::WheelieIdle)
         );
+    }
+
+    #[test]
+    fn bumpy_slope_mount_transition_forces_idle_wheelie() {
+        let mut runtime = AcroRuntime::default();
+        let action = runtime.handle_bumpy_slope_mount_transition(Direction::Left);
+        assert_eq!(action, AcroAnimationAction::WheelieIdle);
+        assert_eq!(runtime.state, AcroState::WheelieStanding);
+        assert_eq!(runtime.running_state, RunningState::NotMoving);
+        assert_eq!(runtime.movement_direction, Direction::Left);
+    }
+
+    #[test]
+    fn wheelie_collision_on_bumpy_slope_uses_idle_response() {
+        let mut runtime = AcroRuntime {
+            state: AcroState::WheelieMoving,
+            on_bumpy_slope: true,
+            ..Default::default()
+        };
+
+        assert_eq!(
+            runtime.handle_wheelie_collision_response(),
+            Some(AcroAnimationAction::WheelieIdle)
+        );
+        assert_eq!(runtime.state, AcroState::WheelieStanding);
     }
 
     #[test]
