@@ -1,0 +1,17 @@
+[
+  {
+    "name": "sky_pillar_2f_upper_east_lane",
+    "map_id": "MAP_SKY_PILLAR_2F",
+    "tiles": [[10, 5], [11, 5], [12, 5], [13, 5]]
+  },
+  {
+    "name": "sky_pillar_2f_southwest_lane",
+    "map_id": "MAP_SKY_PILLAR_2F",
+    "tiles": [[0, 8], [1, 8], [2, 8], [3, 8], [0, 9], [1, 9], [2, 9], [3, 9]]
+  },
+  {
+    "name": "sky_pillar_4f_northeast_lane",
+    "map_id": "MAP_SKY_PILLAR_4F",
+    "tiles": [[11, 5], [12, 5], [13, 5], [11, 6], [12, 6], [13, 6]]
+  }
+]

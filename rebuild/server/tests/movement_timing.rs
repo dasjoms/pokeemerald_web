@@ -1,5 +1,5 @@
 use rebuild_server::{
-    movement::{movement_mode_samples_per_tile, WALK_SAMPLE_MS},
+    movement::{movement_mode_samples_per_tile, movement_mode_step_speed, WALK_SAMPLE_MS},
     protocol::{Direction, MovementMode},
     session::ActiveWalkTransition,
 };
@@ -15,6 +15,7 @@ fn transition_for_mode(mode: MovementMode) -> ActiveWalkTransition {
         0,
         Direction::Right,
         mode,
+        movement_mode_step_speed(mode),
     )
 }
 

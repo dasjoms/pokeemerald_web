@@ -13,8 +13,9 @@ use tracing::{error, trace};
 use crate::{
     map_chunk::{serialize_world_snapshot_map_chunk, world_snapshot_map_chunk_hash},
     movement::{
-        facing_delta, validate_walk_with_context, ConnectedDestination, MoveRejectReason,
-        MoveValidation, MovementMap, TraversalContext, WALK_SAMPLE_MS,
+        facing_delta, get_player_speed, mach_speed_tier_for_frame_counter, player_speed_step_speed,
+        validate_walk_with_context, ConnectedDestination, MoveRejectReason, MoveValidation,
+        MovementMap, PlayerSpeed, TraversalContext, WALK_SAMPLE_MS,
     },
     protocol::{
         AcroBikeSubstate, BikeTransitionType, Direction, MovementMode, PlayerAvatar,
@@ -22,8 +23,8 @@ use crate::{
         WorldSnapshot,
     },
     session::{
-        ActiveWalkTransition, BikeRuntimeState, PlayerState, Session, SessionInit,
-        MAX_PENDING_WALK_INPUTS,
+        ActiveWalkTransition, BikeRuntimeState, CrackedFloorRuntimeState, PlayerState, Session,
+        SessionInit, MAX_PENDING_WALK_INPUTS,
     },
 };
 
@@ -179,6 +180,7 @@ impl World {
                 avatar: PlayerAvatar::Brendan,
                 traversal_state: TraversalState::OnFoot,
                 bike_runtime: BikeRuntimeState::default(),
+                cracked_floor: CrackedFloorRuntimeState::default(),
             },
             outbound,
         );
@@ -407,6 +409,12 @@ impl World {
                 } else {
                     input.movement_mode
                 };
+                let attempted_player_speed = get_player_speed(
+                    session.player_state.traversal_state,
+                    resolved_movement_mode,
+                    session.player_state.bike_runtime.bike_frame_counter,
+                );
+                let step_speed = player_speed_step_speed(attempted_player_speed);
 
                 let (dx, dy) = facing_delta(input.direction);
                 let attempted_x = session.player_state.tile_x as i32 + dx;
@@ -450,6 +458,10 @@ impl World {
                         TraversalContext {
                             traversal_state: session.player_state.traversal_state,
                             movement_mode: resolved_movement_mode,
+                            bike_frame_counter: session
+                                .player_state
+                                .bike_runtime
+                                .bike_frame_counter,
                             acro_substate: bike_acro_substate_for_traversal(&session.player_state),
                         },
                     ) {
@@ -469,6 +481,7 @@ impl World {
                                 next_y,
                                 input.direction,
                                 resolved_movement_mode,
+                                step_speed,
                             ));
                             (true, RejectionReason::None, next_x, next_y)
                         }
@@ -500,6 +513,13 @@ impl World {
 
                 if accepted {
                     update_bike_runtime_after_step(&mut session.player_state, input.direction);
+                    cracked_floor_per_step_callback(
+                        &mut session.player_state,
+                        current_map,
+                        authoritative_x,
+                        authoritative_y,
+                        attempted_player_speed,
+                    );
                     break;
                 } else {
                     reset_bike_runtime_on_reject(&mut session.player_state);
@@ -647,27 +667,46 @@ fn bike_acro_substate_for_traversal(player_state: &PlayerState) -> Option<AcroBi
     }
 }
 
+const MB_CRACKED_FLOOR: u8 = 0xD2;
+const MB_CRACKED_FLOOR_HOLE: u8 = 0x6B;
+
 fn reset_bike_runtime_on_reject(player_state: &mut PlayerState) {
     if matches!(player_state.traversal_state, TraversalState::MachBike) {
-        player_state.bike_runtime.mach_speed_counter = 0;
-        player_state.bike_runtime.mach_speed_stage = 0;
+        player_state.bike_runtime.bike_frame_counter = player_state
+            .bike_runtime
+            .bike_frame_counter
+            .saturating_sub(1);
+        player_state.bike_runtime.mach_speed_stage = player_state.bike_runtime.bike_frame_counter;
+        player_state.bike_runtime.speed_tier =
+            mach_speed_tier_for_frame_counter(player_state.bike_runtime.bike_frame_counter) as u8;
     }
 }
 
 fn update_bike_runtime_after_step(player_state: &mut PlayerState, direction: Direction) {
     match player_state.traversal_state {
         TraversalState::OnFoot => {
-            player_state.bike_runtime.mach_speed_counter = 0;
+            player_state.bike_runtime.bike_frame_counter = 0;
             player_state.bike_runtime.mach_speed_stage = 0;
+            player_state.bike_runtime.speed_tier =
+                mach_speed_tier_for_frame_counter(player_state.bike_runtime.bike_frame_counter)
+                    as u8;
+            player_state.bike_runtime.mach_dir_traveling = None;
             player_state.bike_runtime.acro_state = AcroBikeSubstate::None;
         }
         TraversalState::MachBike => {
-            let counter = player_state
-                .bike_runtime
-                .mach_speed_counter
-                .saturating_add(1);
-            player_state.bike_runtime.mach_speed_counter = counter;
-            player_state.bike_runtime.mach_speed_stage = counter.min(3);
+            if player_state.bike_runtime.mach_dir_traveling == Some(direction) {
+                if player_state.bike_runtime.bike_frame_counter < 2 {
+                    player_state.bike_runtime.bike_frame_counter += 1;
+                }
+            } else if player_state.bike_runtime.bike_frame_counter > 0 {
+                player_state.bike_runtime.bike_frame_counter -= 1;
+            }
+            player_state.bike_runtime.mach_dir_traveling = Some(direction);
+            player_state.bike_runtime.mach_speed_stage =
+                player_state.bike_runtime.bike_frame_counter;
+            player_state.bike_runtime.speed_tier =
+                mach_speed_tier_for_frame_counter(player_state.bike_runtime.bike_frame_counter)
+                    as u8;
         }
         TraversalState::AcroBike => {
             const ACRO_HISTORY_CAPACITY: usize = 8;
@@ -721,6 +760,60 @@ fn avatar_for_player_id(player_id: &str) -> PlayerAvatar {
         PlayerAvatar::Brendan
     } else {
         PlayerAvatar::May
+    }
+}
+
+fn cracked_floor_per_step_callback(
+    player_state: &mut PlayerState,
+    map: &MapData,
+    x: u16,
+    y: u16,
+    player_speed: PlayerSpeed,
+) {
+    for pending in &mut player_state.cracked_floor.pending_floors {
+        if pending.delay_steps > 0 {
+            pending.delay_steps -= 1;
+            if pending.delay_steps == 0 {
+                pending.collapsed = true;
+            }
+        }
+    }
+
+    if x == player_state.cracked_floor.prev_x
+        && y == player_state.cracked_floor.prev_y
+        && player_state.map_id == player_state.cracked_floor.prev_map_id
+    {
+        return;
+    }
+
+    player_state.cracked_floor.prev_map_id = player_state.map_id.clone();
+    player_state.cracked_floor.prev_x = x;
+    player_state.cracked_floor.prev_y = y;
+
+    let idx = y as usize * map.width as usize + x as usize;
+    let behavior = map.behavior.get(idx).copied().unwrap_or_default();
+    if behavior == MB_CRACKED_FLOOR_HOLE {
+        player_state.cracked_floor.failed_speed_gate = true;
+    }
+
+    if behavior != MB_CRACKED_FLOOR {
+        return;
+    }
+
+    if !matches!(player_speed, PlayerSpeed::Fastest) {
+        player_state.cracked_floor.failed_speed_gate = true;
+    }
+
+    if let Some(slot) = player_state
+        .cracked_floor
+        .pending_floors
+        .iter_mut()
+        .find(|slot| slot.delay_steps == 0 && !slot.collapsed)
+    {
+        slot.delay_steps = 3;
+        slot.x = x;
+        slot.y = y;
+        slot.map_id = player_state.map_id.clone();
     }
 }
 
@@ -923,4 +1016,65 @@ fn to_protocol_map_id(group_index: u16, map_index: u16) -> anyhow::Result<u16> {
     }
 
     Ok((group_index << 8) | map_index)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_player_state() -> PlayerState {
+        PlayerState {
+            map_id: "MAP_SKY_PILLAR_2F".to_string(),
+            tile_x: 0,
+            tile_y: 0,
+            facing: Direction::Right,
+            avatar: PlayerAvatar::Brendan,
+            traversal_state: TraversalState::MachBike,
+            bike_runtime: BikeRuntimeState::default(),
+            cracked_floor: CrackedFloorRuntimeState::default(),
+        }
+    }
+
+    #[test]
+    fn mach_bike_frame_counter_accelerates_and_slows_on_direction_change() {
+        let mut player = test_player_state();
+        update_bike_runtime_after_step(&mut player, Direction::Right);
+        assert_eq!(player.bike_runtime.bike_frame_counter, 0);
+
+        update_bike_runtime_after_step(&mut player, Direction::Right);
+        assert_eq!(player.bike_runtime.bike_frame_counter, 1);
+
+        update_bike_runtime_after_step(&mut player, Direction::Right);
+        assert_eq!(player.bike_runtime.bike_frame_counter, 2);
+
+        update_bike_runtime_after_step(&mut player, Direction::Left);
+        assert_eq!(player.bike_runtime.bike_frame_counter, 1);
+    }
+
+    #[test]
+    fn cracked_floor_callback_schedules_delayed_collapse_and_speed_gate() {
+        let mut player = test_player_state();
+        let map = MapData {
+            map_id: "MAP_SKY_PILLAR_2F".to_string(),
+            width: 4,
+            height: 1,
+            metatile_id: vec![0; 4],
+            collision: vec![0; 4],
+            behavior: vec![MB_CRACKED_FLOOR, 0, 0, 0],
+            allow_cycling: true,
+            allow_running: true,
+            connections: vec![],
+        };
+
+        cracked_floor_per_step_callback(&mut player, &map, 0, 0, PlayerSpeed::Fast);
+        assert!(player.cracked_floor.failed_speed_gate);
+        assert_eq!(player.cracked_floor.pending_floors[0].delay_steps, 3);
+
+        cracked_floor_per_step_callback(&mut player, &map, 1, 0, PlayerSpeed::Normal);
+        assert_eq!(player.cracked_floor.pending_floors[0].delay_steps, 2);
+        cracked_floor_per_step_callback(&mut player, &map, 2, 0, PlayerSpeed::Normal);
+        assert_eq!(player.cracked_floor.pending_floors[0].delay_steps, 1);
+        cracked_floor_per_step_callback(&mut player, &map, 3, 0, PlayerSpeed::Normal);
+        assert!(player.cracked_floor.pending_floors[0].collapsed);
+    }
 }
