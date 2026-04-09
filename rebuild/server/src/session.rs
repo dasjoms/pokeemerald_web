@@ -7,6 +7,8 @@ use crate::{
     protocol::{Direction, PlayerAvatar, ServerMessage, WalkInput},
 };
 
+pub const MAX_PENDING_WALK_INPUTS: usize = 2;
+
 #[derive(Debug, Clone)]
 pub struct PlayerState {
     pub map_id: String,
@@ -107,6 +109,14 @@ impl Session {
 
     pub fn enqueue_walk_input(&mut self, input: WalkInput) {
         self.walk_inputs.push_back(input);
+    }
+
+    pub fn walk_inputs_len(&self) -> usize {
+        self.walk_inputs.len()
+    }
+
+    pub fn drop_oldest_walk_input(&mut self) -> Option<WalkInput> {
+        self.walk_inputs.pop_front()
     }
 
     pub fn pop_walk_input(&mut self) -> Option<WalkInput> {

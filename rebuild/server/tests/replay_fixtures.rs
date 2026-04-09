@@ -159,11 +159,16 @@ fn load_fixtures(repo_root: &std::path::Path) -> Vec<Fixture> {
         .expect("fixture directory should exist")
         .filter_map(Result::ok)
         .map(|entry| entry.path())
+        .filter(|path| {
+            path.file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| name.starts_with("littleroot_"))
+        })
         .filter(|path| path.extension().is_some_and(|ext| ext == "json"))
         .collect::<Vec<_>>();
     fixture_paths.sort();
 
-    fixture_paths
+    let fixtures = fixture_paths
         .into_iter()
         .map(|path| {
             let raw = fs::read_to_string(&path)
@@ -171,7 +176,15 @@ fn load_fixtures(repo_root: &std::path::Path) -> Vec<Fixture> {
             serde_json::from_str(&raw)
                 .unwrap_or_else(|_| panic!("failed to parse fixture file {}", path.display()))
         })
-        .collect()
+        .collect::<Vec<_>>();
+
+    assert!(
+        !fixtures.is_empty(),
+        "expected at least one littleroot movement fixture in {}",
+        fixture_dir.display()
+    );
+
+    fixtures
 }
 
 fn load_littleroot_source_map(repo_root: &std::path::Path) -> SourceMap {
