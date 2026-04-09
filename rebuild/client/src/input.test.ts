@@ -66,4 +66,72 @@ describe('virtual B parity input mapping', () => {
 
     nowSpy.mockRestore();
   });
+
+  it('samples held C+direction every tick before turn-tap threshold for authoritative side jumps', () => {
+    const sentHeld: Array<{ heldDirection: Direction | null; heldButtons: number }> = [];
+    const sentWalk: Array<{ direction: Direction }> = [];
+    const nowSpy = vi.spyOn(performance, 'now');
+    nowSpy.mockReturnValue(3_000);
+
+    const controller = createWalkInputController({
+      sendWalkInput: (direction) => {
+        sentWalk.push({ direction });
+      },
+      sendHeldInputState: (heldDirection, heldButtons) => {
+        sentHeld.push({ heldDirection, heldButtons });
+      },
+      isMovementLocked: () => false,
+      onFacingIntent: () => {},
+    });
+
+    controller.setVirtualBHeld(true);
+    controller.handleKeyDown(keyEvent('ArrowRight'));
+
+    for (let i = 1; i <= 4; i += 1) {
+      nowSpy.mockReturnValue(3_000 + i * 16);
+      controller.tick();
+    }
+
+    expect(sentHeld).toContainEqual({
+      heldDirection: Direction.RIGHT,
+      heldButtons: HeldButtons.B,
+    });
+    expect(sentWalk).toHaveLength(0);
+
+    nowSpy.mockRestore();
+  });
+
+  it('samples held C+opposite-direction every tick before turn-tap threshold for authoritative turn jumps', () => {
+    const sentHeld: Array<{ heldDirection: Direction | null; heldButtons: number }> = [];
+    const sentWalk: Array<{ direction: Direction }> = [];
+    const nowSpy = vi.spyOn(performance, 'now');
+    nowSpy.mockReturnValue(4_000);
+
+    const controller = createWalkInputController({
+      sendWalkInput: (direction) => {
+        sentWalk.push({ direction });
+      },
+      sendHeldInputState: (heldDirection, heldButtons) => {
+        sentHeld.push({ heldDirection, heldButtons });
+      },
+      isMovementLocked: () => false,
+      onFacingIntent: () => {},
+    });
+
+    controller.setVirtualBHeld(true);
+    controller.handleKeyDown(keyEvent('ArrowLeft'));
+
+    for (let i = 1; i <= 4; i += 1) {
+      nowSpy.mockReturnValue(4_000 + i * 16);
+      controller.tick();
+    }
+
+    expect(sentHeld).toContainEqual({
+      heldDirection: Direction.LEFT,
+      heldButtons: HeldButtons.B,
+    });
+    expect(sentWalk).toHaveLength(0);
+
+    nowSpy.mockRestore();
+  });
 });

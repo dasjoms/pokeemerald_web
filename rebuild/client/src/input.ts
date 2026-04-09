@@ -23,6 +23,7 @@ export type WalkInputController = {
 // A directional key press shorter than this threshold is treated as a turn-only tap:
 // local facing updates immediately, but no WalkInput is emitted.
 const TURN_ONLY_TAP_MS = 90;
+const HELD_INPUT_SAMPLE_MS = 1000 / 60;
 
 export function keyToDirection(key: string): Direction | null {
   switch (key) {
@@ -60,6 +61,8 @@ export function createWalkInputController(config: {
   let hasPendingWalkRequest = false;
   let movementMode: MovementMode = MovementMode.WALK;
   let virtualBHeld = false;
+  let heldInputSampleAccumulatorMs = 0;
+  let lastHeldInputTickAtMs: number | null = null;
 
   const heldButtons = (): number => (virtualBHeld ? HeldButtons.B : HeldButtons.NONE);
 
@@ -76,6 +79,26 @@ export function createWalkInputController(config: {
   const emitHeldInputState = (): void => {
     const heldDirection = getActiveHeldDirection();
     config.sendHeldInputState(heldDirection, heldButtons());
+  };
+
+  const sampleHeldInputForTick = (nowMs: number): void => {
+    if (lastHeldInputTickAtMs === null) {
+      lastHeldInputTickAtMs = nowMs;
+      emitHeldInputState();
+      return;
+    }
+
+    const deltaMs = nowMs - lastHeldInputTickAtMs;
+    lastHeldInputTickAtMs = nowMs;
+    if (deltaMs <= 0) {
+      return;
+    }
+
+    heldInputSampleAccumulatorMs += deltaMs;
+    while (heldInputSampleAccumulatorMs >= HELD_INPUT_SAMPLE_MS) {
+      heldInputSampleAccumulatorMs -= HELD_INPUT_SAMPLE_MS;
+      emitHeldInputState();
+    }
   };
 
   const removeDirectionFromOrder = (direction: Direction): void => {
@@ -224,7 +247,9 @@ export function createWalkInputController(config: {
       emitHeldInputState();
     },
     tick(): void {
-      maybeDispatchIntent(performance.now());
+      const nowMs = performance.now();
+      sampleHeldInputForTick(nowMs);
+      maybeDispatchIntent(nowMs);
     },
     markWalkResultReceived(_result: WalkResult): void {
       hasPendingWalkRequest = false;
@@ -244,6 +269,8 @@ export function createWalkInputController(config: {
       bufferedIntent = null;
       movementMode = MovementMode.WALK;
       virtualBHeld = false;
+      heldInputSampleAccumulatorMs = 0;
+      lastHeldInputTickAtMs = null;
       heldDirections.clear();
       heldDirectionPressedAtMs.clear();
       directionOrder.length = 0;
