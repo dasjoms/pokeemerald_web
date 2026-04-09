@@ -556,6 +556,7 @@ export class PlayerAnimationController {
     const bikeTransition = transitionOverride ?? this.bikeTransition;
     switch (bikeTransition) {
       case BikeTransitionType.WHEELIE_IDLE:
+      case BikeTransitionType.WHEELIE_MOVING:
         return 'acro_wheelie_face';
       case BikeTransitionType.WHEELIE_POP:
       case BikeTransitionType.NORMAL_TO_WHEELIE:
@@ -575,6 +576,9 @@ export class PlayerAnimationController {
     }
 
     if (this.acroSubstate === AcroBikeSubstate.STANDING_WHEELIE) {
+      return 'acro_wheelie_face';
+    }
+    if (this.acroSubstate === AcroBikeSubstate.MOVING_WHEELIE) {
       return 'acro_wheelie_face';
     }
     if (this.acroSubstate === AcroBikeSubstate.BUNNY_HOP) {

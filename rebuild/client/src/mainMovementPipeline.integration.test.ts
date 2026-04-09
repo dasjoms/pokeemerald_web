@@ -219,6 +219,68 @@ describe('main movement pipeline integration', () => {
     expect(actualAnimIds).toEqual(sequence.map((entry) => entry.expectedAnimId));
   });
 
+  it('avoids grounded-frame flash between moving wheelie stop and standing hop startup', () => {
+    const playerAnimation = new PlayerAnimationController(makeMockAssets());
+    const state: PipelineState = {
+      playerTileX: 6,
+      playerTileY: 4,
+      renderTileX: 5,
+      renderTileY: 4,
+      facing: Direction.RIGHT,
+    };
+    const observedAnimIds: string[] = [];
+
+    playerAnimation.setTraversalState({
+      traversalState: TraversalState.ACRO_BIKE,
+      acroSubstate: AcroBikeSubstate.MOVING_WHEELIE,
+      bikeTransition: BikeTransitionType.WHEELIE_MOVING,
+    });
+    playerAnimation.startStep(Direction.RIGHT, 'run');
+    observedAnimIds.push(playerAnimation.getDebugState().animId);
+
+    let activeWalkTransition: WalkTransition | null = startAuthoritativeWalkTransition(
+      state,
+      Direction.RIGHT,
+      {
+        traversalState: TraversalState.ACRO_BIKE,
+        movementMode: MovementMode.RUN,
+      },
+    );
+
+    activeWalkTransition = tickWalkTransition({
+      activeWalkTransition,
+      state,
+      deltaMs: authoritativeStepDurationMs({
+        traversalState: TraversalState.ACRO_BIKE,
+        movementMode: MovementMode.RUN,
+      }),
+      hasPendingAcceptedOrDispatchableStep: () => false,
+      markWalkTransitionCompleted: () => undefined,
+      stopMoving: (direction) => {
+        playerAnimation.stopMoving(direction);
+        playerAnimation.applyPendingModeChanges();
+        observedAnimIds.push(playerAnimation.getDebugState().animId);
+      },
+    });
+    expect(activeWalkTransition).toBeNull();
+
+    playerAnimation.setTraversalState({
+      traversalState: TraversalState.ACRO_BIKE,
+      acroSubstate: AcroBikeSubstate.BUNNY_HOP,
+      bikeTransition: BikeTransitionType.WHEELIE_HOPPING_STANDING,
+    });
+    playerAnimation.stopMoving(Direction.RIGHT);
+    playerAnimation.applyPendingModeChanges();
+    observedAnimIds.push(playerAnimation.getDebugState().animId);
+
+    expect(observedAnimIds).toEqual([
+      'anim_acro_moving_wheelie_east',
+      'anim_acro_wheelie_face_east',
+      'anim_acro_bunny_hop_back_east',
+    ]);
+    expect(observedAnimIds).not.toContain('anim_face_east');
+  });
+
   it('renders idle acro held-B transition deltas without relying on accepted walk results', () => {
     const playerAnimation = new PlayerAnimationController(makeMockAssets());
     const startStepSpy = vi.spyOn(playerAnimation, 'startStep');
