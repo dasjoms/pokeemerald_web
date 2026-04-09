@@ -68,6 +68,9 @@ fn acro_puzzle_fixture_is_solvable_under_authoritative_validation() {
 
     for input in &fixture.inputs {
         let held_direction = input.direction.map(to_direction);
+        let idx = y as usize * fixture.map.width as usize + x as usize;
+        let on_bumpy_slope = fixture.map.behavior.get(idx).copied().unwrap_or_default() == 0xD1;
+        runtime.set_on_bumpy_slope(on_bumpy_slope);
         runtime.set_held_input(held_direction, input.hold_b);
         runtime.advance_tick();
 
@@ -90,7 +93,6 @@ fn acro_puzzle_fixture_is_solvable_under_authoritative_validation() {
                     acro_substate: Some(to_protocol_acro_state(runtime.state)),
                 },
             );
-
             match result {
                 MoveValidation::Accepted { next_x, next_y } => {
                     x = next_x;

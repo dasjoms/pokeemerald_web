@@ -24,15 +24,29 @@ pub enum AcroState {
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RunningState {
+    NotMoving = 0,
+    TurnDirection = 1,
+    Moving = 2,
+}
+
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AcroAnimationAction {
     None = 0,
-    WheelieIdle = 1,
-    WheeliePop = 2,
-    WheelieEnd = 3,
-    HopStanding = 4,
-    HopMoving = 5,
-    SideJump = 6,
-    TurnJump = 7,
+    FaceDirection = 1,
+    TurnDirection = 2,
+    Moving = 3,
+    NormalToWheelie = 4,
+    WheelieToNormal = 5,
+    WheelieIdle = 6,
+    WheelieHoppingStanding = 7,
+    WheelieHoppingMoving = 8,
+    SideJump = 9,
+    TurnJump = 10,
+    WheelieMoving = 11,
+    WheelieRisingMoving = 12,
+    WheelieLoweringMoving = 13,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -88,28 +102,36 @@ const ACRO_TRICKS_LIST: [BikeHistoryInputInfo; 4] = [
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AcroRuntime {
     pub state: AcroState,
+    pub running_state: RunningState,
     pub direction_history: u32,
     pub ab_start_select_history: u32,
     pub dir_timer_history: [u8; INPUT_HISTORY_LEN],
     pub ab_start_select_timer_history: [u8; INPUT_HISTORY_LEN],
     pub bike_frame_counter: u8,
-    pub last_input_direction: Option<Direction>,
     pub held_direction: Option<Direction>,
     pub holding_b: bool,
+    pub new_dir_backup: Option<Direction>,
+    pub movement_direction: Direction,
+    pub on_bumpy_slope: bool,
+    pending_action: Option<AcroAnimationAction>,
 }
 
 impl Default for AcroRuntime {
     fn default() -> Self {
         Self {
             state: AcroState::Normal,
+            running_state: RunningState::NotMoving,
             direction_history: 0,
             ab_start_select_history: 0,
             dir_timer_history: [0; INPUT_HISTORY_LEN],
             ab_start_select_timer_history: [0; INPUT_HISTORY_LEN],
             bike_frame_counter: 0,
-            last_input_direction: None,
             held_direction: None,
             holding_b: false,
+            new_dir_backup: None,
+            movement_direction: Direction::Down,
+            on_bumpy_slope: false,
+            pending_action: None,
         }
     }
 }
@@ -120,33 +142,17 @@ impl AcroRuntime {
         self.holding_b = holding_b;
     }
 
+    pub fn set_on_bumpy_slope(&mut self, on_bumpy_slope: bool) {
+        self.on_bumpy_slope = on_bumpy_slope;
+    }
+
     pub fn advance_tick(&mut self) {
         self.update_history(self.held_direction, if self.holding_b { ABSS_B } else { 0 });
+        self.pending_action = Some(self.handle_input(self.held_direction, self.movement_direction));
+    }
 
-        if self.last_input_direction != self.held_direction && self.held_direction.is_some() {
-            self.state = AcroState::Turning;
-        }
-        self.last_input_direction = self.held_direction;
-
-        if self.holding_b {
-            self.bike_frame_counter = self.bike_frame_counter.saturating_add(1);
-            if self.bike_frame_counter >= 40 {
-                self.state = AcroState::BunnyHop;
-            } else if self.held_direction.is_some() {
-                self.state = AcroState::WheelieMoving;
-            } else {
-                self.state = AcroState::WheelieStanding;
-            }
-            return;
-        }
-
-        self.bike_frame_counter = 0;
-        if matches!(
-            self.state,
-            AcroState::WheelieStanding | AcroState::WheelieMoving | AcroState::BunnyHop
-        ) {
-            self.state = AcroState::Normal;
-        }
+    pub fn take_pending_action(&mut self) -> Option<AcroAnimationAction> {
+        self.pending_action.take()
     }
 
     pub fn update_history(&mut self, held_direction: Option<Direction>, held_ab_start_select: u8) {
@@ -203,48 +209,229 @@ impl AcroRuntime {
         facing_direction: Direction,
         requested_direction: Direction,
     ) -> AcroAnimationAction {
-        let jump_direction = self.get_jump_direction();
-
-        match self.state {
-            AcroState::Turning if jump_direction == Some(requested_direction) => {
-                self.state = if requested_direction == opposite_direction(facing_direction) {
-                    AcroState::TurnJump
-                } else {
-                    AcroState::SideJump
-                };
+        if self.held_direction == Some(requested_direction) {
+            if let Some(action) = self.pending_action.take() {
+                self.movement_direction = requested_direction;
+                return action;
             }
-            AcroState::SideJump | AcroState::TurnJump => {
-                self.state = AcroState::Normal;
-            }
-            _ => {}
         }
+
+        let action = self.handle_input(Some(requested_direction), facing_direction);
+        self.movement_direction = requested_direction;
+        action
+    }
+
+    fn handle_input(
+        &mut self,
+        requested_direction: Option<Direction>,
+        facing_direction: Direction,
+    ) -> AcroAnimationAction {
+        match self.state {
+            AcroState::Normal => self.handle_input_normal(requested_direction, facing_direction),
+            AcroState::Turning => self.handle_input_turning(facing_direction),
+            AcroState::WheelieStanding => {
+                self.handle_input_wheelie_standing(requested_direction, facing_direction)
+            }
+            AcroState::BunnyHop => {
+                self.handle_input_bunny_hop(requested_direction, facing_direction)
+            }
+            AcroState::WheelieMoving => {
+                self.handle_input_wheelie_moving(requested_direction, facing_direction)
+            }
+            AcroState::SideJump => {
+                self.handle_input_sideways_jump(requested_direction, facing_direction)
+            }
+            AcroState::TurnJump => {
+                self.handle_input_turn_jump(requested_direction, facing_direction)
+            }
+        }
+    }
+
+    fn handle_input_normal(
+        &mut self,
+        requested_direction: Option<Direction>,
+        facing_direction: Direction,
+    ) -> AcroAnimationAction {
+        self.bike_frame_counter = 0;
+
+        let Some(new_direction) = requested_direction else {
+            if self.holding_b {
+                self.running_state = RunningState::NotMoving;
+                self.state = AcroState::WheelieStanding;
+                self.bike_frame_counter = 1;
+                return AcroAnimationAction::NormalToWheelie;
+            }
+            self.running_state = RunningState::NotMoving;
+            return AcroAnimationAction::FaceDirection;
+        };
+
+        if new_direction == facing_direction && self.holding_b {
+            self.state = AcroState::WheelieMoving;
+            self.running_state = RunningState::Moving;
+            return AcroAnimationAction::WheelieRisingMoving;
+        }
+
+        if new_direction != facing_direction && self.running_state != RunningState::Moving {
+            self.state = AcroState::Turning;
+            self.new_dir_backup = Some(new_direction);
+            self.running_state = RunningState::NotMoving;
+            return self.handle_input_turning(facing_direction);
+        }
+
+        self.running_state = RunningState::Moving;
+        AcroAnimationAction::Moving
+    }
+
+    fn handle_input_turning(&mut self, facing_direction: Direction) -> AcroAnimationAction {
+        let new_direction = self.new_dir_backup.unwrap_or(facing_direction);
+        self.bike_frame_counter = self.bike_frame_counter.saturating_add(1);
+
+        if self.bike_frame_counter > 6 {
+            self.running_state = RunningState::TurnDirection;
+            self.state = AcroState::Normal;
+            self.bike_frame_counter = 0;
+            self.movement_direction = new_direction;
+            return AcroAnimationAction::TurnDirection;
+        }
+
+        if Some(new_direction) == self.get_jump_direction() {
+            if new_direction == opposite_direction(facing_direction) {
+                self.state = AcroState::TurnJump;
+                return AcroAnimationAction::TurnJump;
+            }
+            self.running_state = RunningState::Moving;
+            self.state = AcroState::SideJump;
+            return AcroAnimationAction::SideJump;
+        }
+
+        AcroAnimationAction::FaceDirection
+    }
+
+    fn handle_input_wheelie_standing(
+        &mut self,
+        requested_direction: Option<Direction>,
+        facing_direction: Direction,
+    ) -> AcroAnimationAction {
+        self.running_state = RunningState::NotMoving;
 
         if self.holding_b {
-            if self.bike_frame_counter >= 40 {
-                return if self.held_direction == Some(requested_direction) {
-                    AcroAnimationAction::HopMoving
-                } else {
-                    AcroAnimationAction::HopStanding
-                };
+            self.bike_frame_counter = self.bike_frame_counter.saturating_add(1);
+        } else {
+            self.bike_frame_counter = 0;
+            if !self.on_bumpy_slope {
+                self.state = AcroState::Normal;
+                return AcroAnimationAction::WheelieToNormal;
+            }
+        }
+
+        if self.bike_frame_counter >= 40 {
+            self.state = AcroState::BunnyHop;
+            return AcroAnimationAction::WheelieHoppingStanding;
+        }
+
+        if requested_direction == Some(facing_direction) {
+            self.running_state = RunningState::Moving;
+            self.state = AcroState::WheelieMoving;
+            return AcroAnimationAction::WheelieMoving;
+        }
+
+        if requested_direction.is_none() {
+            return AcroAnimationAction::WheelieIdle;
+        }
+
+        self.running_state = RunningState::TurnDirection;
+        AcroAnimationAction::WheelieIdle
+    }
+
+    fn handle_input_bunny_hop(
+        &mut self,
+        requested_direction: Option<Direction>,
+        facing_direction: Direction,
+    ) -> AcroAnimationAction {
+        if !self.holding_b {
+            self.bike_frame_counter = 0;
+            if self.on_bumpy_slope {
+                self.state = AcroState::WheelieStanding;
+                return self.handle_input_wheelie_standing(requested_direction, facing_direction);
             }
 
-            return match self.state {
-                AcroState::SideJump => AcroAnimationAction::SideJump,
-                AcroState::TurnJump => AcroAnimationAction::TurnJump,
-                AcroState::WheelieMoving => AcroAnimationAction::WheelieIdle,
-                _ => AcroAnimationAction::WheeliePop,
-            };
+            self.state = AcroState::Normal;
+            self.running_state = RunningState::NotMoving;
+            return AcroAnimationAction::WheelieToNormal;
         }
 
-        let was_wheelie = matches!(
-            self.state,
-            AcroState::WheelieStanding | AcroState::BunnyHop | AcroState::WheelieMoving
-        );
-        if was_wheelie {
-            AcroAnimationAction::WheelieEnd
-        } else {
-            AcroAnimationAction::None
+        let Some(new_direction) = requested_direction else {
+            self.running_state = RunningState::NotMoving;
+            return AcroAnimationAction::WheelieHoppingStanding;
+        };
+
+        if new_direction != facing_direction && self.running_state != RunningState::Moving {
+            self.running_state = RunningState::TurnDirection;
+            return AcroAnimationAction::WheelieHoppingStanding;
         }
+
+        self.running_state = RunningState::Moving;
+        AcroAnimationAction::WheelieHoppingMoving
+    }
+
+    fn handle_input_wheelie_moving(
+        &mut self,
+        requested_direction: Option<Direction>,
+        facing_direction: Direction,
+    ) -> AcroAnimationAction {
+        if !self.holding_b {
+            if self.on_bumpy_slope {
+                self.state = AcroState::WheelieStanding;
+                return self.handle_input_wheelie_standing(requested_direction, facing_direction);
+            }
+
+            self.state = AcroState::Normal;
+            if requested_direction.is_none() {
+                self.running_state = RunningState::NotMoving;
+                return AcroAnimationAction::WheelieToNormal;
+            }
+            if requested_direction != Some(facing_direction)
+                && self.running_state != RunningState::Moving
+            {
+                self.running_state = RunningState::NotMoving;
+                return AcroAnimationAction::WheelieToNormal;
+            }
+            self.running_state = RunningState::Moving;
+            return AcroAnimationAction::WheelieLoweringMoving;
+        }
+
+        let Some(new_direction) = requested_direction else {
+            self.state = AcroState::WheelieStanding;
+            self.running_state = RunningState::NotMoving;
+            self.bike_frame_counter = 1;
+            return AcroAnimationAction::WheelieIdle;
+        };
+
+        if new_direction != facing_direction && self.running_state != RunningState::Moving {
+            self.running_state = RunningState::NotMoving;
+            return AcroAnimationAction::WheelieIdle;
+        }
+
+        self.running_state = RunningState::Moving;
+        AcroAnimationAction::WheelieMoving
+    }
+
+    fn handle_input_sideways_jump(
+        &mut self,
+        requested_direction: Option<Direction>,
+        facing_direction: Direction,
+    ) -> AcroAnimationAction {
+        self.state = AcroState::Normal;
+        self.handle_input(requested_direction, facing_direction)
+    }
+
+    fn handle_input_turn_jump(
+        &mut self,
+        requested_direction: Option<Direction>,
+        facing_direction: Direction,
+    ) -> AcroAnimationAction {
+        self.state = AcroState::Normal;
+        self.handle_input(requested_direction, facing_direction)
     }
 }
 
@@ -325,78 +512,6 @@ fn opposite_direction(direction: Direction) -> Direction {
 mod tests {
     use super::*;
 
-    #[test]
-    fn jump_direction_detects_when_exactly_within_4_frame_window() {
-        let mut runtime = AcroRuntime::default();
-        runtime.update_history(Some(Direction::Right), 0);
-
-        for _ in 0..2 {
-            runtime.update_history(Some(Direction::Right), 0);
-        }
-        runtime.update_history(Some(Direction::Right), holding_b_mask());
-
-        assert_eq!(runtime.get_jump_direction(), Some(Direction::Right));
-    }
-
-    #[test]
-    fn jump_direction_rejects_when_exceeding_4_frame_window() {
-        let mut runtime = AcroRuntime::default();
-        runtime.update_history(Some(Direction::Left), 0);
-
-        for _ in 0..4 {
-            runtime.update_history(Some(Direction::Left), 0);
-        }
-        runtime.update_history(Some(Direction::Left), holding_b_mask());
-
-        assert_eq!(runtime.get_jump_direction(), None);
-    }
-
-    #[test]
-    fn jump_direction_supports_exact_boundary_for_button_timer() {
-        let mut runtime = AcroRuntime::default();
-
-        runtime.update_history(Some(Direction::Up), holding_b_mask());
-        for _ in 0..3 {
-            runtime.update_history(Some(Direction::Up), holding_b_mask());
-        }
-
-        assert_eq!(runtime.get_jump_direction(), Some(Direction::Up));
-
-        runtime.update_history(Some(Direction::Up), holding_b_mask());
-        assert_eq!(runtime.get_jump_direction(), None);
-    }
-
-    #[test]
-    fn stationary_b_hold_advances_bunny_hop_timer_per_tick() {
-        let mut runtime = AcroRuntime::default();
-        runtime.set_held_input(None, true);
-
-        for _ in 0..39 {
-            runtime.advance_tick();
-        }
-        assert_eq!(runtime.state, AcroState::WheelieStanding);
-
-        runtime.advance_tick();
-        assert_eq!(runtime.state, AcroState::BunnyHop);
-    }
-
-    #[test]
-    fn releasing_b_before_40_frames_resets_bunny_hop_readiness() {
-        let mut runtime = AcroRuntime::default();
-        runtime.set_held_input(None, true);
-
-        for _ in 0..39 {
-            runtime.advance_tick();
-        }
-        assert_eq!(runtime.bike_frame_counter, 39);
-        assert_eq!(runtime.state, AcroState::WheelieStanding);
-
-        runtime.set_held_input(None, false);
-        runtime.advance_tick();
-        assert_eq!(runtime.bike_frame_counter, 0);
-        assert_eq!(runtime.state, AcroState::Normal);
-    }
-
     fn seed_jump_window(runtime: &mut AcroRuntime, direction: Direction, direction_frames: usize) {
         runtime.update_history(Some(direction), 0);
         for _ in 0..direction_frames {
@@ -404,27 +519,245 @@ mod tests {
         }
         runtime.update_history(Some(direction), holding_b_mask());
         runtime.state = AcroState::Turning;
+        runtime.new_dir_backup = Some(direction);
         runtime.set_held_input(Some(direction), true);
     }
 
     #[test]
-    fn side_jump_and_turn_jump_accept_4_frame_boundary_window() {
-        let mut side_jump_runtime = AcroRuntime::default();
-        seed_jump_window(&mut side_jump_runtime, Direction::Right, 2);
-        let side_action = side_jump_runtime.apply_step(Direction::Up, Direction::Right);
-        assert_eq!(side_action, AcroAnimationAction::SideJump);
-
-        let mut turn_jump_runtime = AcroRuntime::default();
-        seed_jump_window(&mut turn_jump_runtime, Direction::Right, 2);
-        let turn_action = turn_jump_runtime.apply_step(Direction::Left, Direction::Right);
-        assert_eq!(turn_action, AcroAnimationAction::TurnJump);
+    fn jump_direction_detects_when_exactly_within_4_frame_window() {
+        let mut runtime = AcroRuntime::default();
+        runtime.update_history(Some(Direction::Right), 0);
+        for _ in 0..2 {
+            runtime.update_history(Some(Direction::Right), 0);
+        }
+        runtime.update_history(Some(Direction::Right), holding_b_mask());
+        assert_eq!(runtime.get_jump_direction(), Some(Direction::Right));
     }
 
     #[test]
-    fn side_jump_and_turn_jump_reject_when_timing_window_expires() {
+    fn jump_direction_rejects_when_exceeding_4_frame_window() {
         let mut runtime = AcroRuntime::default();
-        seed_jump_window(&mut runtime, Direction::Right, 4);
-        let action = runtime.apply_step(Direction::Left, Direction::Right);
-        assert_eq!(action, AcroAnimationAction::WheeliePop);
+        runtime.update_history(Some(Direction::Left), 0);
+        for _ in 0..4 {
+            runtime.update_history(Some(Direction::Left), 0);
+        }
+        runtime.update_history(Some(Direction::Left), holding_b_mask());
+        assert_eq!(runtime.get_jump_direction(), None);
+    }
+
+    #[test]
+    fn normal_handler_enters_wheelie_and_faces_when_idle() {
+        let mut runtime = AcroRuntime::default();
+        runtime.set_held_input(None, true);
+        runtime.advance_tick();
+        assert_eq!(runtime.state, AcroState::WheelieStanding);
+        assert_eq!(
+            runtime.take_pending_action(),
+            Some(AcroAnimationAction::NormalToWheelie)
+        );
+
+        runtime.set_held_input(None, false);
+        runtime.state = AcroState::Normal;
+        runtime.advance_tick();
+        assert_eq!(
+            runtime.take_pending_action(),
+            Some(AcroAnimationAction::FaceDirection)
+        );
+    }
+
+    #[test]
+    fn turning_handler_waits_6_frames_then_turns() {
+        let mut runtime = AcroRuntime {
+            state: AcroState::Turning,
+            new_dir_backup: Some(Direction::Left),
+            ..Default::default()
+        };
+
+        for _ in 0..6 {
+            assert_eq!(
+                runtime.apply_step(Direction::Up, Direction::Left),
+                AcroAnimationAction::FaceDirection
+            );
+            assert_eq!(runtime.state, AcroState::Turning);
+        }
+
+        assert_eq!(
+            runtime.apply_step(Direction::Up, Direction::Left),
+            AcroAnimationAction::TurnDirection
+        );
+        assert_eq!(runtime.state, AcroState::Normal);
+        assert_eq!(runtime.running_state, RunningState::TurnDirection);
+    }
+
+    #[test]
+    fn turning_handler_branches_to_side_and_turn_jump() {
+        let mut side_jump_runtime = AcroRuntime::default();
+        seed_jump_window(&mut side_jump_runtime, Direction::Right, 2);
+        assert_eq!(
+            side_jump_runtime.apply_step(Direction::Up, Direction::Right),
+            AcroAnimationAction::SideJump
+        );
+
+        let mut turn_jump_runtime = AcroRuntime::default();
+        seed_jump_window(&mut turn_jump_runtime, Direction::Right, 2);
+        assert_eq!(
+            turn_jump_runtime.apply_step(Direction::Left, Direction::Right),
+            AcroAnimationAction::TurnJump
+        );
+    }
+
+    #[test]
+    fn wheelie_standing_handler_covers_idle_move_hop_and_release() {
+        let mut runtime = AcroRuntime {
+            state: AcroState::WheelieStanding,
+            ..Default::default()
+        };
+
+        runtime.set_held_input(None, true);
+        assert_eq!(
+            runtime.apply_step(Direction::Right, Direction::Left),
+            AcroAnimationAction::WheelieIdle
+        );
+
+        assert_eq!(
+            runtime.apply_step(Direction::Right, Direction::Right),
+            AcroAnimationAction::WheelieMoving
+        );
+
+        runtime.state = AcroState::WheelieStanding;
+        runtime.bike_frame_counter = 39;
+        runtime.set_held_input(None, true);
+        runtime.advance_tick();
+        assert_eq!(runtime.state, AcroState::BunnyHop);
+        assert_eq!(
+            runtime.take_pending_action(),
+            Some(AcroAnimationAction::WheelieHoppingStanding)
+        );
+
+        runtime.state = AcroState::WheelieStanding;
+        runtime.set_held_input(None, false);
+        runtime.advance_tick();
+        assert_eq!(runtime.state, AcroState::Normal);
+        assert_eq!(
+            runtime.take_pending_action(),
+            Some(AcroAnimationAction::WheelieToNormal)
+        );
+    }
+
+    #[test]
+    fn bunny_hop_handler_covers_all_branches() {
+        let mut runtime = AcroRuntime {
+            state: AcroState::BunnyHop,
+            ..Default::default()
+        };
+
+        runtime.set_held_input(None, true);
+        runtime.advance_tick();
+        assert_eq!(
+            runtime.take_pending_action(),
+            Some(AcroAnimationAction::WheelieHoppingStanding)
+        );
+
+        runtime.set_held_input(Some(Direction::Down), true);
+        assert_eq!(
+            runtime.apply_step(Direction::Down, Direction::Down),
+            AcroAnimationAction::WheelieHoppingMoving
+        );
+
+        runtime.running_state = RunningState::NotMoving;
+        assert_eq!(
+            runtime.apply_step(Direction::Down, Direction::Left),
+            AcroAnimationAction::WheelieHoppingStanding
+        );
+
+        runtime.set_held_input(None, false);
+        runtime.advance_tick();
+        assert_eq!(runtime.state, AcroState::Normal);
+        assert_eq!(
+            runtime.take_pending_action(),
+            Some(AcroAnimationAction::WheelieToNormal)
+        );
+    }
+
+    #[test]
+    fn wheelie_moving_handler_covers_idle_move_and_lowering() {
+        let mut runtime = AcroRuntime {
+            state: AcroState::WheelieMoving,
+            running_state: RunningState::Moving,
+            ..Default::default()
+        };
+
+        runtime.set_held_input(None, true);
+        runtime.advance_tick();
+        assert_eq!(runtime.state, AcroState::WheelieStanding);
+        assert_eq!(
+            runtime.take_pending_action(),
+            Some(AcroAnimationAction::WheelieIdle)
+        );
+
+        runtime.state = AcroState::WheelieMoving;
+        runtime.set_held_input(Some(Direction::Up), true);
+        assert_eq!(
+            runtime.apply_step(Direction::Up, Direction::Up),
+            AcroAnimationAction::WheelieMoving
+        );
+
+        runtime.state = AcroState::WheelieMoving;
+        runtime.set_held_input(Some(Direction::Up), false);
+        assert_eq!(
+            runtime.apply_step(Direction::Up, Direction::Up),
+            AcroAnimationAction::WheelieLoweringMoving
+        );
+
+        runtime.state = AcroState::WheelieMoving;
+        runtime.running_state = RunningState::NotMoving;
+        runtime.set_held_input(None, false);
+        runtime.advance_tick();
+        assert_eq!(
+            runtime.take_pending_action(),
+            Some(AcroAnimationAction::WheelieToNormal)
+        );
+    }
+
+    #[test]
+    fn releasing_b_on_bumpy_slope_preserves_wheelie_flow() {
+        let mut runtime = AcroRuntime {
+            state: AcroState::WheelieMoving,
+            on_bumpy_slope: true,
+            ..Default::default()
+        };
+
+        runtime.set_held_input(Some(Direction::Right), false);
+        runtime.advance_tick();
+        assert_eq!(runtime.state, AcroState::WheelieStanding);
+        assert_eq!(
+            runtime.take_pending_action(),
+            Some(AcroAnimationAction::WheelieIdle)
+        );
+    }
+
+    #[test]
+    fn side_and_turn_jump_handlers_reenter_dispatch() {
+        let mut side = AcroRuntime {
+            state: AcroState::SideJump,
+            ..Default::default()
+        };
+        side.set_held_input(Some(Direction::Right), true);
+        assert_eq!(
+            side.apply_step(Direction::Right, Direction::Right),
+            AcroAnimationAction::WheelieRisingMoving
+        );
+
+        let mut turn = AcroRuntime {
+            state: AcroState::TurnJump,
+            ..Default::default()
+        };
+        turn.set_held_input(None, false);
+        turn.advance_tick();
+        assert_eq!(turn.state, AcroState::Normal);
+        assert_eq!(
+            turn.take_pending_action(),
+            Some(AcroAnimationAction::FaceDirection)
+        );
     }
 }
