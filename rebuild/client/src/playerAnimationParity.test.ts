@@ -50,10 +50,12 @@ type PlayerAnimationAssets = {
 type PlayerAnimationControllerCtor = new (assets: PlayerAnimationAssets) => {
   setFacing: (direction: Direction) => void;
   stopMoving: (direction: Direction) => void;
+  applyPendingModeChanges: () => void;
   startWalkStep: (direction: Direction) => void;
   startRunStep: (direction: Direction) => void;
   startStep: (direction: Direction, mode: 'walk' | 'run') => void;
   getDebugState: () => PlayerAnimationDebugState;
+  getCurrentFrame: () => { texture: unknown; hFlip: boolean };
   tick: (deltaMs: number) => void;
 };
 
@@ -108,6 +110,7 @@ describe('player animation parity fixtures', () => {
           }
         }
 
+        controller.applyPendingModeChanges();
         const debug = controller.getDebugState();
         controller.tick(fixture.tick_ms);
         return {
@@ -126,6 +129,23 @@ describe('player animation parity fixtures', () => {
       );
     });
   }
+
+  it('preserves valid frame selection when stop is requested at walk end', () => {
+    const controller = new PlayerAnimationController(makeMockAssets());
+    controller.startWalkStep(Direction.DOWN);
+    controller.tick(fixture.tick_ms * 2);
+
+    expect(() => controller.getCurrentFrame()).not.toThrow();
+    controller.stopMoving(Direction.DOWN);
+    expect(() => controller.getCurrentFrame()).not.toThrow();
+
+    controller.applyPendingModeChanges();
+    expect(() => controller.getCurrentFrame()).not.toThrow();
+    expect(controller.getDebugState()).toMatchObject({
+      animId: 'anim_face_south',
+      frameIndex: 100,
+    });
+  });
 });
 
 function loadFixture(): ParityFixture {
