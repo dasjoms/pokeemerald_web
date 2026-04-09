@@ -491,7 +491,7 @@ describe('main movement pipeline integration', () => {
         sendWalkInput: (direction) => {
           sentDirections.push(direction);
         },
-        sendHeldInputState: () => {},
+        sendHeldInputState: () => null,
         isMovementLocked: () => false,
         onFacingIntent: () => {},
       });
