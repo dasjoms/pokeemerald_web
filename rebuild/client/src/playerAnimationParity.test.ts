@@ -5,7 +5,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { Direction } from './protocol_generated';
 
 type FixtureDirection = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
-type FixtureAction = 'set_idle' | 'start_walk';
+type FixtureAction = 'set_idle' | 'start_walk' | 'start_run';
 
 type ParityFixture = {
   tick_ms: number;
@@ -50,6 +50,8 @@ type PlayerAnimationAssets = {
 type PlayerAnimationControllerCtor = new (assets: PlayerAnimationAssets) => {
   setIdle: (direction: Direction) => void;
   startWalkStep: (direction: Direction) => void;
+  startRunStep: (direction: Direction) => void;
+  startStep: (direction: Direction, mode: 'walk' | 'run') => void;
   getDebugState: () => PlayerAnimationDebugState;
   tick: (deltaMs: number) => void;
 };
@@ -98,8 +100,10 @@ describe('player animation parity fixtures', () => {
           const direction = fixtureDirections[event.direction];
           if (event.action === 'set_idle') {
             controller.setIdle(direction);
-          } else {
+          } else if (event.action === 'start_walk') {
             controller.startWalkStep(direction);
+          } else {
+            controller.startRunStep(direction);
           }
         }
 
@@ -175,6 +179,44 @@ function makeMockAssets(): PlayerAnimationAssets {
         ],
       },
     },
+    run: {
+      south: {
+        anim_cmd_symbol: 'anim_run_south',
+        frames: [
+          { duration: 1, frame: 300, h_flip: false },
+          { duration: 1, frame: 301, h_flip: false },
+          { duration: 1, frame: 302, h_flip: false },
+          { duration: 1, frame: 303, h_flip: false },
+        ],
+      },
+      north: {
+        anim_cmd_symbol: 'anim_run_north',
+        frames: [
+          { duration: 1, frame: 310, h_flip: false },
+          { duration: 1, frame: 311, h_flip: false },
+          { duration: 1, frame: 312, h_flip: false },
+          { duration: 1, frame: 313, h_flip: false },
+        ],
+      },
+      west: {
+        anim_cmd_symbol: 'anim_run_west',
+        frames: [
+          { duration: 1, frame: 320, h_flip: false },
+          { duration: 1, frame: 321, h_flip: false },
+          { duration: 1, frame: 322, h_flip: false },
+          { duration: 1, frame: 323, h_flip: false },
+        ],
+      },
+      east: {
+        anim_cmd_symbol: 'anim_run_east',
+        frames: [
+          { duration: 1, frame: 330, h_flip: false },
+          { duration: 1, frame: 331, h_flip: false },
+          { duration: 1, frame: 332, h_flip: false },
+          { duration: 1, frame: 333, h_flip: false },
+        ],
+      },
+    },
   };
 
   const frameTextures = new Map<number, unknown>();
@@ -184,6 +226,10 @@ function makeMockAssets(): PlayerAnimationAssets {
     210, 211, 212, 213,
     220, 221, 222, 223,
     230, 231, 232, 233,
+    300, 301, 302, 303,
+    310, 311, 312, 313,
+    320, 321, 322, 323,
+    330, 331, 332, 333,
   ]) {
     frameTextures.set(frame, {});
   }

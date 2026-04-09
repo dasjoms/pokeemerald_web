@@ -3,7 +3,7 @@ import { Direction } from './protocol_generated';
 import { decodeIndexed4bppPngFromUrl } from './metatileRenderer';
 
 type Cardinal = 'south' | 'north' | 'west' | 'east';
-type AnimationKind = 'face' | 'walk';
+type AnimationKind = 'face' | 'walk' | 'run';
 type SpriteSheetKind = 'normal' | 'running';
 
 type AnimationFrameMeta = {
@@ -126,6 +126,13 @@ export async function loadPlayerAnimationAssets(
     ),
   ]);
 
+  const normalSheetSymbol = avatar.sheet_sources.normal.symbol;
+  const runningSheetSymbol = avatar.sheet_sources.running.symbol;
+  const sheetTexturesBySymbol = new Map<string, Texture>([
+    [normalSheetSymbol, walkingBaseTexture],
+    [runningSheetSymbol, runningBaseTexture],
+  ]);
+
   const frameTextures = new Map<number, Texture>();
   for (const [frameIdRaw, atlasEntry] of Object.entries(avatar.frame_atlas)) {
     const frameId = Number(frameIdRaw);
@@ -133,9 +140,12 @@ export async function loadPlayerAnimationAssets(
       continue;
     }
 
-    const baseTexture = atlasEntry.sheet_symbol.includes('Running')
-      ? runningBaseTexture
-      : walkingBaseTexture;
+    const baseTexture = sheetTexturesBySymbol.get(atlasEntry.sheet_symbol);
+    if (!baseTexture) {
+      throw new Error(
+        `missing sheet texture binding for symbol=${atlasEntry.sheet_symbol} frame=${frameId}`,
+      );
+    }
     const texture = new Texture({
       source: baseTexture.source,
       frame: new Rectangle(
@@ -268,15 +278,23 @@ export class PlayerAnimationController {
   }
 
   startWalkStep(direction: Direction): void {
+    this.startStep(direction, 'walk');
+  }
+
+  startRunStep(direction: Direction): void {
+    this.startStep(direction, 'run');
+  }
+
+  startStep(direction: Direction, mode: 'walk' | 'run'): void {
     const cardinal = mapDirection(direction);
-    if (this.mode.kind === 'walk') {
+    if (this.mode.kind === mode) {
       this.frameCommandIndex =
         WALK_ALTERNATION_REMAP.get(this.frameCommandIndex) ?? this.frameCommandIndex;
       this.stridePhase = this.stridePhase === 0 ? 1 : 0;
     }
 
     this.mode = {
-      kind: 'walk',
+      kind: mode,
       direction: cardinal,
     };
     this.resetFrameTimer();
