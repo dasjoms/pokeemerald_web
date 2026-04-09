@@ -31,9 +31,14 @@ type TickWalkTransitionArgs = {
 export function movementModeStepDurationMs(movementMode: MovementMode): number {
   switch (movementMode) {
     case MovementMode.RUN:
+    case MovementMode.ACRO_CRUISE:
+    case MovementMode.ACRO_WHEELIE_MOVE:
       return SERVER_MOVEMENT_SAMPLE_MS * 8;
+    case MovementMode.MACH_BIKE:
+      return SERVER_MOVEMENT_SAMPLE_MS * 6;
     case MovementMode.WALK:
-    default:
+    case MovementMode.ACRO_WHEELIE_PREP:
+    case MovementMode.BUNNY_HOP:
       return SERVER_MOVEMENT_SAMPLE_MS * 16;
   }
 }

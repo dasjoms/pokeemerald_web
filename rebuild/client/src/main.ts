@@ -557,7 +557,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     startAuthoritativeWalkTransition(result.facing, acceptedMovementMode);
     playerAnimation.startStep(
       result.facing,
-      acceptedMovementMode === MovementMode.RUN ? 'run' : 'walk',
+      movementModeToAnimationState(acceptedMovementMode),
     );
   } else {
     activeWalkTransition = null;
@@ -1617,6 +1617,20 @@ function readU32(raw: Uint8Array, offset: number): number {
   return new DataView(raw.buffer, raw.byteOffset, raw.byteLength).getUint32(offset, true);
 }
 
+function movementModeToAnimationState(movementMode: MovementMode): 'walk' | 'run' {
+  switch (movementMode) {
+    case MovementMode.WALK:
+    case MovementMode.ACRO_WHEELIE_PREP:
+    case MovementMode.BUNNY_HOP:
+      return 'walk';
+    case MovementMode.RUN:
+    case MovementMode.MACH_BIKE:
+    case MovementMode.ACRO_CRUISE:
+    case MovementMode.ACRO_WHEELIE_MOVE:
+      return 'run';
+  }
+}
+
 function applyPredictedWalk(
   direction: Direction,
   inputSeq: number,
@@ -1635,7 +1649,7 @@ function applyPredictedWalk(
   state.renderTileX = state.playerTileX;
   state.renderTileY = state.playerTileY;
   state.facing = direction;
-  playerAnimation.startStep(direction, movementMode === MovementMode.RUN ? 'run' : 'walk');
+  playerAnimation.startStep(direction, movementModeToAnimationState(movementMode));
 }
 
 function positionPlayerSprite(): void {

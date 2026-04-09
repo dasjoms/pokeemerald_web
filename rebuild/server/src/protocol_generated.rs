@@ -30,6 +30,11 @@ pub enum Direction {
 pub enum MovementMode {
     Walk = 0,
     Run = 1,
+    MachBike = 2,
+    AcroCruise = 3,
+    AcroWheeliePrep = 4,
+    AcroWheelieMove = 5,
+    BunnyHop = 6,
 }
 
 #[repr(u8)]
