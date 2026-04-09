@@ -45,11 +45,6 @@ import {
   resolvePlayerRenderPriority,
   type PlayerObjectRenderPriorityState,
 } from './playerLayerSelection';
-import {
-  createWalkInputController,
-  TraversalTestMode,
-  type WalkInputController,
-} from './walkInputController';
 
 type ServerMessage =
   | { type: MessageType.SESSION_ACCEPTED; payload: SessionAccepted }
@@ -238,6 +233,25 @@ type MapTileRenderPriorityContext = {
   hasLayer1: boolean;
 };
 
+type WalkInputController = {
+  handleKeyDown: (event: KeyboardEvent) => void;
+  handleKeyUp: (event: KeyboardEvent) => void;
+  cycleTraversalTestMode: () => void;
+  tick: () => void;
+  markWalkResultReceived: (result: WalkResult) => void;
+  markWalkTransitionCompleted: () => void;
+  hasPendingAcceptedOrDispatchableStep: () => boolean;
+  getTraversalTestMode: () => TraversalTestMode;
+  getMovementMode: () => MovementMode;
+  reset: () => void;
+};
+
+enum TraversalTestMode {
+  ON_FOOT,
+  MACH,
+  ACRO,
+}
+
 const TILE_SIZE = 16;
 const SUBTILE_SIZE = 8;
 const RENDER_SCALE = 4;
@@ -272,6 +286,9 @@ const state: ClientWorldState = {
 };
 const pendingMovementModesByInputSeq = new Map<number, MovementMode>();
 
+// A directional key press shorter than this threshold is treated as a turn-only tap:
+// local facing updates immediately, but no WalkInput is emitted.
+const TURN_ONLY_TAP_MS = 90;
 let activeWalkTransition: WalkTransition | null = null;
 
 const pendingPredictedInputs = new Map<number, Direction>();
@@ -1188,21 +1205,6 @@ async function getMapIdToLayoutJsonPath(): Promise<Map<number, string>> {
   return mapIdToLayoutJsonPathPromise;
 }
 
-function sendWalkInput(direction: Direction, movementMode: MovementMode): void {
-  if (!socket || socket.readyState !== WebSocket.OPEN) {
-    return;
-  }
-
-  const inputSeq = state.lastInputSeq;
-  state.lastInputSeq += 1;
-  socket.send(encodeWalkInput(direction, movementMode, inputSeq, BigInt(Date.now())));
-  pendingMovementModesByInputSeq.set(inputSeq, movementMode);
-
-  if (ENABLE_CLIENT_PREDICTION) {
-    applyPredictedWalk(direction, inputSeq, movementMode);
-  }
-}
-
 function bindWalkInput(): void {
   window.addEventListener('keydown', (event) => {
     if (event.key === 'F3') {
@@ -1232,6 +1234,247 @@ function bindWalkInput(): void {
   window.addEventListener('keyup', (event) => {
     walkInputController.handleKeyUp(event);
   });
+}
+
+function keyToDirection(key: string): Direction | null {
+  switch (key) {
+    case 'ArrowUp':
+    case 'w':
+    case 'W':
+      return Direction.UP;
+    case 'ArrowDown':
+    case 's':
+    case 'S':
+      return Direction.DOWN;
+    case 'ArrowLeft':
+    case 'a':
+    case 'A':
+      return Direction.LEFT;
+    case 'ArrowRight':
+    case 'd':
+    case 'D':
+      return Direction.RIGHT;
+    default:
+      return null;
+  }
+}
+
+function sendWalkInput(direction: Direction, movementMode: MovementMode): void {
+  if (!socket || socket.readyState !== WebSocket.OPEN) {
+    return;
+  }
+
+  const inputSeq = state.lastInputSeq;
+  state.lastInputSeq += 1;
+  socket.send(encodeWalkInput(direction, movementMode, inputSeq, BigInt(Date.now())));
+  pendingMovementModesByInputSeq.set(inputSeq, movementMode);
+
+  if (ENABLE_CLIENT_PREDICTION) {
+    applyPredictedWalk(direction, inputSeq, movementMode);
+  }
+}
+
+function createWalkInputController(config: {
+  sendWalkInput: (direction: Direction, movementMode: MovementMode) => void;
+  isMovementLocked: () => boolean;
+  onFacingIntent: (direction: Direction) => void;
+}): WalkInputController {
+  const heldDirections = new Set<Direction>();
+  const heldDirectionPressedAtMs = new Map<Direction, number>();
+  const directionOrder: Direction[] = [];
+  let activeIntent: Direction | null = null;
+  let bufferedIntent: Direction | null = null;
+  let hasPendingWalkRequest = false;
+  let traversalTestMode: TraversalTestMode = TraversalTestMode.ON_FOOT;
+
+  const traversalTestModeToMovementMode = (mode: TraversalTestMode): MovementMode => {
+    switch (mode) {
+      case TraversalTestMode.MACH:
+        return MovementMode.MACH_BIKE;
+      case TraversalTestMode.ACRO:
+        return MovementMode.ACRO_CRUISE;
+      case TraversalTestMode.ON_FOOT:
+      default:
+        return MovementMode.WALK;
+    }
+  };
+
+  const removeDirectionFromOrder = (direction: Direction): void => {
+    const index = directionOrder.indexOf(direction);
+    if (index >= 0) {
+      directionOrder.splice(index, 1);
+    }
+  };
+
+  const canDispatchNewIntent = (): boolean =>
+    !hasPendingWalkRequest && !config.isMovementLocked() && activeIntent === null;
+
+  const hasSatisfiedTapThreshold = (direction: Direction, nowMs: number): boolean => {
+    const pressedAtMs = heldDirectionPressedAtMs.get(direction);
+    if (pressedAtMs === undefined) {
+      return false;
+    }
+    return nowMs - pressedAtMs >= TURN_ONLY_TAP_MS;
+  };
+
+  const getEligibleHeldDirection = (nowMs: number): Direction | null => {
+    for (let i = directionOrder.length - 1; i >= 0; i -= 1) {
+      const direction = directionOrder[i];
+      if (!heldDirections.has(direction)) {
+        continue;
+      }
+      if (hasSatisfiedTapThreshold(direction, nowMs)) {
+        return direction;
+      }
+    }
+    return null;
+  };
+
+  const sendIntent = (direction: Direction): void => {
+    const movementMode = traversalTestModeToMovementMode(traversalTestMode);
+    config.onFacingIntent(direction);
+    config.sendWalkInput(direction, movementMode);
+    activeIntent = direction;
+    hasPendingWalkRequest = true;
+  };
+
+  const updateBufferedIntentFromHeldDirections = (nowMs: number): void => {
+    const eligibleHeldDirection = getEligibleHeldDirection(nowMs);
+    if (eligibleHeldDirection !== null) {
+      bufferedIntent = eligibleHeldDirection;
+      return;
+    }
+
+    if (bufferedIntent !== null && !heldDirections.has(bufferedIntent)) {
+      bufferedIntent = null;
+    }
+  };
+
+  const maybeDispatchIntent = (nowMs: number): void => {
+    updateBufferedIntentFromHeldDirections(nowMs);
+    if (!canDispatchNewIntent()) {
+      return;
+    }
+
+    if (
+      bufferedIntent !== null &&
+      heldDirections.has(bufferedIntent) &&
+      hasSatisfiedTapThreshold(bufferedIntent, nowMs)
+    ) {
+      const buffered = bufferedIntent;
+      bufferedIntent = null;
+      sendIntent(buffered);
+      return;
+    }
+
+    const heldDirection = getEligibleHeldDirection(nowMs);
+    if (heldDirection !== null) {
+      bufferedIntent = null;
+      sendIntent(heldDirection);
+    }
+  };
+
+  const hasPendingAcceptedOrDispatchableStep = (nowMs: number): boolean => {
+    updateBufferedIntentFromHeldDirections(nowMs);
+    if (hasPendingWalkRequest) {
+      return true;
+    }
+
+    if (
+      bufferedIntent !== null &&
+      heldDirections.has(bufferedIntent) &&
+      hasSatisfiedTapThreshold(bufferedIntent, nowMs)
+    ) {
+      return true;
+    }
+
+    return getEligibleHeldDirection(nowMs) !== null;
+  };
+
+  return {
+    handleKeyDown(event: KeyboardEvent): void {
+      const direction = keyToDirection(event.key);
+      if (direction === null) {
+        return;
+      }
+
+      event.preventDefault();
+      if (event.repeat) {
+        return;
+      }
+
+      const isFirstPressForDirection = !heldDirections.has(direction);
+      heldDirections.add(direction);
+      heldDirectionPressedAtMs.set(direction, performance.now());
+      removeDirectionFromOrder(direction);
+      directionOrder.push(direction);
+
+      if (isFirstPressForDirection) {
+        config.onFacingIntent(direction);
+      }
+
+      maybeDispatchIntent(performance.now());
+    },
+    cycleTraversalTestMode(): void {
+      switch (traversalTestMode) {
+        case TraversalTestMode.ON_FOOT:
+          traversalTestMode = TraversalTestMode.MACH;
+          return;
+        case TraversalTestMode.MACH:
+          traversalTestMode = TraversalTestMode.ACRO;
+          return;
+        case TraversalTestMode.ACRO:
+        default:
+          traversalTestMode = TraversalTestMode.ON_FOOT;
+      }
+    },
+    handleKeyUp(event: KeyboardEvent): void {
+      const direction = keyToDirection(event.key);
+      if (direction === null) {
+        return;
+      }
+
+      event.preventDefault();
+      heldDirections.delete(direction);
+      heldDirectionPressedAtMs.delete(direction);
+      removeDirectionFromOrder(direction);
+      if (bufferedIntent === direction) {
+        bufferedIntent = null;
+      }
+    },
+    tick(): void {
+      maybeDispatchIntent(performance.now());
+    },
+    markWalkResultReceived(result: WalkResult): void {
+      hasPendingWalkRequest = false;
+      if (!result.accepted) {
+        activeIntent = null;
+        maybeDispatchIntent(performance.now());
+      }
+    },
+    markWalkTransitionCompleted(): void {
+      activeIntent = null;
+      maybeDispatchIntent(performance.now());
+    },
+    hasPendingAcceptedOrDispatchableStep(): boolean {
+      return hasPendingAcceptedOrDispatchableStep(performance.now());
+    },
+    getTraversalTestMode(): TraversalTestMode {
+      return traversalTestMode;
+    },
+    getMovementMode(): MovementMode {
+      return traversalTestModeToMovementMode(traversalTestMode);
+    },
+    reset(): void {
+      hasPendingWalkRequest = false;
+      activeIntent = null;
+      bufferedIntent = null;
+      traversalTestMode = TraversalTestMode.ON_FOOT;
+      heldDirections.clear();
+      heldDirectionPressedAtMs.clear();
+      directionOrder.length = 0;
+    },
+  };
 }
 
 function encodeJoinSession(playerId: string): Uint8Array {
