@@ -31,6 +31,10 @@ import {
   loadPlayerAnimationAssets,
   PlayerAnimationController,
 } from './playerAnimation';
+import {
+  resolvePlayerLayerSampleTile,
+  resolvePlayerRenderPriorityAtTile,
+} from './playerLayerSelection';
 
 type ServerMessage =
   | { type: MessageType.SESSION_ACCEPTED; payload: SessionAccepted }
@@ -225,11 +229,6 @@ const ENABLE_CLIENT_PREDICTION =
   new URLSearchParams(window.location.search).get('predict') === '1';
 const ENABLE_DEBUG_OVERLAY_DEFAULT =
   new URLSearchParams(window.location.search).get('debug') === '1';
-const MB_DEEP_SAND = 6;
-const MB_SAND = 33;
-const MB_ASHGRASS = 36;
-const MB_FOOTPRINTS = 37;
-
 const jsonAssetLoaders = import.meta.glob('../../assets/**/*.json');
 const binaryAssetUrls = import.meta.glob('../../assets/**/*.bin', {
   query: '?url',
@@ -1397,8 +1396,13 @@ function positionPlayerSprite(): void {
 }
 
 function updatePlayerActorLayer(): void {
-  const tileX = Math.round(state.renderTileX);
-  const tileY = Math.round(state.renderTileY);
+  const sampleTile = resolvePlayerLayerSampleTile({
+    playerTileX: state.playerTileX,
+    playerTileY: state.playerTileY,
+    activeWalkTransition,
+  });
+  const tileX = sampleTile.x;
+  const tileY = sampleTile.y;
   const resolvedLayer = resolveActorLayerForPlayer(tileX, tileY);
   if (resolvedLayer === playerActiveActorLayer) {
     return;
@@ -1415,45 +1419,11 @@ function resolveActorLayerForPlayer(tileX: number, tileY: number): Container {
   }
 
   const tileContext = activeMapTileRenderPriorityContexts[tileY * state.mapWidth + tileX];
-  const actorStratum = resolvePlayerRenderPriorityAtTile(tileContext);
+  const actorStratum = resolvePlayerRenderPriorityAtTile(tileContext, MetatileLayerType.COVERED);
   if (actorStratum === 'below-bg2') {
     return actorBelowBg2Layer;
   }
   return actorBetweenBg2Bg1Layer;
-}
-
-function resolvePlayerRenderPriorityAtTile(
-  tileContext: MapTileRenderPriorityContext | undefined,
-): 'below-bg2' | 'between-bg2-bg1' {
-  if (!tileContext) {
-    return 'between-bg2-bg1';
-  }
-
-  if (tileContext.metatileLayerType !== MetatileLayerType.COVERED) {
-    return 'between-bg2-bg1';
-  }
-
-  if (isCoveredDecorativeOverlay(tileContext)) {
-    return 'between-bg2-bg1';
-  }
-
-  return 'below-bg2';
-}
-
-function isCoveredDecorativeOverlay(tileContext: MapTileRenderPriorityContext): boolean {
-  if (tileContext.layer1SubtileMask === 0) {
-    return false;
-  }
-
-  switch (tileContext.behaviorId) {
-    case MB_DEEP_SAND:
-    case MB_SAND:
-    case MB_ASHGRASS:
-    case MB_FOOTPRINTS:
-      return true;
-    default:
-      return false;
-  }
 }
 
 function presentPlayerAnimationFrame(): void {
