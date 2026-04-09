@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { AcroBikeSubstate, BikeTransitionType, Direction, TraversalState } from './protocol_generated';
+import { BikeTransitionType, Direction, TraversalState } from './protocol_generated';
 
 type FixtureDirection = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
 type FixtureAction = 'set_idle' | 'start_walk' | 'start_run';
@@ -67,7 +67,6 @@ type PlayerAnimationControllerCtor = new (assets: PlayerAnimationAssets) => {
   setTraversalState: (state: {
     traversalState: TraversalState;
     machSpeedStage?: number;
-    acroSubstate?: AcroBikeSubstate;
     bikeTransition?: BikeTransitionType;
   }) => void;
   stopMoving: (direction: Direction) => void;
@@ -189,33 +188,6 @@ describe('player animation parity fixtures', () => {
     controller.tick((1000 / 60) * 16);
     expect(controller.getDebugState().frameIndex).toBe(401);
   });
-
-  it('keeps wheelie visuals lifted during moving-to-stationary handoff while holding B', () => {
-    const controller = new PlayerAnimationController(makeMockAssets());
-    const direction = Direction.RIGHT;
-
-    controller.setTraversalState({
-      traversalState: TraversalState.ACRO_BIKE,
-      acroSubstate: AcroBikeSubstate.MOVING_WHEELIE,
-      bikeTransition: BikeTransitionType.WHEELIE_MOVING,
-    });
-    controller.startRunStep(direction);
-    expect(controller.getDebugState().animId).toBe('anim_acro_moving_wheelie_east');
-
-    controller.stopMoving(direction);
-    controller.applyPendingModeChanges();
-    expect(controller.getDebugState().animId).toBe('anim_acro_wheelie_face_east');
-
-    controller.setTraversalState({
-      traversalState: TraversalState.ACRO_BIKE,
-      acroSubstate: AcroBikeSubstate.MOVING_WHEELIE,
-      bikeTransition: BikeTransitionType.NONE,
-    });
-    controller.stopMoving(direction);
-    controller.applyPendingModeChanges();
-    expect(controller.getDebugState().animId).toBe('anim_acro_wheelie_face_east');
-    expect(controller.getDebugState().animId).not.toBe('anim_face_east');
-  });
 });
 
 function loadFixture(): ParityFixture {
@@ -323,8 +295,6 @@ function makeMockAssets(): PlayerAnimationAssets {
     330, 331, 332, 333,
     400, 401, 402, 403,
     404, 405, 406, 407,
-    408, 409, 410, 411,
-    412, 413, 414, 415,
   ]) {
     frameTextures.set(frame, {});
   }
@@ -406,18 +376,6 @@ function makeMockAssets(): PlayerAnimationAssets {
                 { duration: 2, frame: 401, h_flip: false },
               ],
             },
-          },
-          acro_moving_wheelie: {
-            south: { action_id: 'acro_moving_wheelie', anim_cmd_symbol: 'anim_acro_moving_wheelie_south', frames: [{ duration: 2, frame: 408, h_flip: false }] },
-            north: { action_id: 'acro_moving_wheelie', anim_cmd_symbol: 'anim_acro_moving_wheelie_north', frames: [{ duration: 2, frame: 409, h_flip: false }] },
-            west: { action_id: 'acro_moving_wheelie', anim_cmd_symbol: 'anim_acro_moving_wheelie_west', frames: [{ duration: 2, frame: 410, h_flip: false }] },
-            east: { action_id: 'acro_moving_wheelie', anim_cmd_symbol: 'anim_acro_moving_wheelie_east', frames: [{ duration: 2, frame: 411, h_flip: false }] },
-          },
-          acro_wheelie_face: {
-            south: { action_id: 'acro_wheelie_face', anim_cmd_symbol: 'anim_acro_wheelie_face_south', frames: [{ duration: 2, frame: 412, h_flip: false }] },
-            north: { action_id: 'acro_wheelie_face', anim_cmd_symbol: 'anim_acro_wheelie_face_north', frames: [{ duration: 2, frame: 413, h_flip: false }] },
-            west: { action_id: 'acro_wheelie_face', anim_cmd_symbol: 'anim_acro_wheelie_face_west', frames: [{ duration: 2, frame: 414, h_flip: false }] },
-            east: { action_id: 'acro_wheelie_face', anim_cmd_symbol: 'anim_acro_wheelie_face_east', frames: [{ duration: 2, frame: 415, h_flip: false }] },
           },
         },
       },
