@@ -301,7 +301,7 @@ impl AcroRuntime {
             if self.holding_b {
                 self.running_state = RunningState::NotMoving;
                 self.state = AcroState::WheelieStanding;
-                self.bike_frame_counter = 1;
+                self.bike_frame_counter = 0;
                 return AcroAnimationAction::NormalToWheelie;
             }
             self.running_state = RunningState::NotMoving;
@@ -484,7 +484,7 @@ impl AcroRuntime {
         let Some(new_direction) = requested_direction else {
             self.state = AcroState::WheelieStanding;
             self.running_state = RunningState::NotMoving;
-            self.bike_frame_counter = 1;
+            self.bike_frame_counter = 0;
             return AcroAnimationAction::WheelieIdle;
         };
 
@@ -632,6 +632,7 @@ mod tests {
         runtime.set_held_input(None, true);
         runtime.advance_tick();
         assert_eq!(runtime.state, AcroState::WheelieStanding);
+        assert_eq!(runtime.bike_frame_counter, 0);
         assert_eq!(
             runtime.take_pending_action(),
             Some(AcroAnimationAction::NormalToWheelie)
@@ -643,6 +644,39 @@ mod tests {
         assert_eq!(
             runtime.take_pending_action(),
             Some(AcroAnimationAction::FaceDirection)
+        );
+    }
+
+    #[test]
+    fn standing_wheelie_requires_40_full_ticks_before_bunny_hop() {
+        let mut runtime = AcroRuntime::default();
+        runtime.set_held_input(None, true);
+        runtime.advance_tick();
+        assert_eq!(runtime.state, AcroState::WheelieStanding);
+        assert_eq!(runtime.bike_frame_counter, 0);
+        assert_eq!(
+            runtime.take_pending_action(),
+            Some(AcroAnimationAction::NormalToWheelie)
+        );
+
+        for _ in 0..39 {
+            runtime.set_held_input(None, true);
+            runtime.advance_tick();
+            assert_eq!(runtime.state, AcroState::WheelieStanding);
+            assert_eq!(
+                runtime.take_pending_action(),
+                Some(AcroAnimationAction::WheelieIdle)
+            );
+        }
+
+        assert_eq!(runtime.bike_frame_counter, 39);
+        runtime.set_held_input(None, true);
+        runtime.advance_tick();
+        assert_eq!(runtime.state, AcroState::BunnyHop);
+        assert_eq!(runtime.bike_frame_counter, 40);
+        assert_eq!(
+            runtime.take_pending_action(),
+            Some(AcroAnimationAction::WheelieHoppingStanding)
         );
     }
 
@@ -833,6 +867,7 @@ mod tests {
         runtime.set_held_input(None, true);
         runtime.advance_tick();
         assert_eq!(runtime.state, AcroState::WheelieStanding);
+        assert_eq!(runtime.bike_frame_counter, 0);
         assert_eq!(
             runtime.take_pending_action(),
             Some(AcroAnimationAction::WheelieIdle)

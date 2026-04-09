@@ -188,7 +188,7 @@ describe('main movement pipeline integration', () => {
         traversalState: TraversalState.ACRO_BIKE,
         acroSubstate: AcroBikeSubstate.BUNNY_HOP,
         bikeTransition: BikeTransitionType.HOP_STANDING,
-        expectedAnimId: 'anim_acro_ledge_hop_back_east',
+        expectedAnimId: 'anim_acro_bunny_hop_back_east',
         stationary: true,
       },
       {
@@ -287,13 +287,13 @@ describe('main movement pipeline integration', () => {
       bikeTransition: BikeTransitionType.HOP_STANDING,
       acroSubstate: AcroBikeSubstate.BUNNY_HOP,
       shouldStep: false,
-      expectedAnimId: 'anim_acro_ledge_hop_back_east',
+      expectedAnimId: 'anim_acro_bunny_hop_back_east',
     },
     {
       bikeTransition: BikeTransitionType.HOP,
       acroSubstate: AcroBikeSubstate.NONE,
       shouldStep: false,
-      expectedAnimId: 'anim_acro_ledge_hop_back_east',
+      expectedAnimId: 'anim_acro_bunny_hop_back_east',
     },
     {
       bikeTransition: BikeTransitionType.WHEELIE_HOPPING_STANDING,
