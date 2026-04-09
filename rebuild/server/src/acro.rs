@@ -710,6 +710,46 @@ mod tests {
     }
 
     #[test]
+    fn turning_runtime_side_jump_triggers_within_4_tick_held_window() {
+        let mut runtime = AcroRuntime {
+            state: AcroState::Turning,
+            new_dir_backup: Some(Direction::Right),
+            ..Default::default()
+        };
+
+        runtime.set_held_input(Some(Direction::Right), false);
+        runtime.advance_tick();
+        runtime.set_held_input(Some(Direction::Right), true);
+        runtime.advance_tick();
+
+        assert_eq!(
+            runtime.apply_step(Direction::Up, Direction::Right),
+            AcroAnimationAction::SideJump
+        );
+        assert_eq!(runtime.state, AcroState::SideJump);
+    }
+
+    #[test]
+    fn turning_runtime_turn_jump_triggers_within_4_tick_held_window() {
+        let mut runtime = AcroRuntime {
+            state: AcroState::Turning,
+            new_dir_backup: Some(Direction::Right),
+            ..Default::default()
+        };
+
+        runtime.set_held_input(Some(Direction::Right), false);
+        runtime.advance_tick();
+        runtime.set_held_input(Some(Direction::Right), true);
+        runtime.advance_tick();
+
+        assert_eq!(
+            runtime.apply_step(Direction::Left, Direction::Right),
+            AcroAnimationAction::TurnJump
+        );
+        assert_eq!(runtime.state, AcroState::TurnJump);
+    }
+
+    #[test]
     fn wheelie_standing_handler_covers_idle_move_hop_and_release() {
         let mut runtime = AcroRuntime {
             state: AcroState::WheelieStanding,
