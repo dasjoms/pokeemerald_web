@@ -94,6 +94,8 @@ pub struct AcroRuntime {
     pub ab_start_select_timer_history: [u8; INPUT_HISTORY_LEN],
     pub bike_frame_counter: u8,
     pub last_input_direction: Option<Direction>,
+    pub held_direction: Option<Direction>,
+    pub holding_b: bool,
 }
 
 impl Default for AcroRuntime {
@@ -106,11 +108,47 @@ impl Default for AcroRuntime {
             ab_start_select_timer_history: [0; INPUT_HISTORY_LEN],
             bike_frame_counter: 0,
             last_input_direction: None,
+            held_direction: None,
+            holding_b: false,
         }
     }
 }
 
 impl AcroRuntime {
+    pub fn set_held_input(&mut self, held_direction: Option<Direction>, holding_b: bool) {
+        self.held_direction = held_direction;
+        self.holding_b = holding_b;
+    }
+
+    pub fn advance_tick(&mut self) {
+        self.update_history(self.held_direction, if self.holding_b { ABSS_B } else { 0 });
+
+        if self.last_input_direction != self.held_direction && self.held_direction.is_some() {
+            self.state = AcroState::Turning;
+        }
+        self.last_input_direction = self.held_direction;
+
+        if self.holding_b {
+            self.bike_frame_counter = self.bike_frame_counter.saturating_add(1);
+            if self.bike_frame_counter >= 40 {
+                self.state = AcroState::BunnyHop;
+            } else if self.held_direction.is_some() {
+                self.state = AcroState::WheelieMoving;
+            } else {
+                self.state = AcroState::WheelieStanding;
+            }
+            return;
+        }
+
+        self.bike_frame_counter = 0;
+        if matches!(
+            self.state,
+            AcroState::WheelieStanding | AcroState::WheelieMoving | AcroState::BunnyHop
+        ) {
+            self.state = AcroState::Normal;
+        }
+    }
+
     pub fn update_history(&mut self, held_direction: Option<Direction>, held_ab_start_select: u8) {
         let direction = encode_direction_nibble(held_direction);
         if direction == (self.direction_history as u8 & 0xF) {
@@ -164,21 +202,8 @@ impl AcroRuntime {
         &mut self,
         facing_direction: Direction,
         requested_direction: Direction,
-        holding_b: bool,
     ) -> AcroAnimationAction {
-        self.update_history(
-            Some(requested_direction),
-            if holding_b { ABSS_B } else { 0 },
-        );
-
         let jump_direction = self.get_jump_direction();
-        let changed_direction = self.last_input_direction != Some(requested_direction);
-        self.last_input_direction = Some(requested_direction);
-
-        if changed_direction {
-            self.state = AcroState::Turning;
-            self.bike_frame_counter = 0;
-        }
 
         match self.state {
             AcroState::Turning if jump_direction == Some(requested_direction) => {
@@ -194,11 +219,9 @@ impl AcroRuntime {
             _ => {}
         }
 
-        if holding_b {
-            self.bike_frame_counter = self.bike_frame_counter.saturating_add(1);
+        if self.holding_b {
             if self.bike_frame_counter >= 40 {
-                self.state = AcroState::BunnyHop;
-                return if changed_direction {
+                return if self.held_direction == Some(requested_direction) {
                     AcroAnimationAction::HopMoving
                 } else {
                     AcroAnimationAction::HopStanding
@@ -209,20 +232,14 @@ impl AcroRuntime {
                 AcroState::SideJump => AcroAnimationAction::SideJump,
                 AcroState::TurnJump => AcroAnimationAction::TurnJump,
                 AcroState::WheelieMoving => AcroAnimationAction::WheelieIdle,
-                _ => {
-                    self.state = AcroState::WheelieMoving;
-                    AcroAnimationAction::WheeliePop
-                }
+                _ => AcroAnimationAction::WheeliePop,
             };
         }
 
-        self.bike_frame_counter = 0;
         let was_wheelie = matches!(
             self.state,
             AcroState::WheelieStanding | AcroState::BunnyHop | AcroState::WheelieMoving
         );
-        self.state = AcroState::Normal;
-
         if was_wheelie {
             AcroAnimationAction::WheelieEnd
         } else {
@@ -347,5 +364,19 @@ mod tests {
 
         runtime.update_history(Some(Direction::Up), holding_b_mask());
         assert_eq!(runtime.get_jump_direction(), None);
+    }
+
+    #[test]
+    fn stationary_b_hold_advances_bunny_hop_timer_per_tick() {
+        let mut runtime = AcroRuntime::default();
+        runtime.set_held_input(None, true);
+
+        for _ in 0..39 {
+            runtime.advance_tick();
+        }
+        assert_eq!(runtime.state, AcroState::WheelieStanding);
+
+        runtime.advance_tick();
+        assert_eq!(runtime.state, AcroState::BunnyHop);
     }
 }
