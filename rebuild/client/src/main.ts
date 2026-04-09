@@ -383,6 +383,7 @@ let playerObjectRenderPriorityState: PlayerObjectRenderPriorityState = 'normal';
 app.ticker.add(() => {
   walkInputController.tick();
   tickWalkTransition(app.ticker.deltaMS);
+  playerAnimation.applyPendingModeChanges();
   playerAnimation.tick(app.ticker.deltaMS);
   presentPlayerAnimationFrame();
   tickTilesetAnimationClock(app.ticker.deltaMS);

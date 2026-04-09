@@ -257,6 +257,7 @@ function parseHexPaletteColor(color: string | undefined): [number, number, numbe
 export class PlayerAnimationController {
   private readonly assets: PlayerAnimationAssets;
   private mode: PlayerAnimationMode = { kind: 'face', direction: 'south' };
+  private pendingMode: PlayerAnimationMode | null = null;
   private frameCommandIndex = 0;
   private ticksUntilAdvance = 0;
   private tickAccumulatorMs = 0;
@@ -273,12 +274,24 @@ export class PlayerAnimationController {
   }
 
   stopMoving(direction: Direction): void {
-    this.mode = {
+    this.pendingMode = {
       kind: 'face',
       direction: mapDirection(direction),
     };
-    this.frameCommandIndex = 0;
+  }
+
+  applyPendingModeChanges(): void {
+    if (!this.pendingMode) {
+      return;
+    }
+
+    this.mode = this.pendingMode;
+    this.pendingMode = null;
     this.stridePhase = 0;
+    const frameCount = this.currentDirectionalAnimation().frames.length;
+    if (this.frameCommandIndex >= frameCount) {
+      this.frameCommandIndex = 0;
+    }
     this.resetFrameTimer();
   }
 
@@ -291,6 +304,7 @@ export class PlayerAnimationController {
   }
 
   startStep(direction: Direction, mode: 'walk' | 'run'): void {
+    this.pendingMode = null;
     const cardinal = mapDirection(direction);
     if (this.mode.kind === mode) {
       this.frameCommandIndex =
