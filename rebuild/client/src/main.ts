@@ -1,11 +1,14 @@
 import { Application, Assets, Container, Graphics, Sprite, TextureSource, TextureStyle } from 'pixi.js';
 import {
+  AcroBikeSubstate,
+  BikeTransitionType,
   Direction,
   MessageType,
   MovementMode,
   PlayerAvatar,
   PROTOCOL_VERSION,
   RejectionReason,
+  TraversalState,
   type SessionAccepted,
   type WalkResult,
   type WorldSnapshot,
@@ -1524,6 +1527,17 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
     offset += 1;
     const serverFrame = readU32(payload, offset);
     offset += 4;
+    const traversalState = readU8(payload, offset) as TraversalState;
+    offset += 1;
+    const bikeRuntimeFlags = readU8(payload, offset);
+    offset += 1;
+
+    const machSpeedStage = bikeRuntimeFlags & 0b001 ? readU8(payload, offset++) : undefined;
+    const acroSubstate =
+      bikeRuntimeFlags & 0b010 ? (readU8(payload, offset++) as AcroBikeSubstate) : undefined;
+    const bikeTransition =
+      bikeRuntimeFlags & 0b100 ? (readU8(payload, offset++) as BikeTransitionType) : undefined;
+
     const hashLen = readU8(payload, offset);
     offset += 1;
     const mapChunkHash = payload.slice(offset, offset + hashLen);
@@ -1543,23 +1557,53 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
         map_chunk_hash: mapChunkHash,
         map_chunk: mapChunk,
         server_frame: serverFrame,
+        traversal_state: traversalState,
+        mach_speed_stage: machSpeedStage,
+        acro_substate: acroSubstate,
+        bike_transition: bikeTransition,
       },
     };
   }
 
   if (messageType === MessageType.WALK_RESULT) {
+    let offset = 0;
+    const inputSeq = readU32(payload, offset);
+    offset += 4;
+    const accepted = readU8(payload, offset) === 1;
+    offset += 1;
+    const x = readU16(payload, offset);
+    offset += 2;
+    const y = readU16(payload, offset);
+    offset += 2;
+    const facing = readU8(payload, offset) as Direction;
+    offset += 1;
+    const reason = readU8(payload, offset) as RejectionReason;
+    offset += 1;
+    const serverFrame = readU32(payload, offset);
+    offset += 4;
+    const traversalState = readU8(payload, offset) as TraversalState;
+    offset += 1;
+    const bikeRuntimeFlags = readU8(payload, offset);
+    offset += 1;
+    const machSpeedStage = bikeRuntimeFlags & 0b001 ? readU8(payload, offset++) : undefined;
+    const acroSubstate =
+      bikeRuntimeFlags & 0b010 ? (readU8(payload, offset++) as AcroBikeSubstate) : undefined;
+    const bikeTransition =
+      bikeRuntimeFlags & 0b100 ? (readU8(payload, offset++) as BikeTransitionType) : undefined;
+
     return {
       type: MessageType.WALK_RESULT,
       payload: {
-        input_seq: readU32(payload, 0),
-        accepted: readU8(payload, 4) === 1,
-        authoritative_pos: {
-          x: readU16(payload, 5),
-          y: readU16(payload, 7),
-        },
-        facing: readU8(payload, 9) as Direction,
-        reason: readU8(payload, 10) as RejectionReason,
-        server_frame: readU32(payload, 11),
+        input_seq: inputSeq,
+        accepted,
+        authoritative_pos: { x, y },
+        facing,
+        reason,
+        server_frame: serverFrame,
+        traversal_state: traversalState,
+        mach_speed_stage: machSpeedStage,
+        acro_substate: acroSubstate,
+        bike_transition: bikeTransition,
       },
     };
   }

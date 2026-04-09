@@ -8,7 +8,7 @@ import {
   type WalkTransition,
   type WalkTransitionMutableState,
 } from './walkTransitionPipeline';
-import { Direction, MovementMode, RejectionReason, type WalkResult } from './protocol_generated';
+import { Direction, MovementMode, RejectionReason, TraversalState, type WalkResult } from './protocol_generated';
 
 type PipelineState = WalkTransitionMutableState & {
   facing: Direction;
@@ -78,6 +78,7 @@ describe('main movement pipeline integration', () => {
           facing: Direction.RIGHT,
           reason: RejectionReason.NONE,
           server_frame: seq,
+          traversal_state: TraversalState.ON_FOOT,
         };
 
         const acceptedMovementMode =

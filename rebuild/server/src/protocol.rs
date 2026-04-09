@@ -2,8 +2,9 @@
 mod protocol_generated;
 
 pub use protocol_generated::{
-    Direction, JoinSession, MessageType, MovementMode, PlayerAvatar, Position, RejectionReason,
-    SessionAccepted, WalkInput, WalkResult, WorldDelta, WorldSnapshot, PROTOCOL_VERSION,
+    AcroBikeSubstate, BikeTransitionType, Direction, JoinSession, MessageType, MovementMode,
+    PlayerAvatar, Position, RejectionReason, SessionAccepted, TraversalState, WalkInput,
+    WalkResult, WorldDelta, WorldSnapshot, PROTOCOL_VERSION,
 };
 pub type Facing = Direction;
 
@@ -71,6 +72,13 @@ pub fn encode_server_message(message: &ServerMessage) -> Result<Vec<u8>, Protoco
             payload.push(msg.facing as u8);
             payload.push(msg.avatar as u8);
             payload.extend_from_slice(&msg.server_frame.to_le_bytes());
+            payload.push(msg.traversal_state as u8);
+            encode_bike_runtime(
+                &mut payload,
+                msg.mach_speed_stage,
+                msg.acro_substate,
+                msg.bike_transition,
+            );
             payload.push(msg.map_chunk_hash.len() as u8);
             payload.extend_from_slice(&msg.map_chunk_hash);
             push_bytes(&mut payload, &msg.map_chunk);
@@ -85,6 +93,13 @@ pub fn encode_server_message(message: &ServerMessage) -> Result<Vec<u8>, Protoco
             payload.push(msg.facing as u8);
             payload.push(msg.reason as u8);
             payload.extend_from_slice(&msg.server_frame.to_le_bytes());
+            payload.push(msg.traversal_state as u8);
+            encode_bike_runtime(
+                &mut payload,
+                msg.mach_speed_stage,
+                msg.acro_substate,
+                msg.bike_transition,
+            );
             (MessageType::WalkResult, payload)
         }
         ServerMessage::WorldDelta(msg) => {
@@ -163,6 +178,34 @@ fn decode_movement_mode(raw: u8) -> Result<MovementMode, ProtocolError> {
         0 => Ok(MovementMode::Walk),
         1 => Ok(MovementMode::Run),
         _ => Err(ProtocolError::InvalidMovementMode(raw)),
+    }
+}
+
+fn encode_bike_runtime(
+    payload: &mut Vec<u8>,
+    mach_speed_stage: Option<u8>,
+    acro_substate: Option<AcroBikeSubstate>,
+    bike_transition: Option<BikeTransitionType>,
+) {
+    let mut flags = 0u8;
+    if mach_speed_stage.is_some() {
+        flags |= 0b001;
+    }
+    if acro_substate.is_some() {
+        flags |= 0b010;
+    }
+    if bike_transition.is_some() {
+        flags |= 0b100;
+    }
+    payload.push(flags);
+    if let Some(speed) = mach_speed_stage {
+        payload.push(speed);
+    }
+    if let Some(substate) = acro_substate {
+        payload.push(substate as u8);
+    }
+    if let Some(transition) = bike_transition {
+        payload.push(transition as u8);
     }
 }
 

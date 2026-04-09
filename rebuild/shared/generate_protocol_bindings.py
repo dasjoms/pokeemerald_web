@@ -5,12 +5,15 @@ from pathlib import Path
 from textwrap import dedent
 
 from protocol import (
+    AcroBikeSubstate,
+    BikeTransitionType,
     PROTOCOL_VERSION,
     Direction,
     MessageType,
     MovementMode,
     PlayerAvatar,
     RejectionReason,
+    TraversalState,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -52,6 +55,37 @@ pub enum Direction {{
 pub enum MovementMode {{
     Walk = {int(MovementMode.WALK)},
     Run = {int(MovementMode.RUN)},
+}}
+
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum TraversalState {{
+    OnFoot = {int(TraversalState.ON_FOOT)},
+    MachBike = {int(TraversalState.MACH_BIKE)},
+    AcroBike = {int(TraversalState.ACRO_BIKE)},
+}}
+
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum AcroBikeSubstate {{
+    None = {int(AcroBikeSubstate.NONE)},
+    StandingWheelie = {int(AcroBikeSubstate.STANDING_WHEELIE)},
+    MovingWheelie = {int(AcroBikeSubstate.MOVING_WHEELIE)},
+    BunnyHop = {int(AcroBikeSubstate.BUNNY_HOP)},
+}}
+
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum BikeTransitionType {{
+    None = {int(BikeTransitionType.NONE)},
+    Mount = {int(BikeTransitionType.MOUNT)},
+    Dismount = {int(BikeTransitionType.DISMOUNT)},
+    EnterWheelie = {int(BikeTransitionType.ENTER_WHEELIE)},
+    ExitWheelie = {int(BikeTransitionType.EXIT_WHEELIE)},
+    Hop = {int(BikeTransitionType.HOP)},
 }}
 
 #[repr(u8)]
@@ -110,6 +144,10 @@ pub struct WorldSnapshot {{
     pub map_chunk_hash: Vec<u8>,
     pub map_chunk: Vec<u8>,
     pub server_frame: u32,
+    pub traversal_state: TraversalState,
+    pub mach_speed_stage: Option<u8>,
+    pub acro_substate: Option<AcroBikeSubstate>,
+    pub bike_transition: Option<BikeTransitionType>,
 }}
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
@@ -120,6 +158,10 @@ pub struct WalkResult {{
     pub facing: Direction,
     pub reason: RejectionReason,
     pub server_frame: u32,
+    pub traversal_state: TraversalState,
+    pub mach_speed_stage: Option<u8>,
+    pub acro_substate: Option<AcroBikeSubstate>,
+    pub bike_transition: Option<BikeTransitionType>,
 }}
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
@@ -158,6 +200,28 @@ export enum MovementMode {{
   RUN = {int(MovementMode.RUN)},
 }}
 
+export enum TraversalState {{
+  ON_FOOT = {int(TraversalState.ON_FOOT)},
+  MACH_BIKE = {int(TraversalState.MACH_BIKE)},
+  ACRO_BIKE = {int(TraversalState.ACRO_BIKE)},
+}}
+
+export enum AcroBikeSubstate {{
+  NONE = {int(AcroBikeSubstate.NONE)},
+  STANDING_WHEELIE = {int(AcroBikeSubstate.STANDING_WHEELIE)},
+  MOVING_WHEELIE = {int(AcroBikeSubstate.MOVING_WHEELIE)},
+  BUNNY_HOP = {int(AcroBikeSubstate.BUNNY_HOP)},
+}}
+
+export enum BikeTransitionType {{
+  NONE = {int(BikeTransitionType.NONE)},
+  MOUNT = {int(BikeTransitionType.MOUNT)},
+  DISMOUNT = {int(BikeTransitionType.DISMOUNT)},
+  ENTER_WHEELIE = {int(BikeTransitionType.ENTER_WHEELIE)},
+  EXIT_WHEELIE = {int(BikeTransitionType.EXIT_WHEELIE)},
+  HOP = {int(BikeTransitionType.HOP)},
+}}
+
 export enum RejectionReason {{
   NONE = {int(RejectionReason.NONE)},
   COLLISION = {int(RejectionReason.COLLISION)},
@@ -190,6 +254,10 @@ export type WorldSnapshot = {{
   map_chunk_hash: Uint8Array;
   map_chunk: Uint8Array;
   server_frame: number;
+  traversal_state: TraversalState;
+  mach_speed_stage?: number;
+  acro_substate?: AcroBikeSubstate;
+  bike_transition?: BikeTransitionType;
 }};
 export type WalkResult = {{
   input_seq: number;
@@ -198,6 +266,10 @@ export type WalkResult = {{
   facing: Direction;
   reason: RejectionReason;
   server_frame: number;
+  traversal_state: TraversalState;
+  mach_speed_stage?: number;
+  acro_substate?: AcroBikeSubstate;
+  bike_transition?: BikeTransitionType;
 }};
 export type WorldDelta = {{ map_id: number; server_frame: number; delta_blob: Uint8Array }};
 """
