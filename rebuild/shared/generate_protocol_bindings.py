@@ -8,6 +8,7 @@ from protocol import (
     AcroBikeSubstate,
     BikeTransitionType,
     DebugTraversalAction,
+    HeldButtons,
     PROTOCOL_VERSION,
     Direction,
     MessageType,
@@ -57,6 +58,13 @@ pub enum Direction {{
 pub enum MovementMode {{
     Walk = {int(MovementMode.WALK)},
     Run = {int(MovementMode.RUN)},
+}}
+
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+pub enum HeldButtons {{
+    None = {int(HeldButtons.NONE)},
+    B = {int(HeldButtons.B)},
 }}
 
 #[repr(u8)]
@@ -141,6 +149,7 @@ pub struct JoinSession {{
 pub struct WalkInput {{
     pub direction: Direction,
     pub movement_mode: MovementMode,
+    pub held_buttons: u8,
     pub input_seq: u32,
     pub client_time: u64,
 }}
@@ -227,6 +236,11 @@ export enum MovementMode {{
   RUN = {int(MovementMode.RUN)},
 }}
 
+export enum HeldButtons {{
+  NONE = {int(HeldButtons.NONE)},
+  B = {int(HeldButtons.B)},
+}}
+
 export enum DebugTraversalAction {{
   TOGGLE_MOUNT = {int(DebugTraversalAction.TOGGLE_MOUNT)},
   SWAP_BIKE_TYPE = {int(DebugTraversalAction.SWAP_BIKE_TYPE)},
@@ -281,6 +295,7 @@ export type JoinSession = {{ player_id: string }};
 export type WalkInput = {{
   direction: Direction;
   movement_mode: MovementMode;
+  held_buttons: number;
   input_seq: number;
   client_time: bigint;
 }};

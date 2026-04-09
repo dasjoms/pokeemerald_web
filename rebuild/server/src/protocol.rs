@@ -3,7 +3,7 @@ mod protocol_generated;
 
 pub use protocol_generated::{
     AcroBikeSubstate, BikeTransitionType, DebugTraversalAction, DebugTraversalInput, Direction,
-    JoinSession, MessageType, MovementMode, PlayerAvatar, Position, RejectionReason,
+    HeldButtons, JoinSession, MessageType, MovementMode, PlayerAvatar, Position, RejectionReason,
     SessionAccepted, TraversalState, WalkInput, WalkResult, WorldDelta, WorldSnapshot,
     PROTOCOL_VERSION,
 };
@@ -151,6 +151,7 @@ pub fn decode_client_message(frame: &[u8]) -> Result<ClientMessage, ProtocolErro
         x if x == MessageType::WalkInput as u8 => {
             let (raw_direction, offset) = unpack_u8(payload, 0)?;
             let (raw_movement_mode, offset) = unpack_u8(payload, offset)?;
+            let (held_buttons, offset) = unpack_u8(payload, offset)?;
             let (input_seq, offset) = unpack_u32(payload, offset)?;
             let (client_time, offset) = unpack_u64(payload, offset)?;
             ensure_done(payload, offset)?;
@@ -159,12 +160,14 @@ pub fn decode_client_message(frame: &[u8]) -> Result<ClientMessage, ProtocolErro
                     Ok(movement_mode) => Ok(ClientMessage::WalkInput(WalkInput {
                         direction,
                         movement_mode,
+                        held_buttons,
                         input_seq,
                         client_time,
                     })),
                     Err(_) => Ok(ClientMessage::WalkInput(WalkInput {
                         direction,
                         movement_mode: MovementMode::Walk,
+                        held_buttons,
                         input_seq,
                         client_time,
                     })),

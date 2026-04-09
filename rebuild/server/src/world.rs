@@ -582,7 +582,7 @@ impl World {
                     update_bike_runtime_after_step(
                         &mut session.player_state,
                         input.direction,
-                        resolved_movement_mode,
+                        input.held_buttons,
                     );
                     cracked_floor_per_step_callback(
                         &mut session.player_state,
@@ -811,7 +811,7 @@ fn reset_bike_runtime_on_reject(player_state: &mut PlayerState) {
 fn update_bike_runtime_after_step(
     player_state: &mut PlayerState,
     direction: Direction,
-    movement_mode: MovementMode,
+    held_buttons: u8,
 ) {
     match player_state.traversal_state {
         TraversalState::OnFoot => {
@@ -843,7 +843,7 @@ fn update_bike_runtime_after_step(
             let action = player_state.bike_runtime.acro_runtime.apply_step(
                 player_state.facing,
                 direction,
-                matches!(movement_mode, MovementMode::Run),
+                (held_buttons & crate::protocol::HeldButtons::B as u8) != 0,
             );
 
             player_state.bike_runtime.acro_state =
@@ -1159,16 +1159,32 @@ mod tests {
     #[test]
     fn mach_bike_frame_counter_accelerates_and_slows_on_direction_change() {
         let mut player = test_player_state();
-        update_bike_runtime_after_step(&mut player, Direction::Right, MovementMode::Walk);
+        update_bike_runtime_after_step(
+            &mut player,
+            Direction::Right,
+            crate::protocol::HeldButtons::None as u8,
+        );
         assert_eq!(player.bike_runtime.bike_frame_counter, 0);
 
-        update_bike_runtime_after_step(&mut player, Direction::Right, MovementMode::Walk);
+        update_bike_runtime_after_step(
+            &mut player,
+            Direction::Right,
+            crate::protocol::HeldButtons::None as u8,
+        );
         assert_eq!(player.bike_runtime.bike_frame_counter, 1);
 
-        update_bike_runtime_after_step(&mut player, Direction::Right, MovementMode::Walk);
+        update_bike_runtime_after_step(
+            &mut player,
+            Direction::Right,
+            crate::protocol::HeldButtons::None as u8,
+        );
         assert_eq!(player.bike_runtime.bike_frame_counter, 2);
 
-        update_bike_runtime_after_step(&mut player, Direction::Left, MovementMode::Walk);
+        update_bike_runtime_after_step(
+            &mut player,
+            Direction::Left,
+            crate::protocol::HeldButtons::None as u8,
+        );
         assert_eq!(player.bike_runtime.bike_frame_counter, 1);
     }
 
