@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import type { PlayerAnimationAssets, PlayerAnimationDebugState } from './playerAnimation';
 import {
-  movementModeStepDurationMs,
+  authoritativeStepDurationMs,
   startAuthoritativeWalkTransition,
   tickWalkTransition,
   type WalkTransition,
@@ -109,7 +109,10 @@ describe('main movement pipeline integration', () => {
         activeWalkTransition = startAuthoritativeWalkTransition(
           state,
           result.facing,
-          acceptedMovementMode,
+          {
+            traversalState: result.traversal_state,
+            movementMode: acceptedMovementMode,
+          },
         );
         playerAnimation.startStep(
           result.facing,
@@ -118,7 +121,11 @@ describe('main movement pipeline integration', () => {
         stepStartDebugStates.push(playerAnimation.getDebugState());
 
         while (activeWalkTransition !== null) {
-          const deltaMs = movementModeStepDurationMs(movementMode) / 4;
+          const deltaMs =
+            authoritativeStepDurationMs({
+              traversalState: result.traversal_state,
+              movementMode: acceptedMovementMode,
+            }) / 4;
           activeWalkTransition = tickWalkTransition({
             activeWalkTransition,
             state,
@@ -199,7 +206,7 @@ describe('main movement pipeline integration', () => {
         acroSubstate: entry.acroSubstate,
         bikeTransition: entry.bikeTransition,
       });
-      if (entry.stationary) {
+      if ('stationary' in entry && entry.stationary) {
         playerAnimation.stopMoving(direction);
         playerAnimation.applyPendingModeChanges();
       } else {
