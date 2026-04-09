@@ -112,6 +112,29 @@ type PlayerAnimationMode = {
   direction: Cardinal;
 };
 
+const ACRO_TRANSIENT_TRANSITIONS = new Set<BikeTransitionType>([
+  BikeTransitionType.WHEELIE_POP,
+  BikeTransitionType.WHEELIE_END,
+  BikeTransitionType.HOP,
+  BikeTransitionType.HOP_STANDING,
+  BikeTransitionType.WHEELIE_HOPPING_STANDING,
+  BikeTransitionType.HOP_MOVING,
+  BikeTransitionType.WHEELIE_HOPPING_MOVING,
+  BikeTransitionType.SIDE_JUMP,
+  BikeTransitionType.TURN_JUMP,
+  BikeTransitionType.NORMAL_TO_WHEELIE,
+  BikeTransitionType.WHEELIE_TO_NORMAL,
+  BikeTransitionType.ENTER_WHEELIE,
+  BikeTransitionType.EXIT_WHEELIE,
+  BikeTransitionType.WHEELIE_RISING_MOVING,
+  BikeTransitionType.WHEELIE_LOWERING_MOVING,
+]);
+
+const ACRO_LATCH_INTERRUPT_TRANSITIONS = new Set<BikeTransitionType>([
+  BikeTransitionType.DISMOUNT,
+  BikeTransitionType.WHEELIE_IDLE,
+]);
+
 const WALK_ALTERNATION_REMAP = new Map<number, number>([
   [1, 2],
   [3, 0],
@@ -269,6 +292,8 @@ export class PlayerAnimationController {
   private acroSubstate: AcroBikeSubstate = AcroBikeSubstate.NONE;
   private bikeTransition: BikeTransitionType = BikeTransitionType.NONE;
   private pendingMode: PlayerAnimationMode | null = null;
+  private activeActionId = 'face';
+  private latchedTransition: BikeTransitionType | null = null;
   private frameCommandIndex = 0;
   private ticksUntilAdvance = 0;
   private tickAccumulatorMs = 0;
@@ -276,12 +301,12 @@ export class PlayerAnimationController {
 
   constructor(assets: PlayerAnimationAssets) {
     this.assets = assets;
-    this.resetFrameTimer();
+    this.updateResolvedAction();
   }
 
   setFacing(direction: Direction): void {
     this.mode.direction = mapDirection(direction);
-    this.resetFrameTimer();
+    this.updateResolvedAction();
   }
 
   stopMoving(direction: Direction): void {
@@ -297,11 +322,24 @@ export class PlayerAnimationController {
     acroSubstate?: AcroBikeSubstate;
     bikeTransition?: BikeTransitionType;
   }): void {
+    const previousTraversalState = this.traversalState;
     this.traversalState = state.traversalState;
     this.machSpeedStage = state.machSpeedStage ?? 0;
     this.acroSubstate = state.acroSubstate ?? AcroBikeSubstate.NONE;
     this.bikeTransition = state.bikeTransition ?? BikeTransitionType.NONE;
-    this.resetFrameTimer();
+
+    if (
+      previousTraversalState !== this.traversalState ||
+      ACRO_LATCH_INTERRUPT_TRANSITIONS.has(this.bikeTransition)
+    ) {
+      this.latchedTransition = null;
+    }
+
+    if (this.shouldLatchCurrentTransition()) {
+      this.latchedTransition = this.bikeTransition;
+    }
+
+    this.updateResolvedAction();
   }
 
   applyPendingModeChanges(): void {
@@ -316,7 +354,7 @@ export class PlayerAnimationController {
     if (this.frameCommandIndex >= frameCount) {
       this.frameCommandIndex = 0;
     }
-    this.resetFrameTimer();
+    this.updateResolvedAction();
   }
 
   startWalkStep(direction: Direction): void {
@@ -340,7 +378,7 @@ export class PlayerAnimationController {
       kind: mode,
       direction: cardinal,
     };
-    this.resetFrameTimer();
+    this.updateResolvedAction();
   }
 
   tick(deltaMs: number): void {
@@ -397,11 +435,13 @@ export class PlayerAnimationController {
     if (isEndHold && this.frameCommandIndex >= lastCommandIndex) {
       this.frameCommandIndex = lastCommandIndex;
       this.ticksUntilAdvance = Number.MAX_SAFE_INTEGER;
+      this.maybeReleaseActionLatch();
       return;
     }
 
     this.frameCommandIndex = (this.frameCommandIndex + 1) % commands.length;
     this.resetFrameTimer();
+    this.maybeReleaseActionLatch();
   }
 
   private resetFrameTimer(): void {
@@ -419,7 +459,7 @@ export class PlayerAnimationController {
 
   private currentDirectionalAnimation(): DirectionalAnimationMeta {
     const modeSet = this.resolveCurrentAnimationSet();
-    const action = modeSet.actions[this.resolveCurrentActionId()] ?? modeSet.actions.face;
+    const action = modeSet.actions[this.activeActionId] ?? modeSet.actions.face;
     const directional = action?.[this.mode.direction] ?? modeSet.actions.face?.south;
     if (!directional) {
       throw new Error('player directional animation binding is missing');
@@ -437,16 +477,16 @@ export class PlayerAnimationController {
     return this.assets.animationSets.on_foot;
   }
 
-  private resolveCurrentActionId(): string {
+  private resolveAuthoritativeActionId(transitionOverride?: BikeTransitionType): string {
     if (this.mode.kind === 'face') {
       if (this.traversalState !== TraversalState.ACRO_BIKE) {
         return 'face';
       }
-      return this.resolveAcroStationaryActionId();
+      return this.resolveAcroStationaryActionId(transitionOverride);
     }
 
     if (this.traversalState === TraversalState.ACRO_BIKE) {
-      return this.resolveAcroMovingActionId();
+      return this.resolveAcroMovingActionId(transitionOverride);
     }
 
     if (this.traversalState === TraversalState.MACH_BIKE) {
@@ -454,6 +494,49 @@ export class PlayerAnimationController {
     }
 
     return this.mode.kind;
+  }
+
+  private shouldLatchCurrentTransition(): boolean {
+    return (
+      this.traversalState === TraversalState.ACRO_BIKE &&
+      ACRO_TRANSIENT_TRANSITIONS.has(this.bikeTransition)
+    );
+  }
+
+  private maybeReleaseActionLatch(): void {
+    if (this.latchedTransition === null) {
+      return;
+    }
+
+    const directionalAnimation = this.currentDirectionalAnimation();
+    if (directionalAnimation.loop_mode !== 'end_hold') {
+      return;
+    }
+
+    const lastCommandIndex = directionalAnimation.frames.length - 1;
+    const holdingLastFrame =
+      this.frameCommandIndex >= lastCommandIndex &&
+      this.ticksUntilAdvance === Number.MAX_SAFE_INTEGER;
+    if (!holdingLastFrame) {
+      return;
+    }
+
+    this.latchedTransition = null;
+    this.updateResolvedAction();
+  }
+
+  private updateResolvedAction(): void {
+    const nextActionId =
+      this.latchedTransition === null
+        ? this.resolveAuthoritativeActionId()
+        : this.resolveAuthoritativeActionId(this.latchedTransition);
+    if (nextActionId === this.activeActionId) {
+      return;
+    }
+
+    this.activeActionId = nextActionId;
+    this.frameCommandIndex = 0;
+    this.resetFrameTimer();
   }
 
   private resolveBikeSpeedActionId(): string {
@@ -469,8 +552,9 @@ export class PlayerAnimationController {
     return 'bike_walk';
   }
 
-  private resolveAcroStationaryActionId(): string {
-    switch (this.bikeTransition) {
+  private resolveAcroStationaryActionId(transitionOverride?: BikeTransitionType): string {
+    const bikeTransition = transitionOverride ?? this.bikeTransition;
+    switch (bikeTransition) {
       case BikeTransitionType.WHEELIE_IDLE:
         return 'acro_wheelie_face';
       case BikeTransitionType.WHEELIE_POP:
@@ -499,8 +583,9 @@ export class PlayerAnimationController {
     return 'face';
   }
 
-  private resolveAcroMovingActionId(): string {
-    switch (this.bikeTransition) {
+  private resolveAcroMovingActionId(transitionOverride?: BikeTransitionType): string {
+    const bikeTransition = transitionOverride ?? this.bikeTransition;
+    switch (bikeTransition) {
       case BikeTransitionType.HOP_MOVING:
         return 'acro_ledge_hop_front_wheel';
       case BikeTransitionType.WHEELIE_HOPPING_MOVING:

@@ -244,6 +244,7 @@ describe('main movement pipeline integration', () => {
       });
       playerAnimation.stopMoving(direction);
       playerAnimation.applyPendingModeChanges();
+      playerAnimation.tick(1000 / 60);
     }
     expect(playerAnimation.getDebugState().animId).toBe('anim_acro_wheelie_face_east');
 
@@ -256,6 +257,77 @@ describe('main movement pipeline integration', () => {
     playerAnimation.applyPendingModeChanges();
     expect(playerAnimation.getDebugState().animId).toBe('anim_acro_bunny_hop_back_east');
     expect(startStepSpy).not.toHaveBeenCalled();
+  });
+
+  it('holds pop-wheelie action for full one-shot duration before returning to idle wheelie hold', () => {
+    const playerAnimation = new PlayerAnimationController(makeMockAssets());
+    const direction = Direction.RIGHT;
+    const popWheelieDurationTicks = 6;
+
+    playerAnimation.setTraversalState({
+      traversalState: TraversalState.ACRO_BIKE,
+      acroSubstate: AcroBikeSubstate.STANDING_WHEELIE,
+      bikeTransition: BikeTransitionType.NORMAL_TO_WHEELIE,
+    });
+    playerAnimation.stopMoving(direction);
+    playerAnimation.applyPendingModeChanges();
+    expect(playerAnimation.getDebugState().animId).toBe('anim_acro_pop_wheelie_stationary_east');
+
+    for (let tick = 0; tick < popWheelieDurationTicks - 1; tick += 1) {
+      playerAnimation.setTraversalState({
+        traversalState: TraversalState.ACRO_BIKE,
+        acroSubstate: AcroBikeSubstate.STANDING_WHEELIE,
+        bikeTransition: BikeTransitionType.NONE,
+      });
+      playerAnimation.stopMoving(direction);
+      playerAnimation.applyPendingModeChanges();
+      playerAnimation.tick(1000 / 60);
+      expect(playerAnimation.getDebugState().animId).toBe('anim_acro_pop_wheelie_stationary_east');
+    }
+
+    playerAnimation.tick(1000 / 60);
+    playerAnimation.setTraversalState({
+      traversalState: TraversalState.ACRO_BIKE,
+      acroSubstate: AcroBikeSubstate.STANDING_WHEELIE,
+      bikeTransition: BikeTransitionType.NONE,
+    });
+    playerAnimation.stopMoving(direction);
+    playerAnimation.applyPendingModeChanges();
+    expect(playerAnimation.getDebugState().animId).toBe('anim_acro_wheelie_face_east');
+  });
+
+  it('keeps bunny-hop one-shot playback latched without looping during the 16-tick low-jump arc', () => {
+    const playerAnimation = new PlayerAnimationController(makeMockAssets());
+    const direction = Direction.RIGHT;
+
+    playerAnimation.setTraversalState({
+      traversalState: TraversalState.ACRO_BIKE,
+      acroSubstate: AcroBikeSubstate.BUNNY_HOP,
+      bikeTransition: BikeTransitionType.HOP_STANDING,
+    });
+    playerAnimation.stopMoving(direction);
+    playerAnimation.applyPendingModeChanges();
+
+    const firstFrame = playerAnimation.getDebugState().frameIndex;
+
+    for (let tick = 0; tick < 16; tick += 1) {
+      playerAnimation.setTraversalState({
+        traversalState: TraversalState.ACRO_BIKE,
+        acroSubstate: AcroBikeSubstate.BUNNY_HOP,
+        bikeTransition: BikeTransitionType.NONE,
+      });
+      playerAnimation.stopMoving(direction);
+      playerAnimation.applyPendingModeChanges();
+      playerAnimation.tick(1000 / 60);
+    }
+
+    const afterArcState = playerAnimation.getDebugState();
+    expect(afterArcState.animId).toBe('anim_acro_bunny_hop_back_east');
+    expect(afterArcState.frameIndex).toBe(463);
+    expect(afterArcState.frameIndex).not.toBe(firstFrame);
+
+    playerAnimation.tick(1000 / 60);
+    expect(playerAnimation.getDebugState().frameIndex).toBe(463);
   });
 
   it.each([
@@ -605,10 +677,46 @@ function makeMockAssets(): PlayerAnimationAssets {
       east: { anim_cmd_symbol: 'anim_acro_ledge_hop_front_east', frames: [{ duration: 2, frame: 469, h_flip: false }] },
     },
     acro_bunny_hop_back_wheel: {
-      south: { anim_cmd_symbol: 'anim_acro_bunny_hop_back_south', frames: [{ duration: 2, frame: 460, h_flip: false }] },
-      north: { anim_cmd_symbol: 'anim_acro_bunny_hop_back_north', frames: [{ duration: 2, frame: 461, h_flip: false }] },
-      west: { anim_cmd_symbol: 'anim_acro_bunny_hop_back_west', frames: [{ duration: 2, frame: 462, h_flip: false }] },
-      east: { anim_cmd_symbol: 'anim_acro_bunny_hop_back_east', frames: [{ duration: 2, frame: 463, h_flip: false }] },
+      south: {
+        anim_cmd_symbol: 'anim_acro_bunny_hop_back_south',
+        loop_mode: 'end_hold',
+        frames: [
+          { duration: 4, frame: 460, h_flip: false },
+          { duration: 4, frame: 461, h_flip: false },
+          { duration: 4, frame: 462, h_flip: false },
+          { duration: 4, frame: 463, h_flip: false },
+        ],
+      },
+      north: {
+        anim_cmd_symbol: 'anim_acro_bunny_hop_back_north',
+        loop_mode: 'end_hold',
+        frames: [
+          { duration: 4, frame: 460, h_flip: false },
+          { duration: 4, frame: 461, h_flip: false },
+          { duration: 4, frame: 462, h_flip: false },
+          { duration: 4, frame: 463, h_flip: false },
+        ],
+      },
+      west: {
+        anim_cmd_symbol: 'anim_acro_bunny_hop_back_west',
+        loop_mode: 'end_hold',
+        frames: [
+          { duration: 4, frame: 460, h_flip: false },
+          { duration: 4, frame: 461, h_flip: false },
+          { duration: 4, frame: 462, h_flip: false },
+          { duration: 4, frame: 463, h_flip: false },
+        ],
+      },
+      east: {
+        anim_cmd_symbol: 'anim_acro_bunny_hop_back_east',
+        loop_mode: 'end_hold',
+        frames: [
+          { duration: 4, frame: 460, h_flip: false },
+          { duration: 4, frame: 461, h_flip: false },
+          { duration: 4, frame: 462, h_flip: false },
+          { duration: 4, frame: 463, h_flip: false },
+        ],
+      },
     },
     acro_ledge_hop_back_wheel: {
       south: { anim_cmd_symbol: 'anim_acro_ledge_hop_back_south', frames: [{ duration: 2, frame: 474, h_flip: false }] },
@@ -641,10 +749,42 @@ function makeMockAssets(): PlayerAnimationAssets {
       east: { anim_cmd_symbol: 'anim_acro_wheelie_face_east', frames: [{ duration: 2, frame: 443, h_flip: false }] },
     },
     acro_pop_wheelie_stationary: {
-      south: { anim_cmd_symbol: 'anim_acro_pop_wheelie_stationary_south', frames: [{ duration: 2, frame: 488, h_flip: false }] },
-      north: { anim_cmd_symbol: 'anim_acro_pop_wheelie_stationary_north', frames: [{ duration: 2, frame: 489, h_flip: false }] },
-      west: { anim_cmd_symbol: 'anim_acro_pop_wheelie_stationary_west', frames: [{ duration: 2, frame: 490, h_flip: false }] },
-      east: { anim_cmd_symbol: 'anim_acro_pop_wheelie_stationary_east', frames: [{ duration: 2, frame: 491, h_flip: false }] },
+      south: {
+        anim_cmd_symbol: 'anim_acro_pop_wheelie_stationary_south',
+        loop_mode: 'end_hold',
+        frames: [
+          { duration: 2, frame: 488, h_flip: false },
+          { duration: 2, frame: 489, h_flip: false },
+          { duration: 2, frame: 490, h_flip: false },
+        ],
+      },
+      north: {
+        anim_cmd_symbol: 'anim_acro_pop_wheelie_stationary_north',
+        loop_mode: 'end_hold',
+        frames: [
+          { duration: 2, frame: 488, h_flip: false },
+          { duration: 2, frame: 489, h_flip: false },
+          { duration: 2, frame: 490, h_flip: false },
+        ],
+      },
+      west: {
+        anim_cmd_symbol: 'anim_acro_pop_wheelie_stationary_west',
+        loop_mode: 'end_hold',
+        frames: [
+          { duration: 2, frame: 488, h_flip: false },
+          { duration: 2, frame: 489, h_flip: false },
+          { duration: 2, frame: 490, h_flip: false },
+        ],
+      },
+      east: {
+        anim_cmd_symbol: 'anim_acro_pop_wheelie_stationary_east',
+        loop_mode: 'end_hold',
+        frames: [
+          { duration: 2, frame: 488, h_flip: false },
+          { duration: 2, frame: 489, h_flip: false },
+          { duration: 2, frame: 490, h_flip: false },
+        ],
+      },
     },
     acro_pop_wheelie_moving: {
       south: { anim_cmd_symbol: 'anim_acro_pop_wheelie_moving_south', frames: [{ duration: 2, frame: 492, h_flip: false }] },
