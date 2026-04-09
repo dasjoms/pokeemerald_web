@@ -208,6 +208,15 @@ type PlayersManifestFile = {
   }>;
 };
 
+type MapTileRenderPriorityContext = {
+  metatileGlobalId: number;
+  metatileLocalId: number;
+  metatileLayerType: number | undefined;
+  behaviorId: number;
+  layer0SubtileMask: number;
+  layer1SubtileMask: number;
+};
+
 const TILE_SIZE = 16;
 const SUBTILE_SIZE = 8;
 const RENDER_SCALE = 4;
@@ -216,6 +225,10 @@ const ENABLE_CLIENT_PREDICTION =
   new URLSearchParams(window.location.search).get('predict') === '1';
 const ENABLE_DEBUG_OVERLAY_DEFAULT =
   new URLSearchParams(window.location.search).get('debug') === '1';
+const MB_DEEP_SAND = 6;
+const MB_SAND = 33;
+const MB_ASHGRASS = 36;
+const MB_FOOTPRINTS = 37;
 
 const jsonAssetLoaders = import.meta.glob('../../assets/**/*.json');
 const binaryAssetUrls = import.meta.glob('../../assets/**/*.bin', {
@@ -339,7 +352,7 @@ playerSprite.anchor.set(
 );
 actorBetweenBg2Bg1Layer.addChild(playerSprite);
 let playerActiveActorLayer = actorBetweenBg2Bg1Layer;
-let activeMapMetatileLayerTypes: (number | undefined)[] = [];
+let activeMapTileRenderPriorityContexts: (MapTileRenderPriorityContext | undefined)[] = [];
 
 app.ticker.add(() => {
   tickWalkTransition(app.ticker.deltaMS);
@@ -604,7 +617,7 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
   activeTextureCache = textureCache;
   activeIndexedAtlasPages = indexedAtlasPages;
   activeTilesetAnimationPairId = renderAssets.pair_id;
-  activeMapMetatileLayerTypes = new Array(runtimeChunk.width * runtimeChunk.height);
+  activeMapTileRenderPriorityContexts = new Array(runtimeChunk.width * runtimeChunk.height);
 
   const primaryPage = atlas.pages[0];
   if (!primaryPage) {
@@ -708,7 +721,24 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
       if (!metatile) {
         continue;
       }
-      activeMapMetatileLayerTypes[y * runtimeChunk.width + x] = metatile.layer_type;
+      let layer0SubtileMask = 0;
+      let layer1SubtileMask = 0;
+      for (const subtile of metatile.subtiles) {
+        const subtileBit = 1 << (subtile.subtile_index & 0b11);
+        if (subtile.layer === 0) {
+          layer0SubtileMask |= subtileBit;
+        } else if (subtile.layer === 1) {
+          layer1SubtileMask |= subtileBit;
+        }
+      }
+      activeMapTileRenderPriorityContexts[y * runtimeChunk.width + x] = {
+        metatileGlobalId: tile.metatile_id,
+        metatileLocalId: metatile.metatile_index,
+        metatileLayerType: metatile.layer_type,
+        behaviorId: tile.behavior_id,
+        layer0SubtileMask,
+        layer1SubtileMask,
+      };
 
       const sourcePalettes = isPrimaryMetatile ? primaryPalettes : secondaryPalettes;
       const sortedSubtiles = [...metatile.subtiles].sort((a, b) => a.layer_order - b.layer_order);
@@ -1367,7 +1397,9 @@ function positionPlayerSprite(): void {
 }
 
 function updatePlayerActorLayer(): void {
-  const resolvedLayer = resolveActorLayerForPlayer();
+  const tileX = Math.round(state.renderTileX);
+  const tileY = Math.round(state.renderTileY);
+  const resolvedLayer = resolveActorLayerForPlayer(tileX, tileY);
   if (resolvedLayer === playerActiveActorLayer) {
     return;
   }
@@ -1377,18 +1409,51 @@ function updatePlayerActorLayer(): void {
   playerActiveActorLayer = resolvedLayer;
 }
 
-function resolveActorLayerForPlayer(): Container {
-  const tileX = Math.round(state.renderTileX);
-  const tileY = Math.round(state.renderTileY);
+function resolveActorLayerForPlayer(tileX: number, tileY: number): Container {
   if (tileX < 0 || tileY < 0 || tileX >= state.mapWidth || tileY >= state.mapHeight) {
     return actorBetweenBg2Bg1Layer;
   }
 
-  const layerType = activeMapMetatileLayerTypes[tileY * state.mapWidth + tileX];
-  if (layerType === MetatileLayerType.COVERED) {
+  const tileContext = activeMapTileRenderPriorityContexts[tileY * state.mapWidth + tileX];
+  const actorStratum = resolvePlayerRenderPriorityAtTile(tileContext);
+  if (actorStratum === 'below-bg2') {
     return actorBelowBg2Layer;
   }
   return actorBetweenBg2Bg1Layer;
+}
+
+function resolvePlayerRenderPriorityAtTile(
+  tileContext: MapTileRenderPriorityContext | undefined,
+): 'below-bg2' | 'between-bg2-bg1' {
+  if (!tileContext) {
+    return 'between-bg2-bg1';
+  }
+
+  if (tileContext.metatileLayerType !== MetatileLayerType.COVERED) {
+    return 'between-bg2-bg1';
+  }
+
+  if (isCoveredDecorativeOverlay(tileContext)) {
+    return 'between-bg2-bg1';
+  }
+
+  return 'below-bg2';
+}
+
+function isCoveredDecorativeOverlay(tileContext: MapTileRenderPriorityContext): boolean {
+  if (tileContext.layer1SubtileMask === 0) {
+    return false;
+  }
+
+  switch (tileContext.behaviorId) {
+    case MB_DEEP_SAND:
+    case MB_SAND:
+    case MB_ASHGRASS:
+    case MB_FOOTPRINTS:
+      return true;
+    default:
+      return false;
+  }
 }
 
 function presentPlayerAnimationFrame(): void {
