@@ -228,9 +228,11 @@ type MapTileRenderPriorityContext = {
 type WalkInputController = {
   handleKeyDown: (event: KeyboardEvent) => void;
   handleKeyUp: (event: KeyboardEvent) => void;
+  toggleMovementMode: () => void;
   tick: () => void;
   markWalkResultReceived: (result: WalkResult) => void;
   markWalkTransitionCompleted: () => void;
+  getMovementMode: () => MovementMode;
   reset: () => void;
 };
 
@@ -287,7 +289,6 @@ const pendingPredictedInputs = new Map<number, Direction>();
 let hasLoggedPrimaryTileCountMismatch = false;
 let socket: WebSocket | null = null;
 let debugOverlayEnabled = ENABLE_DEBUG_OVERLAY_DEFAULT;
-let preferredMovementMode: MovementMode = MovementMode.WALK;
 const indexedAtlasPageCache = new Map<string, IndexedAtlasPages>();
 const metatileTextureCaches = new Map<string, MetatileTextureCache>();
 const tilesetAnimationStates = new Map<string, TilesetAnimationState>();
@@ -314,6 +315,7 @@ const hud = {
   mapId: document.querySelector<HTMLElement>('[data-hud="mapId"]'),
   tile: document.querySelector<HTMLElement>('[data-hud="tile"]'),
   facing: document.querySelector<HTMLElement>('[data-hud="facing"]'),
+  movementMode: document.querySelector<HTMLElement>('[data-hud="movementMode"]'),
   inputSeq: document.querySelector<HTMLElement>('[data-hud="inputSeq"]'),
   serverTick: document.querySelector<HTMLElement>('[data-hud="serverTick"]'),
   animId: document.querySelector<HTMLElement>('[data-hud="animId"]'),
@@ -1194,15 +1196,17 @@ function bindWalkInput(): void {
       debugOverlayLayer.visible = debugOverlayEnabled;
       return;
     }
-    if (event.key === 'Shift') {
-      preferredMovementMode = MovementMode.RUN;
+    if (event.key === 'b' || event.key === 'B') {
+      event.preventDefault();
+      if (event.repeat) {
+        return;
+      }
+      walkInputController.toggleMovementMode();
+      return;
     }
     walkInputController.handleKeyDown(event);
   });
   window.addEventListener('keyup', (event) => {
-    if (event.key === 'Shift') {
-      preferredMovementMode = MovementMode.WALK;
-    }
     walkInputController.handleKeyUp(event);
   });
 }
@@ -1230,14 +1234,14 @@ function keyToDirection(key: string): Direction | null {
   }
 }
 
-function sendWalkInput(direction: Direction): void {
+function sendWalkInput(direction: Direction, movementMode: MovementMode): void {
   if (!socket || socket.readyState !== WebSocket.OPEN) {
     return;
   }
 
   const inputSeq = state.lastInputSeq;
   state.lastInputSeq += 1;
-  socket.send(encodeWalkInput(direction, preferredMovementMode, inputSeq, BigInt(Date.now())));
+  socket.send(encodeWalkInput(direction, movementMode, inputSeq, BigInt(Date.now())));
 
   if (ENABLE_CLIENT_PREDICTION) {
     applyPredictedWalk(direction, inputSeq);
@@ -1245,7 +1249,7 @@ function sendWalkInput(direction: Direction): void {
 }
 
 function createWalkInputController(config: {
-  sendWalkInput: (direction: Direction) => void;
+  sendWalkInput: (direction: Direction, movementMode: MovementMode) => void;
   isMovementLocked: () => boolean;
   onFacingIntent: (direction: Direction) => void;
 }): WalkInputController {
@@ -1255,6 +1259,7 @@ function createWalkInputController(config: {
   let activeIntent: Direction | null = null;
   let bufferedIntent: Direction | null = null;
   let hasPendingWalkRequest = false;
+  let movementMode: MovementMode = MovementMode.WALK;
 
   const removeDirectionFromOrder = (direction: Direction): void => {
     const index = directionOrder.indexOf(direction);
@@ -1289,7 +1294,7 @@ function createWalkInputController(config: {
 
   const sendIntent = (direction: Direction): void => {
     config.onFacingIntent(direction);
-    config.sendWalkInput(direction);
+    config.sendWalkInput(direction, movementMode);
     activeIntent = direction;
     hasPendingWalkRequest = true;
   };
@@ -1354,6 +1359,10 @@ function createWalkInputController(config: {
 
       maybeDispatchIntent(performance.now());
     },
+    toggleMovementMode(): void {
+      movementMode =
+        movementMode === MovementMode.WALK ? MovementMode.RUN : MovementMode.WALK;
+    },
     handleKeyUp(event: KeyboardEvent): void {
       const direction = keyToDirection(event.key);
       if (direction === null) {
@@ -1382,10 +1391,14 @@ function createWalkInputController(config: {
       activeIntent = null;
       maybeDispatchIntent(performance.now());
     },
+    getMovementMode(): MovementMode {
+      return movementMode;
+    },
     reset(): void {
       hasPendingWalkRequest = false;
       activeIntent = null;
       bufferedIntent = null;
+      movementMode = MovementMode.WALK;
       heldDirections.clear();
       heldDirectionPressedAtMs.clear();
       directionOrder.length = 0;
@@ -1664,6 +1677,8 @@ function renderHud(): void {
   hud.mapId && (hud.mapId.textContent = `${state.mapId}`);
   hud.tile && (hud.tile.textContent = `${state.playerTileX}, ${state.playerTileY}`);
   hud.facing && (hud.facing.textContent = Direction[state.facing]);
+  hud.movementMode &&
+    (hud.movementMode.textContent = MovementMode[walkInputController.getMovementMode()]);
   hud.inputSeq && (hud.inputSeq.textContent = `${Math.max(0, state.lastInputSeq - 1)}`);
   hud.serverTick && (hud.serverTick.textContent = `${state.lastAckServerTick}`);
 
