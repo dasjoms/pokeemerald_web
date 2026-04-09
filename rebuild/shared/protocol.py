@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from enum import IntEnum
 import struct
 
-PROTOCOL_VERSION = 8
+PROTOCOL_VERSION = 9
 
 _HEADER = struct.Struct("<HBI")  # protocol_version, message_type, payload_len
 _U8 = struct.Struct("<B")
@@ -30,6 +30,7 @@ class MessageType(IntEnum):
     WALK_INPUT = 0x02
     PLAYER_ACTION_INPUT = 0x03
     DEBUG_TRAVERSAL_INPUT = 0x04
+    HELD_INPUT_STATE = 0x05
 
     # Server -> Client
     SESSION_ACCEPTED = 0x81
@@ -145,6 +146,14 @@ class WalkInput:
 
 
 @dataclass(frozen=True)
+class HeldInputState:
+    held_direction: Direction | None
+    held_buttons: int
+    input_seq: int
+    client_time: int
+
+
+@dataclass(frozen=True)
 class DebugTraversalInput:
     action: DebugTraversalAction
 
@@ -206,6 +215,7 @@ class WorldDelta:
 WireMessage = (
     JoinSession
     | WalkInput
+    | HeldInputState
     | PlayerActionInput
     | DebugTraversalInput
     | SessionAccepted
@@ -249,6 +259,18 @@ def _encode_payload(message: WireMessage) -> tuple[MessageType, bytes]:
             [
                 _U8.pack(int(message.direction)),
                 _U8.pack(int(message.movement_mode)),
+                _U8.pack(message.held_buttons),
+                _U32.pack(message.input_seq),
+                _U64.pack(message.client_time),
+            ]
+        )
+
+    if isinstance(message, HeldInputState):
+        has_direction = message.held_direction is not None
+        return MessageType.HELD_INPUT_STATE, b"".join(
+            [
+                _U8.pack(1 if has_direction else 0),
+                _U8.pack(int(message.held_direction or Direction.UP)),
                 _U8.pack(message.held_buttons),
                 _U32.pack(message.input_seq),
                 _U64.pack(message.client_time),
@@ -350,6 +372,20 @@ def _decode_payload(message_type: MessageType, payload: bytes) -> WireMessage:
         return WalkInput(
             direction=Direction(direction),
             movement_mode=MovementMode(movement_mode),
+            held_buttons=held_buttons,
+            input_seq=input_seq,
+            client_time=client_time,
+        )
+
+    if message_type is MessageType.HELD_INPUT_STATE:
+        has_direction, offset = _unpack_u8(payload, offset)
+        direction, offset = _unpack_u8(payload, offset)
+        held_buttons, offset = _unpack_u8(payload, offset)
+        input_seq, offset = _unpack_u32(payload, offset)
+        client_time, offset = _unpack_u64(payload, offset)
+        _ensure_done(payload, offset)
+        return HeldInputState(
+            held_direction=Direction(direction) if has_direction != 0 else None,
             held_buttons=held_buttons,
             input_seq=input_seq,
             client_time=client_time,

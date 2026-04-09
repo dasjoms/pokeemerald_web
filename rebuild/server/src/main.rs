@@ -177,6 +177,19 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                         );
                     }
                 }
+                Ok(ClientMessage::HeldInputState(input)) => {
+                    if let Err(err) = state
+                        .world
+                        .enqueue_held_input_state(session.connection_id, input)
+                        .await
+                    {
+                        warn!(
+                            ?err,
+                            connection_id = session.connection_id,
+                            "failed to apply held input state"
+                        );
+                    }
+                }
                 Ok(ClientMessage::PlayerActionInput(input)) => {
                     if let Err(err) = state
                         .world

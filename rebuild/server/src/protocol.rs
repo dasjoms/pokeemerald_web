@@ -3,9 +3,9 @@ mod protocol_generated;
 
 pub use protocol_generated::{
     AcroBikeSubstate, BikeTransitionType, DebugTraversalAction, DebugTraversalInput, Direction,
-    HeldButtons, JoinSession, MessageType, MovementMode, PlayerAction, PlayerActionInput,
-    PlayerAvatar, Position, RejectionReason, SessionAccepted, StepSpeed, TraversalState, WalkInput,
-    WalkResult, WorldDelta, WorldSnapshot, PROTOCOL_VERSION,
+    HeldButtons, HeldInputState, JoinSession, MessageType, MovementMode, PlayerAction,
+    PlayerActionInput, PlayerAvatar, Position, RejectionReason, SessionAccepted, StepSpeed,
+    TraversalState, WalkInput, WalkResult, WorldDelta, WorldSnapshot, PROTOCOL_VERSION,
 };
 pub type Facing = Direction;
 
@@ -13,6 +13,7 @@ pub type Facing = Direction;
 pub enum ClientMessage {
     JoinSession(JoinSession),
     WalkInput(WalkInput),
+    HeldInputState(HeldInputState),
     PlayerActionInput(PlayerActionInput),
     DebugTraversalInput(DebugTraversalInput),
     WalkInputInvalidDirection { input_seq: u32, client_time: u64 },
@@ -180,6 +181,25 @@ pub fn decode_client_message(frame: &[u8]) -> Result<ClientMessage, ProtocolErro
                     client_time,
                 }),
             }
+        }
+        x if x == MessageType::HeldInputState as u8 => {
+            let (has_direction, offset) = unpack_u8(payload, 0)?;
+            let (raw_direction, offset) = unpack_u8(payload, offset)?;
+            let (held_buttons, offset) = unpack_u8(payload, offset)?;
+            let (input_seq, offset) = unpack_u32(payload, offset)?;
+            let (client_time, offset) = unpack_u64(payload, offset)?;
+            ensure_done(payload, offset)?;
+            let held_direction = if has_direction == 0 {
+                None
+            } else {
+                Some(decode_direction(raw_direction)?)
+            };
+            Ok(ClientMessage::HeldInputState(HeldInputState {
+                held_direction,
+                held_buttons,
+                input_seq,
+                client_time,
+            }))
         }
         x if x == MessageType::DebugTraversalInput as u8 => {
             let (action, offset) = unpack_u8(payload, 0)?;

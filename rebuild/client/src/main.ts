@@ -45,7 +45,12 @@ import {
   type WalkTransitionMutableState,
 } from './walkTransitionPipeline';
 import { BikeEffectRenderer } from './bikeEffectRenderer';
-import { createWalkInputController, encodeWalkInput, type WalkInputController } from './input';
+import {
+  createWalkInputController,
+  encodeHeldInputState,
+  encodeWalkInput,
+  type WalkInputController,
+} from './input';
 import {
   buildLayerSubtileOccupancy,
   resolvePlayerLayerSampleTile,
@@ -162,6 +167,7 @@ type ClientWorldState = {
   acroSubstate?: AcroBikeSubstate;
   bikeTransition?: BikeTransitionType;
   lastInputSeq: number;
+  lastHeldInputSeq: number;
   lastAckServerTick: number;
   renderTileX: number;
   renderTileY: number;
@@ -276,6 +282,7 @@ const state: ClientWorldState = {
   traversalState: TraversalState.ON_FOOT,
   preferredBikeType: TraversalState.MACH_BIKE,
   lastInputSeq: 0,
+  lastHeldInputSeq: 0,
   lastAckServerTick: 0,
   renderTileX: 0,
   renderTileY: 0,
@@ -366,6 +373,7 @@ let playerAnimationAssets = await loadPlayerAnimationAssets({
 let playerAnimation = new PlayerAnimationController(playerAnimationAssets);
 const walkInputController = createWalkInputController({
   sendWalkInput,
+  sendHeldInputState,
   isMovementLocked: () => false,
   onFacingIntent: (direction) => {
     state.facing = direction;
@@ -1364,6 +1372,18 @@ function sendWalkInput(
   if (ENABLE_CLIENT_PREDICTION) {
     applyPredictedWalk(direction, inputSeq, movementMode);
   }
+}
+
+function sendHeldInputState(heldDirection: Direction | null, heldButtons: number): void {
+  if (!socket || socket.readyState !== WebSocket.OPEN) {
+    return;
+  }
+
+  const inputSeq = state.lastHeldInputSeq;
+  state.lastHeldInputSeq += 1;
+  socket.send(
+    encodeHeldInputState(heldDirection, heldButtons, inputSeq, BigInt(Date.now())),
+  );
 }
 
 function encodeJoinSession(playerId: string): Uint8Array {

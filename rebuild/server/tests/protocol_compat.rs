@@ -2,7 +2,8 @@ use std::process::Command;
 
 use rebuild_server::protocol::{
     decode_client_message, encode_server_message, BikeTransitionType, ClientMessage, Direction,
-    MovementMode, Position, RejectionReason, ServerMessage, TraversalState, WalkResult,
+    HeldInputState, MovementMode, Position, RejectionReason, ServerMessage, TraversalState,
+    WalkResult,
 };
 
 #[test]
@@ -84,6 +85,31 @@ fn rejection_reason_enum_values_match_shared_schema() {
 }
 
 #[test]
+fn shared_held_input_state_decodes_in_server_runtime() {
+    let output = Command::new("python3")
+        .args([
+            "-c",
+            r#"import pathlib, sys; sys.path.insert(0, str(pathlib.Path('../shared').resolve())); import protocol; frame=protocol.encode_message(protocol.HeldInputState(held_direction=None,held_buttons=protocol.HeldButtons.B,input_seq=17,client_time=1337)); print(frame.hex())"#,
+        ])
+        .output()
+        .expect("python must run");
+    assert!(output.status.success(), "python encoding failed");
+    let hex = String::from_utf8(output.stdout).expect("utf8");
+    let frame = hex::decode(hex.trim()).expect("hex decode");
+
+    let decoded = decode_client_message(&frame).expect("decode held input state");
+    assert_eq!(
+        decoded,
+        ClientMessage::HeldInputState(HeldInputState {
+            held_direction: None,
+            held_buttons: 1,
+            input_seq: 17,
+            client_time: 1337,
+        })
+    );
+}
+
+#[test]
 fn walk_result_wire_encoding_with_forced_movement_disabled_is_canonical() {
     let frame = encode_server_message(&ServerMessage::WalkResult(WalkResult {
         input_seq: 0x0102_0304,
@@ -107,7 +133,7 @@ fn walk_result_wire_encoding_with_forced_movement_disabled_is_canonical() {
 
     assert_eq!(
         hex::encode(&frame),
-        "0800831400000004030201002211443302060d0c0b0a0000040000"
+        "0900831400000004030201002211443302060d0c0b0a0000040000"
     );
 
     let status = Command::new("python3")

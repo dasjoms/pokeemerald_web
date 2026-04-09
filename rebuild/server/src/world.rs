@@ -22,9 +22,9 @@ use crate::{
     },
     protocol::{
         AcroBikeSubstate, BikeTransitionType, DebugTraversalAction, DebugTraversalInput, Direction,
-        MovementMode, PlayerAction, PlayerActionInput, PlayerAvatar, RejectionReason,
-        ServerMessage, SessionAccepted, StepSpeed, TraversalState, WalkInput, WalkResult,
-        WorldSnapshot,
+        HeldInputState, MovementMode, PlayerAction, PlayerActionInput, PlayerAvatar,
+        RejectionReason, ServerMessage, SessionAccepted, StepSpeed, TraversalState, WalkInput,
+        WalkResult, WorldSnapshot,
     },
     session::{
         ActiveWalkTransition, BikeRuntimeState, CrackedFloorRuntimeState, PlayerState, Session,
@@ -265,9 +265,36 @@ impl World {
         }
 
         session.next_expected_input_seq = session.next_expected_input_seq.saturating_add(1);
-        session.held_direction = Some(input.direction);
-        session.held_buttons = input.held_buttons;
         session.enqueue_walk_input(input);
+        Ok(())
+    }
+
+    pub async fn enqueue_held_input_state(
+        &self,
+        connection_id: u64,
+        input: HeldInputState,
+    ) -> anyhow::Result<()> {
+        let mut sessions = self.sessions.write().await;
+        let session = sessions
+            .get_mut(&connection_id)
+            .ok_or_else(|| anyhow!("unknown session {connection_id}"))?;
+
+        if !session.joined {
+            return Ok(());
+        }
+
+        if input.input_seq < session.next_expected_held_input_seq {
+            trace!(
+                connection_id,
+                expected_seq = session.next_expected_held_input_seq,
+                received_seq = input.input_seq,
+                "dropping stale held input state"
+            );
+            return Ok(());
+        }
+
+        session.next_expected_held_input_seq = input.input_seq.saturating_add(1);
+        session.apply_held_input_state(input);
         Ok(())
     }
 
@@ -1656,6 +1683,33 @@ mod tests {
         assert_eq!(
             player.bike_runtime.acro_runtime.state,
             AcroState::WheelieStanding
+        );
+    }
+
+    #[test]
+    fn neutral_b_hold_transitions_to_wheelie_then_bunny_hop_without_step_request() {
+        let mut player = test_player_state();
+        player.traversal_state = TraversalState::AcroBike;
+        player.facing = Direction::Right;
+
+        update_bike_runtime_per_tick(&mut player, None, crate::protocol::HeldButtons::B as u8);
+        assert_eq!(
+            player.bike_runtime.acro_runtime.state,
+            AcroState::WheelieStanding
+        );
+        assert_eq!(
+            player.bike_runtime.last_transition,
+            BikeTransitionType::NormalToWheelie
+        );
+
+        for _ in 0..40 {
+            update_bike_runtime_per_tick(&mut player, None, crate::protocol::HeldButtons::B as u8);
+        }
+
+        assert_eq!(player.bike_runtime.acro_runtime.state, AcroState::BunnyHop);
+        assert_eq!(
+            player.bike_runtime.last_transition,
+            BikeTransitionType::WheelieHoppingStanding
         );
     }
 
