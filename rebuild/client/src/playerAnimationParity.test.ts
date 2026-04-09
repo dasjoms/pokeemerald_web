@@ -43,7 +43,17 @@ type PlayerAnimationAssets = {
   paletteColors: string[];
   reflectionPaletteColors: string[] | null;
   reflectionPaletteSourcePath: string | null;
-  directionalBindings: Record<string, Record<string, { anim_cmd_symbol: string; frames: Array<{ duration: number; frame: number; h_flip: boolean }> }> >;
+  animationSets: Record<
+    string,
+    {
+      anim_table_symbol: string;
+      actions: Record<
+        string,
+        Record<string, { action_id?: string; anim_cmd_symbol: string; frames: Array<{ duration: number; frame: number; h_flip: boolean }> }>
+        
+      >;
+    }
+  >;
   frameTextures: Map<number, unknown>;
 };
 
@@ -264,7 +274,33 @@ function makeMockAssets(): PlayerAnimationAssets {
     paletteColors: [],
     reflectionPaletteColors: null,
     reflectionPaletteSourcePath: null,
-    directionalBindings: animation_bindings,
+    animationSets: {
+      on_foot: {
+        anim_table_symbol: 'sAnimTable_BrendanMayNormal',
+        actions: animation_bindings,
+      },
+      mach_bike: {
+        anim_table_symbol: 'sAnimTable_Standard',
+        actions: {
+          face: {
+            south: { action_id: 'face', anim_cmd_symbol: 'anim_face_south', frames: [{ duration: 16, frame: 100, h_flip: false }] },
+            north: { action_id: 'face', anim_cmd_symbol: 'anim_face_north', frames: [{ duration: 16, frame: 101, h_flip: false }] },
+            west: { action_id: 'face', anim_cmd_symbol: 'anim_face_west', frames: [{ duration: 16, frame: 102, h_flip: false }] },
+            east: { action_id: 'face', anim_cmd_symbol: 'anim_face_east', frames: [{ duration: 16, frame: 103, h_flip: false }] },
+          },
+          bike_walk: {
+            south: { action_id: 'bike_walk', anim_cmd_symbol: 'anim_walk_south', frames: [{ duration: 2, frame: 200, h_flip: false }] },
+            north: { action_id: 'bike_walk', anim_cmd_symbol: 'anim_walk_north', frames: [{ duration: 2, frame: 210, h_flip: false }] },
+            west: { action_id: 'bike_walk', anim_cmd_symbol: 'anim_walk_west', frames: [{ duration: 2, frame: 220, h_flip: false }] },
+            east: { action_id: 'bike_walk', anim_cmd_symbol: 'anim_walk_east', frames: [{ duration: 2, frame: 230, h_flip: false }] },
+          },
+        },
+      },
+      acro_bike: {
+        anim_table_symbol: 'sAnimTable_AcroBike',
+        actions: {},
+      },
+    },
     frameTextures,
   };
 }

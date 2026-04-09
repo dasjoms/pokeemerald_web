@@ -1,252 +1,1589 @@
 {
   "avatars": [
     {
-      "animation_bindings": {
-        "face": {
-          "east": {
-            "anim_cmd_symbol": "sAnim_FaceEast",
-            "frames": [
-              {
-                "duration": 16,
-                "frame": 2,
-                "h_flip": true
+      "animation_sets": {
+        "acro_bike": {
+          "actions": {
+            "acro_bunny_hop_back_wheel": {
+              "east": {
+                "action_id": "acro_bunny_hop_back_wheel",
+                "anim_cmd_symbol": "sAnim_BunnyHopBackWheelEast",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 17,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 18,
+                    "h_flip": true
+                  }
+                ]
+              },
+              "north": {
+                "action_id": "acro_bunny_hop_back_wheel",
+                "anim_cmd_symbol": "sAnim_BunnyHopBackWheelNorth",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 13,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 14,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "south": {
+                "action_id": "acro_bunny_hop_back_wheel",
+                "anim_cmd_symbol": "sAnim_BunnyHopBackWheelSouth",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 9,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 10,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "west": {
+                "action_id": "acro_bunny_hop_back_wheel",
+                "anim_cmd_symbol": "sAnim_BunnyHopBackWheelWest",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 17,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 18,
+                    "h_flip": false
+                  }
+                ]
               }
-            ]
+            },
+            "acro_bunny_hop_front_wheel": {
+              "east": {
+                "action_id": "acro_bunny_hop_front_wheel",
+                "anim_cmd_symbol": "sAnim_BunnyHopFrontWheelEast",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 19,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 20,
+                    "h_flip": true
+                  }
+                ]
+              },
+              "north": {
+                "action_id": "acro_bunny_hop_front_wheel",
+                "anim_cmd_symbol": "sAnim_BunnyHopFrontWheelNorth",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 15,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 16,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "south": {
+                "action_id": "acro_bunny_hop_front_wheel",
+                "anim_cmd_symbol": "sAnim_BunnyHopFrontWheelSouth",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 11,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 12,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "west": {
+                "action_id": "acro_bunny_hop_front_wheel",
+                "anim_cmd_symbol": "sAnim_BunnyHopFrontWheelWest",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 19,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 20,
+                    "h_flip": false
+                  }
+                ]
+              }
+            },
+            "acro_moving_wheelie": {
+              "east": {
+                "action_id": "acro_moving_wheelie",
+                "anim_cmd_symbol": "sAnim_MovingWheelieEast",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 25,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 18,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 26,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 18,
+                    "h_flip": true
+                  }
+                ]
+              },
+              "north": {
+                "action_id": "acro_moving_wheelie",
+                "anim_cmd_symbol": "sAnim_MovingWheelieNorth",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 23,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 14,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 24,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 14,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "south": {
+                "action_id": "acro_moving_wheelie",
+                "anim_cmd_symbol": "sAnim_MovingWheelieSouth",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 21,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 10,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 22,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 10,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "west": {
+                "action_id": "acro_moving_wheelie",
+                "anim_cmd_symbol": "sAnim_MovingWheelieWest",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 25,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 18,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 26,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 18,
+                    "h_flip": false
+                  }
+                ]
+              }
+            },
+            "acro_standing_wheelie_back_wheel": {
+              "east": {
+                "action_id": "acro_standing_wheelie_back_wheel",
+                "anim_cmd_symbol": "sAnim_StandingWheelieBackWheelEast",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 17,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 2,
+                    "h_flip": true
+                  }
+                ]
+              },
+              "north": {
+                "action_id": "acro_standing_wheelie_back_wheel",
+                "anim_cmd_symbol": "sAnim_StandingWheelieBackWheelNorth",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 13,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 1,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "south": {
+                "action_id": "acro_standing_wheelie_back_wheel",
+                "anim_cmd_symbol": "sAnim_StandingWheelieBackWheelSouth",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 9,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 0,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "west": {
+                "action_id": "acro_standing_wheelie_back_wheel",
+                "anim_cmd_symbol": "sAnim_StandingWheelieBackWheelWest",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 17,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 2,
+                    "h_flip": false
+                  }
+                ]
+              }
+            },
+            "acro_standing_wheelie_front_wheel": {
+              "east": {
+                "action_id": "acro_standing_wheelie_front_wheel",
+                "anim_cmd_symbol": "sAnim_StandingWheelieFrontWheelEast",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 19,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 2,
+                    "h_flip": true
+                  }
+                ]
+              },
+              "north": {
+                "action_id": "acro_standing_wheelie_front_wheel",
+                "anim_cmd_symbol": "sAnim_StandingWheelieFrontWheelNorth",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 15,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 1,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "south": {
+                "action_id": "acro_standing_wheelie_front_wheel",
+                "anim_cmd_symbol": "sAnim_StandingWheelieFrontWheelSouth",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 11,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 0,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "west": {
+                "action_id": "acro_standing_wheelie_front_wheel",
+                "anim_cmd_symbol": "sAnim_StandingWheelieFrontWheelWest",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 19,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 2,
+                    "h_flip": false
+                  }
+                ]
+              }
+            },
+            "bike_fast": {
+              "east": {
+                "action_id": "bike_fast",
+                "anim_cmd_symbol": "sAnim_GoFastEast",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 7,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 2,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 8,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 2,
+                    "h_flip": true
+                  }
+                ]
+              },
+              "north": {
+                "action_id": "bike_fast",
+                "anim_cmd_symbol": "sAnim_GoFastNorth",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 5,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 1,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 6,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 1,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "south": {
+                "action_id": "bike_fast",
+                "anim_cmd_symbol": "sAnim_GoFastSouth",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 3,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 0,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 4,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 0,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "west": {
+                "action_id": "bike_fast",
+                "anim_cmd_symbol": "sAnim_GoFastWest",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 7,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 2,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 8,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 2,
+                    "h_flip": false
+                  }
+                ]
+              }
+            },
+            "bike_faster": {
+              "east": {
+                "action_id": "bike_faster",
+                "anim_cmd_symbol": "sAnim_GoFasterEast",
+                "frames": [
+                  {
+                    "duration": 2,
+                    "frame": 7,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 2,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 8,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 2,
+                    "h_flip": true
+                  }
+                ]
+              },
+              "north": {
+                "action_id": "bike_faster",
+                "anim_cmd_symbol": "sAnim_GoFasterNorth",
+                "frames": [
+                  {
+                    "duration": 2,
+                    "frame": 5,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 1,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 6,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 1,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "south": {
+                "action_id": "bike_faster",
+                "anim_cmd_symbol": "sAnim_GoFasterSouth",
+                "frames": [
+                  {
+                    "duration": 2,
+                    "frame": 3,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 0,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 4,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 0,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "west": {
+                "action_id": "bike_faster",
+                "anim_cmd_symbol": "sAnim_GoFasterWest",
+                "frames": [
+                  {
+                    "duration": 2,
+                    "frame": 7,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 2,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 8,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 2,
+                    "h_flip": false
+                  }
+                ]
+              }
+            },
+            "bike_fastest": {
+              "east": {
+                "action_id": "bike_fastest",
+                "anim_cmd_symbol": "sAnim_GoFastestEast",
+                "frames": [
+                  {
+                    "duration": 1,
+                    "frame": 7,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 2,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 8,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 2,
+                    "h_flip": true
+                  }
+                ]
+              },
+              "north": {
+                "action_id": "bike_fastest",
+                "anim_cmd_symbol": "sAnim_GoFastestNorth",
+                "frames": [
+                  {
+                    "duration": 1,
+                    "frame": 5,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 1,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 6,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 1,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "south": {
+                "action_id": "bike_fastest",
+                "anim_cmd_symbol": "sAnim_GoFastestSouth",
+                "frames": [
+                  {
+                    "duration": 1,
+                    "frame": 3,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 0,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 4,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 0,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "west": {
+                "action_id": "bike_fastest",
+                "anim_cmd_symbol": "sAnim_GoFastestWest",
+                "frames": [
+                  {
+                    "duration": 1,
+                    "frame": 7,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 2,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 8,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 2,
+                    "h_flip": false
+                  }
+                ]
+              }
+            },
+            "bike_walk": {
+              "east": {
+                "action_id": "bike_walk",
+                "anim_cmd_symbol": "sAnim_GoEast",
+                "frames": [
+                  {
+                    "duration": 8,
+                    "frame": 7,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 2,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 8,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 2,
+                    "h_flip": true
+                  }
+                ]
+              },
+              "north": {
+                "action_id": "bike_walk",
+                "anim_cmd_symbol": "sAnim_GoNorth",
+                "frames": [
+                  {
+                    "duration": 8,
+                    "frame": 5,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 1,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 6,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 1,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "south": {
+                "action_id": "bike_walk",
+                "anim_cmd_symbol": "sAnim_GoSouth",
+                "frames": [
+                  {
+                    "duration": 8,
+                    "frame": 3,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 0,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 4,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 0,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "west": {
+                "action_id": "bike_walk",
+                "anim_cmd_symbol": "sAnim_GoWest",
+                "frames": [
+                  {
+                    "duration": 8,
+                    "frame": 7,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 2,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 8,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 2,
+                    "h_flip": false
+                  }
+                ]
+              }
+            },
+            "face": {
+              "east": {
+                "action_id": "face",
+                "anim_cmd_symbol": "sAnim_FaceEast",
+                "frames": [
+                  {
+                    "duration": 16,
+                    "frame": 2,
+                    "h_flip": true
+                  }
+                ]
+              },
+              "north": {
+                "action_id": "face",
+                "anim_cmd_symbol": "sAnim_FaceNorth",
+                "frames": [
+                  {
+                    "duration": 16,
+                    "frame": 1,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "south": {
+                "action_id": "face",
+                "anim_cmd_symbol": "sAnim_FaceSouth",
+                "frames": [
+                  {
+                    "duration": 16,
+                    "frame": 0,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "west": {
+                "action_id": "face",
+                "anim_cmd_symbol": "sAnim_FaceWest",
+                "frames": [
+                  {
+                    "duration": 16,
+                    "frame": 2,
+                    "h_flip": false
+                  }
+                ]
+              }
+            }
           },
-          "north": {
-            "anim_cmd_symbol": "sAnim_FaceNorth",
-            "frames": [
-              {
-                "duration": 16,
-                "frame": 1,
-                "h_flip": false
-              }
-            ]
-          },
-          "south": {
-            "anim_cmd_symbol": "sAnim_FaceSouth",
-            "frames": [
-              {
-                "duration": 16,
-                "frame": 0,
-                "h_flip": false
-              }
-            ]
-          },
-          "west": {
-            "anim_cmd_symbol": "sAnim_FaceWest",
-            "frames": [
-              {
-                "duration": 16,
-                "frame": 2,
-                "h_flip": false
-              }
-            ]
-          }
+          "anim_table_symbol": "sAnimTable_AcroBike"
         },
-        "run": {
-          "east": {
-            "anim_cmd_symbol": "sAnim_RunEast",
-            "frames": [
-              {
-                "duration": 5,
-                "frame": 16,
-                "h_flip": true
+        "mach_bike": {
+          "actions": {
+            "bike_fast": {
+              "east": {
+                "action_id": "bike_fast",
+                "anim_cmd_symbol": "sAnim_GoFastEast",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 7,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 2,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 8,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 2,
+                    "h_flip": true
+                  }
+                ]
               },
-              {
-                "duration": 3,
-                "frame": 11,
-                "h_flip": true
+              "north": {
+                "action_id": "bike_fast",
+                "anim_cmd_symbol": "sAnim_GoFastNorth",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 5,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 1,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 6,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 1,
+                    "h_flip": false
+                  }
+                ]
               },
-              {
-                "duration": 5,
-                "frame": 17,
-                "h_flip": true
+              "south": {
+                "action_id": "bike_fast",
+                "anim_cmd_symbol": "sAnim_GoFastSouth",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 3,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 0,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 4,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 0,
+                    "h_flip": false
+                  }
+                ]
               },
-              {
-                "duration": 3,
-                "frame": 11,
-                "h_flip": true
+              "west": {
+                "action_id": "bike_fast",
+                "anim_cmd_symbol": "sAnim_GoFastWest",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 7,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 2,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 8,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 2,
+                    "h_flip": false
+                  }
+                ]
               }
-            ]
+            },
+            "bike_faster": {
+              "east": {
+                "action_id": "bike_faster",
+                "anim_cmd_symbol": "sAnim_GoFasterEast",
+                "frames": [
+                  {
+                    "duration": 2,
+                    "frame": 7,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 2,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 8,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 2,
+                    "h_flip": true
+                  }
+                ]
+              },
+              "north": {
+                "action_id": "bike_faster",
+                "anim_cmd_symbol": "sAnim_GoFasterNorth",
+                "frames": [
+                  {
+                    "duration": 2,
+                    "frame": 5,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 1,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 6,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 1,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "south": {
+                "action_id": "bike_faster",
+                "anim_cmd_symbol": "sAnim_GoFasterSouth",
+                "frames": [
+                  {
+                    "duration": 2,
+                    "frame": 3,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 0,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 4,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 0,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "west": {
+                "action_id": "bike_faster",
+                "anim_cmd_symbol": "sAnim_GoFasterWest",
+                "frames": [
+                  {
+                    "duration": 2,
+                    "frame": 7,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 2,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 8,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 2,
+                    "h_flip": false
+                  }
+                ]
+              }
+            },
+            "bike_fastest": {
+              "east": {
+                "action_id": "bike_fastest",
+                "anim_cmd_symbol": "sAnim_GoFastestEast",
+                "frames": [
+                  {
+                    "duration": 1,
+                    "frame": 7,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 2,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 8,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 2,
+                    "h_flip": true
+                  }
+                ]
+              },
+              "north": {
+                "action_id": "bike_fastest",
+                "anim_cmd_symbol": "sAnim_GoFastestNorth",
+                "frames": [
+                  {
+                    "duration": 1,
+                    "frame": 5,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 1,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 6,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 1,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "south": {
+                "action_id": "bike_fastest",
+                "anim_cmd_symbol": "sAnim_GoFastestSouth",
+                "frames": [
+                  {
+                    "duration": 1,
+                    "frame": 3,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 0,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 4,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 0,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "west": {
+                "action_id": "bike_fastest",
+                "anim_cmd_symbol": "sAnim_GoFastestWest",
+                "frames": [
+                  {
+                    "duration": 1,
+                    "frame": 7,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 2,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 8,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 2,
+                    "h_flip": false
+                  }
+                ]
+              }
+            },
+            "bike_walk": {
+              "east": {
+                "action_id": "bike_walk",
+                "anim_cmd_symbol": "sAnim_GoEast",
+                "frames": [
+                  {
+                    "duration": 8,
+                    "frame": 7,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 2,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 8,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 2,
+                    "h_flip": true
+                  }
+                ]
+              },
+              "north": {
+                "action_id": "bike_walk",
+                "anim_cmd_symbol": "sAnim_GoNorth",
+                "frames": [
+                  {
+                    "duration": 8,
+                    "frame": 5,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 1,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 6,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 1,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "south": {
+                "action_id": "bike_walk",
+                "anim_cmd_symbol": "sAnim_GoSouth",
+                "frames": [
+                  {
+                    "duration": 8,
+                    "frame": 3,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 0,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 4,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 0,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "west": {
+                "action_id": "bike_walk",
+                "anim_cmd_symbol": "sAnim_GoWest",
+                "frames": [
+                  {
+                    "duration": 8,
+                    "frame": 7,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 2,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 8,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 2,
+                    "h_flip": false
+                  }
+                ]
+              }
+            },
+            "face": {
+              "east": {
+                "action_id": "face",
+                "anim_cmd_symbol": "sAnim_FaceEast",
+                "frames": [
+                  {
+                    "duration": 16,
+                    "frame": 2,
+                    "h_flip": true
+                  }
+                ]
+              },
+              "north": {
+                "action_id": "face",
+                "anim_cmd_symbol": "sAnim_FaceNorth",
+                "frames": [
+                  {
+                    "duration": 16,
+                    "frame": 1,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "south": {
+                "action_id": "face",
+                "anim_cmd_symbol": "sAnim_FaceSouth",
+                "frames": [
+                  {
+                    "duration": 16,
+                    "frame": 0,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "west": {
+                "action_id": "face",
+                "anim_cmd_symbol": "sAnim_FaceWest",
+                "frames": [
+                  {
+                    "duration": 16,
+                    "frame": 2,
+                    "h_flip": false
+                  }
+                ]
+              }
+            }
           },
-          "north": {
-            "anim_cmd_symbol": "sAnim_RunNorth",
-            "frames": [
-              {
-                "duration": 5,
-                "frame": 14,
-                "h_flip": false
-              },
-              {
-                "duration": 3,
-                "frame": 10,
-                "h_flip": false
-              },
-              {
-                "duration": 5,
-                "frame": 15,
-                "h_flip": false
-              },
-              {
-                "duration": 3,
-                "frame": 10,
-                "h_flip": false
-              }
-            ]
-          },
-          "south": {
-            "anim_cmd_symbol": "sAnim_RunSouth",
-            "frames": [
-              {
-                "duration": 5,
-                "frame": 12,
-                "h_flip": false
-              },
-              {
-                "duration": 3,
-                "frame": 9,
-                "h_flip": false
-              },
-              {
-                "duration": 5,
-                "frame": 13,
-                "h_flip": false
-              },
-              {
-                "duration": 3,
-                "frame": 9,
-                "h_flip": false
-              }
-            ]
-          },
-          "west": {
-            "anim_cmd_symbol": "sAnim_RunWest",
-            "frames": [
-              {
-                "duration": 5,
-                "frame": 16,
-                "h_flip": false
-              },
-              {
-                "duration": 3,
-                "frame": 11,
-                "h_flip": false
-              },
-              {
-                "duration": 5,
-                "frame": 17,
-                "h_flip": false
-              },
-              {
-                "duration": 3,
-                "frame": 11,
-                "h_flip": false
-              }
-            ]
-          }
+          "anim_table_symbol": "sAnimTable_Standard"
         },
-        "walk": {
-          "east": {
-            "anim_cmd_symbol": "sAnim_GoEast",
-            "frames": [
-              {
-                "duration": 8,
-                "frame": 7,
-                "h_flip": true
+        "on_foot": {
+          "actions": {
+            "face": {
+              "east": {
+                "action_id": "face",
+                "anim_cmd_symbol": "sAnim_FaceEast",
+                "frames": [
+                  {
+                    "duration": 16,
+                    "frame": 2,
+                    "h_flip": true
+                  }
+                ]
               },
-              {
-                "duration": 8,
-                "frame": 2,
-                "h_flip": true
+              "north": {
+                "action_id": "face",
+                "anim_cmd_symbol": "sAnim_FaceNorth",
+                "frames": [
+                  {
+                    "duration": 16,
+                    "frame": 1,
+                    "h_flip": false
+                  }
+                ]
               },
-              {
-                "duration": 8,
-                "frame": 8,
-                "h_flip": true
+              "south": {
+                "action_id": "face",
+                "anim_cmd_symbol": "sAnim_FaceSouth",
+                "frames": [
+                  {
+                    "duration": 16,
+                    "frame": 0,
+                    "h_flip": false
+                  }
+                ]
               },
-              {
-                "duration": 8,
-                "frame": 2,
-                "h_flip": true
+              "west": {
+                "action_id": "face",
+                "anim_cmd_symbol": "sAnim_FaceWest",
+                "frames": [
+                  {
+                    "duration": 16,
+                    "frame": 2,
+                    "h_flip": false
+                  }
+                ]
               }
-            ]
+            },
+            "run": {
+              "east": {
+                "action_id": "run",
+                "anim_cmd_symbol": "sAnim_RunEast",
+                "frames": [
+                  {
+                    "duration": 5,
+                    "frame": 16,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 3,
+                    "frame": 11,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 5,
+                    "frame": 17,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 3,
+                    "frame": 11,
+                    "h_flip": true
+                  }
+                ]
+              },
+              "north": {
+                "action_id": "run",
+                "anim_cmd_symbol": "sAnim_RunNorth",
+                "frames": [
+                  {
+                    "duration": 5,
+                    "frame": 14,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 3,
+                    "frame": 10,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 5,
+                    "frame": 15,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 3,
+                    "frame": 10,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "south": {
+                "action_id": "run",
+                "anim_cmd_symbol": "sAnim_RunSouth",
+                "frames": [
+                  {
+                    "duration": 5,
+                    "frame": 12,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 3,
+                    "frame": 9,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 5,
+                    "frame": 13,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 3,
+                    "frame": 9,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "west": {
+                "action_id": "run",
+                "anim_cmd_symbol": "sAnim_RunWest",
+                "frames": [
+                  {
+                    "duration": 5,
+                    "frame": 16,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 3,
+                    "frame": 11,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 5,
+                    "frame": 17,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 3,
+                    "frame": 11,
+                    "h_flip": false
+                  }
+                ]
+              }
+            },
+            "walk": {
+              "east": {
+                "action_id": "walk",
+                "anim_cmd_symbol": "sAnim_GoEast",
+                "frames": [
+                  {
+                    "duration": 8,
+                    "frame": 7,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 2,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 8,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 2,
+                    "h_flip": true
+                  }
+                ]
+              },
+              "north": {
+                "action_id": "walk",
+                "anim_cmd_symbol": "sAnim_GoNorth",
+                "frames": [
+                  {
+                    "duration": 8,
+                    "frame": 5,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 1,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 6,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 1,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "south": {
+                "action_id": "walk",
+                "anim_cmd_symbol": "sAnim_GoSouth",
+                "frames": [
+                  {
+                    "duration": 8,
+                    "frame": 3,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 0,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 4,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 0,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "west": {
+                "action_id": "walk",
+                "anim_cmd_symbol": "sAnim_GoWest",
+                "frames": [
+                  {
+                    "duration": 8,
+                    "frame": 7,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 2,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 8,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 2,
+                    "h_flip": false
+                  }
+                ]
+              }
+            }
           },
-          "north": {
-            "anim_cmd_symbol": "sAnim_GoNorth",
-            "frames": [
-              {
-                "duration": 8,
-                "frame": 5,
-                "h_flip": false
-              },
-              {
-                "duration": 8,
-                "frame": 1,
-                "h_flip": false
-              },
-              {
-                "duration": 8,
-                "frame": 6,
-                "h_flip": false
-              },
-              {
-                "duration": 8,
-                "frame": 1,
-                "h_flip": false
-              }
-            ]
-          },
-          "south": {
-            "anim_cmd_symbol": "sAnim_GoSouth",
-            "frames": [
-              {
-                "duration": 8,
-                "frame": 3,
-                "h_flip": false
-              },
-              {
-                "duration": 8,
-                "frame": 0,
-                "h_flip": false
-              },
-              {
-                "duration": 8,
-                "frame": 4,
-                "h_flip": false
-              },
-              {
-                "duration": 8,
-                "frame": 0,
-                "h_flip": false
-              }
-            ]
-          },
-          "west": {
-            "anim_cmd_symbol": "sAnim_GoWest",
-            "frames": [
-              {
-                "duration": 8,
-                "frame": 7,
-                "h_flip": false
-              },
-              {
-                "duration": 8,
-                "frame": 2,
-                "h_flip": false
-              },
-              {
-                "duration": 8,
-                "frame": 8,
-                "h_flip": false
-              },
-              {
-                "duration": 8,
-                "frame": 2,
-                "h_flip": false
-              }
-            ]
-          }
+          "anim_table_symbol": "sAnimTable_BrendanMayNormal"
         }
       },
       "avatar_id": "brendan",
@@ -361,6 +1698,28 @@
           "sheet_order_index": 8,
           "sheet_symbol": "gObjectEventPic_BrendanRunning"
         },
+        "18": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 0,
+            "y": 0
+          },
+          "sheet_frame_index": 0,
+          "sheet_order_index": 0,
+          "sheet_symbol": "gObjectEventPic_BrendanMachBike"
+        },
+        "19": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 32,
+            "y": 0
+          },
+          "sheet_frame_index": 1,
+          "sheet_order_index": 1,
+          "sheet_symbol": "gObjectEventPic_BrendanMachBike"
+        },
         "2": {
           "rect": {
             "h": 32,
@@ -371,6 +1730,116 @@
           "sheet_frame_index": 2,
           "sheet_order_index": 2,
           "sheet_symbol": "gObjectEventPic_BrendanNormal"
+        },
+        "20": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 64,
+            "y": 0
+          },
+          "sheet_frame_index": 2,
+          "sheet_order_index": 2,
+          "sheet_symbol": "gObjectEventPic_BrendanMachBike"
+        },
+        "21": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 96,
+            "y": 0
+          },
+          "sheet_frame_index": 3,
+          "sheet_order_index": 3,
+          "sheet_symbol": "gObjectEventPic_BrendanMachBike"
+        },
+        "22": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 128,
+            "y": 0
+          },
+          "sheet_frame_index": 4,
+          "sheet_order_index": 4,
+          "sheet_symbol": "gObjectEventPic_BrendanMachBike"
+        },
+        "23": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 160,
+            "y": 0
+          },
+          "sheet_frame_index": 5,
+          "sheet_order_index": 5,
+          "sheet_symbol": "gObjectEventPic_BrendanMachBike"
+        },
+        "24": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 192,
+            "y": 0
+          },
+          "sheet_frame_index": 6,
+          "sheet_order_index": 6,
+          "sheet_symbol": "gObjectEventPic_BrendanMachBike"
+        },
+        "25": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 224,
+            "y": 0
+          },
+          "sheet_frame_index": 7,
+          "sheet_order_index": 7,
+          "sheet_symbol": "gObjectEventPic_BrendanMachBike"
+        },
+        "26": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 256,
+            "y": 0
+          },
+          "sheet_frame_index": 8,
+          "sheet_order_index": 8,
+          "sheet_symbol": "gObjectEventPic_BrendanMachBike"
+        },
+        "27": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 0,
+            "y": 0
+          },
+          "sheet_frame_index": 0,
+          "sheet_order_index": 0,
+          "sheet_symbol": "gObjectEventPic_BrendanAcroBike"
+        },
+        "28": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 32,
+            "y": 0
+          },
+          "sheet_frame_index": 1,
+          "sheet_order_index": 1,
+          "sheet_symbol": "gObjectEventPic_BrendanAcroBike"
+        },
+        "29": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 64,
+            "y": 0
+          },
+          "sheet_frame_index": 2,
+          "sheet_order_index": 2,
+          "sheet_symbol": "gObjectEventPic_BrendanAcroBike"
         },
         "3": {
           "rect": {
@@ -383,6 +1852,116 @@
           "sheet_order_index": 3,
           "sheet_symbol": "gObjectEventPic_BrendanNormal"
         },
+        "30": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 96,
+            "y": 0
+          },
+          "sheet_frame_index": 3,
+          "sheet_order_index": 3,
+          "sheet_symbol": "gObjectEventPic_BrendanAcroBike"
+        },
+        "31": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 128,
+            "y": 0
+          },
+          "sheet_frame_index": 4,
+          "sheet_order_index": 4,
+          "sheet_symbol": "gObjectEventPic_BrendanAcroBike"
+        },
+        "32": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 160,
+            "y": 0
+          },
+          "sheet_frame_index": 5,
+          "sheet_order_index": 5,
+          "sheet_symbol": "gObjectEventPic_BrendanAcroBike"
+        },
+        "33": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 192,
+            "y": 0
+          },
+          "sheet_frame_index": 6,
+          "sheet_order_index": 6,
+          "sheet_symbol": "gObjectEventPic_BrendanAcroBike"
+        },
+        "34": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 224,
+            "y": 0
+          },
+          "sheet_frame_index": 7,
+          "sheet_order_index": 7,
+          "sheet_symbol": "gObjectEventPic_BrendanAcroBike"
+        },
+        "35": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 256,
+            "y": 0
+          },
+          "sheet_frame_index": 8,
+          "sheet_order_index": 8,
+          "sheet_symbol": "gObjectEventPic_BrendanAcroBike"
+        },
+        "36": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 288,
+            "y": 0
+          },
+          "sheet_frame_index": 9,
+          "sheet_order_index": 9,
+          "sheet_symbol": "gObjectEventPic_BrendanAcroBike"
+        },
+        "37": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 320,
+            "y": 0
+          },
+          "sheet_frame_index": 10,
+          "sheet_order_index": 10,
+          "sheet_symbol": "gObjectEventPic_BrendanAcroBike"
+        },
+        "38": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 352,
+            "y": 0
+          },
+          "sheet_frame_index": 11,
+          "sheet_order_index": 11,
+          "sheet_symbol": "gObjectEventPic_BrendanAcroBike"
+        },
+        "39": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 384,
+            "y": 0
+          },
+          "sheet_frame_index": 12,
+          "sheet_order_index": 12,
+          "sheet_symbol": "gObjectEventPic_BrendanAcroBike"
+        },
         "4": {
           "rect": {
             "h": 32,
@@ -394,6 +1973,116 @@
           "sheet_order_index": 4,
           "sheet_symbol": "gObjectEventPic_BrendanNormal"
         },
+        "40": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 416,
+            "y": 0
+          },
+          "sheet_frame_index": 13,
+          "sheet_order_index": 13,
+          "sheet_symbol": "gObjectEventPic_BrendanAcroBike"
+        },
+        "41": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 448,
+            "y": 0
+          },
+          "sheet_frame_index": 14,
+          "sheet_order_index": 14,
+          "sheet_symbol": "gObjectEventPic_BrendanAcroBike"
+        },
+        "42": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 480,
+            "y": 0
+          },
+          "sheet_frame_index": 15,
+          "sheet_order_index": 15,
+          "sheet_symbol": "gObjectEventPic_BrendanAcroBike"
+        },
+        "43": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 512,
+            "y": 0
+          },
+          "sheet_frame_index": 16,
+          "sheet_order_index": 16,
+          "sheet_symbol": "gObjectEventPic_BrendanAcroBike"
+        },
+        "44": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 544,
+            "y": 0
+          },
+          "sheet_frame_index": 17,
+          "sheet_order_index": 17,
+          "sheet_symbol": "gObjectEventPic_BrendanAcroBike"
+        },
+        "45": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 576,
+            "y": 0
+          },
+          "sheet_frame_index": 18,
+          "sheet_order_index": 18,
+          "sheet_symbol": "gObjectEventPic_BrendanAcroBike"
+        },
+        "46": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 608,
+            "y": 0
+          },
+          "sheet_frame_index": 19,
+          "sheet_order_index": 19,
+          "sheet_symbol": "gObjectEventPic_BrendanAcroBike"
+        },
+        "47": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 640,
+            "y": 0
+          },
+          "sheet_frame_index": 20,
+          "sheet_order_index": 20,
+          "sheet_symbol": "gObjectEventPic_BrendanAcroBike"
+        },
+        "48": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 672,
+            "y": 0
+          },
+          "sheet_frame_index": 21,
+          "sheet_order_index": 21,
+          "sheet_symbol": "gObjectEventPic_BrendanAcroBike"
+        },
+        "49": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 704,
+            "y": 0
+          },
+          "sheet_frame_index": 22,
+          "sheet_order_index": 22,
+          "sheet_symbol": "gObjectEventPic_BrendanAcroBike"
+        },
         "5": {
           "rect": {
             "h": 32,
@@ -404,6 +2093,50 @@
           "sheet_frame_index": 5,
           "sheet_order_index": 5,
           "sheet_symbol": "gObjectEventPic_BrendanNormal"
+        },
+        "50": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 736,
+            "y": 0
+          },
+          "sheet_frame_index": 23,
+          "sheet_order_index": 23,
+          "sheet_symbol": "gObjectEventPic_BrendanAcroBike"
+        },
+        "51": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 768,
+            "y": 0
+          },
+          "sheet_frame_index": 24,
+          "sheet_order_index": 24,
+          "sheet_symbol": "gObjectEventPic_BrendanAcroBike"
+        },
+        "52": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 800,
+            "y": 0
+          },
+          "sheet_frame_index": 25,
+          "sheet_order_index": 25,
+          "sheet_symbol": "gObjectEventPic_BrendanAcroBike"
+        },
+        "53": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 832,
+            "y": 0
+          },
+          "sheet_frame_index": 26,
+          "sheet_order_index": 26,
+          "sheet_symbol": "gObjectEventPic_BrendanAcroBike"
         },
         "6": {
           "rect": {
@@ -456,7 +2189,7 @@
           "x": 8,
           "y": 32
         },
-        "frame_count": 18,
+        "frame_count": 54,
         "height": 32,
         "size": 512,
         "width": 16
@@ -508,24 +2241,46 @@
         }
       },
       "reference": {
-        "anim_table_symbol": "sAnimTable_BrendanMayNormal",
+        "acro_bike_graphics_info_symbol": "gObjectEventGraphicsInfo_BrendanAcroBike",
+        "acro_bike_pic_table_symbol": "sPicTable_BrendanAcroBike",
+        "anim_table_symbols": {
+          "acro_bike": "sAnimTable_AcroBike",
+          "mach_bike": "sAnimTable_Standard",
+          "on_foot": "sAnimTable_BrendanMayNormal"
+        },
         "anims_symbol": "sAnimTable_BrendanMayNormal",
         "graphics_info_symbol": "gObjectEventGraphicsInfo_BrendanNormal",
         "images_symbol": "sPicTable_BrendanNormal",
+        "mach_bike_graphics_info_symbol": "gObjectEventGraphicsInfo_BrendanMachBike",
+        "mach_bike_pic_table_symbol": "sPicTable_BrendanMachBike",
         "palette_tag": "OBJ_EVENT_PAL_TAG_BRENDAN",
         "pic_table_symbol": "sPicTable_BrendanNormal",
         "reflection_palette_tag": "OBJ_EVENT_PAL_TAG_BRIDGE_REFLECTION"
       },
       "sheet_sources": {
-        "normal": {
+        "acro_bike": {
+          "frame_count": 27,
+          "source_path": "graphics/object_events/pics/people/brendan/acro_bike.4bpp",
+          "symbol": "gObjectEventPic_BrendanAcroBike",
+          "tile_height": 32,
+          "tile_width": 32
+        },
+        "mach_bike": {
           "frame_count": 9,
+          "source_path": "graphics/object_events/pics/people/brendan/mach_bike.4bpp",
+          "symbol": "gObjectEventPic_BrendanMachBike",
+          "tile_height": 32,
+          "tile_width": 32
+        },
+        "normal": {
+          "frame_count": 18,
           "source_path": "graphics/object_events/pics/people/brendan/walking.4bpp",
           "symbol": "gObjectEventPic_BrendanNormal",
           "tile_height": 4,
           "tile_width": 2
         },
         "running": {
-          "frame_count": 9,
+          "frame_count": 18,
           "source_path": "graphics/object_events/pics/people/brendan/running.4bpp",
           "symbol": "gObjectEventPic_BrendanRunning",
           "tile_height": 4,
@@ -534,252 +2289,1589 @@
       }
     },
     {
-      "animation_bindings": {
-        "face": {
-          "east": {
-            "anim_cmd_symbol": "sAnim_FaceEast",
-            "frames": [
-              {
-                "duration": 16,
-                "frame": 2,
-                "h_flip": true
+      "animation_sets": {
+        "acro_bike": {
+          "actions": {
+            "acro_bunny_hop_back_wheel": {
+              "east": {
+                "action_id": "acro_bunny_hop_back_wheel",
+                "anim_cmd_symbol": "sAnim_BunnyHopBackWheelEast",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 17,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 18,
+                    "h_flip": true
+                  }
+                ]
+              },
+              "north": {
+                "action_id": "acro_bunny_hop_back_wheel",
+                "anim_cmd_symbol": "sAnim_BunnyHopBackWheelNorth",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 13,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 14,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "south": {
+                "action_id": "acro_bunny_hop_back_wheel",
+                "anim_cmd_symbol": "sAnim_BunnyHopBackWheelSouth",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 9,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 10,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "west": {
+                "action_id": "acro_bunny_hop_back_wheel",
+                "anim_cmd_symbol": "sAnim_BunnyHopBackWheelWest",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 17,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 18,
+                    "h_flip": false
+                  }
+                ]
               }
-            ]
+            },
+            "acro_bunny_hop_front_wheel": {
+              "east": {
+                "action_id": "acro_bunny_hop_front_wheel",
+                "anim_cmd_symbol": "sAnim_BunnyHopFrontWheelEast",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 19,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 20,
+                    "h_flip": true
+                  }
+                ]
+              },
+              "north": {
+                "action_id": "acro_bunny_hop_front_wheel",
+                "anim_cmd_symbol": "sAnim_BunnyHopFrontWheelNorth",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 15,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 16,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "south": {
+                "action_id": "acro_bunny_hop_front_wheel",
+                "anim_cmd_symbol": "sAnim_BunnyHopFrontWheelSouth",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 11,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 12,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "west": {
+                "action_id": "acro_bunny_hop_front_wheel",
+                "anim_cmd_symbol": "sAnim_BunnyHopFrontWheelWest",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 19,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 20,
+                    "h_flip": false
+                  }
+                ]
+              }
+            },
+            "acro_moving_wheelie": {
+              "east": {
+                "action_id": "acro_moving_wheelie",
+                "anim_cmd_symbol": "sAnim_MovingWheelieEast",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 25,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 18,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 26,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 18,
+                    "h_flip": true
+                  }
+                ]
+              },
+              "north": {
+                "action_id": "acro_moving_wheelie",
+                "anim_cmd_symbol": "sAnim_MovingWheelieNorth",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 23,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 14,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 24,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 14,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "south": {
+                "action_id": "acro_moving_wheelie",
+                "anim_cmd_symbol": "sAnim_MovingWheelieSouth",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 21,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 10,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 22,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 10,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "west": {
+                "action_id": "acro_moving_wheelie",
+                "anim_cmd_symbol": "sAnim_MovingWheelieWest",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 25,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 18,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 26,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 18,
+                    "h_flip": false
+                  }
+                ]
+              }
+            },
+            "acro_standing_wheelie_back_wheel": {
+              "east": {
+                "action_id": "acro_standing_wheelie_back_wheel",
+                "anim_cmd_symbol": "sAnim_StandingWheelieBackWheelEast",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 17,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 2,
+                    "h_flip": true
+                  }
+                ]
+              },
+              "north": {
+                "action_id": "acro_standing_wheelie_back_wheel",
+                "anim_cmd_symbol": "sAnim_StandingWheelieBackWheelNorth",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 13,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 1,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "south": {
+                "action_id": "acro_standing_wheelie_back_wheel",
+                "anim_cmd_symbol": "sAnim_StandingWheelieBackWheelSouth",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 9,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 0,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "west": {
+                "action_id": "acro_standing_wheelie_back_wheel",
+                "anim_cmd_symbol": "sAnim_StandingWheelieBackWheelWest",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 17,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 2,
+                    "h_flip": false
+                  }
+                ]
+              }
+            },
+            "acro_standing_wheelie_front_wheel": {
+              "east": {
+                "action_id": "acro_standing_wheelie_front_wheel",
+                "anim_cmd_symbol": "sAnim_StandingWheelieFrontWheelEast",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 19,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 2,
+                    "h_flip": true
+                  }
+                ]
+              },
+              "north": {
+                "action_id": "acro_standing_wheelie_front_wheel",
+                "anim_cmd_symbol": "sAnim_StandingWheelieFrontWheelNorth",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 15,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 1,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "south": {
+                "action_id": "acro_standing_wheelie_front_wheel",
+                "anim_cmd_symbol": "sAnim_StandingWheelieFrontWheelSouth",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 11,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 0,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "west": {
+                "action_id": "acro_standing_wheelie_front_wheel",
+                "anim_cmd_symbol": "sAnim_StandingWheelieFrontWheelWest",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 19,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 2,
+                    "h_flip": false
+                  }
+                ]
+              }
+            },
+            "bike_fast": {
+              "east": {
+                "action_id": "bike_fast",
+                "anim_cmd_symbol": "sAnim_GoFastEast",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 7,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 2,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 8,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 2,
+                    "h_flip": true
+                  }
+                ]
+              },
+              "north": {
+                "action_id": "bike_fast",
+                "anim_cmd_symbol": "sAnim_GoFastNorth",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 5,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 1,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 6,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 1,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "south": {
+                "action_id": "bike_fast",
+                "anim_cmd_symbol": "sAnim_GoFastSouth",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 3,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 0,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 4,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 0,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "west": {
+                "action_id": "bike_fast",
+                "anim_cmd_symbol": "sAnim_GoFastWest",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 7,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 2,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 8,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 2,
+                    "h_flip": false
+                  }
+                ]
+              }
+            },
+            "bike_faster": {
+              "east": {
+                "action_id": "bike_faster",
+                "anim_cmd_symbol": "sAnim_GoFasterEast",
+                "frames": [
+                  {
+                    "duration": 2,
+                    "frame": 7,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 2,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 8,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 2,
+                    "h_flip": true
+                  }
+                ]
+              },
+              "north": {
+                "action_id": "bike_faster",
+                "anim_cmd_symbol": "sAnim_GoFasterNorth",
+                "frames": [
+                  {
+                    "duration": 2,
+                    "frame": 5,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 1,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 6,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 1,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "south": {
+                "action_id": "bike_faster",
+                "anim_cmd_symbol": "sAnim_GoFasterSouth",
+                "frames": [
+                  {
+                    "duration": 2,
+                    "frame": 3,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 0,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 4,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 0,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "west": {
+                "action_id": "bike_faster",
+                "anim_cmd_symbol": "sAnim_GoFasterWest",
+                "frames": [
+                  {
+                    "duration": 2,
+                    "frame": 7,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 2,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 8,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 2,
+                    "h_flip": false
+                  }
+                ]
+              }
+            },
+            "bike_fastest": {
+              "east": {
+                "action_id": "bike_fastest",
+                "anim_cmd_symbol": "sAnim_GoFastestEast",
+                "frames": [
+                  {
+                    "duration": 1,
+                    "frame": 7,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 2,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 8,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 2,
+                    "h_flip": true
+                  }
+                ]
+              },
+              "north": {
+                "action_id": "bike_fastest",
+                "anim_cmd_symbol": "sAnim_GoFastestNorth",
+                "frames": [
+                  {
+                    "duration": 1,
+                    "frame": 5,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 1,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 6,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 1,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "south": {
+                "action_id": "bike_fastest",
+                "anim_cmd_symbol": "sAnim_GoFastestSouth",
+                "frames": [
+                  {
+                    "duration": 1,
+                    "frame": 3,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 0,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 4,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 0,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "west": {
+                "action_id": "bike_fastest",
+                "anim_cmd_symbol": "sAnim_GoFastestWest",
+                "frames": [
+                  {
+                    "duration": 1,
+                    "frame": 7,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 2,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 8,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 2,
+                    "h_flip": false
+                  }
+                ]
+              }
+            },
+            "bike_walk": {
+              "east": {
+                "action_id": "bike_walk",
+                "anim_cmd_symbol": "sAnim_GoEast",
+                "frames": [
+                  {
+                    "duration": 8,
+                    "frame": 7,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 2,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 8,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 2,
+                    "h_flip": true
+                  }
+                ]
+              },
+              "north": {
+                "action_id": "bike_walk",
+                "anim_cmd_symbol": "sAnim_GoNorth",
+                "frames": [
+                  {
+                    "duration": 8,
+                    "frame": 5,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 1,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 6,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 1,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "south": {
+                "action_id": "bike_walk",
+                "anim_cmd_symbol": "sAnim_GoSouth",
+                "frames": [
+                  {
+                    "duration": 8,
+                    "frame": 3,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 0,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 4,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 0,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "west": {
+                "action_id": "bike_walk",
+                "anim_cmd_symbol": "sAnim_GoWest",
+                "frames": [
+                  {
+                    "duration": 8,
+                    "frame": 7,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 2,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 8,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 2,
+                    "h_flip": false
+                  }
+                ]
+              }
+            },
+            "face": {
+              "east": {
+                "action_id": "face",
+                "anim_cmd_symbol": "sAnim_FaceEast",
+                "frames": [
+                  {
+                    "duration": 16,
+                    "frame": 2,
+                    "h_flip": true
+                  }
+                ]
+              },
+              "north": {
+                "action_id": "face",
+                "anim_cmd_symbol": "sAnim_FaceNorth",
+                "frames": [
+                  {
+                    "duration": 16,
+                    "frame": 1,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "south": {
+                "action_id": "face",
+                "anim_cmd_symbol": "sAnim_FaceSouth",
+                "frames": [
+                  {
+                    "duration": 16,
+                    "frame": 0,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "west": {
+                "action_id": "face",
+                "anim_cmd_symbol": "sAnim_FaceWest",
+                "frames": [
+                  {
+                    "duration": 16,
+                    "frame": 2,
+                    "h_flip": false
+                  }
+                ]
+              }
+            }
           },
-          "north": {
-            "anim_cmd_symbol": "sAnim_FaceNorth",
-            "frames": [
-              {
-                "duration": 16,
-                "frame": 1,
-                "h_flip": false
-              }
-            ]
-          },
-          "south": {
-            "anim_cmd_symbol": "sAnim_FaceSouth",
-            "frames": [
-              {
-                "duration": 16,
-                "frame": 0,
-                "h_flip": false
-              }
-            ]
-          },
-          "west": {
-            "anim_cmd_symbol": "sAnim_FaceWest",
-            "frames": [
-              {
-                "duration": 16,
-                "frame": 2,
-                "h_flip": false
-              }
-            ]
-          }
+          "anim_table_symbol": "sAnimTable_AcroBike"
         },
-        "run": {
-          "east": {
-            "anim_cmd_symbol": "sAnim_RunEast",
-            "frames": [
-              {
-                "duration": 5,
-                "frame": 16,
-                "h_flip": true
+        "mach_bike": {
+          "actions": {
+            "bike_fast": {
+              "east": {
+                "action_id": "bike_fast",
+                "anim_cmd_symbol": "sAnim_GoFastEast",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 7,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 2,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 8,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 2,
+                    "h_flip": true
+                  }
+                ]
               },
-              {
-                "duration": 3,
-                "frame": 11,
-                "h_flip": true
+              "north": {
+                "action_id": "bike_fast",
+                "anim_cmd_symbol": "sAnim_GoFastNorth",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 5,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 1,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 6,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 1,
+                    "h_flip": false
+                  }
+                ]
               },
-              {
-                "duration": 5,
-                "frame": 17,
-                "h_flip": true
+              "south": {
+                "action_id": "bike_fast",
+                "anim_cmd_symbol": "sAnim_GoFastSouth",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 3,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 0,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 4,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 0,
+                    "h_flip": false
+                  }
+                ]
               },
-              {
-                "duration": 3,
-                "frame": 11,
-                "h_flip": true
+              "west": {
+                "action_id": "bike_fast",
+                "anim_cmd_symbol": "sAnim_GoFastWest",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 7,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 2,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 8,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 4,
+                    "frame": 2,
+                    "h_flip": false
+                  }
+                ]
               }
-            ]
+            },
+            "bike_faster": {
+              "east": {
+                "action_id": "bike_faster",
+                "anim_cmd_symbol": "sAnim_GoFasterEast",
+                "frames": [
+                  {
+                    "duration": 2,
+                    "frame": 7,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 2,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 8,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 2,
+                    "h_flip": true
+                  }
+                ]
+              },
+              "north": {
+                "action_id": "bike_faster",
+                "anim_cmd_symbol": "sAnim_GoFasterNorth",
+                "frames": [
+                  {
+                    "duration": 2,
+                    "frame": 5,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 1,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 6,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 1,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "south": {
+                "action_id": "bike_faster",
+                "anim_cmd_symbol": "sAnim_GoFasterSouth",
+                "frames": [
+                  {
+                    "duration": 2,
+                    "frame": 3,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 0,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 4,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 0,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "west": {
+                "action_id": "bike_faster",
+                "anim_cmd_symbol": "sAnim_GoFasterWest",
+                "frames": [
+                  {
+                    "duration": 2,
+                    "frame": 7,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 2,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 8,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 2,
+                    "frame": 2,
+                    "h_flip": false
+                  }
+                ]
+              }
+            },
+            "bike_fastest": {
+              "east": {
+                "action_id": "bike_fastest",
+                "anim_cmd_symbol": "sAnim_GoFastestEast",
+                "frames": [
+                  {
+                    "duration": 1,
+                    "frame": 7,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 2,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 8,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 2,
+                    "h_flip": true
+                  }
+                ]
+              },
+              "north": {
+                "action_id": "bike_fastest",
+                "anim_cmd_symbol": "sAnim_GoFastestNorth",
+                "frames": [
+                  {
+                    "duration": 1,
+                    "frame": 5,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 1,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 6,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 1,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "south": {
+                "action_id": "bike_fastest",
+                "anim_cmd_symbol": "sAnim_GoFastestSouth",
+                "frames": [
+                  {
+                    "duration": 1,
+                    "frame": 3,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 0,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 4,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 0,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "west": {
+                "action_id": "bike_fastest",
+                "anim_cmd_symbol": "sAnim_GoFastestWest",
+                "frames": [
+                  {
+                    "duration": 1,
+                    "frame": 7,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 2,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 8,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 1,
+                    "frame": 2,
+                    "h_flip": false
+                  }
+                ]
+              }
+            },
+            "bike_walk": {
+              "east": {
+                "action_id": "bike_walk",
+                "anim_cmd_symbol": "sAnim_GoEast",
+                "frames": [
+                  {
+                    "duration": 8,
+                    "frame": 7,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 2,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 8,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 2,
+                    "h_flip": true
+                  }
+                ]
+              },
+              "north": {
+                "action_id": "bike_walk",
+                "anim_cmd_symbol": "sAnim_GoNorth",
+                "frames": [
+                  {
+                    "duration": 8,
+                    "frame": 5,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 1,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 6,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 1,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "south": {
+                "action_id": "bike_walk",
+                "anim_cmd_symbol": "sAnim_GoSouth",
+                "frames": [
+                  {
+                    "duration": 8,
+                    "frame": 3,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 0,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 4,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 0,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "west": {
+                "action_id": "bike_walk",
+                "anim_cmd_symbol": "sAnim_GoWest",
+                "frames": [
+                  {
+                    "duration": 8,
+                    "frame": 7,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 2,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 8,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 2,
+                    "h_flip": false
+                  }
+                ]
+              }
+            },
+            "face": {
+              "east": {
+                "action_id": "face",
+                "anim_cmd_symbol": "sAnim_FaceEast",
+                "frames": [
+                  {
+                    "duration": 16,
+                    "frame": 2,
+                    "h_flip": true
+                  }
+                ]
+              },
+              "north": {
+                "action_id": "face",
+                "anim_cmd_symbol": "sAnim_FaceNorth",
+                "frames": [
+                  {
+                    "duration": 16,
+                    "frame": 1,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "south": {
+                "action_id": "face",
+                "anim_cmd_symbol": "sAnim_FaceSouth",
+                "frames": [
+                  {
+                    "duration": 16,
+                    "frame": 0,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "west": {
+                "action_id": "face",
+                "anim_cmd_symbol": "sAnim_FaceWest",
+                "frames": [
+                  {
+                    "duration": 16,
+                    "frame": 2,
+                    "h_flip": false
+                  }
+                ]
+              }
+            }
           },
-          "north": {
-            "anim_cmd_symbol": "sAnim_RunNorth",
-            "frames": [
-              {
-                "duration": 5,
-                "frame": 14,
-                "h_flip": false
-              },
-              {
-                "duration": 3,
-                "frame": 10,
-                "h_flip": false
-              },
-              {
-                "duration": 5,
-                "frame": 15,
-                "h_flip": false
-              },
-              {
-                "duration": 3,
-                "frame": 10,
-                "h_flip": false
-              }
-            ]
-          },
-          "south": {
-            "anim_cmd_symbol": "sAnim_RunSouth",
-            "frames": [
-              {
-                "duration": 5,
-                "frame": 12,
-                "h_flip": false
-              },
-              {
-                "duration": 3,
-                "frame": 9,
-                "h_flip": false
-              },
-              {
-                "duration": 5,
-                "frame": 13,
-                "h_flip": false
-              },
-              {
-                "duration": 3,
-                "frame": 9,
-                "h_flip": false
-              }
-            ]
-          },
-          "west": {
-            "anim_cmd_symbol": "sAnim_RunWest",
-            "frames": [
-              {
-                "duration": 5,
-                "frame": 16,
-                "h_flip": false
-              },
-              {
-                "duration": 3,
-                "frame": 11,
-                "h_flip": false
-              },
-              {
-                "duration": 5,
-                "frame": 17,
-                "h_flip": false
-              },
-              {
-                "duration": 3,
-                "frame": 11,
-                "h_flip": false
-              }
-            ]
-          }
+          "anim_table_symbol": "sAnimTable_Standard"
         },
-        "walk": {
-          "east": {
-            "anim_cmd_symbol": "sAnim_GoEast",
-            "frames": [
-              {
-                "duration": 8,
-                "frame": 7,
-                "h_flip": true
+        "on_foot": {
+          "actions": {
+            "face": {
+              "east": {
+                "action_id": "face",
+                "anim_cmd_symbol": "sAnim_FaceEast",
+                "frames": [
+                  {
+                    "duration": 16,
+                    "frame": 2,
+                    "h_flip": true
+                  }
+                ]
               },
-              {
-                "duration": 8,
-                "frame": 2,
-                "h_flip": true
+              "north": {
+                "action_id": "face",
+                "anim_cmd_symbol": "sAnim_FaceNorth",
+                "frames": [
+                  {
+                    "duration": 16,
+                    "frame": 1,
+                    "h_flip": false
+                  }
+                ]
               },
-              {
-                "duration": 8,
-                "frame": 8,
-                "h_flip": true
+              "south": {
+                "action_id": "face",
+                "anim_cmd_symbol": "sAnim_FaceSouth",
+                "frames": [
+                  {
+                    "duration": 16,
+                    "frame": 0,
+                    "h_flip": false
+                  }
+                ]
               },
-              {
-                "duration": 8,
-                "frame": 2,
-                "h_flip": true
+              "west": {
+                "action_id": "face",
+                "anim_cmd_symbol": "sAnim_FaceWest",
+                "frames": [
+                  {
+                    "duration": 16,
+                    "frame": 2,
+                    "h_flip": false
+                  }
+                ]
               }
-            ]
+            },
+            "run": {
+              "east": {
+                "action_id": "run",
+                "anim_cmd_symbol": "sAnim_RunEast",
+                "frames": [
+                  {
+                    "duration": 5,
+                    "frame": 16,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 3,
+                    "frame": 11,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 5,
+                    "frame": 17,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 3,
+                    "frame": 11,
+                    "h_flip": true
+                  }
+                ]
+              },
+              "north": {
+                "action_id": "run",
+                "anim_cmd_symbol": "sAnim_RunNorth",
+                "frames": [
+                  {
+                    "duration": 5,
+                    "frame": 14,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 3,
+                    "frame": 10,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 5,
+                    "frame": 15,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 3,
+                    "frame": 10,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "south": {
+                "action_id": "run",
+                "anim_cmd_symbol": "sAnim_RunSouth",
+                "frames": [
+                  {
+                    "duration": 5,
+                    "frame": 12,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 3,
+                    "frame": 9,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 5,
+                    "frame": 13,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 3,
+                    "frame": 9,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "west": {
+                "action_id": "run",
+                "anim_cmd_symbol": "sAnim_RunWest",
+                "frames": [
+                  {
+                    "duration": 5,
+                    "frame": 16,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 3,
+                    "frame": 11,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 5,
+                    "frame": 17,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 3,
+                    "frame": 11,
+                    "h_flip": false
+                  }
+                ]
+              }
+            },
+            "walk": {
+              "east": {
+                "action_id": "walk",
+                "anim_cmd_symbol": "sAnim_GoEast",
+                "frames": [
+                  {
+                    "duration": 8,
+                    "frame": 7,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 2,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 8,
+                    "h_flip": true
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 2,
+                    "h_flip": true
+                  }
+                ]
+              },
+              "north": {
+                "action_id": "walk",
+                "anim_cmd_symbol": "sAnim_GoNorth",
+                "frames": [
+                  {
+                    "duration": 8,
+                    "frame": 5,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 1,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 6,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 1,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "south": {
+                "action_id": "walk",
+                "anim_cmd_symbol": "sAnim_GoSouth",
+                "frames": [
+                  {
+                    "duration": 8,
+                    "frame": 3,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 0,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 4,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 0,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "west": {
+                "action_id": "walk",
+                "anim_cmd_symbol": "sAnim_GoWest",
+                "frames": [
+                  {
+                    "duration": 8,
+                    "frame": 7,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 2,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 8,
+                    "h_flip": false
+                  },
+                  {
+                    "duration": 8,
+                    "frame": 2,
+                    "h_flip": false
+                  }
+                ]
+              }
+            }
           },
-          "north": {
-            "anim_cmd_symbol": "sAnim_GoNorth",
-            "frames": [
-              {
-                "duration": 8,
-                "frame": 5,
-                "h_flip": false
-              },
-              {
-                "duration": 8,
-                "frame": 1,
-                "h_flip": false
-              },
-              {
-                "duration": 8,
-                "frame": 6,
-                "h_flip": false
-              },
-              {
-                "duration": 8,
-                "frame": 1,
-                "h_flip": false
-              }
-            ]
-          },
-          "south": {
-            "anim_cmd_symbol": "sAnim_GoSouth",
-            "frames": [
-              {
-                "duration": 8,
-                "frame": 3,
-                "h_flip": false
-              },
-              {
-                "duration": 8,
-                "frame": 0,
-                "h_flip": false
-              },
-              {
-                "duration": 8,
-                "frame": 4,
-                "h_flip": false
-              },
-              {
-                "duration": 8,
-                "frame": 0,
-                "h_flip": false
-              }
-            ]
-          },
-          "west": {
-            "anim_cmd_symbol": "sAnim_GoWest",
-            "frames": [
-              {
-                "duration": 8,
-                "frame": 7,
-                "h_flip": false
-              },
-              {
-                "duration": 8,
-                "frame": 2,
-                "h_flip": false
-              },
-              {
-                "duration": 8,
-                "frame": 8,
-                "h_flip": false
-              },
-              {
-                "duration": 8,
-                "frame": 2,
-                "h_flip": false
-              }
-            ]
-          }
+          "anim_table_symbol": "sAnimTable_BrendanMayNormal"
         }
       },
       "avatar_id": "may",
@@ -894,6 +3986,28 @@
           "sheet_order_index": 8,
           "sheet_symbol": "gObjectEventPic_MayRunning"
         },
+        "18": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 0,
+            "y": 0
+          },
+          "sheet_frame_index": 0,
+          "sheet_order_index": 0,
+          "sheet_symbol": "gObjectEventPic_MayMachBike"
+        },
+        "19": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 32,
+            "y": 0
+          },
+          "sheet_frame_index": 1,
+          "sheet_order_index": 1,
+          "sheet_symbol": "gObjectEventPic_MayMachBike"
+        },
         "2": {
           "rect": {
             "h": 32,
@@ -904,6 +4018,116 @@
           "sheet_frame_index": 2,
           "sheet_order_index": 2,
           "sheet_symbol": "gObjectEventPic_MayNormal"
+        },
+        "20": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 64,
+            "y": 0
+          },
+          "sheet_frame_index": 2,
+          "sheet_order_index": 2,
+          "sheet_symbol": "gObjectEventPic_MayMachBike"
+        },
+        "21": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 96,
+            "y": 0
+          },
+          "sheet_frame_index": 3,
+          "sheet_order_index": 3,
+          "sheet_symbol": "gObjectEventPic_MayMachBike"
+        },
+        "22": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 128,
+            "y": 0
+          },
+          "sheet_frame_index": 4,
+          "sheet_order_index": 4,
+          "sheet_symbol": "gObjectEventPic_MayMachBike"
+        },
+        "23": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 160,
+            "y": 0
+          },
+          "sheet_frame_index": 5,
+          "sheet_order_index": 5,
+          "sheet_symbol": "gObjectEventPic_MayMachBike"
+        },
+        "24": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 192,
+            "y": 0
+          },
+          "sheet_frame_index": 6,
+          "sheet_order_index": 6,
+          "sheet_symbol": "gObjectEventPic_MayMachBike"
+        },
+        "25": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 224,
+            "y": 0
+          },
+          "sheet_frame_index": 7,
+          "sheet_order_index": 7,
+          "sheet_symbol": "gObjectEventPic_MayMachBike"
+        },
+        "26": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 256,
+            "y": 0
+          },
+          "sheet_frame_index": 8,
+          "sheet_order_index": 8,
+          "sheet_symbol": "gObjectEventPic_MayMachBike"
+        },
+        "27": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 0,
+            "y": 0
+          },
+          "sheet_frame_index": 0,
+          "sheet_order_index": 0,
+          "sheet_symbol": "gObjectEventPic_MayAcroBike"
+        },
+        "28": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 32,
+            "y": 0
+          },
+          "sheet_frame_index": 1,
+          "sheet_order_index": 1,
+          "sheet_symbol": "gObjectEventPic_MayAcroBike"
+        },
+        "29": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 64,
+            "y": 0
+          },
+          "sheet_frame_index": 2,
+          "sheet_order_index": 2,
+          "sheet_symbol": "gObjectEventPic_MayAcroBike"
         },
         "3": {
           "rect": {
@@ -916,6 +4140,116 @@
           "sheet_order_index": 3,
           "sheet_symbol": "gObjectEventPic_MayNormal"
         },
+        "30": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 96,
+            "y": 0
+          },
+          "sheet_frame_index": 3,
+          "sheet_order_index": 3,
+          "sheet_symbol": "gObjectEventPic_MayAcroBike"
+        },
+        "31": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 128,
+            "y": 0
+          },
+          "sheet_frame_index": 4,
+          "sheet_order_index": 4,
+          "sheet_symbol": "gObjectEventPic_MayAcroBike"
+        },
+        "32": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 160,
+            "y": 0
+          },
+          "sheet_frame_index": 5,
+          "sheet_order_index": 5,
+          "sheet_symbol": "gObjectEventPic_MayAcroBike"
+        },
+        "33": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 192,
+            "y": 0
+          },
+          "sheet_frame_index": 6,
+          "sheet_order_index": 6,
+          "sheet_symbol": "gObjectEventPic_MayAcroBike"
+        },
+        "34": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 224,
+            "y": 0
+          },
+          "sheet_frame_index": 7,
+          "sheet_order_index": 7,
+          "sheet_symbol": "gObjectEventPic_MayAcroBike"
+        },
+        "35": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 256,
+            "y": 0
+          },
+          "sheet_frame_index": 8,
+          "sheet_order_index": 8,
+          "sheet_symbol": "gObjectEventPic_MayAcroBike"
+        },
+        "36": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 288,
+            "y": 0
+          },
+          "sheet_frame_index": 9,
+          "sheet_order_index": 9,
+          "sheet_symbol": "gObjectEventPic_MayAcroBike"
+        },
+        "37": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 320,
+            "y": 0
+          },
+          "sheet_frame_index": 10,
+          "sheet_order_index": 10,
+          "sheet_symbol": "gObjectEventPic_MayAcroBike"
+        },
+        "38": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 352,
+            "y": 0
+          },
+          "sheet_frame_index": 11,
+          "sheet_order_index": 11,
+          "sheet_symbol": "gObjectEventPic_MayAcroBike"
+        },
+        "39": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 384,
+            "y": 0
+          },
+          "sheet_frame_index": 12,
+          "sheet_order_index": 12,
+          "sheet_symbol": "gObjectEventPic_MayAcroBike"
+        },
         "4": {
           "rect": {
             "h": 32,
@@ -927,6 +4261,116 @@
           "sheet_order_index": 4,
           "sheet_symbol": "gObjectEventPic_MayNormal"
         },
+        "40": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 416,
+            "y": 0
+          },
+          "sheet_frame_index": 13,
+          "sheet_order_index": 13,
+          "sheet_symbol": "gObjectEventPic_MayAcroBike"
+        },
+        "41": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 448,
+            "y": 0
+          },
+          "sheet_frame_index": 14,
+          "sheet_order_index": 14,
+          "sheet_symbol": "gObjectEventPic_MayAcroBike"
+        },
+        "42": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 480,
+            "y": 0
+          },
+          "sheet_frame_index": 15,
+          "sheet_order_index": 15,
+          "sheet_symbol": "gObjectEventPic_MayAcroBike"
+        },
+        "43": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 512,
+            "y": 0
+          },
+          "sheet_frame_index": 16,
+          "sheet_order_index": 16,
+          "sheet_symbol": "gObjectEventPic_MayAcroBike"
+        },
+        "44": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 544,
+            "y": 0
+          },
+          "sheet_frame_index": 17,
+          "sheet_order_index": 17,
+          "sheet_symbol": "gObjectEventPic_MayAcroBike"
+        },
+        "45": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 576,
+            "y": 0
+          },
+          "sheet_frame_index": 18,
+          "sheet_order_index": 18,
+          "sheet_symbol": "gObjectEventPic_MayAcroBike"
+        },
+        "46": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 608,
+            "y": 0
+          },
+          "sheet_frame_index": 19,
+          "sheet_order_index": 19,
+          "sheet_symbol": "gObjectEventPic_MayAcroBike"
+        },
+        "47": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 640,
+            "y": 0
+          },
+          "sheet_frame_index": 20,
+          "sheet_order_index": 20,
+          "sheet_symbol": "gObjectEventPic_MayAcroBike"
+        },
+        "48": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 672,
+            "y": 0
+          },
+          "sheet_frame_index": 21,
+          "sheet_order_index": 21,
+          "sheet_symbol": "gObjectEventPic_MayAcroBike"
+        },
+        "49": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 704,
+            "y": 0
+          },
+          "sheet_frame_index": 22,
+          "sheet_order_index": 22,
+          "sheet_symbol": "gObjectEventPic_MayAcroBike"
+        },
         "5": {
           "rect": {
             "h": 32,
@@ -937,6 +4381,50 @@
           "sheet_frame_index": 5,
           "sheet_order_index": 5,
           "sheet_symbol": "gObjectEventPic_MayNormal"
+        },
+        "50": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 736,
+            "y": 0
+          },
+          "sheet_frame_index": 23,
+          "sheet_order_index": 23,
+          "sheet_symbol": "gObjectEventPic_MayAcroBike"
+        },
+        "51": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 768,
+            "y": 0
+          },
+          "sheet_frame_index": 24,
+          "sheet_order_index": 24,
+          "sheet_symbol": "gObjectEventPic_MayAcroBike"
+        },
+        "52": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 800,
+            "y": 0
+          },
+          "sheet_frame_index": 25,
+          "sheet_order_index": 25,
+          "sheet_symbol": "gObjectEventPic_MayAcroBike"
+        },
+        "53": {
+          "rect": {
+            "h": 32,
+            "w": 32,
+            "x": 832,
+            "y": 0
+          },
+          "sheet_frame_index": 26,
+          "sheet_order_index": 26,
+          "sheet_symbol": "gObjectEventPic_MayAcroBike"
         },
         "6": {
           "rect": {
@@ -989,7 +4477,7 @@
           "x": 8,
           "y": 32
         },
-        "frame_count": 18,
+        "frame_count": 54,
         "height": 32,
         "size": 512,
         "width": 16
@@ -1041,24 +4529,46 @@
         }
       },
       "reference": {
-        "anim_table_symbol": "sAnimTable_BrendanMayNormal",
+        "acro_bike_graphics_info_symbol": "gObjectEventGraphicsInfo_MayAcroBike",
+        "acro_bike_pic_table_symbol": "sPicTable_MayAcroBike",
+        "anim_table_symbols": {
+          "acro_bike": "sAnimTable_AcroBike",
+          "mach_bike": "sAnimTable_Standard",
+          "on_foot": "sAnimTable_BrendanMayNormal"
+        },
         "anims_symbol": "sAnimTable_BrendanMayNormal",
         "graphics_info_symbol": "gObjectEventGraphicsInfo_MayNormal",
         "images_symbol": "sPicTable_MayNormal",
+        "mach_bike_graphics_info_symbol": "gObjectEventGraphicsInfo_MayMachBike",
+        "mach_bike_pic_table_symbol": "sPicTable_MayMachBike",
         "palette_tag": "OBJ_EVENT_PAL_TAG_MAY",
         "pic_table_symbol": "sPicTable_MayNormal",
         "reflection_palette_tag": "OBJ_EVENT_PAL_TAG_BRIDGE_REFLECTION"
       },
       "sheet_sources": {
-        "normal": {
+        "acro_bike": {
+          "frame_count": 27,
+          "source_path": "graphics/object_events/pics/people/may/acro_bike.4bpp",
+          "symbol": "gObjectEventPic_MayAcroBike",
+          "tile_height": 32,
+          "tile_width": 32
+        },
+        "mach_bike": {
           "frame_count": 9,
+          "source_path": "graphics/object_events/pics/people/may/mach_bike.4bpp",
+          "symbol": "gObjectEventPic_MayMachBike",
+          "tile_height": 32,
+          "tile_width": 32
+        },
+        "normal": {
+          "frame_count": 18,
           "source_path": "graphics/object_events/pics/people/may/walking.4bpp",
           "symbol": "gObjectEventPic_MayNormal",
           "tile_height": 4,
           "tile_width": 2
         },
         "running": {
-          "frame_count": 9,
+          "frame_count": 18,
           "source_path": "graphics/object_events/pics/people/may/running.4bpp",
           "symbol": "gObjectEventPic_MayRunning",
           "tile_height": 4,
@@ -1067,5 +4577,5 @@
       }
     }
   ],
-  "player_assets_version": 1
+  "player_assets_version": 2
 }
