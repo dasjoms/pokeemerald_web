@@ -52,11 +52,6 @@ pub enum Direction {{
 pub enum MovementMode {{
     Walk = {int(MovementMode.WALK)},
     Run = {int(MovementMode.RUN)},
-    MachBike = {int(MovementMode.MACH_BIKE)},
-    AcroCruise = {int(MovementMode.ACRO_CRUISE)},
-    AcroWheeliePrep = {int(MovementMode.ACRO_WHEELIE_PREP)},
-    AcroWheelieMove = {int(MovementMode.ACRO_WHEELIE_MOVE)},
-    BunnyHop = {int(MovementMode.BUNNY_HOP)},
 }}
 
 #[repr(u8)]
@@ -161,11 +156,6 @@ export enum Direction {{
 export enum MovementMode {{
   WALK = {int(MovementMode.WALK)},
   RUN = {int(MovementMode.RUN)},
-  MACH_BIKE = {int(MovementMode.MACH_BIKE)},
-  ACRO_CRUISE = {int(MovementMode.ACRO_CRUISE)},
-  ACRO_WHEELIE_PREP = {int(MovementMode.ACRO_WHEELIE_PREP)},
-  ACRO_WHEELIE_MOVE = {int(MovementMode.ACRO_WHEELIE_MOVE)},
-  BUNNY_HOP = {int(MovementMode.BUNNY_HOP)},
 }}
 
 export enum RejectionReason {{
