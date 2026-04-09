@@ -11,11 +11,11 @@ use tokio::sync::{mpsc, RwLock};
 use tracing::{error, trace};
 
 use crate::{
-    bike::{advance_bike_state_for_tick, decide_bike_traversal, BikeState},
+    bike::{advance_bike_state_for_tick, decide_bike_traversal},
     map_chunk::{serialize_world_snapshot_map_chunk, world_snapshot_map_chunk_hash},
     movement::{
-        facing_delta, tile_probe, validate_movement, BikeSubstate, ConnectedDestination,
-        MoveRejectReason, MoveValidation, MovementContext, MovementMap, WALK_SAMPLE_MS,
+        facing_delta, tile_probe, validate_walk, ConnectedDestination, MoveRejectReason,
+        MoveValidation, MovementMap, WALK_SAMPLE_MS,
     },
     protocol::{
         Direction, PlayerAvatar, RejectionReason, ServerMessage, SessionAccepted, WalkInput,
@@ -460,7 +460,7 @@ impl World {
                     }
                 };
 
-                let (accepted, reason, authoritative_x, authoritative_y) = match validate_movement(
+                let (accepted, reason, authoritative_x, authoritative_y) = match validate_walk(
                     session.player_state.tile_x,
                     session.player_state.tile_y,
                     input.direction,
@@ -471,12 +471,6 @@ impl World {
                         behavior: &current_map.behavior,
                     },
                     connected_destination,
-                    MovementContext {
-                        movement_mode: input.movement_mode,
-                        bike_substate: bike_substate_for_validation(
-                            bike_decision.next_state.bike_state,
-                        ),
-                    },
                 ) {
                     MoveValidation::Accepted { next_x, next_y } => {
                         let target_map_id = connection
@@ -671,17 +665,6 @@ fn map_reject_reason(reason: MoveRejectReason) -> RejectionReason {
         MoveRejectReason::Collision => RejectionReason::Collision,
         MoveRejectReason::OutOfBounds => RejectionReason::OutOfBounds,
         MoveRejectReason::ForcedMovementDisabled => RejectionReason::ForcedMovementDisabled,
-    }
-}
-
-fn bike_substate_for_validation(state: Option<BikeState>) -> BikeSubstate {
-    match state {
-        Some(BikeState::Mach { .. }) => BikeSubstate::Mach,
-        Some(BikeState::AcroNeutral) => BikeSubstate::AcroNeutral,
-        Some(BikeState::AcroWheeliePrep { .. }) => BikeSubstate::AcroWheeliePrep,
-        Some(BikeState::AcroWheelieMove { .. }) => BikeSubstate::AcroWheelieMove,
-        Some(BikeState::AcroHop { .. }) => BikeSubstate::AcroHop,
-        None => BikeSubstate::None,
     }
 }
 
