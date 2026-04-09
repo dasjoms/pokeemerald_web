@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from enum import IntEnum
 import struct
 
-PROTOCOL_VERSION = 9
+PROTOCOL_VERSION = 10
 
 _HEADER = struct.Struct("<HBI")  # protocol_version, message_type, payload_len
 _U8 = struct.Struct("<B")
@@ -37,6 +37,7 @@ class MessageType(IntEnum):
     WORLD_SNAPSHOT = 0x82
     WALK_RESULT = 0x83
     WORLD_DELTA = 0x84
+    BIKE_RUNTIME_DELTA = 0x85
 
 
 class Direction(IntEnum):
@@ -212,6 +213,16 @@ class WorldDelta:
     delta_blob: bytes
 
 
+@dataclass(frozen=True)
+class BikeRuntimeDelta:
+    server_frame: int
+    traversal_state: TraversalState
+    authoritative_step_speed: StepSpeed | None = None
+    mach_speed_stage: int | None = None
+    acro_substate: AcroBikeSubstate | None = None
+    bike_transition: BikeTransitionType | None = None
+
+
 WireMessage = (
     JoinSession
     | WalkInput
@@ -222,6 +233,7 @@ WireMessage = (
     | WorldSnapshot
     | WalkResult
     | WorldDelta
+    | BikeRuntimeDelta
 )
 
 
@@ -352,6 +364,22 @@ def _encode_payload(message: WireMessage) -> tuple[MessageType, bytes]:
             [_U16.pack(message.map_id), _U32.pack(message.server_frame), _pack_bytes(message.delta_blob)]
         )
 
+    if isinstance(message, BikeRuntimeDelta):
+        runtime_payload, runtime_flags = _encode_bike_runtime(
+            message.authoritative_step_speed,
+            message.mach_speed_stage,
+            message.acro_substate,
+            message.bike_transition,
+        )
+        return MessageType.BIKE_RUNTIME_DELTA, b"".join(
+            [
+                _U32.pack(message.server_frame),
+                _U8.pack(int(message.traversal_state)),
+                _U8.pack(runtime_flags),
+                runtime_payload,
+            ]
+        )
+
     raise TypeError(f"unsupported message type: {type(message).__name__}")
 
 
@@ -479,6 +507,20 @@ def _decode_payload(message_type: MessageType, payload: bytes) -> WireMessage:
         delta_blob, offset = _unpack_bytes(payload, offset)
         _ensure_done(payload, offset)
         return WorldDelta(map_id=map_id, server_frame=server_frame, delta_blob=delta_blob)
+
+    if message_type is MessageType.BIKE_RUNTIME_DELTA:
+        server_frame, offset = _unpack_u32(payload, offset)
+        traversal_state, offset = _unpack_u8(payload, offset)
+        runtime, offset = _decode_bike_runtime(payload, offset)
+        _ensure_done(payload, offset)
+        return BikeRuntimeDelta(
+            server_frame=server_frame,
+            traversal_state=TraversalState(traversal_state),
+            authoritative_step_speed=runtime.step_speed,
+            mach_speed_stage=runtime.mach_speed_stage,
+            acro_substate=runtime.acro_substate,
+            bike_transition=runtime.bike_transition,
+        )
 
     raise ProtocolError(f"unsupported message type: {message_type}")
 

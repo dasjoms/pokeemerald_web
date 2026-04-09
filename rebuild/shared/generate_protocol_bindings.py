@@ -44,6 +44,7 @@ pub enum MessageType {{
     WorldSnapshot = 0x{int(MessageType.WORLD_SNAPSHOT):02x},
     WalkResult = 0x{int(MessageType.WALK_RESULT):02x},
     WorldDelta = 0x{int(MessageType.WORLD_DELTA):02x},
+    BikeRuntimeDelta = 0x{int(MessageType.BIKE_RUNTIME_DELTA):02x},
 }}
 
 #[repr(u8)]
@@ -250,6 +251,16 @@ pub struct WorldDelta {{
     pub server_frame: u32,
     pub delta_blob: Vec<u8>,
 }}
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+pub struct BikeRuntimeDelta {{
+    pub server_frame: u32,
+    pub traversal_state: TraversalState,
+    pub authoritative_step_speed: Option<StepSpeed>,
+    pub mach_speed_stage: Option<u8>,
+    pub acro_substate: Option<AcroBikeSubstate>,
+    pub bike_transition: Option<BikeTransitionType>,
+}}
 """
     )
 
@@ -269,6 +280,7 @@ export enum MessageType {{
   WORLD_SNAPSHOT = 0x{int(MessageType.WORLD_SNAPSHOT):02x},
   WALK_RESULT = 0x{int(MessageType.WALK_RESULT):02x},
   WORLD_DELTA = 0x{int(MessageType.WORLD_DELTA):02x},
+  BIKE_RUNTIME_DELTA = 0x{int(MessageType.BIKE_RUNTIME_DELTA):02x},
 }}
 
 export enum Direction {{
@@ -411,6 +423,14 @@ export type WalkResult = {{
   bike_effect_flags: number;
 }};
 export type WorldDelta = {{ map_id: number; server_frame: number; delta_blob: Uint8Array }};
+export type BikeRuntimeDelta = {{
+  server_frame: number;
+  traversal_state: TraversalState;
+  authoritative_step_speed?: StepSpeed;
+  mach_speed_stage?: number;
+  acro_substate?: AcroBikeSubstate;
+  bike_transition?: BikeTransitionType;
+}};
 """
     )
 
