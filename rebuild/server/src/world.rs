@@ -13,8 +13,8 @@ use tracing::{error, trace};
 use crate::{
     map_chunk::{serialize_world_snapshot_map_chunk, world_snapshot_map_chunk_hash},
     movement::{
-        facing_delta, validate_walk, ConnectedDestination, MoveRejectReason, MoveValidation,
-        MovementMap, WALK_SAMPLE_MS,
+        facing_delta, validate_walk_with_context, ConnectedDestination, MoveRejectReason,
+        MoveValidation, MovementMap, TraversalContext, WALK_SAMPLE_MS,
     },
     protocol::{
         AcroBikeSubstate, BikeTransitionType, Direction, MovementMode, PlayerAvatar,
@@ -435,44 +435,50 @@ impl World {
                         behavior_id: resolved.destination_behavior,
                     });
 
-                let (accepted, reason, authoritative_x, authoritative_y) = match validate_walk(
-                    session.player_state.tile_x,
-                    session.player_state.tile_y,
-                    input.direction,
-                    MovementMap {
-                        width: current_map.width,
-                        height: current_map.height,
-                        collision: &current_map.collision,
-                        behavior: &current_map.behavior,
-                    },
-                    connected_destination,
-                ) {
-                    MoveValidation::Accepted { next_x, next_y } => {
-                        let target_map_id = connection
-                            .as_ref()
-                            .map_or(previous_map_id.clone(), |resolved| {
-                                resolved.target_map_id.clone()
-                            });
-                        session.active_walk_transition = Some(ActiveWalkTransition::new(
-                            input.input_seq,
-                            previous_map_id.clone(),
-                            session.player_state.tile_x,
-                            session.player_state.tile_y,
-                            target_map_id,
-                            next_x,
-                            next_y,
-                            input.direction,
-                            resolved_movement_mode,
-                        ));
-                        (true, RejectionReason::None, next_x, next_y)
-                    }
-                    MoveValidation::Rejected(reason) => (
-                        false,
-                        map_reject_reason(reason),
+                let (accepted, reason, authoritative_x, authoritative_y) =
+                    match validate_walk_with_context(
                         session.player_state.tile_x,
                         session.player_state.tile_y,
-                    ),
-                };
+                        input.direction,
+                        MovementMap {
+                            width: current_map.width,
+                            height: current_map.height,
+                            collision: &current_map.collision,
+                            behavior: &current_map.behavior,
+                        },
+                        connected_destination,
+                        TraversalContext {
+                            traversal_state: session.player_state.traversal_state,
+                            movement_mode: resolved_movement_mode,
+                            acro_substate: bike_acro_substate_for_traversal(&session.player_state),
+                        },
+                    ) {
+                        MoveValidation::Accepted { next_x, next_y } => {
+                            let target_map_id = connection
+                                .as_ref()
+                                .map_or(previous_map_id.clone(), |resolved| {
+                                    resolved.target_map_id.clone()
+                                });
+                            session.active_walk_transition = Some(ActiveWalkTransition::new(
+                                input.input_seq,
+                                previous_map_id.clone(),
+                                session.player_state.tile_x,
+                                session.player_state.tile_y,
+                                target_map_id,
+                                next_x,
+                                next_y,
+                                input.direction,
+                                resolved_movement_mode,
+                            ));
+                            (true, RejectionReason::None, next_x, next_y)
+                        }
+                        MoveValidation::Rejected(reason) => (
+                            false,
+                            map_reject_reason(reason),
+                            session.player_state.tile_x,
+                            session.player_state.tile_y,
+                        ),
+                    };
 
                 let result = ServerMessage::WalkResult(WalkResult {
                     input_seq: input.input_seq,
