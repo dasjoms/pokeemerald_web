@@ -79,6 +79,7 @@ pub fn encode_server_message(message: &ServerMessage) -> Result<Vec<u8>, Protoco
                 msg.acro_substate,
                 msg.bike_transition,
             );
+            payload.push(msg.bike_effect_flags);
             payload.push(msg.map_chunk_hash.len() as u8);
             payload.extend_from_slice(&msg.map_chunk_hash);
             push_bytes(&mut payload, &msg.map_chunk);
@@ -100,6 +101,7 @@ pub fn encode_server_message(message: &ServerMessage) -> Result<Vec<u8>, Protoco
                 msg.acro_substate,
                 msg.bike_transition,
             );
+            payload.push(msg.bike_effect_flags);
             (MessageType::WalkResult, payload)
         }
         ServerMessage::WorldDelta(msg) => {

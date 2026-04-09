@@ -40,6 +40,7 @@ import {
   type WalkTransition,
   type WalkTransitionMutableState,
 } from './walkTransitionPipeline';
+import { BikeEffectRenderer } from './bikeEffectRenderer';
 import {
   buildLayerSubtileOccupancy,
   resolvePlayerLayerSampleTile,
@@ -342,12 +343,14 @@ const mapBg3Layer = new Container();
 const actorBelowBg2Layer = new Container();
 const mapBg2Layer = new Container();
 const actorBetweenBg2Bg1Layer = new Container();
+const bikeEffectsLayer = new Container();
 const mapBg1Layer = new Container();
 const debugOverlayLayer = new Container();
 worldContainer.addChild(mapBg3Layer);
 worldContainer.addChild(actorBelowBg2Layer);
 worldContainer.addChild(mapBg2Layer);
 worldContainer.addChild(actorBetweenBg2Bg1Layer);
+worldContainer.addChild(bikeEffectsLayer);
 worldContainer.addChild(mapBg1Layer);
 worldContainer.addChild(debugOverlayLayer);
 gameContainer.scale.set(RENDER_SCALE, RENDER_SCALE);
@@ -385,6 +388,7 @@ actorBetweenBg2Bg1Layer.addChild(playerSprite);
 let playerActiveActorLayer = actorBetweenBg2Bg1Layer;
 let activeMapTileRenderPriorityContexts: (MapTileRenderPriorityContext | undefined)[] = [];
 let playerObjectRenderPriorityState: PlayerObjectRenderPriorityState = 'normal';
+const bikeEffectRenderer = new BikeEffectRenderer(bikeEffectsLayer, TILE_SIZE);
 
 app.ticker.add(() => {
   walkInputController.tick();
@@ -394,6 +398,7 @@ app.ticker.add(() => {
   presentPlayerAnimationFrame();
   tickTilesetAnimationClock(app.ticker.deltaMS);
   presentTilesetAnimation();
+  bikeEffectRenderer.tick(app.ticker.deltaMS);
   positionPlayerSprite();
   updateCamera();
   renderHud();
@@ -528,6 +533,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     state.machSpeedStage = snapshot.mach_speed_stage;
     state.acroSubstate = snapshot.acro_substate;
     state.bikeTransition = snapshot.bike_transition;
+    bikeEffectRenderer.clear();
     await applyAuthoritativeAvatar(snapshot.avatar);
     playerAnimation.setTraversalState({
       traversalState: state.traversalState,
@@ -558,6 +564,9 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     state.mapWidth,
     state.mapHeight,
   );
+  const previousFacing = state.facing;
+  const previousAuthoritativeTileX = state.playerTileX;
+  const previousAuthoritativeTileY = state.playerTileY;
   state.playerTileX = clampedAuthoritativeTile.x;
   state.playerTileY = clampedAuthoritativeTile.y;
   state.facing = result.facing;
@@ -579,11 +588,29 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
       result.facing,
       acceptedMovementMode === MovementMode.RUN ? 'run' : 'walk',
     );
+    bikeEffectRenderer.onAuthoritativeStep({
+      fromX: previousAuthoritativeTileX,
+      fromY: previousAuthoritativeTileY,
+      previousFacing,
+      currentFacing: result.facing,
+      traversalState: result.traversal_state,
+      bikeEffectFlags: result.bike_effect_flags,
+      serverFrame: result.server_frame,
+    });
   } else {
     activeWalkTransition = null;
     state.renderTileX = state.playerTileX;
     state.renderTileY = state.playerTileY;
     playerAnimation.stopMoving(result.facing);
+    bikeEffectRenderer.onAuthoritativeStep({
+      fromX: state.playerTileX,
+      fromY: state.playerTileY,
+      previousFacing,
+      currentFacing: result.facing,
+      traversalState: result.traversal_state,
+      bikeEffectFlags: result.bike_effect_flags,
+      serverFrame: result.server_frame,
+    });
   }
   state.lastAckServerTick = result.server_frame;
   if (!result.accepted) {
@@ -642,6 +669,8 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
   debugOverlayLayer.removeChildren();
   actorBelowBg2Layer.removeChildren();
   actorBetweenBg2Bg1Layer.removeChildren();
+  bikeEffectsLayer.removeChildren();
+  bikeEffectRenderer.clear();
   actorBetweenBg2Bg1Layer.addChild(playerSprite);
   playerActiveActorLayer = actorBetweenBg2Bg1Layer;
   renderedSubtileBindings.length = 0;
@@ -1554,6 +1583,8 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
       bikeRuntimeFlags & 0b010 ? (readU8(payload, offset++) as AcroBikeSubstate) : undefined;
     const bikeTransition =
       bikeRuntimeFlags & 0b100 ? (readU8(payload, offset++) as BikeTransitionType) : undefined;
+    const bikeEffectFlags = readU8(payload, offset);
+    offset += 1;
 
     const hashLen = readU8(payload, offset);
     offset += 1;
@@ -1578,6 +1609,7 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
         mach_speed_stage: machSpeedStage,
         acro_substate: acroSubstate,
         bike_transition: bikeTransition,
+        bike_effect_flags: bikeEffectFlags,
       },
     };
   }
@@ -1607,6 +1639,8 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
       bikeRuntimeFlags & 0b010 ? (readU8(payload, offset++) as AcroBikeSubstate) : undefined;
     const bikeTransition =
       bikeRuntimeFlags & 0b100 ? (readU8(payload, offset++) as BikeTransitionType) : undefined;
+    const bikeEffectFlags = readU8(payload, offset);
+    offset += 1;
 
     return {
       type: MessageType.WALK_RESULT,
@@ -1621,6 +1655,7 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
         mach_speed_stage: machSpeedStage,
         acro_substate: acroSubstate,
         bike_transition: bikeTransition,
+        bike_effect_flags: bikeEffectFlags,
       },
     };
   }

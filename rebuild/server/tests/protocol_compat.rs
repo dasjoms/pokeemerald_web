@@ -43,13 +43,14 @@ fn server_walk_result_decodes_in_shared_python_runtime() {
         mach_speed_stage: None,
         acro_substate: None,
         bike_transition: Some(BikeTransitionType::None),
+        bike_effect_flags: 0,
     }))
     .expect("encode walk result");
 
     let status = Command::new("python3")
         .args([
             "-c",
-            r#"import pathlib, sys; sys.path.insert(0, str(pathlib.Path('../shared').resolve())); import protocol, binascii; frame=binascii.unhexlify(sys.argv[1]); msg=protocol.decode_message(frame); assert isinstance(msg, protocol.WalkResult); assert msg.input_seq==9 and msg.accepted and msg.authoritative_pos.x==3 and msg.authoritative_pos.y==4 and msg.facing==protocol.Direction.UP and msg.reason==protocol.RejectionReason.NONE and msg.server_frame==88 and msg.traversal_state==protocol.TraversalState.ON_FOOT and msg.bike_transition==protocol.BikeTransitionType.NONE"#,
+            r#"import pathlib, sys; sys.path.insert(0, str(pathlib.Path('../shared').resolve())); import protocol, binascii; frame=binascii.unhexlify(sys.argv[1]); msg=protocol.decode_message(frame); assert isinstance(msg, protocol.WalkResult); assert msg.input_seq==9 and msg.accepted and msg.authoritative_pos.x==3 and msg.authoritative_pos.y==4 and msg.facing==protocol.Direction.UP and msg.reason==protocol.RejectionReason.NONE and msg.server_frame==88 and msg.traversal_state==protocol.TraversalState.ON_FOOT and msg.bike_transition==protocol.BikeTransitionType.NONE and msg.bike_effect_flags==0"#,
             &hex::encode(frame),
         ])
         .status()
@@ -95,18 +96,19 @@ fn walk_result_wire_encoding_with_forced_movement_disabled_is_canonical() {
         mach_speed_stage: None,
         acro_substate: None,
         bike_transition: Some(BikeTransitionType::None),
+        bike_effect_flags: 0,
     }))
     .expect("encode walk result");
 
     assert_eq!(
         hex::encode(&frame),
-        "0300831200000004030201002211443302060d0c0b0a000400"
+        "0400831300000004030201002211443302060d0c0b0a00040000"
     );
 
     let status = Command::new("python3")
         .args([
             "-c",
-            r#"import pathlib, sys, binascii; sys.path.insert(0, str(pathlib.Path('../shared').resolve())); import protocol; frame=binascii.unhexlify(sys.argv[1]); msg=protocol.decode_message(frame); assert isinstance(msg, protocol.WalkResult); assert msg.input_seq == 0x01020304; assert msg.accepted is False; assert msg.authoritative_pos.x == 0x1122; assert msg.authoritative_pos.y == 0x3344; assert msg.facing == protocol.Direction.LEFT; assert msg.reason == protocol.RejectionReason.FORCED_MOVEMENT_DISABLED; assert msg.server_frame == 0x0a0b0c0d; assert msg.traversal_state == protocol.TraversalState.ON_FOOT; assert msg.bike_transition == protocol.BikeTransitionType.NONE"#,
+            r#"import pathlib, sys, binascii; sys.path.insert(0, str(pathlib.Path('../shared').resolve())); import protocol; frame=binascii.unhexlify(sys.argv[1]); msg=protocol.decode_message(frame); assert isinstance(msg, protocol.WalkResult); assert msg.input_seq == 0x01020304; assert msg.accepted is False; assert msg.authoritative_pos.x == 0x1122; assert msg.authoritative_pos.y == 0x3344; assert msg.facing == protocol.Direction.LEFT; assert msg.reason == protocol.RejectionReason.FORCED_MOVEMENT_DISABLED; assert msg.server_frame == 0x0a0b0c0d; assert msg.traversal_state == protocol.TraversalState.ON_FOOT; assert msg.bike_transition == protocol.BikeTransitionType.NONE and msg.bike_effect_flags == 0"#,
             &hex::encode(frame),
         ])
         .status()

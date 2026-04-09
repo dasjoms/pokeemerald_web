@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from enum import IntEnum
 import struct
 
-PROTOCOL_VERSION = 3
+PROTOCOL_VERSION = 4
 
 _HEADER = struct.Struct("<HBI")  # protocol_version, message_type, payload_len
 _U8 = struct.Struct("<B")
@@ -131,6 +131,7 @@ class WorldSnapshot:
     mach_speed_stage: int | None = None
     acro_substate: AcroBikeSubstate | None = None
     bike_transition: BikeTransitionType | None = None
+    bike_effect_flags: int = 0
 
 
 @dataclass(frozen=True)
@@ -145,6 +146,7 @@ class WalkResult:
     mach_speed_stage: int | None = None
     acro_substate: AcroBikeSubstate | None = None
     bike_transition: BikeTransitionType | None = None
+    bike_effect_flags: int = 0
 
 
 @dataclass(frozen=True)
@@ -227,6 +229,7 @@ def _encode_payload(message: WireMessage) -> tuple[MessageType, bytes]:
                 _U8.pack(int(message.traversal_state)),
                 _U8.pack(runtime_flags),
                 runtime_payload,
+                _U8.pack(message.bike_effect_flags),
                 _U8.pack(hash_len),
                 message.map_chunk_hash,
                 _pack_bytes(message.map_chunk),
@@ -251,6 +254,7 @@ def _encode_payload(message: WireMessage) -> tuple[MessageType, bytes]:
                 _U8.pack(int(message.traversal_state)),
                 _U8.pack(runtime_flags),
                 runtime_payload,
+                _U8.pack(message.bike_effect_flags),
             ]
         )
 
@@ -302,6 +306,7 @@ def _decode_payload(message_type: MessageType, payload: bytes) -> WireMessage:
         server_frame, offset = _unpack_u32(payload, offset)
         traversal_state, offset = _unpack_u8(payload, offset)
         runtime, offset = _decode_bike_runtime(payload, offset)
+        bike_effect_flags, offset = _unpack_u8(payload, offset)
         hash_len, offset = _unpack_u8(payload, offset)
         map_chunk_hash, offset = _unpack_exact(payload, offset, hash_len)
         map_chunk, offset = _unpack_bytes(payload, offset)
@@ -318,6 +323,7 @@ def _decode_payload(message_type: MessageType, payload: bytes) -> WireMessage:
             mach_speed_stage=runtime.mach_speed_stage,
             acro_substate=runtime.acro_substate,
             bike_transition=runtime.bike_transition,
+            bike_effect_flags=bike_effect_flags,
         )
 
     if message_type is MessageType.WALK_RESULT:
@@ -330,6 +336,7 @@ def _decode_payload(message_type: MessageType, payload: bytes) -> WireMessage:
         server_frame, offset = _unpack_u32(payload, offset)
         traversal_state, offset = _unpack_u8(payload, offset)
         runtime, offset = _decode_bike_runtime(payload, offset)
+        bike_effect_flags, offset = _unpack_u8(payload, offset)
         _ensure_done(payload, offset)
         return WalkResult(
             input_seq=input_seq,
@@ -342,6 +349,7 @@ def _decode_payload(message_type: MessageType, payload: bytes) -> WireMessage:
             mach_speed_stage=runtime.mach_speed_stage,
             acro_substate=runtime.acro_substate,
             bike_transition=runtime.bike_transition,
+            bike_effect_flags=bike_effect_flags,
         )
 
     if message_type is MessageType.WORLD_DELTA:
