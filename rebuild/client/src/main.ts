@@ -267,6 +267,9 @@ const state: ClientWorldState = {
 };
 
 const WALK_STEP_DURATION_MS = (1000 / 60) * 16;
+// A directional key press shorter than this threshold is treated as a turn-only tap:
+// local facing updates immediately, but no WalkInput is emitted.
+const TURN_ONLY_TAP_MS = 90;
 let activeWalkTransition:
   | {
       startX: number;
@@ -1239,6 +1242,7 @@ function createWalkInputController(config: {
   onFacingIntent: (direction: Direction) => void;
 }): WalkInputController {
   const heldDirections = new Set<Direction>();
+  const heldDirectionPressedAtMs = new Map<Direction, number>();
   const directionOrder: Direction[] = [];
   let activeIntent: Direction | null = null;
   let bufferedIntent: Direction | null = null;
@@ -1251,18 +1255,29 @@ function createWalkInputController(config: {
     }
   };
 
-  const getActiveDirection = (): Direction | null => {
+  const canDispatchNewIntent = (): boolean =>
+    !hasPendingWalkRequest && !config.isMovementLocked() && activeIntent === null;
+
+  const hasSatisfiedTapThreshold = (direction: Direction, nowMs: number): boolean => {
+    const pressedAtMs = heldDirectionPressedAtMs.get(direction);
+    if (pressedAtMs === undefined) {
+      return false;
+    }
+    return nowMs - pressedAtMs >= TURN_ONLY_TAP_MS;
+  };
+
+  const getEligibleHeldDirection = (nowMs: number): Direction | null => {
     for (let i = directionOrder.length - 1; i >= 0; i -= 1) {
       const direction = directionOrder[i];
-      if (heldDirections.has(direction)) {
+      if (!heldDirections.has(direction)) {
+        continue;
+      }
+      if (hasSatisfiedTapThreshold(direction, nowMs)) {
         return direction;
       }
     }
     return null;
   };
-
-  const canDispatchNewIntent = (): boolean =>
-    !hasPendingWalkRequest && !config.isMovementLocked() && activeIntent === null;
 
   const sendIntent = (direction: Direction): void => {
     config.onFacingIntent(direction);
@@ -1271,19 +1286,36 @@ function createWalkInputController(config: {
     hasPendingWalkRequest = true;
   };
 
-  const maybeDispatchIntent = (): void => {
+  const updateBufferedIntentFromHeldDirections = (nowMs: number): void => {
+    const eligibleHeldDirection = getEligibleHeldDirection(nowMs);
+    if (eligibleHeldDirection !== null) {
+      bufferedIntent = eligibleHeldDirection;
+      return;
+    }
+
+    if (bufferedIntent !== null && !heldDirections.has(bufferedIntent)) {
+      bufferedIntent = null;
+    }
+  };
+
+  const maybeDispatchIntent = (nowMs: number): void => {
+    updateBufferedIntentFromHeldDirections(nowMs);
     if (!canDispatchNewIntent()) {
       return;
     }
 
-    if (bufferedIntent !== null && heldDirections.has(bufferedIntent)) {
+    if (
+      bufferedIntent !== null &&
+      heldDirections.has(bufferedIntent) &&
+      hasSatisfiedTapThreshold(bufferedIntent, nowMs)
+    ) {
       const buffered = bufferedIntent;
       bufferedIntent = null;
       sendIntent(buffered);
       return;
     }
 
-    const heldDirection = getActiveDirection();
+    const heldDirection = getEligibleHeldDirection(nowMs);
     if (heldDirection !== null) {
       bufferedIntent = null;
       sendIntent(heldDirection);
@@ -1304,6 +1336,7 @@ function createWalkInputController(config: {
 
       const isFirstPressForDirection = !heldDirections.has(direction);
       heldDirections.add(direction);
+      heldDirectionPressedAtMs.set(direction, performance.now());
       removeDirectionFromOrder(direction);
       directionOrder.push(direction);
 
@@ -1311,12 +1344,7 @@ function createWalkInputController(config: {
         config.onFacingIntent(direction);
       }
 
-      if (canDispatchNewIntent()) {
-        sendIntent(direction);
-        return;
-      }
-
-      bufferedIntent = direction;
+      maybeDispatchIntent(performance.now());
     },
     handleKeyUp(event: KeyboardEvent): void {
       const direction = keyToDirection(event.key);
@@ -1326,30 +1354,32 @@ function createWalkInputController(config: {
 
       event.preventDefault();
       heldDirections.delete(direction);
+      heldDirectionPressedAtMs.delete(direction);
       removeDirectionFromOrder(direction);
       if (bufferedIntent === direction) {
         bufferedIntent = null;
       }
     },
     tick(): void {
-      maybeDispatchIntent();
+      maybeDispatchIntent(performance.now());
     },
     markWalkResultReceived(result: WalkResult): void {
       hasPendingWalkRequest = false;
       if (!result.accepted) {
         activeIntent = null;
-        maybeDispatchIntent();
+        maybeDispatchIntent(performance.now());
       }
     },
     markWalkTransitionCompleted(): void {
       activeIntent = null;
-      maybeDispatchIntent();
+      maybeDispatchIntent(performance.now());
     },
     reset(): void {
       hasPendingWalkRequest = false;
       activeIntent = null;
       bufferedIntent = null;
       heldDirections.clear();
+      heldDirectionPressedAtMs.clear();
       directionOrder.length = 0;
     },
   };
