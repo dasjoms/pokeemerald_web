@@ -268,6 +268,7 @@ const state: ClientWorldState = {
   renderTileX: 0,
   renderTileY: 0,
 };
+const pendingMovementModesByInputSeq = new Map<number, MovementMode>();
 
 const WALK_STEP_DURATION_MS = (1000 / 60) * 16;
 // A directional key press shorter than this threshold is treated as a turn-only tap:
@@ -529,6 +530,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     playerAnimation.setIdle(snapshot.facing);
     state.lastAckServerTick = snapshot.server_frame;
     pendingPredictedInputs.clear();
+    pendingMovementModesByInputSeq.clear();
     walkInputController.reset();
 
     await renderMapFromSnapshot(snapshot);
@@ -537,6 +539,9 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
 
   const result = message.payload;
   walkInputController.markWalkResultReceived(result);
+  const acceptedMovementMode =
+    pendingMovementModesByInputSeq.get(result.input_seq) ?? MovementMode.WALK;
+  pendingMovementModesByInputSeq.delete(result.input_seq);
   const clampedAuthoritativeTile = clampToMapBounds(
     {
       x: result.authoritative_pos.x,
@@ -552,7 +557,10 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     // Contract: on accepted input, authoritative_pos is the server tile *after* applying that step.
     // This lets the first interpolation run immediately toward the accepted destination.
     startAuthoritativeWalkTransition(result.facing);
-    playerAnimation.startWalkStep(result.facing);
+    playerAnimation.startStep(
+      result.facing,
+      acceptedMovementMode === MovementMode.RUN ? 'run' : 'walk',
+    );
   } else {
     activeWalkTransition = null;
     state.renderTileX = state.playerTileX;
@@ -1242,9 +1250,10 @@ function sendWalkInput(direction: Direction, movementMode: MovementMode): void {
   const inputSeq = state.lastInputSeq;
   state.lastInputSeq += 1;
   socket.send(encodeWalkInput(direction, movementMode, inputSeq, BigInt(Date.now())));
+  pendingMovementModesByInputSeq.set(inputSeq, movementMode);
 
   if (ENABLE_CLIENT_PREDICTION) {
-    applyPredictedWalk(direction, inputSeq);
+    applyPredictedWalk(direction, inputSeq, movementMode);
   }
 }
 
@@ -1567,7 +1576,11 @@ function readU32(raw: Uint8Array, offset: number): number {
   return new DataView(raw.buffer, raw.byteOffset, raw.byteLength).getUint32(offset, true);
 }
 
-function applyPredictedWalk(direction: Direction, inputSeq: number): void {
+function applyPredictedWalk(
+  direction: Direction,
+  inputSeq: number,
+  movementMode: MovementMode,
+): void {
   pendingPredictedInputs.set(inputSeq, direction);
   // Presentation-only prediction (non-authoritative): clamp local visuals to map bounds.
   const predictedTile = applyPredictedStep(
@@ -1581,7 +1594,7 @@ function applyPredictedWalk(direction: Direction, inputSeq: number): void {
   state.renderTileX = state.playerTileX;
   state.renderTileY = state.playerTileY;
   state.facing = direction;
-  playerAnimation.startWalkStep(direction);
+  playerAnimation.startStep(direction, movementMode === MovementMode.RUN ? 'run' : 'walk');
 }
 
 function positionPlayerSprite(): void {

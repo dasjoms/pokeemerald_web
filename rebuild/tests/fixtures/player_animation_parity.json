@@ -403,6 +403,295 @@
           "stride_phase": 1
         }
       ]
+    },
+    {
+      "name": "continuous_running_all_directions",
+      "events": [
+        {
+          "tick": 0,
+          "action": "start_run",
+          "direction": "DOWN"
+        },
+        {
+          "tick": 8,
+          "action": "start_run",
+          "direction": "UP"
+        },
+        {
+          "tick": 16,
+          "action": "start_run",
+          "direction": "LEFT"
+        },
+        {
+          "tick": 24,
+          "action": "start_run",
+          "direction": "RIGHT"
+        }
+      ],
+      "expected": [
+        {
+          "anim_id": "anim_run_south",
+          "frame_index": 300,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_run_south",
+          "frame_index": 301,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_run_south",
+          "frame_index": 302,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_run_south",
+          "frame_index": 303,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_run_south",
+          "frame_index": 300,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_run_south",
+          "frame_index": 301,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_run_south",
+          "frame_index": 302,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_run_south",
+          "frame_index": 303,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_run_north",
+          "frame_index": 310,
+          "stride_phase": 1
+        },
+        {
+          "anim_id": "anim_run_north",
+          "frame_index": 311,
+          "stride_phase": 1
+        },
+        {
+          "anim_id": "anim_run_north",
+          "frame_index": 312,
+          "stride_phase": 1
+        },
+        {
+          "anim_id": "anim_run_north",
+          "frame_index": 313,
+          "stride_phase": 1
+        },
+        {
+          "anim_id": "anim_run_north",
+          "frame_index": 310,
+          "stride_phase": 1
+        },
+        {
+          "anim_id": "anim_run_north",
+          "frame_index": 311,
+          "stride_phase": 1
+        },
+        {
+          "anim_id": "anim_run_north",
+          "frame_index": 312,
+          "stride_phase": 1
+        },
+        {
+          "anim_id": "anim_run_north",
+          "frame_index": 313,
+          "stride_phase": 1
+        },
+        {
+          "anim_id": "anim_run_west",
+          "frame_index": 320,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_run_west",
+          "frame_index": 321,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_run_west",
+          "frame_index": 322,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_run_west",
+          "frame_index": 323,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_run_west",
+          "frame_index": 320,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_run_west",
+          "frame_index": 321,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_run_west",
+          "frame_index": 322,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_run_west",
+          "frame_index": 323,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_run_east",
+          "frame_index": 330,
+          "stride_phase": 1
+        },
+        {
+          "anim_id": "anim_run_east",
+          "frame_index": 331,
+          "stride_phase": 1
+        },
+        {
+          "anim_id": "anim_run_east",
+          "frame_index": 332,
+          "stride_phase": 1
+        },
+        {
+          "anim_id": "anim_run_east",
+          "frame_index": 333,
+          "stride_phase": 1
+        },
+        {
+          "anim_id": "anim_run_east",
+          "frame_index": 330,
+          "stride_phase": 1
+        },
+        {
+          "anim_id": "anim_run_east",
+          "frame_index": 331,
+          "stride_phase": 1
+        },
+        {
+          "anim_id": "anim_run_east",
+          "frame_index": 332,
+          "stride_phase": 1
+        },
+        {
+          "anim_id": "anim_run_east",
+          "frame_index": 333,
+          "stride_phase": 1
+        }
+      ]
+    },
+    {
+      "name": "walk_run_mode_switches_from_idle",
+      "events": [
+        {
+          "tick": 0,
+          "action": "start_walk",
+          "direction": "DOWN"
+        },
+        {
+          "tick": 2,
+          "action": "set_idle",
+          "direction": "DOWN"
+        },
+        {
+          "tick": 3,
+          "action": "start_run",
+          "direction": "DOWN"
+        },
+        {
+          "tick": 5,
+          "action": "set_idle",
+          "direction": "DOWN"
+        },
+        {
+          "tick": 6,
+          "action": "start_walk",
+          "direction": "DOWN"
+        },
+        {
+          "tick": 8,
+          "action": "set_idle",
+          "direction": "DOWN"
+        },
+        {
+          "tick": 9,
+          "action": "start_run",
+          "direction": "DOWN"
+        }
+      ],
+      "expected": [
+        {
+          "anim_id": "anim_walk_south",
+          "frame_index": 200,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_walk_south",
+          "frame_index": 200,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_face_south",
+          "frame_index": 100,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_run_south",
+          "frame_index": 300,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_run_south",
+          "frame_index": 301,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_face_south",
+          "frame_index": 100,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_walk_south",
+          "frame_index": 200,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_walk_south",
+          "frame_index": 200,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_face_south",
+          "frame_index": 100,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_run_south",
+          "frame_index": 300,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_run_south",
+          "frame_index": 301,
+          "stride_phase": 0
+        },
+        {
+          "anim_id": "anim_run_south",
+          "frame_index": 302,
+          "stride_phase": 0
+        }
+      ]
     }
   ]
 }
