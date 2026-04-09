@@ -359,6 +359,21 @@ def validate_frame_atlas_bounds(avatar_id: str, frame_atlas: dict[str, Any], she
             )
 
 
+def traversal_mode_pic_entries(
+    traversal_mode: str,
+    normal_pic_entries: list[dict[str, Any]],
+    mach_pic_entries: list[dict[str, Any]],
+    acro_pic_entries: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    if traversal_mode == "on_foot":
+        return normal_pic_entries
+    if traversal_mode == "mach_bike":
+        return mach_pic_entries
+    if traversal_mode == "acro_bike":
+        return acro_pic_entries
+    raise ValueError(f"Unknown traversal mode: {traversal_mode}")
+
+
 def resolve_assets() -> list[dict[str, Any]]:
     incbins = parse_incbin_paths()
     animation_table_specs = {
@@ -408,11 +423,14 @@ def resolve_assets() -> list[dict[str, Any]]:
 
         frame_by_sheet: dict[str, int] = {}
         frame_atlas: dict[str, Any] = {}
+        global_frame_index_by_source: dict[tuple[str, int], int] = {}
         sheet_dimensions: dict[str, tuple[int, int]] = {}
         for output_frame_idx, entry in enumerate(pic_entries):
             sheet_symbol = entry["pic_symbol"]
             local_frame = frame_by_sheet.get(sheet_symbol, 0)
             frame_by_sheet[sheet_symbol] = local_frame + 1
+            source_frame_key = (sheet_symbol, entry["source_frame_index"])
+            global_frame_index_by_source[source_frame_key] = output_frame_idx
 
             sheet_path = resolve_existing_source_path(incbins[sheet_symbol])
             if sheet_symbol not in sheet_dimensions:
@@ -436,6 +454,48 @@ def resolve_assets() -> list[dict[str, Any]]:
 
         normal_palette_path = resolve_existing_source_path(incbins[avatar.normal_palette_symbol])
         reflection_palette_path = resolve_existing_source_path(incbins["gObjectEventPal_BridgeReflection"])
+        avatar_animation_sets: dict[str, Any] = {}
+        for traversal_mode, set_spec in animation_sets.items():
+            mode_pic_entries = traversal_mode_pic_entries(
+                traversal_mode,
+                normal_pic_entries,
+                mach_pic_entries,
+                acro_pic_entries,
+            )
+            mode_source_key_by_local_frame = {
+                local_frame_idx: (entry["pic_symbol"], entry["source_frame_index"])
+                for local_frame_idx, entry in enumerate(mode_pic_entries)
+            }
+            actions: dict[str, Any] = {}
+            for action_id, by_dir in set_spec["actions"].items():
+                directional_bindings: dict[str, Any] = {}
+                for direction, cmd_symbol in by_dir.items():
+                    remapped_frames: list[dict[str, Any]] = []
+                    for frame in anim_cmds[cmd_symbol]:
+                        source_key = mode_source_key_by_local_frame.get(frame["frame"])
+                        if source_key is None:
+                            raise ValueError(
+                                f"Unknown local frame index {frame['frame']} for {avatar.avatar_id} "
+                                f"{traversal_mode}/{action_id}/{direction}"
+                            )
+                        output_frame_idx = global_frame_index_by_source.get(source_key)
+                        if output_frame_idx is None:
+                            raise ValueError(
+                                f"Missing frame mapping for {avatar.avatar_id} "
+                                f"{traversal_mode}/{action_id}/{direction}: {source_key}"
+                            )
+                        remapped_frames.append({**frame, "frame": output_frame_idx})
+                    directional_bindings[direction] = {
+                        "action_id": action_id,
+                        "anim_cmd_symbol": cmd_symbol,
+                        "frames": remapped_frames,
+                    }
+                actions[action_id] = directional_bindings
+
+            avatar_animation_sets[traversal_mode] = {
+                "anim_table_symbol": set_spec["anim_table_symbol"],
+                "actions": actions,
+            }
 
         avatars.append(
             {
@@ -494,23 +554,7 @@ def resolve_assets() -> list[dict[str, Any]]:
                         "colors": decode_palette(reflection_palette_path),
                     },
                 },
-                "animation_sets": {
-                    traversal_mode: {
-                        "anim_table_symbol": set_spec["anim_table_symbol"],
-                        "actions": {
-                            action_id: {
-                                direction: {
-                                    "action_id": action_id,
-                                    "anim_cmd_symbol": cmd_symbol,
-                                    "frames": anim_cmds[cmd_symbol],
-                                }
-                                for direction, cmd_symbol in by_dir.items()
-                            }
-                            for action_id, by_dir in set_spec["actions"].items()
-                        },
-                    }
-                    for traversal_mode, set_spec in animation_sets.items()
-                },
+                "animation_sets": avatar_animation_sets,
                 "reference": {
                     "graphics_info_symbol": avatar.graphics_info_symbol,
                     "pic_table_symbol": avatar.normal_pic_table_symbol,
