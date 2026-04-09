@@ -75,6 +75,7 @@ async fn accepted_walk_result_reports_destination_coordinates_immediately() {
             WalkInput {
                 direction: accepted_direction.0,
                 movement_mode: MovementMode::Walk,
+                held_buttons: 0,
                 input_seq: 0,
                 client_time: 0,
             },

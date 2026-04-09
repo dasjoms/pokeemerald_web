@@ -82,6 +82,7 @@ async fn walk_queue_drops_oldest_input_when_capacity_reached() {
                 WalkInput {
                     direction: walk_direction,
                     movement_mode: MovementMode::Walk,
+                    held_buttons: 0,
                     input_seq,
                     client_time: 0,
                 },
@@ -96,6 +97,7 @@ async fn walk_queue_drops_oldest_input_when_capacity_reached() {
             WalkInput {
                 direction: walk_direction,
                 movement_mode: MovementMode::Walk,
+                held_buttons: 0,
                 input_seq: 0,
                 client_time: 0,
             },
@@ -139,6 +141,7 @@ async fn walk_queue_drops_oldest_input_when_capacity_reached() {
             WalkInput {
                 direction: walk_direction,
                 movement_mode: MovementMode::Walk,
+                held_buttons: 0,
                 input_seq: 3,
                 client_time: 0,
             },

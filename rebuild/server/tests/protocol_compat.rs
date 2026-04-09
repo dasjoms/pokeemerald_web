@@ -10,7 +10,7 @@ fn shared_walk_input_decodes_in_server_runtime() {
     let output = Command::new("python3")
         .args([
             "-c",
-            r#"import pathlib, sys; sys.path.insert(0, str(pathlib.Path('../shared').resolve())); import protocol; frame=protocol.encode_message(protocol.WalkInput(direction=protocol.Direction.LEFT,movement_mode=protocol.MovementMode.WALK,input_seq=7,client_time=42)); print(frame.hex())"#,
+            r#"import pathlib, sys; sys.path.insert(0, str(pathlib.Path('../shared').resolve())); import protocol; frame=protocol.encode_message(protocol.WalkInput(direction=protocol.Direction.LEFT,movement_mode=protocol.MovementMode.WALK,held_buttons=protocol.HeldButtons.B,input_seq=7,client_time=42)); print(frame.hex())"#,
         ])
         .output()
         .expect("python must run");
@@ -24,6 +24,7 @@ fn shared_walk_input_decodes_in_server_runtime() {
         ClientMessage::WalkInput(rebuild_server::protocol::WalkInput {
             direction: Direction::Left,
             movement_mode: MovementMode::Walk,
+            held_buttons: 1,
             input_seq: 7,
             client_time: 42,
         })
@@ -104,7 +105,7 @@ fn walk_result_wire_encoding_with_forced_movement_disabled_is_canonical() {
 
     assert_eq!(
         hex::encode(&frame),
-        "0500831400000004030201002211443302060d0c0b0a0000040000"
+        "0600831400000004030201002211443302060d0c0b0a0000040000"
     );
 
     let status = Command::new("python3")

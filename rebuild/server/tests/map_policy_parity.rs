@@ -120,6 +120,7 @@ async fn second_accepted_tick_for_run_inputs(initial_map_id: &str) -> u32 {
             WalkInput {
                 direction,
                 movement_mode: MovementMode::Run,
+                held_buttons: 0,
                 input_seq: 0,
                 client_time: 0,
             },
@@ -133,6 +134,7 @@ async fn second_accepted_tick_for_run_inputs(initial_map_id: &str) -> u32 {
             WalkInput {
                 direction: opposite,
                 movement_mode: MovementMode::Run,
+                held_buttons: 0,
                 input_seq: 1,
                 client_time: 0,
             },

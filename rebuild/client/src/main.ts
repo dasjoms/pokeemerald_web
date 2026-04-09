@@ -4,6 +4,7 @@ import {
   BikeTransitionType,
   DebugTraversalAction,
   Direction,
+  HeldButtons,
   MessageType,
   MovementMode,
   PlayerAvatar,
@@ -241,6 +242,7 @@ type MapTileRenderPriorityContext = {
 type WalkInputController = {
   handleKeyDown: (event: KeyboardEvent) => void;
   handleKeyUp: (event: KeyboardEvent) => void;
+  setVirtualBHeld: (held: boolean) => void;
   toggleMovementMode: () => void;
   tick: () => void;
   markWalkResultReceived: (result: WalkResult) => void;
@@ -1266,6 +1268,11 @@ function bindWalkInput(): void {
       void toggleDebugAvatar();
       return;
     }
+    if (event.key === 'c' || event.key === 'C') {
+      event.preventDefault();
+      walkInputController.setVirtualBHeld(true);
+      return;
+    }
     if (event.key === 'b' || event.key === 'B') {
       event.preventDefault();
       if (event.repeat) {
@@ -1293,6 +1300,11 @@ function bindWalkInput(): void {
     walkInputController.handleKeyDown(event);
   });
   window.addEventListener('keyup', (event) => {
+    if (event.key === 'c' || event.key === 'C') {
+      event.preventDefault();
+      walkInputController.setVirtualBHeld(false);
+      return;
+    }
     walkInputController.handleKeyUp(event);
   });
 }
@@ -1327,14 +1339,20 @@ function keyToDirection(key: string): Direction | null {
   }
 }
 
-function sendWalkInput(direction: Direction, movementMode: MovementMode): void {
+function sendWalkInput(
+  direction: Direction,
+  movementMode: MovementMode,
+  heldButtons: number,
+): void {
   if (!socket || socket.readyState !== WebSocket.OPEN) {
     return;
   }
 
   const inputSeq = state.lastInputSeq;
   state.lastInputSeq += 1;
-  socket.send(encodeWalkInput(direction, movementMode, inputSeq, BigInt(Date.now())));
+  socket.send(
+    encodeWalkInput(direction, movementMode, heldButtons, inputSeq, BigInt(Date.now())),
+  );
   pendingMovementModesByInputSeq.set(inputSeq, movementMode);
 
   if (ENABLE_CLIENT_PREDICTION) {
@@ -1343,7 +1361,7 @@ function sendWalkInput(direction: Direction, movementMode: MovementMode): void {
 }
 
 function createWalkInputController(config: {
-  sendWalkInput: (direction: Direction, movementMode: MovementMode) => void;
+  sendWalkInput: (direction: Direction, movementMode: MovementMode, heldButtons: number) => void;
   isMovementLocked: () => boolean;
   onFacingIntent: (direction: Direction) => void;
 }): WalkInputController {
@@ -1354,6 +1372,7 @@ function createWalkInputController(config: {
   let bufferedIntent: Direction | null = null;
   let hasPendingWalkRequest = false;
   let movementMode: MovementMode = MovementMode.WALK;
+  let virtualBHeld = false;
 
   const removeDirectionFromOrder = (direction: Direction): void => {
     const index = directionOrder.indexOf(direction);
@@ -1388,7 +1407,11 @@ function createWalkInputController(config: {
 
   const sendIntent = (direction: Direction): void => {
     config.onFacingIntent(direction);
-    config.sendWalkInput(direction, movementMode);
+    config.sendWalkInput(
+      direction,
+      movementMode,
+      virtualBHeld ? HeldButtons.B : HeldButtons.NONE,
+    );
     activeIntent = direction;
     hasPendingWalkRequest = true;
   };
@@ -1470,6 +1493,9 @@ function createWalkInputController(config: {
 
       maybeDispatchIntent(performance.now());
     },
+    setVirtualBHeld(held: boolean): void {
+      virtualBHeld = held;
+    },
     toggleMovementMode(): void {
       movementMode =
         movementMode === MovementMode.WALK ? MovementMode.RUN : MovementMode.WALK;
@@ -1513,6 +1539,7 @@ function createWalkInputController(config: {
       activeIntent = null;
       bufferedIntent = null;
       movementMode = MovementMode.WALK;
+      virtualBHeld = false;
       heldDirections.clear();
       heldDirectionPressedAtMs.clear();
       directionOrder.length = 0;
@@ -1541,15 +1568,17 @@ function encodeJoinSession(playerId: string): Uint8Array {
 function encodeWalkInput(
   direction: Direction,
   movementMode: MovementMode,
+  heldButtons: number,
   inputSeq: number,
   clientTime: bigint,
 ): Uint8Array {
-  const payload = new Uint8Array(14);
+  const payload = new Uint8Array(15);
   const payloadView = new DataView(payload.buffer);
   payloadView.setUint8(0, direction);
   payloadView.setUint8(1, movementMode);
-  payloadView.setUint32(2, inputSeq, true);
-  payloadView.setBigUint64(6, clientTime, true);
+  payloadView.setUint8(2, heldButtons);
+  payloadView.setUint32(3, inputSeq, true);
+  payloadView.setBigUint64(7, clientTime, true);
 
   const frame = new Uint8Array(7 + payload.length);
   const view = new DataView(frame.buffer);
