@@ -672,6 +672,28 @@ impl World {
                         ),
                     };
 
+                if accepted {
+                    update_bike_runtime_after_step(&mut session.player_state, movement_direction);
+                    apply_bike_transition_for_collision_outcome(
+                        &mut session.player_state,
+                        collision_outcome,
+                    );
+                    cracked_floor_per_step_callback(
+                        &mut session.player_state,
+                        current_map,
+                        authoritative_x,
+                        authoritative_y,
+                        attempted_player_speed,
+                    );
+                } else {
+                    reset_bike_runtime_on_reject(
+                        &mut session.player_state,
+                        reason,
+                        source_behavior,
+                        collision_outcome,
+                    );
+                }
+
                 let result = ServerMessage::WalkResult(WalkResult {
                     input_seq: input.input_seq,
                     accepted,
@@ -702,26 +724,7 @@ impl World {
                     .preserve_transition_until_walk_result = false;
 
                 if accepted {
-                    update_bike_runtime_after_step(&mut session.player_state, movement_direction);
-                    apply_bike_transition_for_collision_outcome(
-                        &mut session.player_state,
-                        collision_outcome,
-                    );
-                    cracked_floor_per_step_callback(
-                        &mut session.player_state,
-                        current_map,
-                        authoritative_x,
-                        authoritative_y,
-                        attempted_player_speed,
-                    );
                     break;
-                } else {
-                    reset_bike_runtime_on_reject(
-                        &mut session.player_state,
-                        reason,
-                        source_behavior,
-                        collision_outcome,
-                    );
                 }
             }
         }
@@ -1603,6 +1606,25 @@ mod tests {
         drained
     }
 
+    fn test_world_with_initial_map(initial_map: MapData) -> World {
+        let mut maps = HashMap::new();
+        let map_id = initial_map.map_id.clone();
+        maps.insert(map_id.clone(), initial_map);
+
+        let mut protocol_map_ids = HashMap::new();
+        protocol_map_ids.insert(map_id.clone(), 1);
+
+        World {
+            tick: AtomicU64::new(0),
+            next_connection_id: AtomicU64::new(1),
+            initial_map_id: map_id,
+            maps,
+            protocol_map_ids,
+            player_profiles: RwLock::new(HashMap::new()),
+            sessions: RwLock::new(HashMap::new()),
+        }
+    }
+
     #[test]
     fn tick_then_step_order_preserves_side_jump_transition() {
         let mut player = test_player_state();
@@ -1841,6 +1863,133 @@ mod tests {
         assert!(
             normal_to_wheelie_index < wheelie_hop_index,
             "NormalToWheelie must occur before WheelieHoppingStanding"
+        );
+    }
+
+    #[tokio::test]
+    async fn moving_wheelie_release_with_b_held_emits_idle_then_hop_without_grounded_transition() {
+        let world = test_world_with_initial_map(bumpy_slope_map());
+        let (tx, mut rx) = mpsc::unbounded_channel();
+        let session = world
+            .create_session(tx)
+            .await
+            .expect("session should create");
+        world
+            .join_session(session.connection_id, "moving-wheelie-release")
+            .await
+            .expect("session should join");
+        let _ = drain_server_messages(&mut rx);
+
+        {
+            let mut sessions = world.sessions.write().await;
+            let session_state = sessions
+                .get_mut(&session.connection_id)
+                .expect("session should exist");
+            session_state.player_state.traversal_state = TraversalState::AcroBike;
+            session_state.player_state.preferred_bike_type = TraversalState::AcroBike;
+            session_state.player_state.facing = Direction::Right;
+            session_state.player_state.bike_runtime.acro_runtime.state = AcroState::WheelieMoving;
+            session_state.player_state.bike_runtime.acro_state = AcroBikeSubstate::MovingWheelie;
+            session_state.player_state.bike_runtime.last_transition = BikeTransitionType::None;
+            session_state
+                .player_state
+                .bike_runtime
+                .acro_runtime
+                .set_held_input(Some(Direction::Right), true);
+        }
+
+        world
+            .enqueue_held_input_state(
+                session.connection_id,
+                HeldInputState {
+                    input_seq: 0,
+                    held_direction: None,
+                    held_buttons: crate::protocol::HeldButtons::B as u8,
+                    client_time: 0,
+                },
+            )
+            .await
+            .expect("held input should enqueue");
+        world
+            .enqueue_walk_input(
+                session.connection_id,
+                WalkInput {
+                    direction: Direction::Right,
+                    movement_mode: MovementMode::Walk,
+                    held_buttons: crate::protocol::HeldButtons::B as u8,
+                    input_seq: 0,
+                    client_time: 0,
+                },
+            )
+            .await
+            .expect("walk input should enqueue");
+        world.tick().await;
+
+        let mut seen_transitions = Vec::new();
+        let mut walk_result = None;
+        for message in drain_server_messages(&mut rx) {
+            match message {
+                ServerMessage::WalkResult(result) => {
+                    if result.input_seq == 0 {
+                        walk_result = Some(result);
+                        if let Some(transition) = result.bike_transition {
+                            seen_transitions.push(transition);
+                        }
+                    }
+                }
+                ServerMessage::BikeRuntimeDelta(delta) => {
+                    if let Some(transition) = delta.bike_transition {
+                        seen_transitions.push(transition);
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        let walk_result = walk_result.expect("expected walk result for rejected collision");
+        assert!(!walk_result.accepted);
+        assert_eq!(walk_result.reason, RejectionReason::Collision);
+        assert_eq!(
+            walk_result.acro_substate,
+            Some(AcroBikeSubstate::StandingWheelie)
+        );
+        assert_eq!(walk_result.bike_transition, Some(BikeTransitionType::None));
+        assert!(
+            !seen_transitions.contains(&BikeTransitionType::WheelieToNormal),
+            "release while holding B must not emit grounded WheelieToNormal transition"
+        );
+
+        for input_seq in 1..50_u32 {
+            world
+                .enqueue_held_input_state(
+                    session.connection_id,
+                    HeldInputState {
+                        input_seq,
+                        held_direction: None,
+                        held_buttons: crate::protocol::HeldButtons::B as u8,
+                        client_time: input_seq as u64,
+                    },
+                )
+                .await
+                .expect("held input should enqueue");
+            world.tick().await;
+
+            for message in drain_server_messages(&mut rx) {
+                if let ServerMessage::BikeRuntimeDelta(delta) = message {
+                    if let Some(transition) = delta.bike_transition {
+                        seen_transitions.push(transition);
+                    }
+                }
+            }
+        }
+
+        assert!(
+            seen_transitions.contains(&BikeTransitionType::WheelieHoppingStanding),
+            "expected standing hop flow to continue after release"
+        );
+        assert!(
+            !seen_transitions.contains(&BikeTransitionType::WheelieToNormal),
+            "no intermediate grounded transition should occur before standing hop flow"
         );
     }
 
