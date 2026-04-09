@@ -32,6 +32,12 @@ import {
   PlayerAnimationController,
 } from './playerAnimation';
 import {
+  startAuthoritativeWalkTransition as createAuthoritativeWalkTransition,
+  tickWalkTransition as tickWalkTransitionState,
+  type WalkTransition,
+  type WalkTransitionMutableState,
+} from './walkTransitionPipeline';
+import {
   buildLayerSubtileOccupancy,
   resolvePlayerLayerSampleTile,
   resolvePlayerRenderPriority,
@@ -271,21 +277,10 @@ const state: ClientWorldState = {
 };
 const pendingMovementModesByInputSeq = new Map<number, MovementMode>();
 
-const SERVER_MOVEMENT_SAMPLE_MS = 1000 / 60;
 // A directional key press shorter than this threshold is treated as a turn-only tap:
 // local facing updates immediately, but no WalkInput is emitted.
 const TURN_ONLY_TAP_MS = 90;
-let activeWalkTransition:
-  | {
-      startX: number;
-      startY: number;
-      targetX: number;
-      targetY: number;
-      elapsedMs: number;
-      durationMs: number;
-      facing: Direction;
-    }
-  | null = null;
+let activeWalkTransition: WalkTransition | null = null;
 
 const pendingPredictedInputs = new Map<number, Direction>();
 let hasLoggedPrimaryTileCountMismatch = false;
@@ -1670,59 +1665,32 @@ function updateCamera(): void {
   gameContainer.y = app.screen.height / 2 - centerY * RENDER_SCALE;
 }
 
-function movementModeStepDurationMs(movementMode: MovementMode): number {
-  switch (movementMode) {
-    case MovementMode.RUN:
-      return SERVER_MOVEMENT_SAMPLE_MS * 8;
-    case MovementMode.WALK:
-    default:
-      return SERVER_MOVEMENT_SAMPLE_MS * 16;
-  }
-}
-
 function startAuthoritativeWalkTransition(
   facing: Direction,
   movementMode: MovementMode,
 ): void {
-  activeWalkTransition = {
-    startX: state.renderTileX,
-    startY: state.renderTileY,
-    targetX: state.playerTileX,
-    targetY: state.playerTileY,
-    elapsedMs: 0,
-    durationMs: movementModeStepDurationMs(movementMode),
+  activeWalkTransition = createAuthoritativeWalkTransition(
+    state,
     facing,
-  };
+    movementMode,
+  );
 }
 
 function tickWalkTransition(deltaMs: number): void {
-  if (!activeWalkTransition) {
-    state.renderTileX = state.playerTileX;
-    state.renderTileY = state.playerTileY;
-    return;
-  }
-
-  activeWalkTransition.elapsedMs += Math.max(0, deltaMs);
-  const t = Math.min(1, activeWalkTransition.elapsedMs / activeWalkTransition.durationMs);
-  state.renderTileX =
-    activeWalkTransition.startX +
-    (activeWalkTransition.targetX - activeWalkTransition.startX) * t;
-  state.renderTileY =
-    activeWalkTransition.startY +
-    (activeWalkTransition.targetY - activeWalkTransition.startY) * t;
-
-  if (t >= 1) {
-    state.renderTileX = activeWalkTransition.targetX;
-    state.renderTileY = activeWalkTransition.targetY;
-    const completedTransitionFacing = activeWalkTransition.facing;
-    const shouldRemainInLocomotion =
-      walkInputController.hasPendingAcceptedOrDispatchableStep();
-    activeWalkTransition = null;
-    walkInputController.markWalkTransitionCompleted();
-    if (!shouldRemainInLocomotion) {
-      playerAnimation.stopMoving(completedTransitionFacing);
-    }
-  }
+  const walkTransitionState: WalkTransitionMutableState = state;
+  activeWalkTransition = tickWalkTransitionState({
+    activeWalkTransition,
+    state: walkTransitionState,
+    deltaMs,
+    hasPendingAcceptedOrDispatchableStep: () =>
+      walkInputController.hasPendingAcceptedOrDispatchableStep(),
+    markWalkTransitionCompleted: () => {
+      walkInputController.markWalkTransitionCompleted();
+    },
+    stopMoving: (direction) => {
+      playerAnimation.stopMoving(direction);
+    },
+  });
 }
 
 function renderHud(): void {
