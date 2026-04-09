@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from enum import IntEnum
 import struct
 
-PROTOCOL_VERSION = 4
+PROTOCOL_VERSION = 5
 
 _HEADER = struct.Struct("<HBI")  # protocol_version, message_type, payload_len
 _U8 = struct.Struct("<B")
@@ -28,6 +28,7 @@ class MessageType(IntEnum):
     # Client -> Server
     JOIN_SESSION = 0x01
     WALK_INPUT = 0x02
+    DEBUG_TRAVERSAL_INPUT = 0x03
 
     # Server -> Client
     SESSION_ACCEPTED = 0x81
@@ -46,6 +47,11 @@ class Direction(IntEnum):
 class MovementMode(IntEnum):
     WALK = 0
     RUN = 1
+
+
+class DebugTraversalAction(IntEnum):
+    TOGGLE_MOUNT = 0
+    SWAP_BIKE_TYPE = 1
 
 
 class TraversalState(IntEnum):
@@ -112,6 +118,11 @@ class WalkInput:
 
 
 @dataclass(frozen=True)
+class DebugTraversalInput:
+    action: DebugTraversalAction
+
+
+@dataclass(frozen=True)
 class SessionAccepted:
     session_id: int
     server_frame: int
@@ -128,6 +139,7 @@ class WorldSnapshot:
     map_chunk: bytes
     server_frame: int
     traversal_state: TraversalState
+    preferred_bike_type: TraversalState
     mach_speed_stage: int | None = None
     acro_substate: AcroBikeSubstate | None = None
     bike_transition: BikeTransitionType | None = None
@@ -143,6 +155,7 @@ class WalkResult:
     reason: RejectionReason
     server_frame: int
     traversal_state: TraversalState
+    preferred_bike_type: TraversalState
     mach_speed_stage: int | None = None
     acro_substate: AcroBikeSubstate | None = None
     bike_transition: BikeTransitionType | None = None
@@ -156,7 +169,15 @@ class WorldDelta:
     delta_blob: bytes
 
 
-WireMessage = JoinSession | WalkInput | SessionAccepted | WorldSnapshot | WalkResult | WorldDelta
+WireMessage = (
+    JoinSession
+    | WalkInput
+    | DebugTraversalInput
+    | SessionAccepted
+    | WorldSnapshot
+    | WalkResult
+    | WorldDelta
+)
 
 
 def encode_message(message: WireMessage) -> bytes:
@@ -198,6 +219,9 @@ def _encode_payload(message: WireMessage) -> tuple[MessageType, bytes]:
             ]
         )
 
+    if isinstance(message, DebugTraversalInput):
+        return MessageType.DEBUG_TRAVERSAL_INPUT, _U8.pack(int(message.action))
+
     if isinstance(message, SessionAccepted):
         return MessageType.SESSION_ACCEPTED, b"".join(
             [
@@ -227,6 +251,7 @@ def _encode_payload(message: WireMessage) -> tuple[MessageType, bytes]:
                 _U8.pack(int(message.avatar)),
                 _U32.pack(message.server_frame),
                 _U8.pack(int(message.traversal_state)),
+                _U8.pack(int(message.preferred_bike_type)),
                 _U8.pack(runtime_flags),
                 runtime_payload,
                 _U8.pack(message.bike_effect_flags),
@@ -252,6 +277,7 @@ def _encode_payload(message: WireMessage) -> tuple[MessageType, bytes]:
                 _U8.pack(int(message.reason)),
                 _U32.pack(message.server_frame),
                 _U8.pack(int(message.traversal_state)),
+                _U8.pack(int(message.preferred_bike_type)),
                 _U8.pack(runtime_flags),
                 runtime_payload,
                 _U8.pack(message.bike_effect_flags),
@@ -286,6 +312,11 @@ def _decode_payload(message_type: MessageType, payload: bytes) -> WireMessage:
             client_time=client_time,
         )
 
+    if message_type is MessageType.DEBUG_TRAVERSAL_INPUT:
+        action, offset = _unpack_u8(payload, offset)
+        _ensure_done(payload, offset)
+        return DebugTraversalInput(action=DebugTraversalAction(action))
+
     if message_type is MessageType.SESSION_ACCEPTED:
         session_id, offset = _unpack_u32(payload, offset)
         server_frame, offset = _unpack_u32(payload, offset)
@@ -305,6 +336,7 @@ def _decode_payload(message_type: MessageType, payload: bytes) -> WireMessage:
         avatar, offset = _unpack_u8(payload, offset)
         server_frame, offset = _unpack_u32(payload, offset)
         traversal_state, offset = _unpack_u8(payload, offset)
+        preferred_bike_type, offset = _unpack_u8(payload, offset)
         runtime, offset = _decode_bike_runtime(payload, offset)
         bike_effect_flags, offset = _unpack_u8(payload, offset)
         hash_len, offset = _unpack_u8(payload, offset)
@@ -320,6 +352,7 @@ def _decode_payload(message_type: MessageType, payload: bytes) -> WireMessage:
             map_chunk=map_chunk,
             server_frame=server_frame,
             traversal_state=TraversalState(traversal_state),
+            preferred_bike_type=TraversalState(preferred_bike_type),
             mach_speed_stage=runtime.mach_speed_stage,
             acro_substate=runtime.acro_substate,
             bike_transition=runtime.bike_transition,
@@ -335,6 +368,7 @@ def _decode_payload(message_type: MessageType, payload: bytes) -> WireMessage:
         reason, offset = _unpack_u8(payload, offset)
         server_frame, offset = _unpack_u32(payload, offset)
         traversal_state, offset = _unpack_u8(payload, offset)
+        preferred_bike_type, offset = _unpack_u8(payload, offset)
         runtime, offset = _decode_bike_runtime(payload, offset)
         bike_effect_flags, offset = _unpack_u8(payload, offset)
         _ensure_done(payload, offset)
@@ -346,6 +380,7 @@ def _decode_payload(message_type: MessageType, payload: bytes) -> WireMessage:
             reason=RejectionReason(reason),
             server_frame=server_frame,
             traversal_state=TraversalState(traversal_state),
+            preferred_bike_type=TraversalState(preferred_bike_type),
             mach_speed_stage=runtime.mach_speed_stage,
             acro_substate=runtime.acro_substate,
             bike_transition=runtime.bike_transition,

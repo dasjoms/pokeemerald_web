@@ -2,6 +2,7 @@ import { Application, Assets, Container, Graphics, Sprite, TextureSource, Textur
 import {
   AcroBikeSubstate,
   BikeTransitionType,
+  DebugTraversalAction,
   Direction,
   MessageType,
   MovementMode,
@@ -151,6 +152,7 @@ type ClientWorldState = {
   playerTileY: number;
   facing: Direction;
   traversalState: TraversalState;
+  preferredBikeType: TraversalState;
   machSpeedStage?: number;
   acroSubstate?: AcroBikeSubstate;
   bikeTransition?: BikeTransitionType;
@@ -276,6 +278,7 @@ const state: ClientWorldState = {
   playerTileY: 0,
   facing: Direction.DOWN,
   traversalState: TraversalState.ON_FOOT,
+  preferredBikeType: TraversalState.MACH_BIKE,
   lastInputSeq: 0,
   lastAckServerTick: 0,
   renderTileX: 0,
@@ -319,6 +322,8 @@ const hud = {
   tile: document.querySelector<HTMLElement>('[data-hud="tile"]'),
   facing: document.querySelector<HTMLElement>('[data-hud="facing"]'),
   movementMode: document.querySelector<HTMLElement>('[data-hud="movementMode"]'),
+  traversalState: document.querySelector<HTMLElement>('[data-hud="traversalState"]'),
+  bikeType: document.querySelector<HTMLElement>('[data-hud="bikeType"]'),
   inputSeq: document.querySelector<HTMLElement>('[data-hud="inputSeq"]'),
   serverTick: document.querySelector<HTMLElement>('[data-hud="serverTick"]'),
   animId: document.querySelector<HTMLElement>('[data-hud="animId"]'),
@@ -530,6 +535,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     activeWalkTransition = null;
     state.facing = snapshot.facing;
     state.traversalState = snapshot.traversal_state;
+    state.preferredBikeType = snapshot.preferred_bike_type;
     state.machSpeedStage = snapshot.mach_speed_stage;
     state.acroSubstate = snapshot.acro_substate;
     state.bikeTransition = snapshot.bike_transition;
@@ -571,6 +577,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
   state.playerTileY = clampedAuthoritativeTile.y;
   state.facing = result.facing;
   state.traversalState = result.traversal_state;
+  state.preferredBikeType = result.preferred_bike_type;
   state.machSpeedStage = result.mach_speed_stage;
   state.acroSubstate = result.acro_substate;
   state.bikeTransition = result.bike_transition;
@@ -1267,11 +1274,34 @@ function bindWalkInput(): void {
       walkInputController.toggleMovementMode();
       return;
     }
+    if (event.key === 'm' || event.key === 'M') {
+      event.preventDefault();
+      if (event.repeat) {
+        return;
+      }
+      sendDebugTraversalInput(DebugTraversalAction.TOGGLE_MOUNT);
+      return;
+    }
+    if (event.key === 'n' || event.key === 'N') {
+      event.preventDefault();
+      if (event.repeat) {
+        return;
+      }
+      sendDebugTraversalInput(DebugTraversalAction.SWAP_BIKE_TYPE);
+      return;
+    }
     walkInputController.handleKeyDown(event);
   });
   window.addEventListener('keyup', (event) => {
     walkInputController.handleKeyUp(event);
   });
+}
+
+function sendDebugTraversalInput(action: DebugTraversalAction): void {
+  if (!socket || socket.readyState !== WebSocket.OPEN) {
+    return;
+  }
+  socket.send(encodeDebugTraversalInput(action));
 }
 
 function keyToDirection(key: string): Direction | null {
@@ -1530,6 +1560,20 @@ function encodeWalkInput(
   return frame;
 }
 
+function encodeDebugTraversalInput(action: DebugTraversalAction): Uint8Array {
+  const payload = new Uint8Array(1);
+  const payloadView = new DataView(payload.buffer);
+  payloadView.setUint8(0, action);
+
+  const frame = new Uint8Array(7 + payload.length);
+  const view = new DataView(frame.buffer);
+  view.setUint16(0, PROTOCOL_VERSION, true);
+  view.setUint8(2, MessageType.DEBUG_TRAVERSAL_INPUT);
+  view.setUint32(3, payload.length, true);
+  frame.set(payload, 7);
+  return frame;
+}
+
 function decodeServerFrame(frame: Uint8Array): ServerMessage {
   if (frame.length < 7) {
     throw new Error('frame too short');
@@ -1575,6 +1619,8 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
     offset += 4;
     const traversalState = readU8(payload, offset) as TraversalState;
     offset += 1;
+    const preferredBikeType = readU8(payload, offset) as TraversalState;
+    offset += 1;
     const bikeRuntimeFlags = readU8(payload, offset);
     offset += 1;
 
@@ -1606,6 +1652,7 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
         map_chunk: mapChunk,
         server_frame: serverFrame,
         traversal_state: traversalState,
+        preferred_bike_type: preferredBikeType,
         mach_speed_stage: machSpeedStage,
         acro_substate: acroSubstate,
         bike_transition: bikeTransition,
@@ -1632,6 +1679,8 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
     offset += 4;
     const traversalState = readU8(payload, offset) as TraversalState;
     offset += 1;
+    const preferredBikeType = readU8(payload, offset) as TraversalState;
+    offset += 1;
     const bikeRuntimeFlags = readU8(payload, offset);
     offset += 1;
     const machSpeedStage = bikeRuntimeFlags & 0b001 ? readU8(payload, offset++) : undefined;
@@ -1652,6 +1701,7 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
         reason,
         server_frame: serverFrame,
         traversal_state: traversalState,
+        preferred_bike_type: preferredBikeType,
         mach_speed_stage: machSpeedStage,
         acro_substate: acroSubstate,
         bike_transition: bikeTransition,
@@ -1826,6 +1876,8 @@ function renderHud(): void {
   hud.facing && (hud.facing.textContent = Direction[state.facing]);
   hud.movementMode &&
     (hud.movementMode.textContent = MovementMode[walkInputController.getMovementMode()]);
+  hud.traversalState && (hud.traversalState.textContent = TraversalState[state.traversalState]);
+  hud.bikeType && (hud.bikeType.textContent = TraversalState[state.preferredBikeType]);
   hud.inputSeq && (hud.inputSeq.textContent = `${Math.max(0, state.lastInputSeq - 1)}`);
   hud.serverTick && (hud.serverTick.textContent = `${state.lastAckServerTick}`);
 

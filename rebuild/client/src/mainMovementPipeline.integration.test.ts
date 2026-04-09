@@ -79,6 +79,7 @@ describe('main movement pipeline integration', () => {
           reason: RejectionReason.NONE,
           server_frame: seq,
           traversal_state: TraversalState.ON_FOOT,
+          preferred_bike_type: TraversalState.MACH_BIKE,
           bike_effect_flags: 0,
         };
 

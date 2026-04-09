@@ -93,6 +93,7 @@ function makeWalkResult(partial: Partial<WalkResult>): WalkResult {
     reason: RejectionReason.NONE,
     server_frame: 1,
     traversal_state: TraversalState.ON_FOOT,
+    preferred_bike_type: TraversalState.MACH_BIKE,
     bike_effect_flags: 0,
     ...partial,
   };

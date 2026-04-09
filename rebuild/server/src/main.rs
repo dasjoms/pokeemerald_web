@@ -158,6 +158,19 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                         );
                     }
                 }
+                Ok(ClientMessage::DebugTraversalInput(input)) => {
+                    if let Err(err) = state
+                        .world
+                        .handle_debug_traversal_input(session.connection_id, input)
+                        .await
+                    {
+                        warn!(
+                            ?err,
+                            connection_id = session.connection_id,
+                            "failed to process debug traversal input"
+                        );
+                    }
+                }
                 Ok(ClientMessage::WalkInputInvalidDirection { input_seq, .. }) => {
                     if let Err(err) = state
                         .world

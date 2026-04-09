@@ -2,9 +2,10 @@
 mod protocol_generated;
 
 pub use protocol_generated::{
-    AcroBikeSubstate, BikeTransitionType, Direction, JoinSession, MessageType, MovementMode,
-    PlayerAvatar, Position, RejectionReason, SessionAccepted, TraversalState, WalkInput,
-    WalkResult, WorldDelta, WorldSnapshot, PROTOCOL_VERSION,
+    AcroBikeSubstate, BikeTransitionType, DebugTraversalAction, DebugTraversalInput, Direction,
+    JoinSession, MessageType, MovementMode, PlayerAvatar, Position, RejectionReason,
+    SessionAccepted, TraversalState, WalkInput, WalkResult, WorldDelta, WorldSnapshot,
+    PROTOCOL_VERSION,
 };
 pub type Facing = Direction;
 
@@ -12,6 +13,7 @@ pub type Facing = Direction;
 pub enum ClientMessage {
     JoinSession(JoinSession),
     WalkInput(WalkInput),
+    DebugTraversalInput(DebugTraversalInput),
     WalkInputInvalidDirection { input_seq: u32, client_time: u64 },
 }
 
@@ -73,6 +75,7 @@ pub fn encode_server_message(message: &ServerMessage) -> Result<Vec<u8>, Protoco
             payload.push(msg.avatar as u8);
             payload.extend_from_slice(&msg.server_frame.to_le_bytes());
             payload.push(msg.traversal_state as u8);
+            payload.push(msg.preferred_bike_type as u8);
             encode_bike_runtime(
                 &mut payload,
                 msg.mach_speed_stage,
@@ -95,6 +98,7 @@ pub fn encode_server_message(message: &ServerMessage) -> Result<Vec<u8>, Protoco
             payload.push(msg.reason as u8);
             payload.extend_from_slice(&msg.server_frame.to_le_bytes());
             payload.push(msg.traversal_state as u8);
+            payload.push(msg.preferred_bike_type as u8);
             encode_bike_runtime(
                 &mut payload,
                 msg.mach_speed_stage,
@@ -171,7 +175,22 @@ pub fn decode_client_message(frame: &[u8]) -> Result<ClientMessage, ProtocolErro
                 }),
             }
         }
+        x if x == MessageType::DebugTraversalInput as u8 => {
+            let (action, offset) = unpack_u8(payload, 0)?;
+            ensure_done(payload, offset)?;
+            Ok(ClientMessage::DebugTraversalInput(DebugTraversalInput {
+                action: decode_debug_traversal_action(action)?,
+            }))
+        }
         _ => Err(ProtocolError::UnknownMessageType(message_type)),
+    }
+}
+
+fn decode_debug_traversal_action(raw: u8) -> Result<DebugTraversalAction, ProtocolError> {
+    match raw {
+        0 => Ok(DebugTraversalAction::ToggleMount),
+        1 => Ok(DebugTraversalAction::SwapBikeType),
+        _ => Err(ProtocolError::InvalidEnum),
     }
 }
 

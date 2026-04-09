@@ -19,9 +19,9 @@ use crate::{
         MovementMap, PlayerSpeed, TraversalContext, WALK_SAMPLE_MS,
     },
     protocol::{
-        AcroBikeSubstate, BikeTransitionType, Direction, MovementMode, PlayerAvatar,
-        RejectionReason, ServerMessage, SessionAccepted, TraversalState, WalkInput, WalkResult,
-        WorldSnapshot,
+        AcroBikeSubstate, BikeTransitionType, DebugTraversalAction, DebugTraversalInput, Direction,
+        MovementMode, PlayerAvatar, RejectionReason, ServerMessage, SessionAccepted,
+        TraversalState, WalkInput, WalkResult, WorldSnapshot,
     },
     session::{
         ActiveWalkTransition, BikeRuntimeState, CrackedFloorRuntimeState, PlayerState, Session,
@@ -186,6 +186,7 @@ impl World {
                 facing: Direction::Down,
                 avatar: PlayerAvatar::Brendan,
                 traversal_state: TraversalState::OnFoot,
+                preferred_bike_type: TraversalState::MachBike,
                 bike_runtime: BikeRuntimeState::default(),
                 cracked_floor: CrackedFloorRuntimeState::default(),
             },
@@ -322,6 +323,57 @@ impl World {
         Ok(())
     }
 
+    pub async fn handle_debug_traversal_input(
+        &self,
+        connection_id: u64,
+        input: DebugTraversalInput,
+    ) -> anyhow::Result<()> {
+        let tick = self.current_tick().await as u32;
+        let mut sessions = self.sessions.write().await;
+        let session = sessions
+            .get_mut(&connection_id)
+            .ok_or_else(|| anyhow!("unknown session {connection_id}"))?;
+        let Some(current_map) = self.maps.get(&session.player_state.map_id) else {
+            return Ok(());
+        };
+
+        session.player_state.bike_runtime.last_transition = BikeTransitionType::None;
+        match input.action {
+            DebugTraversalAction::ToggleMount => {
+                if current_map.allow_cycling {
+                    if matches!(session.player_state.traversal_state, TraversalState::OnFoot) {
+                        session.player_state.traversal_state =
+                            session.player_state.preferred_bike_type;
+                        session.player_state.bike_runtime = BikeRuntimeState::default();
+                        session.player_state.bike_runtime.last_transition =
+                            BikeTransitionType::Mount;
+                    } else {
+                        session.player_state.traversal_state = TraversalState::OnFoot;
+                        session.player_state.bike_runtime = BikeRuntimeState::default();
+                        session.player_state.bike_runtime.last_transition =
+                            BikeTransitionType::Dismount;
+                    }
+                }
+            }
+            DebugTraversalAction::SwapBikeType => {
+                session.player_state.preferred_bike_type =
+                    swap_bike_type(session.player_state.preferred_bike_type);
+                if matches!(
+                    session.player_state.traversal_state,
+                    TraversalState::MachBike | TraversalState::AcroBike
+                ) {
+                    session.player_state.traversal_state = session.player_state.preferred_bike_type;
+                    session.player_state.bike_runtime = BikeRuntimeState::default();
+                }
+            }
+        }
+
+        session.send(ServerMessage::WorldSnapshot(
+            self.world_snapshot_for_player_state(&session.player_state, tick)?,
+        ))?;
+        Ok(())
+    }
+
     pub async fn tick(&self) {
         let tick = self.tick.fetch_add(1, Ordering::SeqCst) + 1;
         let mut sessions = self.sessions.write().await;
@@ -386,6 +438,7 @@ impl World {
                         reason: RejectionReason::OutOfBounds,
                         server_frame: tick as u32,
                         traversal_state: session.player_state.traversal_state,
+                        preferred_bike_type: session.player_state.preferred_bike_type,
                         mach_speed_stage: bike_mach_speed_for_traversal(&session.player_state),
                         acro_substate: bike_acro_substate_for_traversal(&session.player_state),
                         bike_transition: Some(session.player_state.bike_runtime.last_transition),
@@ -512,6 +565,7 @@ impl World {
                     reason,
                     server_frame: tick as u32,
                     traversal_state: session.player_state.traversal_state,
+                    preferred_bike_type: session.player_state.preferred_bike_type,
                     mach_speed_stage: bike_mach_speed_for_traversal(&session.player_state),
                     acro_substate: bike_acro_substate_for_traversal(&session.player_state),
                     bike_transition: Some(session.player_state.bike_runtime.last_transition),
@@ -581,6 +635,7 @@ impl World {
             map_chunk,
             server_frame,
             traversal_state: player_state.traversal_state,
+            preferred_bike_type: player_state.preferred_bike_type,
             mach_speed_stage: bike_mach_speed_for_traversal(player_state),
             acro_substate: bike_acro_substate_for_traversal(player_state),
             bike_transition: Some(player_state.bike_runtime.last_transition),
@@ -662,6 +717,7 @@ impl World {
             reason,
             server_frame,
             traversal_state: session.player_state.traversal_state,
+            preferred_bike_type: session.player_state.preferred_bike_type,
             mach_speed_stage: bike_mach_speed_for_traversal(&session.player_state),
             acro_substate: bike_acro_substate_for_traversal(&session.player_state),
             bike_transition: Some(session.player_state.bike_runtime.last_transition),
@@ -727,6 +783,13 @@ fn bike_acro_substate_for_traversal(player_state: &PlayerState) -> Option<AcroBi
         Some(player_state.bike_runtime.acro_state)
     } else {
         None
+    }
+}
+
+fn swap_bike_type(current: TraversalState) -> TraversalState {
+    match current {
+        TraversalState::AcroBike => TraversalState::MachBike,
+        TraversalState::OnFoot | TraversalState::MachBike => TraversalState::AcroBike,
     }
 }
 
@@ -1087,6 +1150,7 @@ mod tests {
             facing: Direction::Right,
             avatar: PlayerAvatar::Brendan,
             traversal_state: TraversalState::MachBike,
+            preferred_bike_type: TraversalState::MachBike,
             bike_runtime: BikeRuntimeState::default(),
             cracked_floor: CrackedFloorRuntimeState::default(),
         }
@@ -1147,5 +1211,21 @@ mod tests {
         let player = test_player_state();
         let flags = bike_effect_flags_for_step(&player, false, RejectionReason::Collision);
         assert_ne!(flags & BIKE_EFFECT_COLLISION_SFX, 0);
+    }
+
+    #[test]
+    fn swap_bike_type_toggles_between_mach_and_acro() {
+        assert_eq!(
+            swap_bike_type(TraversalState::MachBike),
+            TraversalState::AcroBike
+        );
+        assert_eq!(
+            swap_bike_type(TraversalState::AcroBike),
+            TraversalState::MachBike
+        );
+        assert_eq!(
+            swap_bike_type(TraversalState::OnFoot),
+            TraversalState::AcroBike
+        );
     }
 }
