@@ -261,6 +261,8 @@ impl World {
         }
 
         session.next_expected_input_seq = session.next_expected_input_seq.saturating_add(1);
+        session.held_direction = Some(input.direction);
+        session.held_buttons = input.held_buttons;
         session.enqueue_walk_input(input);
         Ok(())
     }
@@ -380,6 +382,13 @@ impl World {
         const SERVER_TICK_MS: f32 = WALK_SAMPLE_MS;
 
         for session in sessions.values_mut() {
+            session.player_state.bike_runtime.last_transition = BikeTransitionType::None;
+            update_bike_runtime_per_tick(
+                &mut session.player_state,
+                session.held_direction,
+                session.held_buttons,
+            );
+
             if let Some(active_walk) = session.active_walk_transition.as_mut() {
                 active_walk.advance(SERVER_TICK_MS);
                 if active_walk.is_complete() {
@@ -579,11 +588,7 @@ impl World {
                 let _ = session.send(result);
 
                 if accepted {
-                    update_bike_runtime_after_step(
-                        &mut session.player_state,
-                        input.direction,
-                        input.held_buttons,
-                    );
+                    update_bike_runtime_after_step(&mut session.player_state, input.direction);
                     cracked_floor_per_step_callback(
                         &mut session.player_state,
                         current_map,
@@ -808,11 +813,7 @@ fn reset_bike_runtime_on_reject(player_state: &mut PlayerState) {
     }
 }
 
-fn update_bike_runtime_after_step(
-    player_state: &mut PlayerState,
-    direction: Direction,
-    held_buttons: u8,
-) {
+fn update_bike_runtime_after_step(player_state: &mut PlayerState, direction: Direction) {
     match player_state.traversal_state {
         TraversalState::OnFoot => {
             player_state.bike_runtime.bike_frame_counter = 0;
@@ -840,11 +841,10 @@ fn update_bike_runtime_after_step(
                     as u8;
         }
         TraversalState::AcroBike => {
-            let action = player_state.bike_runtime.acro_runtime.apply_step(
-                player_state.facing,
-                direction,
-                (held_buttons & crate::protocol::HeldButtons::B as u8) != 0,
-            );
+            let action = player_state
+                .bike_runtime
+                .acro_runtime
+                .apply_step(player_state.facing, direction);
 
             player_state.bike_runtime.acro_state =
                 match player_state.bike_runtime.acro_runtime.state {
@@ -868,6 +868,44 @@ fn update_bike_runtime_after_step(
             };
         }
     }
+}
+
+fn update_bike_runtime_per_tick(
+    player_state: &mut PlayerState,
+    held_direction: Option<Direction>,
+    held_buttons: u8,
+) {
+    if !matches!(player_state.traversal_state, TraversalState::AcroBike) {
+        return;
+    }
+
+    let holding_b = (held_buttons & crate::protocol::HeldButtons::B as u8) != 0;
+    let previous_state = player_state.bike_runtime.acro_runtime.state;
+    player_state
+        .bike_runtime
+        .acro_runtime
+        .set_held_input(held_direction, holding_b);
+    player_state.bike_runtime.acro_runtime.advance_tick();
+    let current_state = player_state.bike_runtime.acro_runtime.state;
+    player_state.bike_runtime.acro_state = match player_state.bike_runtime.acro_runtime.state {
+        AcroState::Normal | AcroState::Turning | AcroState::SideJump | AcroState::TurnJump => {
+            AcroBikeSubstate::None
+        }
+        AcroState::WheelieStanding => AcroBikeSubstate::StandingWheelie,
+        AcroState::BunnyHop => AcroBikeSubstate::BunnyHop,
+        AcroState::WheelieMoving => AcroBikeSubstate::MovingWheelie,
+    };
+    player_state.bike_runtime.last_transition = match (previous_state, current_state) {
+        (prev, cur) if prev == cur => BikeTransitionType::None,
+        (AcroState::BunnyHop, AcroState::Normal)
+        | (AcroState::WheelieStanding, AcroState::Normal)
+        | (AcroState::WheelieMoving, AcroState::Normal) => BikeTransitionType::WheelieEnd,
+        (_, AcroState::BunnyHop) => BikeTransitionType::HopStanding,
+        (_, AcroState::WheelieStanding) | (_, AcroState::WheelieMoving) => {
+            BikeTransitionType::WheeliePop
+        }
+        _ => BikeTransitionType::None,
+    };
 }
 
 fn avatar_for_player_id(player_id: &str) -> PlayerAvatar {
@@ -1159,32 +1197,16 @@ mod tests {
     #[test]
     fn mach_bike_frame_counter_accelerates_and_slows_on_direction_change() {
         let mut player = test_player_state();
-        update_bike_runtime_after_step(
-            &mut player,
-            Direction::Right,
-            crate::protocol::HeldButtons::None as u8,
-        );
+        update_bike_runtime_after_step(&mut player, Direction::Right);
         assert_eq!(player.bike_runtime.bike_frame_counter, 0);
 
-        update_bike_runtime_after_step(
-            &mut player,
-            Direction::Right,
-            crate::protocol::HeldButtons::None as u8,
-        );
+        update_bike_runtime_after_step(&mut player, Direction::Right);
         assert_eq!(player.bike_runtime.bike_frame_counter, 1);
 
-        update_bike_runtime_after_step(
-            &mut player,
-            Direction::Right,
-            crate::protocol::HeldButtons::None as u8,
-        );
+        update_bike_runtime_after_step(&mut player, Direction::Right);
         assert_eq!(player.bike_runtime.bike_frame_counter, 2);
 
-        update_bike_runtime_after_step(
-            &mut player,
-            Direction::Left,
-            crate::protocol::HeldButtons::None as u8,
-        );
+        update_bike_runtime_after_step(&mut player, Direction::Left);
         assert_eq!(player.bike_runtime.bike_frame_counter, 1);
     }
 

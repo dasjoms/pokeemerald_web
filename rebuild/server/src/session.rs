@@ -166,6 +166,8 @@ pub struct Session {
     pub joined: bool,
     pub next_expected_input_seq: u32,
     pub active_walk_transition: Option<ActiveWalkTransition>,
+    pub held_direction: Option<Direction>,
+    pub held_buttons: u8,
     walk_inputs: VecDeque<WalkInput>,
     outbound: mpsc::UnboundedSender<ServerMessage>,
 }
@@ -184,6 +186,8 @@ impl Session {
             joined: false,
             next_expected_input_seq: 0,
             active_walk_transition: None,
+            held_direction: None,
+            held_buttons: 0,
             walk_inputs: VecDeque::new(),
             outbound,
         }
