@@ -57,7 +57,7 @@ fn find_reversible_direction(world: &World, map_id: &str, x: u16, y: u16) -> Dir
     ]
     .into_iter()
     .find(|direction| {
-        let MoveValidation::Accepted { next_x, next_y } = validate_walk(
+        let MoveValidation::Accepted { next_x, next_y, .. } = validate_walk(
             x,
             y,
             *direction,

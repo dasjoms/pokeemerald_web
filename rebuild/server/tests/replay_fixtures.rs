@@ -119,12 +119,12 @@ fn littleroot_movement_replay_fixtures_remain_deterministic() {
                 None,
             );
             match result {
-                MoveValidation::Accepted { next_x, next_y } => {
+                MoveValidation::Accepted { next_x, next_y, .. } => {
                     x = next_x;
                     y = next_y;
                     acceptance.push(true);
                 }
-                MoveValidation::Rejected(_) => {
+                MoveValidation::Rejected { .. } => {
                     acceptance.push(false);
                 }
             }

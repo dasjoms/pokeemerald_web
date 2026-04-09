@@ -9,6 +9,14 @@ const MB_SLIDE_EAST: u8 = 0x44;
 const MB_SLIDE_WEST: u8 = 0x45;
 const MB_SLIDE_NORTH: u8 = 0x46;
 const MB_SLIDE_SOUTH: u8 = 0x47;
+const MB_JUMP_EAST: u8 = 0x38;
+const MB_JUMP_WEST: u8 = 0x39;
+const MB_JUMP_NORTH: u8 = 0x3A;
+const MB_JUMP_SOUTH: u8 = 0x3B;
+const MB_JUMP_NORTHEAST: u8 = 0x3C;
+const MB_JUMP_NORTHWEST: u8 = 0x3D;
+const MB_JUMP_SOUTHEAST: u8 = 0x3E;
+const MB_JUMP_SOUTHWEST: u8 = 0x3F;
 const MB_TRICK_HOUSE_PUZZLE_8_FLOOR: u8 = 0x48;
 const MB_EASTWARD_CURRENT: u8 = 0x50;
 const MB_WESTWARD_CURRENT: u8 = 0x51;
@@ -29,8 +37,15 @@ const MB_HORIZONTAL_RAIL: u8 = 0xD6;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MoveValidation {
-    Accepted { next_x: u16, next_y: u16 },
-    Rejected(MoveRejectReason),
+    Accepted {
+        next_x: u16,
+        next_y: u16,
+        collision: CollisionOutcome,
+    },
+    Rejected {
+        reason: MoveRejectReason,
+        collision: CollisionOutcome,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -64,11 +79,29 @@ enum ForcedMovementClass {
 enum CollisionClass {
     None,
     Impassable,
+    LedgeJump,
     WheelieHop,
     IsolatedVerticalRail,
     IsolatedHorizontalRail,
     VerticalRail,
     HorizontalRail,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RailCollisionClass {
+    IsolatedVertical,
+    IsolatedHorizontal,
+    Vertical,
+    Horizontal,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CollisionOutcome {
+    None,
+    Impassable,
+    LedgeJump,
+    WheelieHop,
+    Rail(RailCollisionClass),
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -146,7 +179,10 @@ pub fn validate_walk_with_context(
             destination,
             "rejected: out_of_bounds_without_map_connection",
         );
-        return MoveValidation::Rejected(MoveRejectReason::OutOfBounds);
+        return MoveValidation::Rejected {
+            reason: MoveRejectReason::OutOfBounds,
+            collision: CollisionOutcome::None,
+        };
     };
 
     if !can_bike_face_dir_on_metatile(facing, source.behavior_id) {
@@ -156,10 +192,14 @@ pub fn validate_walk_with_context(
             destination,
             "rejected: bike_dir_not_allowed_for_current_rail",
         );
-        return MoveValidation::Rejected(MoveRejectReason::Collision);
+        return MoveValidation::Rejected {
+            reason: MoveRejectReason::Collision,
+            collision: CollisionOutcome::None,
+        };
     }
 
-    let collision_class = classify_collision(destination);
+    let collision_class = classify_collision(destination, facing);
+    let collision = collision_class_outcome(collision_class);
     if collision_reject_reason(collision_class, traversal_context).is_some() {
         trace_walk_attempt(
             facing,
@@ -168,7 +208,10 @@ pub fn validate_walk_with_context(
             collision_reject_reason(collision_class, traversal_context)
                 .expect("checked is_some above"),
         );
-        return MoveValidation::Rejected(MoveRejectReason::Collision);
+        return MoveValidation::Rejected {
+            reason: MoveRejectReason::Collision,
+            collision,
+        };
     }
 
     if let Some(forced_class) = forced_movement_class(source.behavior_id)
@@ -180,7 +223,10 @@ pub fn validate_walk_with_context(
             destination,
             forced_movement_reject_reason(forced_class),
         );
-        return MoveValidation::Rejected(MoveRejectReason::ForcedMovementDisabled);
+        return MoveValidation::Rejected {
+            reason: MoveRejectReason::ForcedMovementDisabled,
+            collision: CollisionOutcome::None,
+        };
     }
 
     if let Some(reason) = movement_behavior_gate_reject_reason(
@@ -190,7 +236,10 @@ pub fn validate_walk_with_context(
         traversal_context,
     ) {
         trace_walk_attempt(facing, source, destination, reason);
-        return MoveValidation::Rejected(MoveRejectReason::ForcedMovementDisabled);
+        return MoveValidation::Rejected {
+            reason: MoveRejectReason::ForcedMovementDisabled,
+            collision: CollisionOutcome::None,
+        };
     }
 
     trace_walk_attempt(facing, source, destination, "accepted: standard_walk");
@@ -198,6 +247,7 @@ pub fn validate_walk_with_context(
     MoveValidation::Accepted {
         next_x: destination.x as u16,
         next_y: destination.y as u16,
+        collision,
     }
 }
 
@@ -372,18 +422,57 @@ fn forced_movement_reject_reason(class: ForcedMovementClass) -> &'static str {
     }
 }
 
-fn classify_collision(destination: TileQuery) -> CollisionClass {
+fn classify_collision(destination: TileQuery, facing: Direction) -> CollisionClass {
     if destination.collision_bits != 0 {
         return CollisionClass::Impassable;
     }
 
     match destination.behavior_id {
+        MB_JUMP_EAST | MB_JUMP_WEST | MB_JUMP_NORTH | MB_JUMP_SOUTH | MB_JUMP_NORTHEAST
+        | MB_JUMP_NORTHWEST | MB_JUMP_SOUTHEAST | MB_JUMP_SOUTHWEST => {
+            if ledge_allows_direction(destination.behavior_id, facing) {
+                CollisionClass::LedgeJump
+            } else {
+                CollisionClass::Impassable
+            }
+        }
         MB_BUMPY_SLOPE => CollisionClass::WheelieHop,
         MB_ISOLATED_VERTICAL_RAIL => CollisionClass::IsolatedVerticalRail,
         MB_ISOLATED_HORIZONTAL_RAIL => CollisionClass::IsolatedHorizontalRail,
         MB_VERTICAL_RAIL => CollisionClass::VerticalRail,
         MB_HORIZONTAL_RAIL => CollisionClass::HorizontalRail,
         _ => CollisionClass::None,
+    }
+}
+
+fn ledge_allows_direction(behavior_id: u8, facing: Direction) -> bool {
+    match behavior_id {
+        MB_JUMP_EAST => matches!(facing, Direction::Right),
+        MB_JUMP_WEST => matches!(facing, Direction::Left),
+        MB_JUMP_NORTH => matches!(facing, Direction::Up),
+        MB_JUMP_SOUTH => matches!(facing, Direction::Down),
+        MB_JUMP_NORTHEAST => matches!(facing, Direction::Up | Direction::Right),
+        MB_JUMP_NORTHWEST => matches!(facing, Direction::Up | Direction::Left),
+        MB_JUMP_SOUTHEAST => matches!(facing, Direction::Down | Direction::Right),
+        MB_JUMP_SOUTHWEST => matches!(facing, Direction::Down | Direction::Left),
+        _ => false,
+    }
+}
+
+fn collision_class_outcome(collision: CollisionClass) -> CollisionOutcome {
+    match collision {
+        CollisionClass::None => CollisionOutcome::None,
+        CollisionClass::Impassable => CollisionOutcome::Impassable,
+        CollisionClass::LedgeJump => CollisionOutcome::LedgeJump,
+        CollisionClass::WheelieHop => CollisionOutcome::WheelieHop,
+        CollisionClass::IsolatedVerticalRail => {
+            CollisionOutcome::Rail(RailCollisionClass::IsolatedVertical)
+        }
+        CollisionClass::IsolatedHorizontalRail => {
+            CollisionOutcome::Rail(RailCollisionClass::IsolatedHorizontal)
+        }
+        CollisionClass::VerticalRail => CollisionOutcome::Rail(RailCollisionClass::Vertical),
+        CollisionClass::HorizontalRail => CollisionOutcome::Rail(RailCollisionClass::Horizontal),
     }
 }
 
@@ -394,6 +483,7 @@ fn collision_reject_reason(
     match collision {
         CollisionClass::None => None,
         CollisionClass::Impassable => Some("rejected: impassable_collision"),
+        CollisionClass::LedgeJump => None,
         CollisionClass::WheelieHop => {
             if matches!(traversal_context.traversal_state, TraversalState::AcroBike)
                 && matches!(
@@ -524,7 +614,8 @@ mod tests {
             result,
             MoveValidation::Accepted {
                 next_x: 1,
-                next_y: 0
+                next_y: 0,
+                collision: CollisionOutcome::None,
             }
         );
     }
@@ -541,7 +632,10 @@ mod tests {
         );
         assert_eq!(
             result,
-            MoveValidation::Rejected(MoveRejectReason::Collision)
+            MoveValidation::Rejected {
+                reason: MoveRejectReason::Collision,
+                collision: CollisionOutcome::Impassable,
+            }
         );
     }
 
@@ -557,7 +651,10 @@ mod tests {
         );
         assert_eq!(
             result,
-            MoveValidation::Rejected(MoveRejectReason::OutOfBounds)
+            MoveValidation::Rejected {
+                reason: MoveRejectReason::OutOfBounds,
+                collision: CollisionOutcome::None,
+            }
         );
     }
 
@@ -581,6 +678,7 @@ mod tests {
             MoveValidation::Accepted {
                 next_x: 1,
                 next_y: 1,
+                collision: CollisionOutcome::None,
             }
         );
     }
@@ -597,7 +695,10 @@ mod tests {
         );
         assert_eq!(
             result,
-            MoveValidation::Rejected(MoveRejectReason::ForcedMovementDisabled)
+            MoveValidation::Rejected {
+                reason: MoveRejectReason::ForcedMovementDisabled,
+                collision: CollisionOutcome::None,
+            }
         );
     }
 
@@ -615,7 +716,131 @@ mod tests {
             result,
             MoveValidation::Accepted {
                 next_x: 1,
-                next_y: 0
+                next_y: 0,
+                collision: CollisionOutcome::None,
+            }
+        );
+    }
+
+    #[test]
+    fn ledge_jump_allows_matching_direction_and_rejects_other_directions() {
+        let accepted = validate_walk_with_context(
+            0,
+            0,
+            Direction::Right,
+            map(&[0, 0, 0, 0], &[0, MB_JUMP_EAST, 0, 0]),
+            None,
+            on_foot_walk(),
+        );
+        assert_eq!(
+            accepted,
+            MoveValidation::Accepted {
+                next_x: 1,
+                next_y: 0,
+                collision: CollisionOutcome::LedgeJump,
+            }
+        );
+
+        let rejected = validate_walk_with_context(
+            0,
+            0,
+            Direction::Down,
+            map(&[0, 0, 0, 0], &[0, 0, MB_JUMP_EAST, 0]),
+            None,
+            on_foot_walk(),
+        );
+        assert_eq!(
+            rejected,
+            MoveValidation::Rejected {
+                reason: MoveRejectReason::Collision,
+                collision: CollisionOutcome::Impassable,
+            }
+        );
+    }
+
+    #[test]
+    fn rails_return_structured_collision_outcome() {
+        let on_foot = validate_walk_with_context(
+            0,
+            0,
+            Direction::Right,
+            map(&[0, 0, 0, 0], &[0, MB_VERTICAL_RAIL, 0, 0]),
+            None,
+            on_foot_walk(),
+        );
+        assert_eq!(
+            on_foot,
+            MoveValidation::Rejected {
+                reason: MoveRejectReason::Collision,
+                collision: CollisionOutcome::Rail(RailCollisionClass::Vertical),
+            }
+        );
+
+        let on_bike = validate_walk_with_context(
+            0,
+            0,
+            Direction::Right,
+            map(&[0, 0, 0, 0], &[0, MB_VERTICAL_RAIL, 0, 0]),
+            None,
+            TraversalContext {
+                traversal_state: TraversalState::MachBike,
+                movement_mode: MovementMode::Walk,
+                bike_frame_counter: 0,
+                acro_substate: None,
+            },
+        );
+        assert_eq!(
+            on_bike,
+            MoveValidation::Accepted {
+                next_x: 1,
+                next_y: 0,
+                collision: CollisionOutcome::Rail(RailCollisionClass::Vertical),
+            }
+        );
+    }
+
+    #[test]
+    fn bumpy_slope_collision_requires_bunny_hop_and_reports_outcome() {
+        let blocked = validate_walk_with_context(
+            0,
+            0,
+            Direction::Right,
+            map(&[0, 0, 0, 0], &[0, MB_BUMPY_SLOPE, 0, 0]),
+            None,
+            TraversalContext {
+                traversal_state: TraversalState::AcroBike,
+                movement_mode: MovementMode::Walk,
+                bike_frame_counter: 0,
+                acro_substate: Some(AcroBikeSubstate::MovingWheelie),
+            },
+        );
+        assert_eq!(
+            blocked,
+            MoveValidation::Rejected {
+                reason: MoveRejectReason::Collision,
+                collision: CollisionOutcome::WheelieHop,
+            }
+        );
+
+        let allowed = validate_walk_with_context(
+            0,
+            0,
+            Direction::Right,
+            map(&[0, 0, 0, 0], &[0, MB_BUMPY_SLOPE, 0, 0]),
+            None,
+            TraversalContext {
+                traversal_state: TraversalState::AcroBike,
+                movement_mode: MovementMode::Walk,
+                bike_frame_counter: 0,
+                acro_substate: Some(AcroBikeSubstate::BunnyHop),
+            },
+        );
+        assert_eq!(
+            allowed,
+            MoveValidation::Accepted {
+                next_x: 1,
+                next_y: 0,
+                collision: CollisionOutcome::WheelieHop,
             }
         );
     }
