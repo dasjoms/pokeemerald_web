@@ -155,6 +155,7 @@ pub struct WorldSnapshot {{
     pub mach_speed_stage: Option<u8>,
     pub acro_substate: Option<AcroBikeSubstate>,
     pub bike_transition: Option<BikeTransitionType>,
+    pub bike_effect_flags: u8,
 }}
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
@@ -169,6 +170,7 @@ pub struct WalkResult {{
     pub mach_speed_stage: Option<u8>,
     pub acro_substate: Option<AcroBikeSubstate>,
     pub bike_transition: Option<BikeTransitionType>,
+    pub bike_effect_flags: u8,
 }}
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
@@ -272,6 +274,7 @@ export type WorldSnapshot = {{
   mach_speed_stage?: number;
   acro_substate?: AcroBikeSubstate;
   bike_transition?: BikeTransitionType;
+  bike_effect_flags: number;
 }};
 export type WalkResult = {{
   input_seq: number;
@@ -284,6 +287,7 @@ export type WalkResult = {{
   mach_speed_stage?: number;
   acro_substate?: AcroBikeSubstate;
   bike_transition?: BikeTransitionType;
+  bike_effect_flags: number;
 }};
 export type WorldDelta = {{ map_id: number; server_frame: number; delta_blob: Uint8Array }};
 """

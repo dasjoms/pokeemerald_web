@@ -29,6 +29,12 @@ use crate::{
     },
 };
 
+const BIKE_EFFECT_TIRE_TRACKS: u8 = 1 << 0;
+const BIKE_EFFECT_HOP_SFX: u8 = 1 << 1;
+const BIKE_EFFECT_COLLISION_SFX: u8 = 1 << 2;
+const BIKE_EFFECT_CYCLING_BGM_MOUNT: u8 = 1 << 3;
+const BIKE_EFFECT_CYCLING_BGM_DISMOUNT: u8 = 1 << 4;
+
 #[derive(Debug, Clone)]
 pub struct MapConnection {
     pub direction: ConnectionDirection,
@@ -383,6 +389,7 @@ impl World {
                         mach_speed_stage: bike_mach_speed_for_traversal(&session.player_state),
                         acro_substate: bike_acro_substate_for_traversal(&session.player_state),
                         bike_transition: Some(session.player_state.bike_runtime.last_transition),
+                        bike_effect_flags: 0,
                     }));
                     continue;
                 };
@@ -508,6 +515,11 @@ impl World {
                     mach_speed_stage: bike_mach_speed_for_traversal(&session.player_state),
                     acro_substate: bike_acro_substate_for_traversal(&session.player_state),
                     bike_transition: Some(session.player_state.bike_runtime.last_transition),
+                    bike_effect_flags: bike_effect_flags_for_step(
+                        &session.player_state,
+                        accepted,
+                        reason,
+                    ),
                 });
 
                 let _ = session.send(result);
@@ -572,6 +584,7 @@ impl World {
             mach_speed_stage: bike_mach_speed_for_traversal(player_state),
             acro_substate: bike_acro_substate_for_traversal(player_state),
             bike_transition: Some(player_state.bike_runtime.last_transition),
+            bike_effect_flags: bike_effect_flags_for_snapshot(player_state),
         })
     }
 
@@ -652,8 +665,53 @@ impl World {
             mach_speed_stage: bike_mach_speed_for_traversal(&session.player_state),
             acro_substate: bike_acro_substate_for_traversal(&session.player_state),
             bike_transition: Some(session.player_state.bike_runtime.last_transition),
+            bike_effect_flags: bike_effect_flags_for_step(&session.player_state, false, reason),
         })
     }
+}
+
+fn bike_effect_flags_for_snapshot(player_state: &PlayerState) -> u8 {
+    bike_effect_flags_from_transition(player_state.bike_runtime.last_transition)
+}
+
+fn bike_effect_flags_for_step(
+    player_state: &PlayerState,
+    accepted: bool,
+    reason: RejectionReason,
+) -> u8 {
+    let mut flags = bike_effect_flags_from_transition(player_state.bike_runtime.last_transition);
+    let is_on_bike = matches!(
+        player_state.traversal_state,
+        TraversalState::MachBike | TraversalState::AcroBike
+    );
+    if accepted && is_on_bike {
+        flags |= BIKE_EFFECT_TIRE_TRACKS;
+    }
+    if !accepted && is_on_bike && matches!(reason, RejectionReason::Collision) {
+        flags |= BIKE_EFFECT_COLLISION_SFX;
+    }
+    flags
+}
+
+fn bike_effect_flags_from_transition(transition: BikeTransitionType) -> u8 {
+    let mut flags = 0;
+    if matches!(
+        transition,
+        BikeTransitionType::Hop
+            | BikeTransitionType::HopStanding
+            | BikeTransitionType::HopMoving
+            | BikeTransitionType::SideJump
+            | BikeTransitionType::TurnJump
+    ) {
+        flags |= BIKE_EFFECT_HOP_SFX;
+    }
+    if matches!(transition, BikeTransitionType::Mount) {
+        flags |= BIKE_EFFECT_CYCLING_BGM_MOUNT;
+    }
+    if matches!(transition, BikeTransitionType::Dismount) {
+        flags |= BIKE_EFFECT_CYCLING_BGM_DISMOUNT;
+    }
+    flags
 }
 
 fn bike_mach_speed_for_traversal(player_state: &PlayerState) -> Option<u8> {
@@ -1075,5 +1133,19 @@ mod tests {
         assert_eq!(player.cracked_floor.pending_floors[0].delay_steps, 1);
         cracked_floor_per_step_callback(&mut player, &map, 3, 0, PlayerSpeed::Normal);
         assert!(player.cracked_floor.pending_floors[0].collapsed);
+    }
+
+    #[test]
+    fn bike_effect_flags_include_tire_tracks_for_accepted_bike_steps() {
+        let player = test_player_state();
+        let flags = bike_effect_flags_for_step(&player, true, RejectionReason::None);
+        assert_ne!(flags & BIKE_EFFECT_TIRE_TRACKS, 0);
+    }
+
+    #[test]
+    fn bike_effect_flags_include_collision_sfx_for_rejected_bike_collision() {
+        let player = test_player_state();
+        let flags = bike_effect_flags_for_step(&player, false, RejectionReason::Collision);
+        assert_ne!(flags & BIKE_EFFECT_COLLISION_SFX, 0);
     }
 }

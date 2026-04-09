@@ -79,6 +79,7 @@ describe('main movement pipeline integration', () => {
           reason: RejectionReason.NONE,
           server_frame: seq,
           traversal_state: TraversalState.ON_FOOT,
+          bike_effect_flags: 0,
         };
 
         const acceptedMovementMode =
