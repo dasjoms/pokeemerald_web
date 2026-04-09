@@ -1,0 +1,542 @@
+{
+  "schema": "bike_movement_replay_v1",
+  "scenarios": [
+    {
+      "name": "straight_traversal_cadence_no_running_tile_divergence",
+      "map": {
+        "width": 5,
+        "height": 3,
+        "default_behavior": 0,
+        "default_collision": 0,
+        "behavior_overrides": [
+          {
+            "x": 2,
+            "y": 1,
+            "behavior_id": 10
+          }
+        ]
+      },
+      "initial": {
+        "x": 1,
+        "y": 1,
+        "facing": "RIGHT"
+      },
+      "inputs": [
+        {
+          "seq": 1,
+          "tick": 10,
+          "direction": "RIGHT",
+          "movement_mode": "MACH_BIKE"
+        },
+        {
+          "seq": 2,
+          "tick": 11,
+          "direction": "RIGHT",
+          "movement_mode": "MACH_BIKE"
+        }
+      ],
+      "expected": {
+        "bike": {
+          "transitions": [
+            {
+              "accepted": false,
+              "x": 1,
+              "y": 1,
+              "facing": "RIGHT",
+              "reason": "FORCED_MOVEMENT_DISABLED"
+            },
+            {
+              "accepted": false,
+              "x": 1,
+              "y": 1,
+              "facing": "RIGHT",
+              "reason": "FORCED_MOVEMENT_DISABLED"
+            }
+          ],
+          "final": {
+            "x": 1,
+            "y": 1,
+            "facing": "RIGHT"
+          }
+        },
+        "on_foot": {
+          "transitions": [
+            {
+              "accepted": true,
+              "x": 2,
+              "y": 1,
+              "facing": "RIGHT",
+              "reason": "NONE"
+            },
+            {
+              "accepted": true,
+              "x": 3,
+              "y": 1,
+              "facing": "RIGHT",
+              "reason": "NONE"
+            }
+          ],
+          "final": {
+            "x": 3,
+            "y": 1,
+            "facing": "RIGHT"
+          }
+        }
+      }
+    },
+    {
+      "name": "mach_rapid_turn_rejected_vs_on_foot",
+      "map": {
+        "width": 6,
+        "height": 6,
+        "default_behavior": 0,
+        "default_collision": 0
+      },
+      "initial": {
+        "x": 2,
+        "y": 2,
+        "facing": "RIGHT"
+      },
+      "inputs": [
+        {
+          "seq": 1,
+          "tick": 20,
+          "direction": "RIGHT",
+          "movement_mode": "MACH_BIKE"
+        },
+        {
+          "seq": 2,
+          "tick": 21,
+          "direction": "RIGHT",
+          "movement_mode": "MACH_BIKE"
+        },
+        {
+          "seq": 3,
+          "tick": 22,
+          "direction": "UP",
+          "movement_mode": "MACH_BIKE"
+        }
+      ],
+      "expected": {
+        "bike": {
+          "transitions": [
+            {
+              "accepted": true,
+              "x": 3,
+              "y": 2,
+              "facing": "RIGHT",
+              "reason": "NONE"
+            },
+            {
+              "accepted": true,
+              "x": 4,
+              "y": 2,
+              "facing": "RIGHT",
+              "reason": "NONE"
+            },
+            {
+              "accepted": false,
+              "x": 4,
+              "y": 2,
+              "facing": "UP",
+              "reason": "BIKE_TURN_TOO_SHARP"
+            }
+          ],
+          "final": {
+            "x": 4,
+            "y": 2,
+            "facing": "UP"
+          }
+        },
+        "on_foot": {
+          "transitions": [
+            {
+              "accepted": true,
+              "x": 3,
+              "y": 2,
+              "facing": "RIGHT",
+              "reason": "NONE"
+            },
+            {
+              "accepted": true,
+              "x": 4,
+              "y": 2,
+              "facing": "RIGHT",
+              "reason": "NONE"
+            },
+            {
+              "accepted": true,
+              "x": 4,
+              "y": 1,
+              "facing": "UP",
+              "reason": "NONE"
+            }
+          ],
+          "final": {
+            "x": 4,
+            "y": 1,
+            "facing": "UP"
+          }
+        }
+      }
+    },
+    {
+      "name": "blocked_turn_on_vertical_rail_vs_on_foot",
+      "map": {
+        "width": 5,
+        "height": 5,
+        "default_behavior": 0,
+        "default_collision": 0,
+        "behavior_overrides": [
+          {
+            "x": 2,
+            "y": 2,
+            "behavior_id": 213
+          }
+        ]
+      },
+      "initial": {
+        "x": 2,
+        "y": 2,
+        "facing": "RIGHT"
+      },
+      "inputs": [
+        {
+          "seq": 1,
+          "tick": 30,
+          "direction": "RIGHT",
+          "movement_mode": "MACH_BIKE"
+        }
+      ],
+      "expected": {
+        "bike": {
+          "transitions": [
+            {
+              "accepted": false,
+              "x": 2,
+              "y": 2,
+              "facing": "RIGHT",
+              "reason": "FORCED_MOVEMENT_DISABLED"
+            }
+          ],
+          "final": {
+            "x": 2,
+            "y": 2,
+            "facing": "RIGHT"
+          }
+        },
+        "on_foot": {
+          "transitions": [
+            {
+              "accepted": true,
+              "x": 3,
+              "y": 2,
+              "facing": "RIGHT",
+              "reason": "NONE"
+            }
+          ],
+          "final": {
+            "x": 3,
+            "y": 2,
+            "facing": "RIGHT"
+          }
+        }
+      }
+    },
+    {
+      "name": "acro_wheelie_sequence_bumpy_slope_divergence",
+      "map": {
+        "width": 6,
+        "height": 4,
+        "default_behavior": 0,
+        "default_collision": 0,
+        "behavior_overrides": [
+          {
+            "x": 3,
+            "y": 1,
+            "behavior_id": 209
+          }
+        ]
+      },
+      "initial": {
+        "x": 1,
+        "y": 1,
+        "facing": "RIGHT"
+      },
+      "inputs": [
+        {
+          "seq": 1,
+          "tick": 40,
+          "direction": "RIGHT",
+          "movement_mode": "ACRO_CRUISE"
+        },
+        {
+          "seq": 2,
+          "tick": 41,
+          "direction": "RIGHT",
+          "movement_mode": "ACRO_CRUISE"
+        },
+        {
+          "seq": 3,
+          "tick": 42,
+          "direction": "RIGHT",
+          "movement_mode": "ACRO_WHEELIE_PREP"
+        },
+        {
+          "seq": 4,
+          "tick": 43,
+          "direction": "RIGHT",
+          "movement_mode": "ACRO_WHEELIE_MOVE"
+        }
+      ],
+      "expected": {
+        "bike": {
+          "transitions": [
+            {
+              "accepted": true,
+              "x": 2,
+              "y": 1,
+              "facing": "RIGHT",
+              "reason": "NONE"
+            },
+            {
+              "accepted": false,
+              "x": 2,
+              "y": 1,
+              "facing": "RIGHT",
+              "reason": "FORCED_MOVEMENT_DISABLED"
+            },
+            {
+              "accepted": false,
+              "x": 2,
+              "y": 1,
+              "facing": "RIGHT",
+              "reason": "FORCED_MOVEMENT_DISABLED"
+            },
+            {
+              "accepted": false,
+              "x": 2,
+              "y": 1,
+              "facing": "RIGHT",
+              "reason": "BIKE_INVALID_STATE_TRANSITION"
+            }
+          ],
+          "final": {
+            "x": 2,
+            "y": 1,
+            "facing": "RIGHT"
+          }
+        },
+        "on_foot": {
+          "transitions": [
+            {
+              "accepted": true,
+              "x": 2,
+              "y": 1,
+              "facing": "RIGHT",
+              "reason": "NONE"
+            },
+            {
+              "accepted": true,
+              "x": 3,
+              "y": 1,
+              "facing": "RIGHT",
+              "reason": "NONE"
+            },
+            {
+              "accepted": true,
+              "x": 4,
+              "y": 1,
+              "facing": "RIGHT",
+              "reason": "NONE"
+            },
+            {
+              "accepted": true,
+              "x": 5,
+              "y": 1,
+              "facing": "RIGHT",
+              "reason": "NONE"
+            }
+          ],
+          "final": {
+            "x": 5,
+            "y": 1,
+            "facing": "RIGHT"
+          }
+        }
+      }
+    },
+    {
+      "name": "ledge_and_collision_edge_cases_bike_vs_on_foot",
+      "map": {
+        "width": 6,
+        "height": 3,
+        "default_behavior": 0,
+        "default_collision": 0,
+        "behavior_overrides": [
+          {
+            "x": 2,
+            "y": 1,
+            "behavior_id": 56
+          }
+        ],
+        "collision_overrides": [
+          {
+            "x": 4,
+            "y": 1,
+            "collision": 1
+          }
+        ]
+      },
+      "initial": {
+        "x": 1,
+        "y": 1,
+        "facing": "RIGHT"
+      },
+      "inputs": [
+        {
+          "seq": 1,
+          "tick": 50,
+          "direction": "RIGHT",
+          "movement_mode": "MACH_BIKE"
+        },
+        {
+          "seq": 2,
+          "tick": 51,
+          "direction": "RIGHT",
+          "movement_mode": "MACH_BIKE"
+        },
+        {
+          "seq": 3,
+          "tick": 52,
+          "direction": "RIGHT",
+          "movement_mode": "MACH_BIKE"
+        }
+      ],
+      "expected": {
+        "bike": {
+          "transitions": [
+            {
+              "accepted": false,
+              "x": 1,
+              "y": 1,
+              "facing": "RIGHT",
+              "reason": "FORCED_MOVEMENT_DISABLED"
+            },
+            {
+              "accepted": false,
+              "x": 1,
+              "y": 1,
+              "facing": "RIGHT",
+              "reason": "FORCED_MOVEMENT_DISABLED"
+            },
+            {
+              "accepted": false,
+              "x": 1,
+              "y": 1,
+              "facing": "RIGHT",
+              "reason": "FORCED_MOVEMENT_DISABLED"
+            }
+          ],
+          "final": {
+            "x": 1,
+            "y": 1,
+            "facing": "RIGHT"
+          }
+        },
+        "on_foot": {
+          "transitions": [
+            {
+              "accepted": true,
+              "x": 2,
+              "y": 1,
+              "facing": "RIGHT",
+              "reason": "NONE"
+            },
+            {
+              "accepted": true,
+              "x": 3,
+              "y": 1,
+              "facing": "RIGHT",
+              "reason": "NONE"
+            },
+            {
+              "accepted": false,
+              "x": 3,
+              "y": 1,
+              "facing": "RIGHT",
+              "reason": "COLLISION"
+            }
+          ],
+          "final": {
+            "x": 3,
+            "y": 1,
+            "facing": "RIGHT"
+          }
+        }
+      }
+    },
+    {
+      "name": "map_connection_crossing_biking_vs_on_foot",
+      "map": {
+        "width": 3,
+        "height": 3,
+        "default_behavior": 0,
+        "default_collision": 0
+      },
+      "initial": {
+        "x": 2,
+        "y": 1,
+        "facing": "RIGHT"
+      },
+      "inputs": [
+        {
+          "seq": 1,
+          "tick": 60,
+          "direction": "RIGHT",
+          "movement_mode": "MACH_BIKE",
+          "connected_destination": {
+            "x": 0,
+            "y": 1,
+            "behavior_id": 10,
+            "collision_bits": 0
+          }
+        }
+      ],
+      "expected": {
+        "bike": {
+          "transitions": [
+            {
+              "accepted": false,
+              "x": 2,
+              "y": 1,
+              "facing": "RIGHT",
+              "reason": "FORCED_MOVEMENT_DISABLED"
+            }
+          ],
+          "final": {
+            "x": 2,
+            "y": 1,
+            "facing": "RIGHT"
+          }
+        },
+        "on_foot": {
+          "transitions": [
+            {
+              "accepted": true,
+              "x": 0,
+              "y": 1,
+              "facing": "RIGHT",
+              "reason": "NONE"
+            }
+          ],
+          "final": {
+            "x": 0,
+            "y": 1,
+            "facing": "RIGHT"
+          }
+        }
+      }
+    }
+  ]
+}
