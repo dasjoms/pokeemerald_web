@@ -134,15 +134,20 @@ pub fn decode_client_message(frame: &[u8]) -> Result<ClientMessage, ProtocolErro
             let (client_time, offset) = unpack_u64(payload, offset)?;
             ensure_done(payload, offset)?;
             match decode_direction(raw_direction) {
-                Ok(direction) => {
-                    let movement_mode = decode_movement_mode(raw_movement_mode)?;
-                    Ok(ClientMessage::WalkInput(WalkInput {
+                Ok(direction) => match decode_movement_mode(raw_movement_mode) {
+                    Ok(movement_mode) => Ok(ClientMessage::WalkInput(WalkInput {
                         direction,
                         movement_mode,
                         input_seq,
                         client_time,
-                    }))
-                }
+                    })),
+                    Err(_) => Ok(ClientMessage::WalkInput(WalkInput {
+                        direction,
+                        movement_mode: MovementMode::Walk,
+                        input_seq,
+                        client_time,
+                    })),
+                },
                 Err(_) => Ok(ClientMessage::WalkInputInvalidDirection {
                     input_seq,
                     client_time,
@@ -157,11 +162,6 @@ fn decode_movement_mode(raw: u8) -> Result<MovementMode, ProtocolError> {
     match raw {
         0 => Ok(MovementMode::Walk),
         1 => Ok(MovementMode::Run),
-        2 => Ok(MovementMode::MachBike),
-        3 => Ok(MovementMode::AcroCruise),
-        4 => Ok(MovementMode::AcroWheeliePrep),
-        5 => Ok(MovementMode::AcroWheelieMove),
-        6 => Ok(MovementMode::BunnyHop),
         _ => Err(ProtocolError::InvalidMovementMode(raw)),
     }
 }

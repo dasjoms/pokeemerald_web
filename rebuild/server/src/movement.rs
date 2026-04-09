@@ -161,11 +161,6 @@ pub const fn movement_mode_step_speed(mode: MovementMode) -> StepSpeed {
     match mode {
         MovementMode::Walk => WALK_STEP_SPEED,
         MovementMode::Run => RUN_STEP_SPEED,
-        MovementMode::MachBike => StepSpeed::Step3,
-        MovementMode::AcroCruise => RUN_STEP_SPEED,
-        MovementMode::AcroWheeliePrep => WALK_STEP_SPEED,
-        MovementMode::AcroWheelieMove => RUN_STEP_SPEED,
-        MovementMode::BunnyHop => WALK_STEP_SPEED,
     }
 }
 
