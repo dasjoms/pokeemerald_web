@@ -5,6 +5,7 @@ import {
   type BikeRuntimeDelta,
   DebugTraversalAction,
   Direction,
+  HeldButtons,
   MessageType,
   MovementMode,
   PlayerAction,
@@ -252,6 +253,18 @@ type MapTileRenderPriorityContext = {
   hasLayer1: boolean;
 };
 
+type AcroHopFailureReason =
+  | 'b_released'
+  | 'direction_pressed'
+  | 'left_acro_state'
+  | 'stale_or_missing_authoritative_progress';
+
+type AcroHopAttempt = {
+  id: number;
+  startedAtServerFrame: number;
+  startedAtHeldInputSeq: number | null;
+};
+
 
 const TILE_SIZE = 16;
 const SUBTILE_SIZE = 8;
@@ -263,6 +276,11 @@ const ENABLE_DEBUG_OVERLAY_DEFAULT =
   new URLSearchParams(window.location.search).get('debug') === '1';
 const ENABLE_DEV_DEBUG_ACTIONS =
   new URLSearchParams(window.location.search).get('devDebugActions') === '1';
+const debugAcroHopSearch =
+  typeof window === 'undefined' ? '' : window.location.search;
+const DEBUG_ACRO_HOP =
+  import.meta.env.DEV &&
+  new URLSearchParams(debugAcroHopSearch).get('debugAcroHop') === '1';
 const jsonAssetLoaders = import.meta.glob('../../assets/**/*.json');
 const binaryAssetUrls = import.meta.glob('../../assets/**/*.bin', {
   query: '?url',
@@ -302,6 +320,11 @@ const indexedAtlasPageCache = new Map<string, IndexedAtlasPages>();
 const metatileTextureCaches = new Map<string, MetatileTextureCache>();
 const tilesetAnimationStates = new Map<string, TilesetAnimationState>();
 let mapIdToLayoutJsonPathPromise: Promise<Map<number, string>> | null = null;
+let latestHeldDirection: Direction | null = null;
+let latestHeldButtons = HeldButtons.NONE;
+let latestHeldInputSeq: number | null = null;
+let nextAcroHopAttemptId = 1;
+let activeAcroHopAttempt: AcroHopAttempt | null = null;
 
 let activeTilesetAnimationPairId: string | null = null;
 let activeTilesetAnimationState: TilesetAnimationState | null = null;
@@ -575,6 +598,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     pendingPredictedInputs.clear();
     pendingMovementModesByInputSeq.clear();
     walkInputController.reset();
+    activeAcroHopAttempt = null;
 
     await renderMapFromSnapshot(snapshot);
     return;
@@ -584,6 +608,14 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     const delta = message.payload;
     if (delta.server_frame < state.lastAckServerTick) {
       return;
+    }
+    if (DEBUG_ACRO_HOP) {
+      console.info('[acro-hop][authoritative] bike_runtime_delta', {
+        server_frame: delta.server_frame,
+        traversal_state: delta.traversal_state,
+        acro_substate: delta.acro_substate,
+        bike_transition: delta.bike_transition,
+      });
     }
     state.traversalState = delta.traversal_state;
     state.authoritativeStepSpeed = delta.authoritative_step_speed;
@@ -603,6 +635,13 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     // BikeRuntimeDelta is change-only by design; consume it as authoritative
     // traversal state updates and keep animation phase locally clocked.
     state.lastAckServerTick = delta.server_frame;
+    trackAcroHopAttemptProgress({
+      source: 'bike_runtime_delta',
+      serverFrame: delta.server_frame,
+      traversalState: delta.traversal_state,
+      acroSubstate: delta.acro_substate,
+      bikeTransition: delta.bike_transition,
+    });
     return;
   }
 
@@ -691,9 +730,30 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
   state.lastAckServerTick = result.server_frame;
   if (!result.accepted) {
     console.info(
-      `[walk-reject] seq=${result.input_seq} reason=${rejectionReasonLabel(result.reason)}`,
+      `[walk-reject] seq=${result.input_seq} reason=${rejectionReasonLabel(result.reason)} ` +
+        `traversal=${TraversalState[result.traversal_state]} ` +
+        `acro=${result.acro_substate === undefined ? 'n/a' : AcroBikeSubstate[result.acro_substate]} ` +
+        `bikeTransition=${result.bike_transition === undefined ? 'n/a' : BikeTransitionType[result.bike_transition]}`,
     );
   }
+  if (DEBUG_ACRO_HOP) {
+    console.info('[acro-hop][authoritative] walk_result', {
+      server_frame: result.server_frame,
+      accepted: result.accepted,
+      input_seq: result.input_seq,
+      traversal_state: result.traversal_state,
+      acro_substate: result.acro_substate,
+      bike_transition: result.bike_transition,
+      rejection_reason: result.accepted ? undefined : rejectionReasonLabel(result.reason),
+    });
+  }
+  trackAcroHopAttemptProgress({
+    source: 'walk_result',
+    serverFrame: result.server_frame,
+    traversalState: result.traversal_state,
+    acroSubstate: result.acro_substate,
+    bikeTransition: result.bike_transition,
+  });
 
   if (ENABLE_CLIENT_PREDICTION) {
     // Presentation-only client prediction: server WalkResult remains authoritative.
@@ -1429,16 +1489,167 @@ function sendWalkInput(
   }
 }
 
-function sendHeldInputState(heldDirection: Direction | null, heldButtons: number): void {
+function sendHeldInputState(heldDirection: Direction | null, heldButtons: number): number | null {
   if (!socket || socket.readyState !== WebSocket.OPEN) {
-    return;
+    return null;
   }
 
   const inputSeq = state.lastHeldInputSeq;
   state.lastHeldInputSeq += 1;
+  latestHeldDirection = heldDirection;
+  latestHeldButtons = heldButtons;
+  latestHeldInputSeq = inputSeq;
   socket.send(
     encodeHeldInputState(heldDirection, heldButtons, inputSeq, BigInt(Date.now())),
   );
+  if (DEBUG_ACRO_HOP) {
+    console.info('[acro-hop][outbound] held_input_state', {
+      inputSeq,
+      heldDirection,
+      heldButtons,
+    });
+  }
+  return inputSeq;
+}
+
+function isBHeld(heldButtons: number): boolean {
+  return (heldButtons & HeldButtons.B) !== 0;
+}
+
+function isStandingWheelie(
+  traversalState: TraversalState,
+  acroSubstate: AcroBikeSubstate | undefined,
+): boolean {
+  return (
+    traversalState === TraversalState.ACRO_BIKE &&
+    acroSubstate === AcroBikeSubstate.STANDING_WHEELIE
+  );
+}
+
+function isBunnyHopTransition(
+  acroSubstate: AcroBikeSubstate | undefined,
+  bikeTransition: BikeTransitionType | undefined,
+): boolean {
+  return (
+    bikeTransition === BikeTransitionType.WHEELIE_HOPPING_STANDING ||
+    acroSubstate === AcroBikeSubstate.BUNNY_HOP
+  );
+}
+
+function failAcroHopAttempt(
+  attempt: AcroHopAttempt,
+  reason: AcroHopFailureReason,
+  details: {
+    source: 'bike_runtime_delta' | 'walk_result';
+    serverFrame: number;
+    traversalState: TraversalState;
+    acroSubstate: AcroBikeSubstate | undefined;
+    bikeTransition: BikeTransitionType | undefined;
+  },
+): void {
+  console.info(`[acro-hop][attempt ${attempt.id}] FAIL ${reason}`, {
+    source: details.source,
+    startedAtServerFrame: attempt.startedAtServerFrame,
+    endedAtServerFrame: details.serverFrame,
+    elapsedTicks: details.serverFrame - attempt.startedAtServerFrame,
+    startedAtHeldInputSeq: attempt.startedAtHeldInputSeq,
+    heldDirection: latestHeldDirection,
+    heldButtons: latestHeldButtons,
+    traversal_state: details.traversalState,
+    acro_substate: details.acroSubstate,
+    bike_transition: details.bikeTransition,
+  });
+}
+
+function trackAcroHopAttemptProgress(details: {
+  source: 'bike_runtime_delta' | 'walk_result';
+  serverFrame: number;
+  traversalState: TraversalState;
+  acroSubstate: AcroBikeSubstate | undefined;
+  bikeTransition: BikeTransitionType | undefined;
+}): void {
+  if (!DEBUG_ACRO_HOP) {
+    return;
+  }
+
+  const bHeld = isBHeld(latestHeldButtons);
+  const directionHeld = latestHeldDirection !== null;
+  const standingWheelie = isStandingWheelie(details.traversalState, details.acroSubstate);
+  const bunnyHopReached = isBunnyHopTransition(details.acroSubstate, details.bikeTransition);
+
+  if (activeAcroHopAttempt) {
+    const attempt = activeAcroHopAttempt;
+    if (bunnyHopReached) {
+      console.info(`[acro-hop][attempt ${attempt.id}] SUCCESS`, {
+        source: details.source,
+        startedAtServerFrame: attempt.startedAtServerFrame,
+        endedAtServerFrame: details.serverFrame,
+        elapsedTicks: details.serverFrame - attempt.startedAtServerFrame,
+        startedAtHeldInputSeq: attempt.startedAtHeldInputSeq,
+        bike_transition: details.bikeTransition,
+        acro_substate: details.acroSubstate,
+      });
+      activeAcroHopAttempt = null;
+      return;
+    }
+
+    if (!bHeld) {
+      failAcroHopAttempt(attempt, 'b_released', details);
+      activeAcroHopAttempt = null;
+      return;
+    }
+
+    if (directionHeld) {
+      failAcroHopAttempt(attempt, 'direction_pressed', details);
+      activeAcroHopAttempt = null;
+      return;
+    }
+
+    if (!standingWheelie) {
+      failAcroHopAttempt(attempt, 'left_acro_state', details);
+      activeAcroHopAttempt = null;
+      return;
+    }
+
+    if (details.serverFrame - attempt.startedAtServerFrame > 50) {
+      failAcroHopAttempt(attempt, 'stale_or_missing_authoritative_progress', details);
+      activeAcroHopAttempt = null;
+      return;
+    }
+
+    console.info(`[acro-hop][attempt ${attempt.id}] progress`, {
+      source: details.source,
+      serverFrame: details.serverFrame,
+      heldDirection: latestHeldDirection,
+      heldButtons: latestHeldButtons,
+      traversal_state: details.traversalState,
+      acro_substate: details.acroSubstate,
+      bike_transition: details.bikeTransition,
+    });
+    return;
+  }
+
+  if (!standingWheelie || !bHeld || directionHeld) {
+    return;
+  }
+
+  const attempt: AcroHopAttempt = {
+    id: nextAcroHopAttemptId,
+    startedAtServerFrame: details.serverFrame,
+    startedAtHeldInputSeq: latestHeldInputSeq,
+  };
+  nextAcroHopAttemptId += 1;
+  activeAcroHopAttempt = attempt;
+  console.info(`[acro-hop][attempt ${attempt.id}] START`, {
+    source: details.source,
+    serverFrame: details.serverFrame,
+    startedAtHeldInputSeq: attempt.startedAtHeldInputSeq,
+    heldDirection: latestHeldDirection,
+    heldButtons: latestHeldButtons,
+    traversal_state: details.traversalState,
+    acro_substate: details.acroSubstate,
+    bike_transition: details.bikeTransition,
+  });
 }
 
 function encodeJoinSession(playerId: string): Uint8Array {

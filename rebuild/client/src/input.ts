@@ -24,6 +24,11 @@ export type WalkInputController = {
 // local facing updates immediately, but no WalkInput is emitted.
 const TURN_ONLY_TAP_MS = 90;
 const HELD_INPUT_SAMPLE_MS = 1000 / 60;
+const debugAcroHopSearch =
+  typeof window === 'undefined' ? '' : window.location.search;
+const DEBUG_ACRO_HOP =
+  import.meta.env.DEV &&
+  new URLSearchParams(debugAcroHopSearch).get('debugAcroHop') === '1';
 
 export function keyToDirection(key: string): Direction | null {
   switch (key) {
@@ -50,7 +55,7 @@ export function keyToDirection(key: string): Direction | null {
 
 export function createWalkInputController(config: {
   sendWalkInput: (direction: Direction, movementMode: MovementMode, heldButtons: number) => void;
-  sendHeldInputState: (heldDirection: Direction | null, heldButtons: number) => void;
+  sendHeldInputState: (heldDirection: Direction | null, heldButtons: number) => number | null;
   isMovementLocked: () => boolean;
   onFacingIntent: (direction: Direction) => void;
 }): WalkInputController {
@@ -63,6 +68,7 @@ export function createWalkInputController(config: {
   let virtualBHeld = false;
   let heldInputSampleAccumulatorMs = 0;
   let lastHeldInputTickAtMs: number | null = null;
+  let localHeldInputTick = 0;
 
   const heldButtons = (): number => (virtualBHeld ? HeldButtons.B : HeldButtons.NONE);
 
@@ -78,7 +84,18 @@ export function createWalkInputController(config: {
 
   const emitHeldInputState = (): void => {
     const heldDirection = getActiveHeldDirection();
-    config.sendHeldInputState(heldDirection, heldButtons());
+    const buttons = heldButtons();
+    const outboundSeq = config.sendHeldInputState(heldDirection, buttons);
+    const localTick = localHeldInputTick;
+    localHeldInputTick += 1;
+    if (DEBUG_ACRO_HOP) {
+      console.info('[acro-hop][input] emit held-state', {
+        heldDirection,
+        heldButtons: buttons,
+        localTick,
+        outboundHeldInputSeq: outboundSeq,
+      });
+    }
   };
 
   const sampleHeldInputForTick = (nowMs: number): void => {
@@ -225,6 +242,9 @@ export function createWalkInputController(config: {
         return;
       }
       virtualBHeld = held;
+      if (DEBUG_ACRO_HOP) {
+        console.info(`[acro-hop][input] virtual B ${held ? 'pressed' : 'released'}`);
+      }
       emitHeldInputState();
     },
     toggleMovementMode(): void {
@@ -271,6 +291,7 @@ export function createWalkInputController(config: {
       virtualBHeld = false;
       heldInputSampleAccumulatorMs = 0;
       lastHeldInputTickAtMs = null;
+      localHeldInputTick = 0;
       heldDirections.clear();
       heldDirectionPressedAtMs.clear();
       directionOrder.length = 0;
