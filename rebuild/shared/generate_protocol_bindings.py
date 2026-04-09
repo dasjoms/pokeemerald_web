@@ -70,6 +70,10 @@ pub enum RejectionReason {{
     NotJoined = {int(RejectionReason.NOT_JOINED)},
     InvalidDirection = {int(RejectionReason.INVALID_DIRECTION)},
     ForcedMovementDisabled = {int(RejectionReason.FORCED_MOVEMENT_DISABLED)},
+    BikeInvalidStateTransition = {int(RejectionReason.BIKE_INVALID_STATE_TRANSITION)},
+    BikeTurnTooSharp = {int(RejectionReason.BIKE_TURN_TOO_SHARP)},
+    BikeWheelieWindowExpired = {int(RejectionReason.BIKE_WHEELIE_WINDOW_EXPIRED)},
+    BikeTileRequiresMach = {int(RejectionReason.BIKE_TILE_REQUIRES_MACH)},
 }}
 
 #[repr(u8)]
@@ -176,6 +180,10 @@ export enum RejectionReason {{
   NOT_JOINED = {int(RejectionReason.NOT_JOINED)},
   INVALID_DIRECTION = {int(RejectionReason.INVALID_DIRECTION)},
   FORCED_MOVEMENT_DISABLED = {int(RejectionReason.FORCED_MOVEMENT_DISABLED)},
+  BIKE_INVALID_STATE_TRANSITION = {int(RejectionReason.BIKE_INVALID_STATE_TRANSITION)},
+  BIKE_TURN_TOO_SHARP = {int(RejectionReason.BIKE_TURN_TOO_SHARP)},
+  BIKE_WHEELIE_WINDOW_EXPIRED = {int(RejectionReason.BIKE_WHEELIE_WINDOW_EXPIRED)},
+  BIKE_TILE_REQUIRES_MACH = {int(RejectionReason.BIKE_TILE_REQUIRES_MACH)},
 }}
 
 export enum PlayerAvatar {{

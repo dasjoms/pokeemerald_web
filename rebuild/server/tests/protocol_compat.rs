@@ -63,11 +63,15 @@ fn rejection_reason_enum_values_match_shared_schema() {
     assert_eq!(RejectionReason::NotJoined as u8, 4);
     assert_eq!(RejectionReason::InvalidDirection as u8, 5);
     assert_eq!(RejectionReason::ForcedMovementDisabled as u8, 6);
+    assert_eq!(RejectionReason::BikeInvalidStateTransition as u8, 7);
+    assert_eq!(RejectionReason::BikeTurnTooSharp as u8, 8);
+    assert_eq!(RejectionReason::BikeWheelieWindowExpired as u8, 9);
+    assert_eq!(RejectionReason::BikeTileRequiresMach as u8, 10);
 
     let status = Command::new("python3")
         .args([
             "-c",
-            r#"import pathlib, sys; sys.path.insert(0, str(pathlib.Path('../shared').resolve())); import protocol; assert int(protocol.RejectionReason.NONE) == 0; assert int(protocol.RejectionReason.COLLISION) == 1; assert int(protocol.RejectionReason.OUT_OF_BOUNDS) == 2; assert int(protocol.RejectionReason.SEQUENCE_MISMATCH) == 3; assert int(protocol.RejectionReason.NOT_JOINED) == 4; assert int(protocol.RejectionReason.INVALID_DIRECTION) == 5; assert int(protocol.RejectionReason.FORCED_MOVEMENT_DISABLED) == 6"#,
+            r#"import pathlib, sys; sys.path.insert(0, str(pathlib.Path('../shared').resolve())); import protocol; assert int(protocol.RejectionReason.NONE) == 0; assert int(protocol.RejectionReason.COLLISION) == 1; assert int(protocol.RejectionReason.OUT_OF_BOUNDS) == 2; assert int(protocol.RejectionReason.SEQUENCE_MISMATCH) == 3; assert int(protocol.RejectionReason.NOT_JOINED) == 4; assert int(protocol.RejectionReason.INVALID_DIRECTION) == 5; assert int(protocol.RejectionReason.FORCED_MOVEMENT_DISABLED) == 6; assert int(protocol.RejectionReason.BIKE_INVALID_STATE_TRANSITION) == 7; assert int(protocol.RejectionReason.BIKE_TURN_TOO_SHARP) == 8; assert int(protocol.RejectionReason.BIKE_WHEELIE_WINDOW_EXPIRED) == 9; assert int(protocol.RejectionReason.BIKE_TILE_REQUIRES_MACH) == 10"#,
         ])
         .status()
         .expect("python must run");

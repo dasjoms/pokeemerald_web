@@ -3,6 +3,7 @@ use std::collections::VecDeque;
 use tokio::sync::mpsc;
 
 use crate::{
+    bike::TraversalState,
     movement::{movement_mode_step_speed, step_progress_pixels, StepSpeed, WALK_SAMPLE_MS},
     protocol::{Direction, MovementMode, PlayerAvatar, ServerMessage, WalkInput},
 };
@@ -46,7 +47,33 @@ impl ActiveWalkTransition {
         direction: Direction,
         movement_mode: MovementMode,
     ) -> Self {
-        let speed = movement_mode_step_speed(movement_mode);
+        Self::new_with_step_speed(
+            input_seq,
+            start_map_id,
+            start_x,
+            start_y,
+            target_map_id,
+            target_x,
+            target_y,
+            direction,
+            movement_mode,
+            None,
+        )
+    }
+
+    pub fn new_with_step_speed(
+        input_seq: u32,
+        start_map_id: String,
+        start_x: u16,
+        start_y: u16,
+        target_map_id: String,
+        target_x: u16,
+        target_y: u16,
+        direction: Direction,
+        movement_mode: MovementMode,
+        step_speed: Option<StepSpeed>,
+    ) -> Self {
+        let speed = step_speed.unwrap_or(movement_mode_step_speed(movement_mode));
         Self {
             input_seq,
             start_map_id,
@@ -88,6 +115,7 @@ pub struct Session {
     pub joined: bool,
     pub next_expected_input_seq: u32,
     pub active_walk_transition: Option<ActiveWalkTransition>,
+    pub traversal_state: TraversalState,
     walk_inputs: VecDeque<WalkInput>,
     outbound: mpsc::UnboundedSender<ServerMessage>,
 }
@@ -106,6 +134,7 @@ impl Session {
             joined: false,
             next_expected_input_seq: 0,
             active_walk_transition: None,
+            traversal_state: TraversalState::default(),
             walk_inputs: VecDeque::new(),
             outbound,
         }

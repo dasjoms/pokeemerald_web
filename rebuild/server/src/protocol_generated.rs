@@ -48,6 +48,10 @@ pub enum RejectionReason {
     NotJoined = 4,
     InvalidDirection = 5,
     ForcedMovementDisabled = 6,
+    BikeInvalidStateTransition = 7,
+    BikeTurnTooSharp = 8,
+    BikeWheelieWindowExpired = 9,
+    BikeTileRequiresMach = 10,
 }
 
 #[repr(u8)]
