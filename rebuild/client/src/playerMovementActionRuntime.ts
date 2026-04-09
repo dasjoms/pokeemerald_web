@@ -33,15 +33,27 @@ export class PlayerMovementActionRuntime {
   private activeAction: PlayerMovementActionVisualState['activeAction'] = 'none';
   private yOffsetPx = 0;
   private jumpTimer = 0;
+  private hopCycleActive = false;
 
   setAuthoritativeInput(input: PlayerMovementActionVisualInput): void {
+    const wasHopCapable = this.shouldRunAcroStationaryHop();
     this.authoritativeInput = {
       traversalState: input.traversalState,
       bikeTransition: input.bikeTransition ?? BikeTransitionType.NONE,
     };
 
-    if (!this.shouldRunAcroStationaryHop()) {
+    const isHopCapable = this.shouldRunAcroStationaryHop();
+    if (!isHopCapable) {
       this.resetActionState();
+      return;
+    }
+
+    // Treat authoritative bike runtime updates as state corrections only.
+    // Once we are in a stationary hop-capable transition, hop phase progression
+    // is locally clocked by the client tick loop and must not depend on
+    // receiving repeated BikeRuntimeDelta packets.
+    if (!wasHopCapable && isHopCapable) {
+      this.hopCycleActive = true;
     }
   }
 
@@ -63,6 +75,13 @@ export class PlayerMovementActionRuntime {
     if (!this.shouldRunAcroStationaryHop()) {
       this.resetActionState();
       return;
+    }
+
+    if (!this.hopCycleActive) {
+      this.hopCycleActive = true;
+      this.activeAction = 'none';
+      this.jumpTimer = 0;
+      this.yOffsetPx = 0;
     }
 
     if (this.activeAction === 'none') {
@@ -91,6 +110,7 @@ export class PlayerMovementActionRuntime {
   }
 
   private resetActionState(): void {
+    this.hopCycleActive = false;
     this.activeAction = 'none';
     this.jumpTimer = 0;
     this.yOffsetPx = 0;

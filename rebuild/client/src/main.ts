@@ -600,7 +600,8 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
       traversalState: state.traversalState,
       bikeTransition: state.bikeTransition,
     });
-    syncVisualRuntimesToServerFrame(delta.server_frame);
+    // BikeRuntimeDelta is change-only by design; consume it as authoritative
+    // traversal state updates and keep animation phase locally clocked.
     state.lastAckServerTick = delta.server_frame;
     return;
   }
