@@ -20,6 +20,7 @@ const MB_SECRET_BASE_JUMP_MAT: u8 = 0xBB;
 const MB_SECRET_BASE_SPIN_MAT: u8 = 0xBC;
 const MB_MUDDY_SLOPE: u8 = 0xD0;
 const MB_BUMPY_SLOPE: u8 = 0xD1;
+#[cfg(test)]
 const MB_CRACKED_FLOOR: u8 = 0xD2;
 const MB_ISOLATED_VERTICAL_RAIL: u8 = 0xD3;
 const MB_ISOLATED_HORIZONTAL_RAIL: u8 = 0xD4;
@@ -446,7 +447,7 @@ fn can_bike_face_dir_on_metatile(direction: Direction, tile_behavior: u8) -> boo
 
 fn movement_behavior_gate_reject_reason(
     source_behavior_id: u8,
-    destination_behavior_id: u8,
+    _destination_behavior_id: u8,
     facing: Direction,
     traversal_context: TraversalContext,
 ) -> Option<&'static str> {
@@ -468,12 +469,6 @@ fn movement_behavior_gate_reject_reason(
         && !matches!(traversal_context.traversal_state, TraversalState::AcroBike)
     {
         return Some("rejected: bumpy_slope_requires_acro");
-    }
-
-    if source_behavior_id == MB_CRACKED_FLOOR || destination_behavior_id == MB_CRACKED_FLOOR {
-        if !matches!(player_speed, PlayerSpeed::Fastest) {
-            return Some("rejected: cracked_floor_requires_fastest_speed");
-        }
     }
 
     None
@@ -608,6 +603,25 @@ mod tests {
         assert_eq!(
             result,
             MoveValidation::Rejected(MoveRejectReason::ForcedMovementDisabled)
+        );
+    }
+
+    #[test]
+    fn accepts_cracked_floor_tiles_even_when_not_fastest() {
+        let result = validate_walk_with_context(
+            0,
+            0,
+            Direction::Right,
+            map(&[0, 0, 0, 0], &[0, MB_CRACKED_FLOOR, 0, 0]),
+            None,
+            on_foot_walk(),
+        );
+        assert_eq!(
+            result,
+            MoveValidation::Accepted {
+                next_x: 1,
+                next_y: 0
+            }
         );
     }
 }
