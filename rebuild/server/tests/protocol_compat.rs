@@ -2,8 +2,8 @@ use std::process::Command;
 
 use rebuild_server::protocol::{
     decode_client_message, encode_server_message, BikeTransitionType, ClientMessage, Direction,
-    HeldInputState, MovementMode, Position, RejectionReason, ServerMessage, TraversalState,
-    WalkResult,
+    HeldInputState, MessageType, MovementMode, Position, RejectionReason, ServerMessage,
+    TraversalState, WalkResult, PROTOCOL_VERSION,
 };
 
 #[test]
@@ -131,10 +131,15 @@ fn walk_result_wire_encoding_with_forced_movement_disabled_is_canonical() {
     }))
     .expect("encode walk result");
 
-    assert_eq!(
-        hex::encode(&frame),
-        "0900831400000004030201002211443302060d0c0b0a0000040000"
+    let mut expected_frame = Vec::new();
+    expected_frame.extend_from_slice(&PROTOCOL_VERSION.to_le_bytes());
+    expected_frame.push(MessageType::WalkResult as u8);
+    expected_frame.push(0x14);
+    expected_frame.extend(
+        hex::decode("00000004030201002211443302060d0c0b0a0000040000")
+            .expect("valid expected payload"),
     );
+    assert_eq!(frame, expected_frame);
 
     let status = Command::new("python3")
         .args([
