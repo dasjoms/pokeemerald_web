@@ -1,4 +1,4 @@
-use crate::protocol::Direction;
+use crate::protocol::{Direction, MovementMode};
 
 const MB_INVALID: u8 = u8::MAX;
 const MB_WALK_EAST: u8 = 0x40;
@@ -145,6 +145,8 @@ pub fn facing_delta(facing: Direction) -> (i32, i32) {
 pub const WALK_TILE_PIXELS: u16 = 16;
 pub const WALK_SAMPLE_MS: f32 = 1000.0 / 60.0;
 pub const WALK_NORMAL_STEP_PIXELS_PER_SAMPLE: u8 = 1;
+pub const WALK_STEP_SPEED: StepSpeed = StepSpeed::Step1;
+pub const RUN_STEP_SPEED: StepSpeed = StepSpeed::Step2;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StepSpeed {
@@ -153,6 +155,17 @@ pub enum StepSpeed {
     Step3,
     Step4,
     Step8,
+}
+
+pub const fn movement_mode_step_speed(mode: MovementMode) -> StepSpeed {
+    match mode {
+        MovementMode::Walk => WALK_STEP_SPEED,
+        MovementMode::Run => RUN_STEP_SPEED,
+    }
+}
+
+pub const fn movement_mode_samples_per_tile(mode: MovementMode) -> u16 {
+    movement_mode_step_speed(mode).samples_per_tile()
 }
 
 impl StepSpeed {

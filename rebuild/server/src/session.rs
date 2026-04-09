@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 use tokio::sync::mpsc;
 
 use crate::{
-    movement::{step_progress_pixels, StepSpeed, WALK_SAMPLE_MS},
+    movement::{movement_mode_step_speed, step_progress_pixels, StepSpeed, WALK_SAMPLE_MS},
     protocol::{Direction, MovementMode, PlayerAvatar, ServerMessage, WalkInput},
 };
 
@@ -46,10 +46,7 @@ impl ActiveWalkTransition {
         direction: Direction,
         movement_mode: MovementMode,
     ) -> Self {
-        let speed = match movement_mode {
-            MovementMode::Walk => StepSpeed::Step1,
-            MovementMode::Run => StepSpeed::Step2,
-        };
+        let speed = movement_mode_step_speed(movement_mode);
         Self {
             input_seq,
             start_map_id,

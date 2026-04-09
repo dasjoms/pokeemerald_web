@@ -270,7 +270,7 @@ const state: ClientWorldState = {
 };
 const pendingMovementModesByInputSeq = new Map<number, MovementMode>();
 
-const WALK_STEP_DURATION_MS = (1000 / 60) * 16;
+const SERVER_MOVEMENT_SAMPLE_MS = 1000 / 60;
 // A directional key press shorter than this threshold is treated as a turn-only tap:
 // local facing updates immediately, but no WalkInput is emitted.
 const TURN_ONLY_TAP_MS = 90;
@@ -556,7 +556,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
   if (result.accepted) {
     // Contract: on accepted input, authoritative_pos is the server tile *after* applying that step.
     // This lets the first interpolation run immediately toward the accepted destination.
-    startAuthoritativeWalkTransition(result.facing);
+    startAuthoritativeWalkTransition(result.facing, acceptedMovementMode);
     playerAnimation.startStep(
       result.facing,
       acceptedMovementMode === MovementMode.RUN ? 'run' : 'walk',
@@ -1649,14 +1649,27 @@ function updateCamera(): void {
   gameContainer.y = app.screen.height / 2 - centerY * RENDER_SCALE;
 }
 
-function startAuthoritativeWalkTransition(facing: Direction): void {
+function movementModeStepDurationMs(movementMode: MovementMode): number {
+  switch (movementMode) {
+    case MovementMode.RUN:
+      return SERVER_MOVEMENT_SAMPLE_MS * 8;
+    case MovementMode.WALK:
+    default:
+      return SERVER_MOVEMENT_SAMPLE_MS * 16;
+  }
+}
+
+function startAuthoritativeWalkTransition(
+  facing: Direction,
+  movementMode: MovementMode,
+): void {
   activeWalkTransition = {
     startX: state.renderTileX,
     startY: state.renderTileY,
     targetX: state.playerTileX,
     targetY: state.playerTileY,
     elapsedMs: 0,
-    durationMs: WALK_STEP_DURATION_MS,
+    durationMs: movementModeStepDurationMs(movementMode),
     facing,
   };
 }
