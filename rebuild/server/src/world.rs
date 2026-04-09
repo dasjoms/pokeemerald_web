@@ -1516,6 +1516,8 @@ fn to_protocol_map_id(group_index: u16, map_index: u16) -> anyhow::Result<u16> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
+    use tokio::sync::mpsc;
 
     fn test_player_state() -> PlayerState {
         PlayerState {
@@ -1577,6 +1579,28 @@ mod tests {
             allow_running: true,
             connections: vec![],
         }
+    }
+
+    fn test_asset_paths() -> (String, String) {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
+        (
+            root.join("assets/maps_index.json")
+                .to_string_lossy()
+                .into_owned(),
+            root.join("assets/layouts_index.json")
+                .to_string_lossy()
+                .into_owned(),
+        )
+    }
+
+    fn drain_server_messages(
+        rx: &mut mpsc::UnboundedReceiver<ServerMessage>,
+    ) -> Vec<ServerMessage> {
+        let mut drained = Vec::new();
+        while let Ok(message) = rx.try_recv() {
+            drained.push(message);
+        }
+        drained
     }
 
     #[test]
@@ -1731,6 +1755,92 @@ mod tests {
         assert_eq!(
             player.bike_runtime.last_transition,
             BikeTransitionType::WheelieHoppingStanding
+        );
+    }
+
+    #[tokio::test]
+    async fn held_b_idle_ticks_emit_runtime_transitions_without_walk_input_acceptance() {
+        let (maps_index, layouts_index) = test_asset_paths();
+        let world = World::load_from_assets("MAP_LITTLEROOT_TOWN", &maps_index, &layouts_index)
+            .expect("world should load");
+
+        let (tx, mut rx) = mpsc::unbounded_channel();
+        let session = world
+            .create_session(tx)
+            .await
+            .expect("session should create");
+        world
+            .join_session(session.connection_id, "idle-acro-runtime")
+            .await
+            .expect("session should join");
+        let _ = drain_server_messages(&mut rx);
+
+        world
+            .handle_debug_traversal_input(
+                session.connection_id,
+                DebugTraversalInput {
+                    action: DebugTraversalAction::ToggleMount,
+                },
+            )
+            .await
+            .expect("mount should succeed");
+        world
+            .handle_debug_traversal_input(
+                session.connection_id,
+                DebugTraversalInput {
+                    action: DebugTraversalAction::SwapBikeType,
+                },
+            )
+            .await
+            .expect("bike swap should succeed");
+        let _ = drain_server_messages(&mut rx);
+
+        let mut seen_transition_sequence = Vec::new();
+        for input_seq in 0..45_u32 {
+            world
+                .enqueue_held_input_state(
+                    session.connection_id,
+                    HeldInputState {
+                        input_seq,
+                        held_direction: None,
+                        held_buttons: crate::protocol::HeldButtons::B as u8,
+                        client_time: input_seq as u64,
+                    },
+                )
+                .await
+                .expect("held input should enqueue");
+            world.tick().await;
+
+            for message in drain_server_messages(&mut rx) {
+                match message {
+                    ServerMessage::BikeRuntimeDelta(delta) => {
+                        if let Some(transition) = delta.bike_transition {
+                            seen_transition_sequence.push(transition);
+                        }
+                    }
+                    ServerMessage::WalkResult(result) => {
+                        panic!(
+                            "unexpected walk result while no walk input was sent: accepted={}",
+                            result.accepted
+                        );
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        let normal_to_wheelie_index = seen_transition_sequence
+            .iter()
+            .position(|transition| *transition == BikeTransitionType::NormalToWheelie)
+            .expect("expected NormalToWheelie transition in runtime deltas");
+        let wheelie_hop_index = seen_transition_sequence
+            .iter()
+            .position(|transition| *transition == BikeTransitionType::WheelieHoppingStanding)
+            .expect("expected WheelieHoppingStanding transition in runtime deltas");
+
+        assert!(
+            normal_to_wheelie_index < wheelie_hop_index,
+            "NormalToWheelie must occur before WheelieHoppingStanding"
         );
     }
 
