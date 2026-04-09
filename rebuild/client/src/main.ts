@@ -504,6 +504,8 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
   state.playerTileY = clampedAuthoritativeTile.y;
   state.facing = result.facing;
   if (result.accepted) {
+    // Contract: on accepted input, authoritative_pos is the server tile *after* applying that step.
+    // This lets the first interpolation run immediately toward the accepted destination.
     startAuthoritativeWalkTransition(result.facing);
     playerAnimation.startWalkStep(result.facing);
   } else {
