@@ -379,4 +379,52 @@ mod tests {
         runtime.advance_tick();
         assert_eq!(runtime.state, AcroState::BunnyHop);
     }
+
+    #[test]
+    fn releasing_b_before_40_frames_resets_bunny_hop_readiness() {
+        let mut runtime = AcroRuntime::default();
+        runtime.set_held_input(None, true);
+
+        for _ in 0..39 {
+            runtime.advance_tick();
+        }
+        assert_eq!(runtime.bike_frame_counter, 39);
+        assert_eq!(runtime.state, AcroState::WheelieStanding);
+
+        runtime.set_held_input(None, false);
+        runtime.advance_tick();
+        assert_eq!(runtime.bike_frame_counter, 0);
+        assert_eq!(runtime.state, AcroState::Normal);
+    }
+
+    fn seed_jump_window(runtime: &mut AcroRuntime, direction: Direction, direction_frames: usize) {
+        runtime.update_history(Some(direction), 0);
+        for _ in 0..direction_frames {
+            runtime.update_history(Some(direction), 0);
+        }
+        runtime.update_history(Some(direction), holding_b_mask());
+        runtime.state = AcroState::Turning;
+        runtime.set_held_input(Some(direction), true);
+    }
+
+    #[test]
+    fn side_jump_and_turn_jump_accept_4_frame_boundary_window() {
+        let mut side_jump_runtime = AcroRuntime::default();
+        seed_jump_window(&mut side_jump_runtime, Direction::Right, 2);
+        let side_action = side_jump_runtime.apply_step(Direction::Up, Direction::Right);
+        assert_eq!(side_action, AcroAnimationAction::SideJump);
+
+        let mut turn_jump_runtime = AcroRuntime::default();
+        seed_jump_window(&mut turn_jump_runtime, Direction::Right, 2);
+        let turn_action = turn_jump_runtime.apply_step(Direction::Left, Direction::Right);
+        assert_eq!(turn_action, AcroAnimationAction::TurnJump);
+    }
+
+    #[test]
+    fn side_jump_and_turn_jump_reject_when_timing_window_expires() {
+        let mut runtime = AcroRuntime::default();
+        seed_jump_window(&mut runtime, Direction::Right, 4);
+        let action = runtime.apply_step(Direction::Left, Direction::Right);
+        assert_eq!(action, AcroAnimationAction::WheeliePop);
+    }
 }
