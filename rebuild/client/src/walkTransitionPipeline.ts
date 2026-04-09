@@ -1,4 +1,4 @@
-import { Direction, MovementMode } from './protocol_generated';
+import { Direction, MovementMode, TraversalState } from './protocol_generated';
 
 const SERVER_MOVEMENT_SAMPLE_MS = 1000 / 60;
 
@@ -28,20 +28,50 @@ type TickWalkTransitionArgs = {
   stopMoving: (direction: Direction) => void;
 };
 
+function stepSamplesToDurationMs(stepSamples: number): number {
+  return SERVER_MOVEMENT_SAMPLE_MS * stepSamples;
+}
+
+export type AuthoritativeStepSpeedInput = {
+  traversalState: TraversalState;
+  machSpeedStage?: number;
+  movementMode: MovementMode;
+};
+
+export function authoritativeStepDurationMs(input: AuthoritativeStepSpeedInput): number {
+  switch (input.traversalState) {
+    case TraversalState.MACH_BIKE:
+      if ((input.machSpeedStage ?? 0) <= 0) {
+        return stepSamplesToDurationMs(16);
+      }
+      if (input.machSpeedStage === 1) {
+        return stepSamplesToDurationMs(8);
+      }
+      return stepSamplesToDurationMs(4);
+    case TraversalState.ACRO_BIKE:
+      return stepSamplesToDurationMs(6);
+    case TraversalState.ON_FOOT:
+    default:
+      return input.movementMode === MovementMode.RUN
+        ? stepSamplesToDurationMs(8)
+        : stepSamplesToDurationMs(16);
+  }
+}
+
 export function movementModeStepDurationMs(movementMode: MovementMode): number {
   switch (movementMode) {
     case MovementMode.RUN:
-      return SERVER_MOVEMENT_SAMPLE_MS * 8;
+      return stepSamplesToDurationMs(8);
     case MovementMode.WALK:
     default:
-      return SERVER_MOVEMENT_SAMPLE_MS * 16;
+      return stepSamplesToDurationMs(16);
   }
 }
 
 export function startAuthoritativeWalkTransition(
   state: WalkTransitionMutableState,
   facing: Direction,
-  movementMode: MovementMode,
+  stepSpeedInput: AuthoritativeStepSpeedInput,
 ): WalkTransition {
   return {
     startX: state.renderTileX,
@@ -49,7 +79,7 @@ export function startAuthoritativeWalkTransition(
     targetX: state.playerTileX,
     targetY: state.playerTileY,
     elapsedMs: 0,
-    durationMs: movementModeStepDurationMs(movementMode),
+    durationMs: authoritativeStepDurationMs(stepSpeedInput),
     facing,
   };
 }

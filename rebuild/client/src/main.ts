@@ -38,6 +38,7 @@ import {
 import {
   startAuthoritativeWalkTransition as createAuthoritativeWalkTransition,
   tickWalkTransition as tickWalkTransitionState,
+  type AuthoritativeStepSpeedInput,
   type WalkTransition,
   type WalkTransitionMutableState,
 } from './walkTransitionPipeline';
@@ -577,7 +578,14 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
   if (result.accepted) {
     // Contract: on accepted input, authoritative_pos is the server tile *after* applying that step.
     // This lets the first interpolation run immediately toward the accepted destination.
-    startAuthoritativeWalkTransition(result.facing, acceptedMovementMode);
+    startAuthoritativeWalkTransition(
+      result.facing,
+      resolveAuthoritativeStepSpeedInput(
+        result.traversal_state,
+        result.mach_speed_stage,
+        acceptedMovementMode,
+      ),
+    );
     playerAnimation.startStep(
       result.facing,
       resolveAnimationStepMode({
@@ -1646,13 +1654,32 @@ function updateCamera(): void {
 
 function startAuthoritativeWalkTransition(
   facing: Direction,
-  movementMode: MovementMode,
+  stepSpeedInput: AuthoritativeStepSpeedInput,
 ): void {
   activeWalkTransition = createAuthoritativeWalkTransition(
     state,
     facing,
-    movementMode,
+    stepSpeedInput,
   );
+}
+
+function resolveAuthoritativeStepSpeedInput(
+  traversalState: TraversalState,
+  machSpeedStage: number | undefined,
+  movementMode: MovementMode,
+): AuthoritativeStepSpeedInput {
+  if (traversalState === TraversalState.ON_FOOT) {
+    return {
+      traversalState,
+      movementMode,
+    };
+  }
+
+  return {
+    traversalState,
+    machSpeedStage,
+    movementMode: MovementMode.WALK,
+  };
 }
 
 function tickWalkTransition(deltaMs: number): void {
