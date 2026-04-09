@@ -34,6 +34,7 @@ pub struct BikeRuntimeState {
     pub mach_dir_traveling: Option<Direction>,
     pub acro_state: AcroBikeSubstate,
     pub last_transition: BikeTransitionType,
+    pub preserve_transition_until_walk_result: bool,
     pub acro_runtime: AcroRuntime,
 }
 
@@ -91,6 +92,7 @@ impl Default for BikeRuntimeState {
             mach_dir_traveling: None,
             acro_state: AcroBikeSubstate::None,
             last_transition: BikeTransitionType::None,
+            preserve_transition_until_walk_result: false,
             acro_runtime: AcroRuntime::default(),
         }
     }
