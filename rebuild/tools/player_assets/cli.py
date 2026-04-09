@@ -166,6 +166,12 @@ ACRO_BIKE_ACTIONS = {
         "west": "ANIM_MOVING_WHEELIE_WEST",
         "east": "ANIM_MOVING_WHEELIE_EAST",
     },
+    "acro_wheelie_face": {
+        "south": "ANIM_MOVING_WHEELIE_SOUTH",
+        "north": "ANIM_MOVING_WHEELIE_NORTH",
+        "west": "ANIM_MOVING_WHEELIE_WEST",
+        "east": "ANIM_MOVING_WHEELIE_EAST",
+    },
     "acro_wheelie_in_place": {
         "south": "ANIM_STANDING_WHEELIE_BACK_WHEEL_SOUTH",
         "north": "ANIM_STANDING_WHEELIE_BACK_WHEEL_NORTH",
@@ -196,6 +202,10 @@ ACRO_BIKE_ACTIONS = {
         "west": "ANIM_STANDING_WHEELIE_BACK_WHEEL_WEST",
         "east": "ANIM_STANDING_WHEELIE_BACK_WHEEL_EAST",
     },
+}
+
+ACTION_FRAME_OVERRIDES: dict[tuple[str, str], dict[str, Any]] = {
+    ("acro_bike", "acro_wheelie_face"): {"first_frame_only": True},
 }
 
 
@@ -428,6 +438,19 @@ def traversal_mode_pic_entries(
     raise ValueError(f"Unknown traversal mode: {traversal_mode}")
 
 
+def apply_frame_overrides(
+    traversal_mode: str,
+    action_id: str,
+    frames: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    override = ACTION_FRAME_OVERRIDES.get((traversal_mode, action_id))
+    if not override:
+        return frames
+    if override.get("first_frame_only"):
+        return frames[:1]
+    return frames
+
+
 def resolve_assets() -> list[dict[str, Any]]:
     incbins = parse_incbin_paths()
     animation_table_specs = {
@@ -539,6 +562,11 @@ def resolve_assets() -> list[dict[str, Any]]:
                                 f"{traversal_mode}/{action_id}/{direction}: {source_key}"
                             )
                         remapped_frames.append({**frame, "frame": output_frame_idx})
+                    remapped_frames = apply_frame_overrides(
+                        traversal_mode=traversal_mode,
+                        action_id=action_id,
+                        frames=remapped_frames,
+                    )
                     directional_bindings[direction] = {
                         "action_id": action_id,
                         "anim_cmd_symbol": cmd_symbol,

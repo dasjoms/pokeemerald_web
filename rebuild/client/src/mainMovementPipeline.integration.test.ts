@@ -195,7 +195,7 @@ describe('main movement pipeline integration', () => {
         traversalState: TraversalState.ACRO_BIKE,
         acroSubstate: AcroBikeSubstate.STANDING_WHEELIE,
         bikeTransition: BikeTransitionType.WHEELIE_IDLE,
-        expectedAnimId: 'anim_acro_wheelie_in_place_east',
+        expectedAnimId: 'anim_acro_wheelie_face_east',
         stationary: true,
       },
     ] as const;
@@ -245,7 +245,7 @@ describe('main movement pipeline integration', () => {
       playerAnimation.stopMoving(direction);
       playerAnimation.applyPendingModeChanges();
     }
-    expect(playerAnimation.getDebugState().animId).toBe('anim_acro_wheelie_in_place_east');
+    expect(playerAnimation.getDebugState().animId).toBe('anim_acro_wheelie_face_east');
 
     playerAnimation.setTraversalState({
       traversalState: TraversalState.ACRO_BIKE,
@@ -269,7 +269,7 @@ describe('main movement pipeline integration', () => {
       bikeTransition: BikeTransitionType.WHEELIE_IDLE,
       acroSubstate: AcroBikeSubstate.STANDING_WHEELIE,
       shouldStep: false,
-      expectedAnimId: 'anim_acro_wheelie_in_place_east',
+      expectedAnimId: 'anim_acro_wheelie_face_east',
     },
     {
       bikeTransition: BikeTransitionType.WHEELIE_POP,
@@ -634,6 +634,12 @@ function makeMockAssets(): PlayerAnimationAssets {
       west: { anim_cmd_symbol: 'anim_acro_wheelie_in_place_west', frames: [{ duration: 2, frame: 486, h_flip: false }] },
       east: { anim_cmd_symbol: 'anim_acro_wheelie_in_place_east', frames: [{ duration: 2, frame: 487, h_flip: false }] },
     },
+    acro_wheelie_face: {
+      south: { anim_cmd_symbol: 'anim_acro_wheelie_face_south', frames: [{ duration: 2, frame: 440, h_flip: false }] },
+      north: { anim_cmd_symbol: 'anim_acro_wheelie_face_north', frames: [{ duration: 2, frame: 441, h_flip: false }] },
+      west: { anim_cmd_symbol: 'anim_acro_wheelie_face_west', frames: [{ duration: 2, frame: 442, h_flip: false }] },
+      east: { anim_cmd_symbol: 'anim_acro_wheelie_face_east', frames: [{ duration: 2, frame: 443, h_flip: false }] },
+    },
     acro_pop_wheelie_stationary: {
       south: { anim_cmd_symbol: 'anim_acro_pop_wheelie_stationary_south', frames: [{ duration: 2, frame: 488, h_flip: false }] },
       north: { anim_cmd_symbol: 'anim_acro_pop_wheelie_stationary_north', frames: [{ duration: 2, frame: 489, h_flip: false }] },
@@ -733,6 +739,7 @@ function makeMockAssets(): PlayerAnimationAssets {
           acro_ledge_hop_back_wheel: directionalBindings.acro_ledge_hop_back_wheel,
           acro_standing_wheelie_front_wheel: directionalBindings.acro_standing_wheelie_front_wheel,
           acro_standing_wheelie_back_wheel: directionalBindings.acro_standing_wheelie_back_wheel,
+          acro_wheelie_face: directionalBindings.acro_wheelie_face,
           acro_wheelie_in_place: directionalBindings.acro_wheelie_in_place,
           acro_pop_wheelie_stationary: directionalBindings.acro_pop_wheelie_stationary,
           acro_pop_wheelie_moving: directionalBindings.acro_pop_wheelie_moving,

@@ -902,6 +902,52 @@
                 ]
               }
             },
+            "acro_wheelie_face": {
+              "east": {
+                "action_id": "acro_wheelie_face",
+                "anim_cmd_symbol": "sAnim_MovingWheelieEast",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 52,
+                    "h_flip": true
+                  }
+                ]
+              },
+              "north": {
+                "action_id": "acro_wheelie_face",
+                "anim_cmd_symbol": "sAnim_MovingWheelieNorth",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 50,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "south": {
+                "action_id": "acro_wheelie_face",
+                "anim_cmd_symbol": "sAnim_MovingWheelieSouth",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 48,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "west": {
+                "action_id": "acro_wheelie_face",
+                "anim_cmd_symbol": "sAnim_MovingWheelieWest",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 52,
+                    "h_flip": false
+                  }
+                ]
+              }
+            },
             "acro_wheelie_in_place": {
               "east": {
                 "action_id": "acro_wheelie_in_place",
@@ -3779,6 +3825,52 @@
                   {
                     "duration": 4,
                     "frame": 47,
+                    "h_flip": false
+                  }
+                ]
+              }
+            },
+            "acro_wheelie_face": {
+              "east": {
+                "action_id": "acro_wheelie_face",
+                "anim_cmd_symbol": "sAnim_MovingWheelieEast",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 52,
+                    "h_flip": true
+                  }
+                ]
+              },
+              "north": {
+                "action_id": "acro_wheelie_face",
+                "anim_cmd_symbol": "sAnim_MovingWheelieNorth",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 50,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "south": {
+                "action_id": "acro_wheelie_face",
+                "anim_cmd_symbol": "sAnim_MovingWheelieSouth",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 48,
+                    "h_flip": false
+                  }
+                ]
+              },
+              "west": {
+                "action_id": "acro_wheelie_face",
+                "anim_cmd_symbol": "sAnim_MovingWheelieWest",
+                "frames": [
+                  {
+                    "duration": 4,
+                    "frame": 52,
                     "h_flip": false
                   }
                 ]
