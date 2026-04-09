@@ -55,7 +55,9 @@
           "offset": 10,
           "target_map_id": "MAP_ROUTE102"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -81,7 +83,9 @@
           "offset": 0,
           "target_map_id": "MAP_ROUTE134"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -112,7 +116,9 @@
           "offset": 0,
           "target_map_id": "MAP_ROUTE118"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -138,7 +144,9 @@
           "offset": 0,
           "target_map_id": "MAP_ROUTE116"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -159,7 +167,9 @@
           "offset": 0,
           "target_map_id": "MAP_ROUTE120"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -180,7 +190,9 @@
           "offset": -10,
           "target_map_id": "MAP_ROUTE124"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -206,7 +218,9 @@
           "offset": -40,
           "target_map_id": "MAP_ROUTE124"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -216,7 +230,9 @@
       "map_id": "MAP_SOOTOPOLIS_CITY",
       "layout_id": "LAYOUT_SOOTOPOLIS_CITY",
       "map_json_path": "data\\maps\\SootopolisCity\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -232,7 +248,9 @@
           "offset": 40,
           "target_map_id": "MAP_ROUTE128"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -248,7 +266,9 @@
           "offset": 0,
           "target_map_id": "MAP_ROUTE101"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -274,7 +294,9 @@
           "offset": 0,
           "target_map_id": "MAP_ROUTE102"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -295,7 +317,9 @@
           "offset": 0,
           "target_map_id": "MAP_ROUTE107"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -311,7 +335,9 @@
           "offset": -40,
           "target_map_id": "MAP_ROUTE112"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -332,7 +358,9 @@
           "offset": 0,
           "target_map_id": "MAP_ROUTE113"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -353,7 +381,9 @@
           "offset": 0,
           "target_map_id": "MAP_ROUTE117"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -374,7 +404,9 @@
           "offset": 0,
           "target_map_id": "MAP_ROUTE131"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -395,7 +427,9 @@
           "offset": 0,
           "target_map_id": "MAP_LITTLEROOT_TOWN"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -416,7 +450,9 @@
           "offset": 0,
           "target_map_id": "MAP_OLDALE_TOWN"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -437,7 +473,9 @@
           "offset": -60,
           "target_map_id": "MAP_ROUTE110"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -463,7 +501,9 @@
           "offset": 50,
           "target_map_id": "MAP_PETALBURG_CITY"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -484,7 +524,9 @@
           "offset": 0,
           "target_map_id": "MAP_ROUTE106"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -505,7 +547,9 @@
           "offset": 60,
           "target_map_id": "MAP_DEWFORD_TOWN"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -526,7 +570,9 @@
           "offset": 0,
           "target_map_id": "MAP_ROUTE108"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -547,7 +593,9 @@
           "offset": -40,
           "target_map_id": "MAP_ROUTE109"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -568,7 +616,9 @@
           "offset": 40,
           "target_map_id": "MAP_ROUTE108"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -594,7 +644,9 @@
           "offset": 60,
           "target_map_id": "MAP_ROUTE103"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -620,7 +672,9 @@
           "offset": 20,
           "target_map_id": "MAP_ROUTE112"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -646,7 +700,9 @@
           "offset": -20,
           "target_map_id": "MAP_ROUTE111"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -672,7 +728,9 @@
           "offset": 0,
           "target_map_id": "MAP_ROUTE111"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -693,7 +751,9 @@
           "offset": 0,
           "target_map_id": "MAP_FALLARBOR_TOWN"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -714,7 +774,9 @@
           "offset": -40,
           "target_map_id": "MAP_ROUTE114"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -735,7 +797,9 @@
           "offset": 0,
           "target_map_id": "MAP_RUSTBORO_CITY"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -756,7 +820,9 @@
           "offset": 0,
           "target_map_id": "MAP_MAUVILLE_CITY"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -782,7 +848,9 @@
           "offset": 0,
           "target_map_id": "MAP_ROUTE123"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -803,7 +871,9 @@
           "offset": 0,
           "target_map_id": "MAP_FORTREE_CITY"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -824,7 +894,9 @@
           "offset": 80,
           "target_map_id": "MAP_ROUTE121"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -850,7 +922,9 @@
           "offset": -10,
           "target_map_id": "MAP_LILYCOVE_CITY"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -871,7 +945,9 @@
           "offset": -100,
           "target_map_id": "MAP_ROUTE123"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -892,7 +968,9 @@
           "offset": 0,
           "target_map_id": "MAP_ROUTE118"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -923,7 +1001,9 @@
           "offset": 40,
           "target_map_id": "MAP_MOSSDEEP_CITY"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -944,7 +1024,9 @@
           "offset": 0,
           "target_map_id": "MAP_ROUTE124"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -965,7 +1047,9 @@
           "offset": 0,
           "target_map_id": "MAP_ROUTE127"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -991,7 +1075,9 @@
           "offset": 0,
           "target_map_id": "MAP_ROUTE126"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -1017,7 +1103,9 @@
           "offset": -40,
           "target_map_id": "MAP_EVER_GRANDE_CITY"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -1038,7 +1126,9 @@
           "offset": 0,
           "target_map_id": "MAP_ROUTE130"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -1059,7 +1149,9 @@
           "offset": 0,
           "target_map_id": "MAP_ROUTE129"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -1080,7 +1172,9 @@
           "offset": 0,
           "target_map_id": "MAP_ROUTE130"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -1101,7 +1195,9 @@
           "offset": 0,
           "target_map_id": "MAP_PACIFIDLOG_TOWN"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -1122,7 +1218,9 @@
           "offset": 0,
           "target_map_id": "MAP_ROUTE132"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -1143,7 +1241,9 @@
           "offset": 0,
           "target_map_id": "MAP_ROUTE133"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -1159,7 +1259,9 @@
           "offset": 0,
           "target_map_id": "MAP_UNDERWATER_ROUTE126"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -1180,7 +1282,9 @@
           "offset": 0,
           "target_map_id": "MAP_UNDERWATER_ROUTE127"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -1201,7 +1305,9 @@
           "offset": 0,
           "target_map_id": "MAP_UNDERWATER_ROUTE128"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -1217,7 +1323,9 @@
           "offset": 0,
           "target_map_id": "MAP_UNDERWATER_ROUTE127"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -1227,7 +1335,9 @@
       "map_id": "MAP_UNDERWATER_ROUTE129",
       "layout_id": "LAYOUT_UNDERWATER_ROUTE129",
       "map_json_path": "data\\maps\\Underwater_Route129\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -1237,7 +1347,9 @@
       "map_id": "MAP_UNDERWATER_ROUTE105",
       "layout_id": "LAYOUT_UNDERWATER_ROUTE105",
       "map_json_path": "data\\maps\\Underwater_Route105\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_TownsAndRoutes",
@@ -1247,7 +1359,9 @@
       "map_id": "MAP_UNDERWATER_ROUTE125",
       "layout_id": "LAYOUT_UNDERWATER_ROUTE125",
       "map_json_path": "data\\maps\\Underwater_Route125\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_IndoorLittleroot",
@@ -1257,7 +1371,9 @@
       "map_id": "MAP_LITTLEROOT_TOWN_BRENDANS_HOUSE_1F",
       "layout_id": "LAYOUT_LITTLEROOT_TOWN_BRENDANS_HOUSE_1F",
       "map_json_path": "data\\maps\\LittlerootTown_BrendansHouse_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorLittleroot",
@@ -1267,7 +1383,9 @@
       "map_id": "MAP_LITTLEROOT_TOWN_BRENDANS_HOUSE_2F",
       "layout_id": "LAYOUT_LITTLEROOT_TOWN_BRENDANS_HOUSE_2F",
       "map_json_path": "data\\maps\\LittlerootTown_BrendansHouse_2F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorLittleroot",
@@ -1277,7 +1395,9 @@
       "map_id": "MAP_LITTLEROOT_TOWN_MAYS_HOUSE_1F",
       "layout_id": "LAYOUT_LITTLEROOT_TOWN_MAYS_HOUSE_1F",
       "map_json_path": "data\\maps\\LittlerootTown_MaysHouse_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorLittleroot",
@@ -1287,7 +1407,9 @@
       "map_id": "MAP_LITTLEROOT_TOWN_MAYS_HOUSE_2F",
       "layout_id": "LAYOUT_LITTLEROOT_TOWN_MAYS_HOUSE_2F",
       "map_json_path": "data\\maps\\LittlerootTown_MaysHouse_2F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorLittleroot",
@@ -1297,7 +1419,9 @@
       "map_id": "MAP_LITTLEROOT_TOWN_PROFESSOR_BIRCHS_LAB",
       "layout_id": "LAYOUT_LITTLEROOT_TOWN_PROFESSOR_BIRCHS_LAB",
       "map_json_path": "data\\maps\\LittlerootTown_ProfessorBirchsLab\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorOldale",
@@ -1307,7 +1431,9 @@
       "map_id": "MAP_OLDALE_TOWN_HOUSE1",
       "layout_id": "LAYOUT_HOUSE1",
       "map_json_path": "data\\maps\\OldaleTown_House1\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorOldale",
@@ -1317,7 +1443,9 @@
       "map_id": "MAP_OLDALE_TOWN_HOUSE2",
       "layout_id": "LAYOUT_HOUSE2",
       "map_json_path": "data\\maps\\OldaleTown_House2\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorOldale",
@@ -1327,7 +1455,9 @@
       "map_id": "MAP_OLDALE_TOWN_POKEMON_CENTER_1F",
       "layout_id": "LAYOUT_POKEMON_CENTER_1F",
       "map_json_path": "data\\maps\\OldaleTown_PokemonCenter_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorOldale",
@@ -1337,7 +1467,9 @@
       "map_id": "MAP_OLDALE_TOWN_POKEMON_CENTER_2F",
       "layout_id": "LAYOUT_POKEMON_CENTER_2F",
       "map_json_path": "data\\maps\\OldaleTown_PokemonCenter_2F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorOldale",
@@ -1347,7 +1479,9 @@
       "map_id": "MAP_OLDALE_TOWN_MART",
       "layout_id": "LAYOUT_MART",
       "map_json_path": "data\\maps\\OldaleTown_Mart\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDewford",
@@ -1357,7 +1491,9 @@
       "map_id": "MAP_DEWFORD_TOWN_HOUSE1",
       "layout_id": "LAYOUT_HOUSE3",
       "map_json_path": "data\\maps\\DewfordTown_House1\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDewford",
@@ -1367,7 +1503,9 @@
       "map_id": "MAP_DEWFORD_TOWN_POKEMON_CENTER_1F",
       "layout_id": "LAYOUT_POKEMON_CENTER_1F",
       "map_json_path": "data\\maps\\DewfordTown_PokemonCenter_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDewford",
@@ -1377,7 +1515,9 @@
       "map_id": "MAP_DEWFORD_TOWN_POKEMON_CENTER_2F",
       "layout_id": "LAYOUT_POKEMON_CENTER_2F",
       "map_json_path": "data\\maps\\DewfordTown_PokemonCenter_2F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDewford",
@@ -1387,7 +1527,9 @@
       "map_id": "MAP_DEWFORD_TOWN_GYM",
       "layout_id": "LAYOUT_DEWFORD_TOWN_GYM",
       "map_json_path": "data\\maps\\DewfordTown_Gym\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDewford",
@@ -1397,7 +1539,9 @@
       "map_id": "MAP_DEWFORD_TOWN_HALL",
       "layout_id": "LAYOUT_DEWFORD_TOWN_HALL",
       "map_json_path": "data\\maps\\DewfordTown_Hall\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDewford",
@@ -1407,7 +1551,9 @@
       "map_id": "MAP_DEWFORD_TOWN_HOUSE2",
       "layout_id": "LAYOUT_HOUSE4",
       "map_json_path": "data\\maps\\DewfordTown_House2\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorLavaridge",
@@ -1417,7 +1563,9 @@
       "map_id": "MAP_LAVARIDGE_TOWN_HERB_SHOP",
       "layout_id": "LAYOUT_LAVARIDGE_TOWN_HERB_SHOP",
       "map_json_path": "data\\maps\\LavaridgeTown_HerbShop\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorLavaridge",
@@ -1427,7 +1575,9 @@
       "map_id": "MAP_LAVARIDGE_TOWN_GYM_1F",
       "layout_id": "LAYOUT_LAVARIDGE_TOWN_GYM_1F",
       "map_json_path": "data\\maps\\LavaridgeTown_Gym_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorLavaridge",
@@ -1437,7 +1587,9 @@
       "map_id": "MAP_LAVARIDGE_TOWN_GYM_B1F",
       "layout_id": "LAYOUT_LAVARIDGE_TOWN_GYM_B1F",
       "map_json_path": "data\\maps\\LavaridgeTown_Gym_B1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorLavaridge",
@@ -1447,7 +1599,9 @@
       "map_id": "MAP_LAVARIDGE_TOWN_HOUSE",
       "layout_id": "LAYOUT_HOUSE3",
       "map_json_path": "data\\maps\\LavaridgeTown_House\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorLavaridge",
@@ -1457,7 +1611,9 @@
       "map_id": "MAP_LAVARIDGE_TOWN_MART",
       "layout_id": "LAYOUT_MART",
       "map_json_path": "data\\maps\\LavaridgeTown_Mart\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorLavaridge",
@@ -1467,7 +1623,9 @@
       "map_id": "MAP_LAVARIDGE_TOWN_POKEMON_CENTER_1F",
       "layout_id": "LAYOUT_LAVARIDGE_TOWN_POKEMON_CENTER_1F",
       "map_json_path": "data\\maps\\LavaridgeTown_PokemonCenter_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorLavaridge",
@@ -1477,7 +1635,9 @@
       "map_id": "MAP_LAVARIDGE_TOWN_POKEMON_CENTER_2F",
       "layout_id": "LAYOUT_POKEMON_CENTER_2F",
       "map_json_path": "data\\maps\\LavaridgeTown_PokemonCenter_2F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorFallarbor",
@@ -1487,7 +1647,9 @@
       "map_id": "MAP_FALLARBOR_TOWN_MART",
       "layout_id": "LAYOUT_MART",
       "map_json_path": "data\\maps\\FallarborTown_Mart\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorFallarbor",
@@ -1497,7 +1659,9 @@
       "map_id": "MAP_FALLARBOR_TOWN_BATTLE_TENT_LOBBY",
       "layout_id": "LAYOUT_BATTLE_TENT_LOBBY",
       "map_json_path": "data\\maps\\FallarborTown_BattleTentLobby\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorFallarbor",
@@ -1507,7 +1671,9 @@
       "map_id": "MAP_FALLARBOR_TOWN_BATTLE_TENT_CORRIDOR",
       "layout_id": "LAYOUT_BATTLE_TENT_CORRIDOR",
       "map_json_path": "data\\maps\\FallarborTown_BattleTentCorridor\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorFallarbor",
@@ -1517,7 +1683,9 @@
       "map_id": "MAP_FALLARBOR_TOWN_BATTLE_TENT_BATTLE_ROOM",
       "layout_id": "LAYOUT_BATTLE_TENT_BATTLE_ROOM",
       "map_json_path": "data\\maps\\FallarborTown_BattleTentBattleRoom\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorFallarbor",
@@ -1527,7 +1695,9 @@
       "map_id": "MAP_FALLARBOR_TOWN_POKEMON_CENTER_1F",
       "layout_id": "LAYOUT_POKEMON_CENTER_1F",
       "map_json_path": "data\\maps\\FallarborTown_PokemonCenter_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorFallarbor",
@@ -1537,7 +1707,9 @@
       "map_id": "MAP_FALLARBOR_TOWN_POKEMON_CENTER_2F",
       "layout_id": "LAYOUT_POKEMON_CENTER_2F",
       "map_json_path": "data\\maps\\FallarborTown_PokemonCenter_2F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorFallarbor",
@@ -1547,7 +1719,9 @@
       "map_id": "MAP_FALLARBOR_TOWN_COZMOS_HOUSE",
       "layout_id": "LAYOUT_HOUSE1",
       "map_json_path": "data\\maps\\FallarborTown_CozmosHouse\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorFallarbor",
@@ -1557,7 +1731,9 @@
       "map_id": "MAP_FALLARBOR_TOWN_MOVE_RELEARNERS_HOUSE",
       "layout_id": "LAYOUT_HOUSE2",
       "map_json_path": "data\\maps\\FallarborTown_MoveRelearnersHouse\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorVerdanturf",
@@ -1567,7 +1743,9 @@
       "map_id": "MAP_VERDANTURF_TOWN_BATTLE_TENT_LOBBY",
       "layout_id": "LAYOUT_BATTLE_TENT_LOBBY",
       "map_json_path": "data\\maps\\VerdanturfTown_BattleTentLobby\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorVerdanturf",
@@ -1577,7 +1755,9 @@
       "map_id": "MAP_VERDANTURF_TOWN_BATTLE_TENT_CORRIDOR",
       "layout_id": "LAYOUT_BATTLE_TENT_CORRIDOR",
       "map_json_path": "data\\maps\\VerdanturfTown_BattleTentCorridor\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorVerdanturf",
@@ -1587,7 +1767,9 @@
       "map_id": "MAP_VERDANTURF_TOWN_BATTLE_TENT_BATTLE_ROOM",
       "layout_id": "LAYOUT_VERDANTURF_TOWN_BATTLE_TENT_BATTLE_ROOM",
       "map_json_path": "data\\maps\\VerdanturfTown_BattleTentBattleRoom\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorVerdanturf",
@@ -1597,7 +1779,9 @@
       "map_id": "MAP_VERDANTURF_TOWN_MART",
       "layout_id": "LAYOUT_MART",
       "map_json_path": "data\\maps\\VerdanturfTown_Mart\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorVerdanturf",
@@ -1607,7 +1791,9 @@
       "map_id": "MAP_VERDANTURF_TOWN_POKEMON_CENTER_1F",
       "layout_id": "LAYOUT_POKEMON_CENTER_1F",
       "map_json_path": "data\\maps\\VerdanturfTown_PokemonCenter_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorVerdanturf",
@@ -1617,7 +1803,9 @@
       "map_id": "MAP_VERDANTURF_TOWN_POKEMON_CENTER_2F",
       "layout_id": "LAYOUT_POKEMON_CENTER_2F",
       "map_json_path": "data\\maps\\VerdanturfTown_PokemonCenter_2F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorVerdanturf",
@@ -1627,7 +1815,9 @@
       "map_id": "MAP_VERDANTURF_TOWN_WANDAS_HOUSE",
       "layout_id": "LAYOUT_VERDANTURF_TOWN_WANDAS_HOUSE",
       "map_json_path": "data\\maps\\VerdanturfTown_WandasHouse\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorVerdanturf",
@@ -1637,7 +1827,9 @@
       "map_id": "MAP_VERDANTURF_TOWN_FRIENDSHIP_RATERS_HOUSE",
       "layout_id": "LAYOUT_HOUSE2",
       "map_json_path": "data\\maps\\VerdanturfTown_FriendshipRatersHouse\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorVerdanturf",
@@ -1647,7 +1839,9 @@
       "map_id": "MAP_VERDANTURF_TOWN_HOUSE",
       "layout_id": "LAYOUT_HOUSE1",
       "map_json_path": "data\\maps\\VerdanturfTown_House\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorPacifidlog",
@@ -1657,7 +1851,9 @@
       "map_id": "MAP_PACIFIDLOG_TOWN_POKEMON_CENTER_1F",
       "layout_id": "LAYOUT_POKEMON_CENTER_1F",
       "map_json_path": "data\\maps\\PacifidlogTown_PokemonCenter_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorPacifidlog",
@@ -1667,7 +1863,9 @@
       "map_id": "MAP_PACIFIDLOG_TOWN_POKEMON_CENTER_2F",
       "layout_id": "LAYOUT_POKEMON_CENTER_2F",
       "map_json_path": "data\\maps\\PacifidlogTown_PokemonCenter_2F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorPacifidlog",
@@ -1677,7 +1875,9 @@
       "map_id": "MAP_PACIFIDLOG_TOWN_HOUSE1",
       "layout_id": "LAYOUT_PACIFIDLOG_TOWN_HOUSE1",
       "map_json_path": "data\\maps\\PacifidlogTown_House1\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorPacifidlog",
@@ -1687,7 +1887,9 @@
       "map_id": "MAP_PACIFIDLOG_TOWN_HOUSE2",
       "layout_id": "LAYOUT_PACIFIDLOG_TOWN_HOUSE2",
       "map_json_path": "data\\maps\\PacifidlogTown_House2\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorPacifidlog",
@@ -1697,7 +1899,9 @@
       "map_id": "MAP_PACIFIDLOG_TOWN_HOUSE3",
       "layout_id": "LAYOUT_PACIFIDLOG_TOWN_HOUSE1",
       "map_json_path": "data\\maps\\PacifidlogTown_House3\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorPacifidlog",
@@ -1707,7 +1911,9 @@
       "map_id": "MAP_PACIFIDLOG_TOWN_HOUSE4",
       "layout_id": "LAYOUT_PACIFIDLOG_TOWN_HOUSE2",
       "map_json_path": "data\\maps\\PacifidlogTown_House4\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorPacifidlog",
@@ -1717,7 +1923,9 @@
       "map_id": "MAP_PACIFIDLOG_TOWN_HOUSE5",
       "layout_id": "LAYOUT_PACIFIDLOG_TOWN_HOUSE1",
       "map_json_path": "data\\maps\\PacifidlogTown_House5\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorPetalburg",
@@ -1727,7 +1935,9 @@
       "map_id": "MAP_PETALBURG_CITY_WALLYS_HOUSE",
       "layout_id": "LAYOUT_HOUSE2",
       "map_json_path": "data\\maps\\PetalburgCity_WallysHouse\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorPetalburg",
@@ -1737,7 +1947,9 @@
       "map_id": "MAP_PETALBURG_CITY_GYM",
       "layout_id": "LAYOUT_PETALBURG_CITY_GYM",
       "map_json_path": "data\\maps\\PetalburgCity_Gym\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorPetalburg",
@@ -1747,7 +1959,9 @@
       "map_id": "MAP_PETALBURG_CITY_HOUSE1",
       "layout_id": "LAYOUT_HOUSE1",
       "map_json_path": "data\\maps\\PetalburgCity_House1\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorPetalburg",
@@ -1757,7 +1971,9 @@
       "map_id": "MAP_PETALBURG_CITY_HOUSE2",
       "layout_id": "LAYOUT_HOUSE_WITH_BED",
       "map_json_path": "data\\maps\\PetalburgCity_House2\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorPetalburg",
@@ -1767,7 +1983,9 @@
       "map_id": "MAP_PETALBURG_CITY_POKEMON_CENTER_1F",
       "layout_id": "LAYOUT_POKEMON_CENTER_1F",
       "map_json_path": "data\\maps\\PetalburgCity_PokemonCenter_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorPetalburg",
@@ -1777,7 +1995,9 @@
       "map_id": "MAP_PETALBURG_CITY_POKEMON_CENTER_2F",
       "layout_id": "LAYOUT_POKEMON_CENTER_2F",
       "map_json_path": "data\\maps\\PetalburgCity_PokemonCenter_2F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorPetalburg",
@@ -1787,7 +2007,9 @@
       "map_id": "MAP_PETALBURG_CITY_MART",
       "layout_id": "LAYOUT_MART",
       "map_json_path": "data\\maps\\PetalburgCity_Mart\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorSlateport",
@@ -1797,7 +2019,9 @@
       "map_id": "MAP_SLATEPORT_CITY_STERNS_SHIPYARD_1F",
       "layout_id": "LAYOUT_SLATEPORT_CITY_STERNS_SHIPYARD_1F",
       "map_json_path": "data\\maps\\SlateportCity_SternsShipyard_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorSlateport",
@@ -1807,7 +2031,9 @@
       "map_id": "MAP_SLATEPORT_CITY_STERNS_SHIPYARD_2F",
       "layout_id": "LAYOUT_SLATEPORT_CITY_STERNS_SHIPYARD_2F",
       "map_json_path": "data\\maps\\SlateportCity_SternsShipyard_2F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorSlateport",
@@ -1817,7 +2043,9 @@
       "map_id": "MAP_SLATEPORT_CITY_BATTLE_TENT_LOBBY",
       "layout_id": "LAYOUT_BATTLE_TENT_LOBBY",
       "map_json_path": "data\\maps\\SlateportCity_BattleTentLobby\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorSlateport",
@@ -1827,7 +2055,9 @@
       "map_id": "MAP_SLATEPORT_CITY_BATTLE_TENT_CORRIDOR",
       "layout_id": "LAYOUT_BATTLE_TENT_CORRIDOR",
       "map_json_path": "data\\maps\\SlateportCity_BattleTentCorridor\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorSlateport",
@@ -1837,7 +2067,9 @@
       "map_id": "MAP_SLATEPORT_CITY_BATTLE_TENT_BATTLE_ROOM",
       "layout_id": "LAYOUT_BATTLE_TENT_BATTLE_ROOM",
       "map_json_path": "data\\maps\\SlateportCity_BattleTentBattleRoom\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorSlateport",
@@ -1847,7 +2079,9 @@
       "map_id": "MAP_SLATEPORT_CITY_NAME_RATERS_HOUSE",
       "layout_id": "LAYOUT_HOUSE_WITH_BED",
       "map_json_path": "data\\maps\\SlateportCity_NameRatersHouse\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorSlateport",
@@ -1857,7 +2091,9 @@
       "map_id": "MAP_SLATEPORT_CITY_POKEMON_FAN_CLUB",
       "layout_id": "LAYOUT_SLATEPORT_CITY_POKEMON_FAN_CLUB",
       "map_json_path": "data\\maps\\SlateportCity_PokemonFanClub\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorSlateport",
@@ -1867,7 +2103,9 @@
       "map_id": "MAP_SLATEPORT_CITY_OCEANIC_MUSEUM_1F",
       "layout_id": "LAYOUT_SLATEPORT_CITY_OCEANIC_MUSEUM_1F",
       "map_json_path": "data\\maps\\SlateportCity_OceanicMuseum_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorSlateport",
@@ -1877,7 +2115,9 @@
       "map_id": "MAP_SLATEPORT_CITY_OCEANIC_MUSEUM_2F",
       "layout_id": "LAYOUT_SLATEPORT_CITY_OCEANIC_MUSEUM_2F",
       "map_json_path": "data\\maps\\SlateportCity_OceanicMuseum_2F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorSlateport",
@@ -1887,7 +2127,9 @@
       "map_id": "MAP_SLATEPORT_CITY_HARBOR",
       "layout_id": "LAYOUT_HARBOR",
       "map_json_path": "data\\maps\\SlateportCity_Harbor\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorSlateport",
@@ -1897,7 +2139,9 @@
       "map_id": "MAP_SLATEPORT_CITY_HOUSE",
       "layout_id": "LAYOUT_HOUSE2",
       "map_json_path": "data\\maps\\SlateportCity_House\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorSlateport",
@@ -1907,7 +2151,9 @@
       "map_id": "MAP_SLATEPORT_CITY_POKEMON_CENTER_1F",
       "layout_id": "LAYOUT_POKEMON_CENTER_1F",
       "map_json_path": "data\\maps\\SlateportCity_PokemonCenter_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorSlateport",
@@ -1917,7 +2163,9 @@
       "map_id": "MAP_SLATEPORT_CITY_POKEMON_CENTER_2F",
       "layout_id": "LAYOUT_POKEMON_CENTER_2F",
       "map_json_path": "data\\maps\\SlateportCity_PokemonCenter_2F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorSlateport",
@@ -1927,7 +2175,9 @@
       "map_id": "MAP_SLATEPORT_CITY_MART",
       "layout_id": "LAYOUT_MART",
       "map_json_path": "data\\maps\\SlateportCity_Mart\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorMauville",
@@ -1937,7 +2187,9 @@
       "map_id": "MAP_MAUVILLE_CITY_GYM",
       "layout_id": "LAYOUT_MAUVILLE_CITY_GYM",
       "map_json_path": "data\\maps\\MauvilleCity_Gym\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorMauville",
@@ -1947,7 +2199,9 @@
       "map_id": "MAP_MAUVILLE_CITY_BIKE_SHOP",
       "layout_id": "LAYOUT_MAUVILLE_CITY_BIKE_SHOP",
       "map_json_path": "data\\maps\\MauvilleCity_BikeShop\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorMauville",
@@ -1957,7 +2211,9 @@
       "map_id": "MAP_MAUVILLE_CITY_HOUSE1",
       "layout_id": "LAYOUT_HOUSE2",
       "map_json_path": "data\\maps\\MauvilleCity_House1\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorMauville",
@@ -1967,7 +2223,9 @@
       "map_id": "MAP_MAUVILLE_CITY_GAME_CORNER",
       "layout_id": "LAYOUT_MAUVILLE_CITY_GAME_CORNER",
       "map_json_path": "data\\maps\\MauvilleCity_GameCorner\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorMauville",
@@ -1977,7 +2235,9 @@
       "map_id": "MAP_MAUVILLE_CITY_HOUSE2",
       "layout_id": "LAYOUT_HOUSE1",
       "map_json_path": "data\\maps\\MauvilleCity_House2\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorMauville",
@@ -1987,7 +2247,9 @@
       "map_id": "MAP_MAUVILLE_CITY_POKEMON_CENTER_1F",
       "layout_id": "LAYOUT_POKEMON_CENTER_1F",
       "map_json_path": "data\\maps\\MauvilleCity_PokemonCenter_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorMauville",
@@ -1997,7 +2259,9 @@
       "map_id": "MAP_MAUVILLE_CITY_POKEMON_CENTER_2F",
       "layout_id": "LAYOUT_POKEMON_CENTER_2F",
       "map_json_path": "data\\maps\\MauvilleCity_PokemonCenter_2F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorMauville",
@@ -2007,7 +2271,9 @@
       "map_id": "MAP_MAUVILLE_CITY_MART",
       "layout_id": "LAYOUT_MART",
       "map_json_path": "data\\maps\\MauvilleCity_Mart\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRustboro",
@@ -2017,7 +2283,9 @@
       "map_id": "MAP_RUSTBORO_CITY_DEVON_CORP_1F",
       "layout_id": "LAYOUT_RUSTBORO_CITY_DEVON_CORP_1F",
       "map_json_path": "data\\maps\\RustboroCity_DevonCorp_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRustboro",
@@ -2027,7 +2295,9 @@
       "map_id": "MAP_RUSTBORO_CITY_DEVON_CORP_2F",
       "layout_id": "LAYOUT_RUSTBORO_CITY_DEVON_CORP_2F",
       "map_json_path": "data\\maps\\RustboroCity_DevonCorp_2F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRustboro",
@@ -2037,7 +2307,9 @@
       "map_id": "MAP_RUSTBORO_CITY_DEVON_CORP_3F",
       "layout_id": "LAYOUT_RUSTBORO_CITY_DEVON_CORP_3F",
       "map_json_path": "data\\maps\\RustboroCity_DevonCorp_3F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRustboro",
@@ -2047,7 +2319,9 @@
       "map_id": "MAP_RUSTBORO_CITY_GYM",
       "layout_id": "LAYOUT_RUSTBORO_CITY_GYM",
       "map_json_path": "data\\maps\\RustboroCity_Gym\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRustboro",
@@ -2057,7 +2331,9 @@
       "map_id": "MAP_RUSTBORO_CITY_POKEMON_SCHOOL",
       "layout_id": "LAYOUT_RUSTBORO_CITY_POKEMON_SCHOOL",
       "map_json_path": "data\\maps\\RustboroCity_PokemonSchool\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRustboro",
@@ -2067,7 +2343,9 @@
       "map_id": "MAP_RUSTBORO_CITY_POKEMON_CENTER_1F",
       "layout_id": "LAYOUT_POKEMON_CENTER_1F",
       "map_json_path": "data\\maps\\RustboroCity_PokemonCenter_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRustboro",
@@ -2077,7 +2355,9 @@
       "map_id": "MAP_RUSTBORO_CITY_POKEMON_CENTER_2F",
       "layout_id": "LAYOUT_POKEMON_CENTER_2F",
       "map_json_path": "data\\maps\\RustboroCity_PokemonCenter_2F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRustboro",
@@ -2087,7 +2367,9 @@
       "map_id": "MAP_RUSTBORO_CITY_MART",
       "layout_id": "LAYOUT_MART",
       "map_json_path": "data\\maps\\RustboroCity_Mart\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRustboro",
@@ -2097,7 +2379,9 @@
       "map_id": "MAP_RUSTBORO_CITY_FLAT1_1F",
       "layout_id": "LAYOUT_RUSTBORO_CITY_FLAT1_1F",
       "map_json_path": "data\\maps\\RustboroCity_Flat1_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRustboro",
@@ -2107,7 +2391,9 @@
       "map_id": "MAP_RUSTBORO_CITY_FLAT1_2F",
       "layout_id": "LAYOUT_RUSTBORO_CITY_FLAT1_2F",
       "map_json_path": "data\\maps\\RustboroCity_Flat1_2F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRustboro",
@@ -2117,7 +2403,9 @@
       "map_id": "MAP_RUSTBORO_CITY_HOUSE1",
       "layout_id": "LAYOUT_RUSTBORO_CITY_HOUSE1",
       "map_json_path": "data\\maps\\RustboroCity_House1\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRustboro",
@@ -2127,7 +2415,9 @@
       "map_id": "MAP_RUSTBORO_CITY_CUTTERS_HOUSE",
       "layout_id": "LAYOUT_RUSTBORO_CITY_CUTTERS_HOUSE",
       "map_json_path": "data\\maps\\RustboroCity_CuttersHouse\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRustboro",
@@ -2137,7 +2427,9 @@
       "map_id": "MAP_RUSTBORO_CITY_HOUSE2",
       "layout_id": "LAYOUT_RUSTBORO_CITY_HOUSE",
       "map_json_path": "data\\maps\\RustboroCity_House2\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRustboro",
@@ -2147,7 +2439,9 @@
       "map_id": "MAP_RUSTBORO_CITY_FLAT2_1F",
       "layout_id": "LAYOUT_RUSTBORO_CITY_FLAT2_1F",
       "map_json_path": "data\\maps\\RustboroCity_Flat2_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRustboro",
@@ -2157,7 +2451,9 @@
       "map_id": "MAP_RUSTBORO_CITY_FLAT2_2F",
       "layout_id": "LAYOUT_RUSTBORO_CITY_FLAT2_2F",
       "map_json_path": "data\\maps\\RustboroCity_Flat2_2F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRustboro",
@@ -2167,7 +2463,9 @@
       "map_id": "MAP_RUSTBORO_CITY_FLAT2_3F",
       "layout_id": "LAYOUT_RUSTBORO_CITY_FLAT2_3F",
       "map_json_path": "data\\maps\\RustboroCity_Flat2_3F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRustboro",
@@ -2177,7 +2475,9 @@
       "map_id": "MAP_RUSTBORO_CITY_HOUSE3",
       "layout_id": "LAYOUT_RUSTBORO_CITY_HOUSE",
       "map_json_path": "data\\maps\\RustboroCity_House3\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorFortree",
@@ -2187,7 +2487,9 @@
       "map_id": "MAP_FORTREE_CITY_HOUSE1",
       "layout_id": "LAYOUT_FORTREE_CITY_HOUSE1",
       "map_json_path": "data\\maps\\FortreeCity_House1\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorFortree",
@@ -2197,7 +2499,9 @@
       "map_id": "MAP_FORTREE_CITY_GYM",
       "layout_id": "LAYOUT_FORTREE_CITY_GYM",
       "map_json_path": "data\\maps\\FortreeCity_Gym\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorFortree",
@@ -2207,7 +2511,9 @@
       "map_id": "MAP_FORTREE_CITY_POKEMON_CENTER_1F",
       "layout_id": "LAYOUT_POKEMON_CENTER_1F",
       "map_json_path": "data\\maps\\FortreeCity_PokemonCenter_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorFortree",
@@ -2217,7 +2523,9 @@
       "map_id": "MAP_FORTREE_CITY_POKEMON_CENTER_2F",
       "layout_id": "LAYOUT_POKEMON_CENTER_2F",
       "map_json_path": "data\\maps\\FortreeCity_PokemonCenter_2F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorFortree",
@@ -2227,7 +2535,9 @@
       "map_id": "MAP_FORTREE_CITY_MART",
       "layout_id": "LAYOUT_MART",
       "map_json_path": "data\\maps\\FortreeCity_Mart\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorFortree",
@@ -2237,7 +2547,9 @@
       "map_id": "MAP_FORTREE_CITY_HOUSE2",
       "layout_id": "LAYOUT_FORTREE_CITY_HOUSE2",
       "map_json_path": "data\\maps\\FortreeCity_House2\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorFortree",
@@ -2247,7 +2559,9 @@
       "map_id": "MAP_FORTREE_CITY_HOUSE3",
       "layout_id": "LAYOUT_FORTREE_CITY_HOUSE1",
       "map_json_path": "data\\maps\\FortreeCity_House3\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorFortree",
@@ -2257,7 +2571,9 @@
       "map_id": "MAP_FORTREE_CITY_HOUSE4",
       "layout_id": "LAYOUT_FORTREE_CITY_HOUSE2",
       "map_json_path": "data\\maps\\FortreeCity_House4\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorFortree",
@@ -2267,7 +2583,9 @@
       "map_id": "MAP_FORTREE_CITY_HOUSE5",
       "layout_id": "LAYOUT_FORTREE_CITY_HOUSE1",
       "map_json_path": "data\\maps\\FortreeCity_House5\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorFortree",
@@ -2277,7 +2595,9 @@
       "map_id": "MAP_FORTREE_CITY_DECORATION_SHOP",
       "layout_id": "LAYOUT_FORTREE_CITY_DECORATION_SHOP",
       "map_json_path": "data\\maps\\FortreeCity_DecorationShop\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorLilycove",
@@ -2287,7 +2607,9 @@
       "map_id": "MAP_LILYCOVE_CITY_COVE_LILY_MOTEL_1F",
       "layout_id": "LAYOUT_LILYCOVE_CITY_COVE_LILY_MOTEL_1F",
       "map_json_path": "data\\maps\\LilycoveCity_CoveLilyMotel_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorLilycove",
@@ -2297,7 +2619,9 @@
       "map_id": "MAP_LILYCOVE_CITY_COVE_LILY_MOTEL_2F",
       "layout_id": "LAYOUT_LILYCOVE_CITY_COVE_LILY_MOTEL_2F",
       "map_json_path": "data\\maps\\LilycoveCity_CoveLilyMotel_2F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorLilycove",
@@ -2307,7 +2631,9 @@
       "map_id": "MAP_LILYCOVE_CITY_LILYCOVE_MUSEUM_1F",
       "layout_id": "LAYOUT_LILYCOVE_CITY_LILYCOVE_MUSEUM_1F",
       "map_json_path": "data\\maps\\LilycoveCity_LilycoveMuseum_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorLilycove",
@@ -2317,7 +2643,9 @@
       "map_id": "MAP_LILYCOVE_CITY_LILYCOVE_MUSEUM_2F",
       "layout_id": "LAYOUT_LILYCOVE_CITY_LILYCOVE_MUSEUM_2F",
       "map_json_path": "data\\maps\\LilycoveCity_LilycoveMuseum_2F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorLilycove",
@@ -2327,7 +2655,9 @@
       "map_id": "MAP_LILYCOVE_CITY_CONTEST_LOBBY",
       "layout_id": "LAYOUT_LILYCOVE_CITY_CONTEST_LOBBY",
       "map_json_path": "data\\maps\\LilycoveCity_ContestLobby\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorLilycove",
@@ -2337,7 +2667,9 @@
       "map_id": "MAP_LILYCOVE_CITY_CONTEST_HALL",
       "layout_id": "LAYOUT_LILYCOVE_CITY_CONTEST_HALL",
       "map_json_path": "data\\maps\\LilycoveCity_ContestHall\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorLilycove",
@@ -2347,7 +2679,9 @@
       "map_id": "MAP_LILYCOVE_CITY_POKEMON_CENTER_1F",
       "layout_id": "LAYOUT_POKEMON_CENTER_1F",
       "map_json_path": "data\\maps\\LilycoveCity_PokemonCenter_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorLilycove",
@@ -2357,7 +2691,9 @@
       "map_id": "MAP_LILYCOVE_CITY_POKEMON_CENTER_2F",
       "layout_id": "LAYOUT_POKEMON_CENTER_2F",
       "map_json_path": "data\\maps\\LilycoveCity_PokemonCenter_2F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorLilycove",
@@ -2367,7 +2703,9 @@
       "map_id": "MAP_LILYCOVE_CITY_UNUSED_MART",
       "layout_id": "LAYOUT_MART",
       "map_json_path": "data\\maps\\LilycoveCity_UnusedMart\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorLilycove",
@@ -2377,7 +2715,9 @@
       "map_id": "MAP_LILYCOVE_CITY_POKEMON_TRAINER_FAN_CLUB",
       "layout_id": "LAYOUT_LILYCOVE_CITY_POKEMON_TRAINER_FAN_CLUB",
       "map_json_path": "data\\maps\\LilycoveCity_PokemonTrainerFanClub\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorLilycove",
@@ -2387,7 +2727,9 @@
       "map_id": "MAP_LILYCOVE_CITY_HARBOR",
       "layout_id": "LAYOUT_HARBOR",
       "map_json_path": "data\\maps\\LilycoveCity_Harbor\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorLilycove",
@@ -2397,7 +2739,9 @@
       "map_id": "MAP_LILYCOVE_CITY_MOVE_DELETERS_HOUSE",
       "layout_id": "LAYOUT_HOUSE2",
       "map_json_path": "data\\maps\\LilycoveCity_MoveDeletersHouse\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorLilycove",
@@ -2407,7 +2751,9 @@
       "map_id": "MAP_LILYCOVE_CITY_HOUSE1",
       "layout_id": "LAYOUT_HOUSE1",
       "map_json_path": "data\\maps\\LilycoveCity_House1\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorLilycove",
@@ -2417,7 +2763,9 @@
       "map_id": "MAP_LILYCOVE_CITY_HOUSE2",
       "layout_id": "LAYOUT_LILYCOVE_CITY_HOUSE2",
       "map_json_path": "data\\maps\\LilycoveCity_House2\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorLilycove",
@@ -2427,7 +2775,9 @@
       "map_id": "MAP_LILYCOVE_CITY_HOUSE3",
       "layout_id": "LAYOUT_HOUSE2",
       "map_json_path": "data\\maps\\LilycoveCity_House3\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorLilycove",
@@ -2437,7 +2787,9 @@
       "map_id": "MAP_LILYCOVE_CITY_HOUSE4",
       "layout_id": "LAYOUT_HOUSE1",
       "map_json_path": "data\\maps\\LilycoveCity_House4\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorLilycove",
@@ -2447,7 +2799,9 @@
       "map_id": "MAP_LILYCOVE_CITY_DEPARTMENT_STORE_1F",
       "layout_id": "LAYOUT_LILYCOVE_CITY_DEPARTMENT_STORE_1F",
       "map_json_path": "data\\maps\\LilycoveCity_DepartmentStore_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorLilycove",
@@ -2457,7 +2811,9 @@
       "map_id": "MAP_LILYCOVE_CITY_DEPARTMENT_STORE_2F",
       "layout_id": "LAYOUT_LILYCOVE_CITY_DEPARTMENT_STORE_2F",
       "map_json_path": "data\\maps\\LilycoveCity_DepartmentStore_2F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorLilycove",
@@ -2467,7 +2823,9 @@
       "map_id": "MAP_LILYCOVE_CITY_DEPARTMENT_STORE_3F",
       "layout_id": "LAYOUT_LILYCOVE_CITY_DEPARTMENT_STORE_3F",
       "map_json_path": "data\\maps\\LilycoveCity_DepartmentStore_3F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorLilycove",
@@ -2477,7 +2835,9 @@
       "map_id": "MAP_LILYCOVE_CITY_DEPARTMENT_STORE_4F",
       "layout_id": "LAYOUT_LILYCOVE_CITY_DEPARTMENT_STORE_4F",
       "map_json_path": "data\\maps\\LilycoveCity_DepartmentStore_4F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorLilycove",
@@ -2487,7 +2847,9 @@
       "map_id": "MAP_LILYCOVE_CITY_DEPARTMENT_STORE_5F",
       "layout_id": "LAYOUT_LILYCOVE_CITY_DEPARTMENT_STORE_5F",
       "map_json_path": "data\\maps\\LilycoveCity_DepartmentStore_5F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorLilycove",
@@ -2497,7 +2859,9 @@
       "map_id": "MAP_LILYCOVE_CITY_DEPARTMENT_STORE_ROOFTOP",
       "layout_id": "LAYOUT_LILYCOVE_CITY_DEPARTMENT_STORE_ROOFTOP",
       "map_json_path": "data\\maps\\LilycoveCity_DepartmentStoreRooftop\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorLilycove",
@@ -2507,7 +2871,9 @@
       "map_id": "MAP_LILYCOVE_CITY_DEPARTMENT_STORE_ELEVATOR",
       "layout_id": "LAYOUT_LILYCOVE_CITY_DEPARTMENT_STORE_ELEVATOR",
       "map_json_path": "data\\maps\\LilycoveCity_DepartmentStoreElevator\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorMossdeep",
@@ -2517,7 +2883,9 @@
       "map_id": "MAP_MOSSDEEP_CITY_GYM",
       "layout_id": "LAYOUT_MOSSDEEP_CITY_GYM",
       "map_json_path": "data\\maps\\MossdeepCity_Gym\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorMossdeep",
@@ -2527,7 +2895,9 @@
       "map_id": "MAP_MOSSDEEP_CITY_HOUSE1",
       "layout_id": "LAYOUT_HOUSE2",
       "map_json_path": "data\\maps\\MossdeepCity_House1\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorMossdeep",
@@ -2537,7 +2907,9 @@
       "map_id": "MAP_MOSSDEEP_CITY_HOUSE2",
       "layout_id": "LAYOUT_HOUSE1",
       "map_json_path": "data\\maps\\MossdeepCity_House2\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorMossdeep",
@@ -2547,7 +2919,9 @@
       "map_id": "MAP_MOSSDEEP_CITY_POKEMON_CENTER_1F",
       "layout_id": "LAYOUT_POKEMON_CENTER_1F",
       "map_json_path": "data\\maps\\MossdeepCity_PokemonCenter_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorMossdeep",
@@ -2557,7 +2931,9 @@
       "map_id": "MAP_MOSSDEEP_CITY_POKEMON_CENTER_2F",
       "layout_id": "LAYOUT_POKEMON_CENTER_2F",
       "map_json_path": "data\\maps\\MossdeepCity_PokemonCenter_2F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorMossdeep",
@@ -2567,7 +2943,9 @@
       "map_id": "MAP_MOSSDEEP_CITY_MART",
       "layout_id": "LAYOUT_MART",
       "map_json_path": "data\\maps\\MossdeepCity_Mart\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorMossdeep",
@@ -2577,7 +2955,9 @@
       "map_id": "MAP_MOSSDEEP_CITY_HOUSE3",
       "layout_id": "LAYOUT_HOUSE2",
       "map_json_path": "data\\maps\\MossdeepCity_House3\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorMossdeep",
@@ -2587,7 +2967,9 @@
       "map_id": "MAP_MOSSDEEP_CITY_STEVENS_HOUSE",
       "layout_id": "LAYOUT_MOSSDEEP_CITY_STEVENS_HOUSE",
       "map_json_path": "data\\maps\\MossdeepCity_StevensHouse\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorMossdeep",
@@ -2597,7 +2979,9 @@
       "map_id": "MAP_MOSSDEEP_CITY_HOUSE4",
       "layout_id": "LAYOUT_HOUSE_WITH_BED",
       "map_json_path": "data\\maps\\MossdeepCity_House4\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorMossdeep",
@@ -2607,7 +2991,9 @@
       "map_id": "MAP_MOSSDEEP_CITY_SPACE_CENTER_1F",
       "layout_id": "LAYOUT_MOSSDEEP_CITY_SPACE_CENTER_1F",
       "map_json_path": "data\\maps\\MossdeepCity_SpaceCenter_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorMossdeep",
@@ -2617,7 +3003,9 @@
       "map_id": "MAP_MOSSDEEP_CITY_SPACE_CENTER_2F",
       "layout_id": "LAYOUT_MOSSDEEP_CITY_SPACE_CENTER_2F",
       "map_json_path": "data\\maps\\MossdeepCity_SpaceCenter_2F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorMossdeep",
@@ -2627,7 +3015,9 @@
       "map_id": "MAP_MOSSDEEP_CITY_GAME_CORNER_1F",
       "layout_id": "LAYOUT_MOSSDEEP_CITY_GAME_CORNER_1F",
       "map_json_path": "data\\maps\\MossdeepCity_GameCorner_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorMossdeep",
@@ -2637,7 +3027,9 @@
       "map_id": "MAP_MOSSDEEP_CITY_GAME_CORNER_B1F",
       "layout_id": "LAYOUT_MOSSDEEP_CITY_GAME_CORNER_B1F",
       "map_json_path": "data\\maps\\MossdeepCity_GameCorner_B1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorSootopolis",
@@ -2647,7 +3039,9 @@
       "map_id": "MAP_SOOTOPOLIS_CITY_GYM_1F",
       "layout_id": "LAYOUT_SOOTOPOLIS_CITY_GYM_1F",
       "map_json_path": "data\\maps\\SootopolisCity_Gym_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorSootopolis",
@@ -2657,7 +3051,9 @@
       "map_id": "MAP_SOOTOPOLIS_CITY_GYM_B1F",
       "layout_id": "LAYOUT_SOOTOPOLIS_CITY_GYM_B1F",
       "map_json_path": "data\\maps\\SootopolisCity_Gym_B1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorSootopolis",
@@ -2667,7 +3063,9 @@
       "map_id": "MAP_SOOTOPOLIS_CITY_POKEMON_CENTER_1F",
       "layout_id": "LAYOUT_POKEMON_CENTER_1F",
       "map_json_path": "data\\maps\\SootopolisCity_PokemonCenter_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorSootopolis",
@@ -2677,7 +3075,9 @@
       "map_id": "MAP_SOOTOPOLIS_CITY_POKEMON_CENTER_2F",
       "layout_id": "LAYOUT_POKEMON_CENTER_2F",
       "map_json_path": "data\\maps\\SootopolisCity_PokemonCenter_2F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorSootopolis",
@@ -2687,7 +3087,9 @@
       "map_id": "MAP_SOOTOPOLIS_CITY_MART",
       "layout_id": "LAYOUT_MART",
       "map_json_path": "data\\maps\\SootopolisCity_Mart\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorSootopolis",
@@ -2697,7 +3099,9 @@
       "map_id": "MAP_SOOTOPOLIS_CITY_HOUSE1",
       "layout_id": "LAYOUT_SOOTOPOLIS_CITY_HOUSE1",
       "map_json_path": "data\\maps\\SootopolisCity_House1\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorSootopolis",
@@ -2707,7 +3111,9 @@
       "map_id": "MAP_SOOTOPOLIS_CITY_HOUSE2",
       "layout_id": "LAYOUT_SOOTOPOLIS_CITY_HOUSE2",
       "map_json_path": "data\\maps\\SootopolisCity_House2\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorSootopolis",
@@ -2717,7 +3123,9 @@
       "map_id": "MAP_SOOTOPOLIS_CITY_HOUSE3",
       "layout_id": "LAYOUT_SOOTOPOLIS_CITY_HOUSE3",
       "map_json_path": "data\\maps\\SootopolisCity_House3\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorSootopolis",
@@ -2727,7 +3135,9 @@
       "map_id": "MAP_SOOTOPOLIS_CITY_HOUSE4",
       "layout_id": "LAYOUT_SOOTOPOLIS_CITY_HOUSE1",
       "map_json_path": "data\\maps\\SootopolisCity_House4\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorSootopolis",
@@ -2737,7 +3147,9 @@
       "map_id": "MAP_SOOTOPOLIS_CITY_HOUSE5",
       "layout_id": "LAYOUT_SOOTOPOLIS_CITY_HOUSE2",
       "map_json_path": "data\\maps\\SootopolisCity_House5\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorSootopolis",
@@ -2747,7 +3159,9 @@
       "map_id": "MAP_SOOTOPOLIS_CITY_HOUSE6",
       "layout_id": "LAYOUT_SOOTOPOLIS_CITY_HOUSE3",
       "map_json_path": "data\\maps\\SootopolisCity_House6\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorSootopolis",
@@ -2757,7 +3171,9 @@
       "map_id": "MAP_SOOTOPOLIS_CITY_HOUSE7",
       "layout_id": "LAYOUT_SOOTOPOLIS_CITY_HOUSE1",
       "map_json_path": "data\\maps\\SootopolisCity_House7\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorSootopolis",
@@ -2767,7 +3183,9 @@
       "map_id": "MAP_SOOTOPOLIS_CITY_LOTAD_AND_SEEDOT_HOUSE",
       "layout_id": "LAYOUT_SOOTOPOLIS_CITY_LOTAD_AND_SEEDOT_HOUSE",
       "map_json_path": "data\\maps\\SootopolisCity_LotadAndSeedotHouse\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorSootopolis",
@@ -2777,7 +3195,9 @@
       "map_id": "MAP_SOOTOPOLIS_CITY_MYSTERY_EVENTS_HOUSE_1F",
       "layout_id": "LAYOUT_SOOTOPOLIS_CITY_MYSTERY_EVENTS_HOUSE_1F",
       "map_json_path": "data\\maps\\SootopolisCity_MysteryEventsHouse_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorSootopolis",
@@ -2787,7 +3207,9 @@
       "map_id": "MAP_SOOTOPOLIS_CITY_MYSTERY_EVENTS_HOUSE_B1F",
       "layout_id": "LAYOUT_SOOTOPOLIS_CITY_MYSTERY_EVENTS_HOUSE_B1F",
       "map_json_path": "data\\maps\\SootopolisCity_MysteryEventsHouse_B1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorEverGrande",
@@ -2797,7 +3219,9 @@
       "map_id": "MAP_EVER_GRANDE_CITY_SIDNEYS_ROOM",
       "layout_id": "LAYOUT_EVER_GRANDE_CITY_SIDNEYS_ROOM",
       "map_json_path": "data\\maps\\EverGrandeCity_SidneysRoom\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorEverGrande",
@@ -2807,7 +3231,9 @@
       "map_id": "MAP_EVER_GRANDE_CITY_PHOEBES_ROOM",
       "layout_id": "LAYOUT_EVER_GRANDE_CITY_PHOEBES_ROOM",
       "map_json_path": "data\\maps\\EverGrandeCity_PhoebesRoom\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorEverGrande",
@@ -2817,7 +3243,9 @@
       "map_id": "MAP_EVER_GRANDE_CITY_GLACIAS_ROOM",
       "layout_id": "LAYOUT_EVER_GRANDE_CITY_GLACIAS_ROOM",
       "map_json_path": "data\\maps\\EverGrandeCity_GlaciasRoom\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorEverGrande",
@@ -2827,7 +3255,9 @@
       "map_id": "MAP_EVER_GRANDE_CITY_DRAKES_ROOM",
       "layout_id": "LAYOUT_EVER_GRANDE_CITY_DRAKES_ROOM",
       "map_json_path": "data\\maps\\EverGrandeCity_DrakesRoom\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorEverGrande",
@@ -2837,7 +3267,9 @@
       "map_id": "MAP_EVER_GRANDE_CITY_CHAMPIONS_ROOM",
       "layout_id": "LAYOUT_EVER_GRANDE_CITY_CHAMPIONS_ROOM",
       "map_json_path": "data\\maps\\EverGrandeCity_ChampionsRoom\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorEverGrande",
@@ -2847,7 +3279,9 @@
       "map_id": "MAP_EVER_GRANDE_CITY_HALL1",
       "layout_id": "LAYOUT_EVER_GRANDE_CITY_SHORT_HALL",
       "map_json_path": "data\\maps\\EverGrandeCity_Hall1\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorEverGrande",
@@ -2857,7 +3291,9 @@
       "map_id": "MAP_EVER_GRANDE_CITY_HALL2",
       "layout_id": "LAYOUT_EVER_GRANDE_CITY_SHORT_HALL",
       "map_json_path": "data\\maps\\EverGrandeCity_Hall2\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorEverGrande",
@@ -2867,7 +3303,9 @@
       "map_id": "MAP_EVER_GRANDE_CITY_HALL3",
       "layout_id": "LAYOUT_EVER_GRANDE_CITY_SHORT_HALL",
       "map_json_path": "data\\maps\\EverGrandeCity_Hall3\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorEverGrande",
@@ -2877,7 +3315,9 @@
       "map_id": "MAP_EVER_GRANDE_CITY_HALL4",
       "layout_id": "LAYOUT_EVER_GRANDE_CITY_HALL4",
       "map_json_path": "data\\maps\\EverGrandeCity_Hall4\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorEverGrande",
@@ -2887,7 +3327,9 @@
       "map_id": "MAP_EVER_GRANDE_CITY_HALL5",
       "layout_id": "LAYOUT_EVER_GRANDE_CITY_SHORT_HALL",
       "map_json_path": "data\\maps\\EverGrandeCity_Hall5\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorEverGrande",
@@ -2897,7 +3339,9 @@
       "map_id": "MAP_EVER_GRANDE_CITY_POKEMON_LEAGUE_1F",
       "layout_id": "LAYOUT_EVER_GRANDE_CITY_POKEMON_LEAGUE_1F",
       "map_json_path": "data\\maps\\EverGrandeCity_PokemonLeague_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorEverGrande",
@@ -2907,7 +3351,9 @@
       "map_id": "MAP_EVER_GRANDE_CITY_HALL_OF_FAME",
       "layout_id": "LAYOUT_EVER_GRANDE_CITY_HALL_OF_FAME",
       "map_json_path": "data\\maps\\EverGrandeCity_HallOfFame\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorEverGrande",
@@ -2917,7 +3363,9 @@
       "map_id": "MAP_EVER_GRANDE_CITY_POKEMON_CENTER_1F",
       "layout_id": "LAYOUT_POKEMON_CENTER_1F",
       "map_json_path": "data\\maps\\EverGrandeCity_PokemonCenter_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorEverGrande",
@@ -2927,7 +3375,9 @@
       "map_id": "MAP_EVER_GRANDE_CITY_POKEMON_CENTER_2F",
       "layout_id": "LAYOUT_POKEMON_CENTER_2F",
       "map_json_path": "data\\maps\\EverGrandeCity_PokemonCenter_2F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorEverGrande",
@@ -2937,7 +3387,9 @@
       "map_id": "MAP_EVER_GRANDE_CITY_POKEMON_LEAGUE_2F",
       "layout_id": "LAYOUT_POKEMON_CENTER_2F",
       "map_json_path": "data\\maps\\EverGrandeCity_PokemonLeague_2F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRoute104",
@@ -2947,7 +3399,9 @@
       "map_id": "MAP_ROUTE104_MR_BRINEYS_HOUSE",
       "layout_id": "LAYOUT_ROUTE104_MR_BRINEYS_HOUSE",
       "map_json_path": "data\\maps\\Route104_MrBrineysHouse\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRoute104",
@@ -2957,7 +3411,9 @@
       "map_id": "MAP_ROUTE104_PRETTY_PETAL_FLOWER_SHOP",
       "layout_id": "LAYOUT_ROUTE104_PRETTY_PETAL_FLOWER_SHOP",
       "map_json_path": "data\\maps\\Route104_PrettyPetalFlowerShop\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRoute111",
@@ -2967,7 +3423,9 @@
       "map_id": "MAP_ROUTE111_WINSTRATE_FAMILYS_HOUSE",
       "layout_id": "LAYOUT_HOUSE2",
       "map_json_path": "data\\maps\\Route111_WinstrateFamilysHouse\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRoute111",
@@ -2977,7 +3435,9 @@
       "map_id": "MAP_ROUTE111_OLD_LADYS_REST_STOP",
       "layout_id": "LAYOUT_HOUSE3",
       "map_json_path": "data\\maps\\Route111_OldLadysRestStop\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRoute112",
@@ -2987,7 +3447,9 @@
       "map_id": "MAP_ROUTE112_CABLE_CAR_STATION",
       "layout_id": "LAYOUT_CABLE_CAR_STATION",
       "map_json_path": "data\\maps\\Route112_CableCarStation\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRoute112",
@@ -2997,7 +3459,9 @@
       "map_id": "MAP_MT_CHIMNEY_CABLE_CAR_STATION",
       "layout_id": "LAYOUT_CABLE_CAR_STATION",
       "map_json_path": "data\\maps\\MtChimney_CableCarStation\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRoute114",
@@ -3007,7 +3471,9 @@
       "map_id": "MAP_ROUTE114_FOSSIL_MANIACS_HOUSE",
       "layout_id": "LAYOUT_ROUTE114_FOSSIL_MANIACS_HOUSE",
       "map_json_path": "data\\maps\\Route114_FossilManiacsHouse\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRoute114",
@@ -3017,7 +3483,9 @@
       "map_id": "MAP_ROUTE114_FOSSIL_MANIACS_TUNNEL",
       "layout_id": "LAYOUT_ROUTE114_FOSSIL_MANIACS_TUNNEL",
       "map_json_path": "data\\maps\\Route114_FossilManiacsTunnel\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRoute114",
@@ -3027,7 +3495,9 @@
       "map_id": "MAP_ROUTE114_LANETTES_HOUSE",
       "layout_id": "LAYOUT_ROUTE114_LANETTES_HOUSE",
       "map_json_path": "data\\maps\\Route114_LanettesHouse\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRoute116",
@@ -3037,7 +3507,9 @@
       "map_id": "MAP_ROUTE116_TUNNELERS_REST_HOUSE",
       "layout_id": "LAYOUT_ROUTE116_TUNNELERS_REST_HOUSE",
       "map_json_path": "data\\maps\\Route116_TunnelersRestHouse\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRoute117",
@@ -3047,7 +3519,9 @@
       "map_id": "MAP_ROUTE117_POKEMON_DAY_CARE",
       "layout_id": "LAYOUT_ROUTE117_POKEMON_DAY_CARE",
       "map_json_path": "data\\maps\\Route117_PokemonDayCare\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRoute121",
@@ -3057,7 +3531,9 @@
       "map_id": "MAP_ROUTE121_SAFARI_ZONE_ENTRANCE",
       "layout_id": "LAYOUT_ROUTE121_SAFARI_ZONE_ENTRANCE",
       "map_json_path": "data\\maps\\Route121_SafariZoneEntrance\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3067,7 +3543,9 @@
       "map_id": "MAP_METEOR_FALLS_1F_1R",
       "layout_id": "LAYOUT_METEOR_FALLS_1F_1R",
       "map_json_path": "data\\maps\\MeteorFalls_1F_1R\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3077,7 +3555,9 @@
       "map_id": "MAP_METEOR_FALLS_1F_2R",
       "layout_id": "LAYOUT_METEOR_FALLS_1F_2R",
       "map_json_path": "data\\maps\\MeteorFalls_1F_2R\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3087,7 +3567,9 @@
       "map_id": "MAP_METEOR_FALLS_B1F_1R",
       "layout_id": "LAYOUT_METEOR_FALLS_B1F_1R",
       "map_json_path": "data\\maps\\MeteorFalls_B1F_1R\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3097,7 +3579,9 @@
       "map_id": "MAP_METEOR_FALLS_B1F_2R",
       "layout_id": "LAYOUT_METEOR_FALLS_B1F_2R",
       "map_json_path": "data\\maps\\MeteorFalls_B1F_2R\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3107,7 +3591,9 @@
       "map_id": "MAP_RUSTURF_TUNNEL",
       "layout_id": "LAYOUT_RUSTURF_TUNNEL",
       "map_json_path": "data\\maps\\RusturfTunnel\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3117,7 +3603,9 @@
       "map_id": "MAP_UNDERWATER_SOOTOPOLIS_CITY",
       "layout_id": "LAYOUT_UNDERWATER_SOOTOPOLIS_CITY",
       "map_json_path": "data\\maps\\Underwater_SootopolisCity\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3127,7 +3615,9 @@
       "map_id": "MAP_DESERT_RUINS",
       "layout_id": "LAYOUT_DESERT_RUINS",
       "map_json_path": "data\\maps\\DesertRuins\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3137,7 +3627,9 @@
       "map_id": "MAP_GRANITE_CAVE_1F",
       "layout_id": "LAYOUT_GRANITE_CAVE_1F",
       "map_json_path": "data\\maps\\GraniteCave_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3147,7 +3639,9 @@
       "map_id": "MAP_GRANITE_CAVE_B1F",
       "layout_id": "LAYOUT_GRANITE_CAVE_B1F",
       "map_json_path": "data\\maps\\GraniteCave_B1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3157,7 +3651,9 @@
       "map_id": "MAP_GRANITE_CAVE_B2F",
       "layout_id": "LAYOUT_GRANITE_CAVE_B2F",
       "map_json_path": "data\\maps\\GraniteCave_B2F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3167,7 +3663,9 @@
       "map_id": "MAP_GRANITE_CAVE_STEVENS_ROOM",
       "layout_id": "LAYOUT_GRANITE_CAVE_STEVENS_ROOM",
       "map_json_path": "data\\maps\\GraniteCave_StevensRoom\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3177,7 +3675,9 @@
       "map_id": "MAP_PETALBURG_WOODS",
       "layout_id": "LAYOUT_PETALBURG_WOODS",
       "map_json_path": "data\\maps\\PetalburgWoods\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3187,7 +3687,9 @@
       "map_id": "MAP_MT_CHIMNEY",
       "layout_id": "LAYOUT_MT_CHIMNEY",
       "map_json_path": "data\\maps\\MtChimney\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3197,7 +3699,9 @@
       "map_id": "MAP_JAGGED_PASS",
       "layout_id": "LAYOUT_JAGGED_PASS",
       "map_json_path": "data\\maps\\JaggedPass\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3207,7 +3711,9 @@
       "map_id": "MAP_FIERY_PATH",
       "layout_id": "LAYOUT_FIERY_PATH",
       "map_json_path": "data\\maps\\FieryPath\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3217,7 +3723,9 @@
       "map_id": "MAP_MT_PYRE_1F",
       "layout_id": "LAYOUT_MT_PYRE_1F",
       "map_json_path": "data\\maps\\MtPyre_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3227,7 +3735,9 @@
       "map_id": "MAP_MT_PYRE_2F",
       "layout_id": "LAYOUT_MT_PYRE_2F",
       "map_json_path": "data\\maps\\MtPyre_2F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3237,7 +3747,9 @@
       "map_id": "MAP_MT_PYRE_3F",
       "layout_id": "LAYOUT_MT_PYRE_3F",
       "map_json_path": "data\\maps\\MtPyre_3F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3247,7 +3759,9 @@
       "map_id": "MAP_MT_PYRE_4F",
       "layout_id": "LAYOUT_MT_PYRE_4F",
       "map_json_path": "data\\maps\\MtPyre_4F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3257,7 +3771,9 @@
       "map_id": "MAP_MT_PYRE_5F",
       "layout_id": "LAYOUT_MT_PYRE_5F",
       "map_json_path": "data\\maps\\MtPyre_5F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3267,7 +3783,9 @@
       "map_id": "MAP_MT_PYRE_6F",
       "layout_id": "LAYOUT_MT_PYRE_6F",
       "map_json_path": "data\\maps\\MtPyre_6F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3277,7 +3795,9 @@
       "map_id": "MAP_MT_PYRE_EXTERIOR",
       "layout_id": "LAYOUT_MT_PYRE_EXTERIOR",
       "map_json_path": "data\\maps\\MtPyre_Exterior\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3287,7 +3807,9 @@
       "map_id": "MAP_MT_PYRE_SUMMIT",
       "layout_id": "LAYOUT_MT_PYRE_SUMMIT",
       "map_json_path": "data\\maps\\MtPyre_Summit\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3297,7 +3819,9 @@
       "map_id": "MAP_AQUA_HIDEOUT_1F",
       "layout_id": "LAYOUT_AQUA_HIDEOUT_1F",
       "map_json_path": "data\\maps\\AquaHideout_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3307,7 +3831,9 @@
       "map_id": "MAP_AQUA_HIDEOUT_B1F",
       "layout_id": "LAYOUT_AQUA_HIDEOUT_B1F",
       "map_json_path": "data\\maps\\AquaHideout_B1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3317,7 +3843,9 @@
       "map_id": "MAP_AQUA_HIDEOUT_B2F",
       "layout_id": "LAYOUT_AQUA_HIDEOUT_B2F",
       "map_json_path": "data\\maps\\AquaHideout_B2F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3327,7 +3855,9 @@
       "map_id": "MAP_UNDERWATER_SEAFLOOR_CAVERN",
       "layout_id": "LAYOUT_UNDERWATER_SEAFLOOR_CAVERN",
       "map_json_path": "data\\maps\\Underwater_SeafloorCavern\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3337,7 +3867,9 @@
       "map_id": "MAP_SEAFLOOR_CAVERN_ENTRANCE",
       "layout_id": "LAYOUT_SEAFLOOR_CAVERN_ENTRANCE",
       "map_json_path": "data\\maps\\SeafloorCavern_Entrance\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3347,7 +3879,9 @@
       "map_id": "MAP_SEAFLOOR_CAVERN_ROOM1",
       "layout_id": "LAYOUT_SEAFLOOR_CAVERN_ROOM1",
       "map_json_path": "data\\maps\\SeafloorCavern_Room1\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3357,7 +3891,9 @@
       "map_id": "MAP_SEAFLOOR_CAVERN_ROOM2",
       "layout_id": "LAYOUT_SEAFLOOR_CAVERN_ROOM2",
       "map_json_path": "data\\maps\\SeafloorCavern_Room2\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3367,7 +3903,9 @@
       "map_id": "MAP_SEAFLOOR_CAVERN_ROOM3",
       "layout_id": "LAYOUT_SEAFLOOR_CAVERN_ROOM3",
       "map_json_path": "data\\maps\\SeafloorCavern_Room3\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3377,7 +3915,9 @@
       "map_id": "MAP_SEAFLOOR_CAVERN_ROOM4",
       "layout_id": "LAYOUT_SEAFLOOR_CAVERN_ROOM4",
       "map_json_path": "data\\maps\\SeafloorCavern_Room4\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3387,7 +3927,9 @@
       "map_id": "MAP_SEAFLOOR_CAVERN_ROOM5",
       "layout_id": "LAYOUT_SEAFLOOR_CAVERN_ROOM5",
       "map_json_path": "data\\maps\\SeafloorCavern_Room5\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3397,7 +3939,9 @@
       "map_id": "MAP_SEAFLOOR_CAVERN_ROOM6",
       "layout_id": "LAYOUT_SEAFLOOR_CAVERN_ROOM6",
       "map_json_path": "data\\maps\\SeafloorCavern_Room6\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3407,7 +3951,9 @@
       "map_id": "MAP_SEAFLOOR_CAVERN_ROOM7",
       "layout_id": "LAYOUT_SEAFLOOR_CAVERN_ROOM7",
       "map_json_path": "data\\maps\\SeafloorCavern_Room7\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3417,7 +3963,9 @@
       "map_id": "MAP_SEAFLOOR_CAVERN_ROOM8",
       "layout_id": "LAYOUT_SEAFLOOR_CAVERN_ROOM8",
       "map_json_path": "data\\maps\\SeafloorCavern_Room8\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3427,7 +3975,9 @@
       "map_id": "MAP_SEAFLOOR_CAVERN_ROOM9",
       "layout_id": "LAYOUT_SEAFLOOR_CAVERN_ROOM9",
       "map_json_path": "data\\maps\\SeafloorCavern_Room9\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3437,7 +3987,9 @@
       "map_id": "MAP_CAVE_OF_ORIGIN_ENTRANCE",
       "layout_id": "LAYOUT_CAVE_OF_ORIGIN_ENTRANCE",
       "map_json_path": "data\\maps\\CaveOfOrigin_Entrance\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3447,7 +3999,9 @@
       "map_id": "MAP_CAVE_OF_ORIGIN_1F",
       "layout_id": "LAYOUT_CAVE_OF_ORIGIN_1F",
       "map_json_path": "data\\maps\\CaveOfOrigin_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3457,7 +4011,9 @@
       "map_id": "MAP_CAVE_OF_ORIGIN_UNUSED_RUBY_SAPPHIRE_MAP1",
       "layout_id": "LAYOUT_CAVE_OF_ORIGIN_UNUSED_RUBY_SAPPHIRE_MAP1",
       "map_json_path": "data\\maps\\CaveOfOrigin_UnusedRubySapphireMap1\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3467,7 +4023,9 @@
       "map_id": "MAP_CAVE_OF_ORIGIN_UNUSED_RUBY_SAPPHIRE_MAP2",
       "layout_id": "LAYOUT_CAVE_OF_ORIGIN_UNUSED_RUBY_SAPPHIRE_MAP2",
       "map_json_path": "data\\maps\\CaveOfOrigin_UnusedRubySapphireMap2\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3477,7 +4035,9 @@
       "map_id": "MAP_CAVE_OF_ORIGIN_UNUSED_RUBY_SAPPHIRE_MAP3",
       "layout_id": "LAYOUT_CAVE_OF_ORIGIN_UNUSED_RUBY_SAPPHIRE_MAP3",
       "map_json_path": "data\\maps\\CaveOfOrigin_UnusedRubySapphireMap3\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3487,7 +4047,9 @@
       "map_id": "MAP_CAVE_OF_ORIGIN_B1F",
       "layout_id": "LAYOUT_CAVE_OF_ORIGIN_B1F",
       "map_json_path": "data\\maps\\CaveOfOrigin_B1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3497,7 +4059,9 @@
       "map_id": "MAP_VICTORY_ROAD_1F",
       "layout_id": "LAYOUT_VICTORY_ROAD_1F",
       "map_json_path": "data\\maps\\VictoryRoad_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3507,7 +4071,9 @@
       "map_id": "MAP_VICTORY_ROAD_B1F",
       "layout_id": "LAYOUT_VICTORY_ROAD_B1F",
       "map_json_path": "data\\maps\\VictoryRoad_B1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3517,7 +4083,9 @@
       "map_id": "MAP_VICTORY_ROAD_B2F",
       "layout_id": "LAYOUT_VICTORY_ROAD_B2F",
       "map_json_path": "data\\maps\\VictoryRoad_B2F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3527,7 +4095,9 @@
       "map_id": "MAP_SHOAL_CAVE_LOW_TIDE_ENTRANCE_ROOM",
       "layout_id": "LAYOUT_SHOAL_CAVE_LOW_TIDE_ENTRANCE_ROOM",
       "map_json_path": "data\\maps\\ShoalCave_LowTideEntranceRoom\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3537,7 +4107,9 @@
       "map_id": "MAP_SHOAL_CAVE_LOW_TIDE_INNER_ROOM",
       "layout_id": "LAYOUT_SHOAL_CAVE_LOW_TIDE_INNER_ROOM",
       "map_json_path": "data\\maps\\ShoalCave_LowTideInnerRoom\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3547,7 +4119,9 @@
       "map_id": "MAP_SHOAL_CAVE_LOW_TIDE_STAIRS_ROOM",
       "layout_id": "LAYOUT_SHOAL_CAVE_LOW_TIDE_STAIRS_ROOM",
       "map_json_path": "data\\maps\\ShoalCave_LowTideStairsRoom\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3557,7 +4131,9 @@
       "map_id": "MAP_SHOAL_CAVE_LOW_TIDE_LOWER_ROOM",
       "layout_id": "LAYOUT_SHOAL_CAVE_LOW_TIDE_LOWER_ROOM",
       "map_json_path": "data\\maps\\ShoalCave_LowTideLowerRoom\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3567,7 +4143,9 @@
       "map_id": "MAP_SHOAL_CAVE_HIGH_TIDE_ENTRANCE_ROOM",
       "layout_id": "LAYOUT_SHOAL_CAVE_HIGH_TIDE_ENTRANCE_ROOM",
       "map_json_path": "data\\maps\\ShoalCave_HighTideEntranceRoom\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3577,7 +4155,9 @@
       "map_id": "MAP_SHOAL_CAVE_HIGH_TIDE_INNER_ROOM",
       "layout_id": "LAYOUT_SHOAL_CAVE_HIGH_TIDE_INNER_ROOM",
       "map_json_path": "data\\maps\\ShoalCave_HighTideInnerRoom\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3587,7 +4167,9 @@
       "map_id": "MAP_NEW_MAUVILLE_ENTRANCE",
       "layout_id": "LAYOUT_NEW_MAUVILLE_ENTRANCE",
       "map_json_path": "data\\maps\\NewMauville_Entrance\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3597,7 +4179,9 @@
       "map_id": "MAP_NEW_MAUVILLE_INSIDE",
       "layout_id": "LAYOUT_NEW_MAUVILLE_INSIDE",
       "map_json_path": "data\\maps\\NewMauville_Inside\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3607,7 +4191,9 @@
       "map_id": "MAP_ABANDONED_SHIP_DECK",
       "layout_id": "LAYOUT_ABANDONED_SHIP_DECK",
       "map_json_path": "data\\maps\\AbandonedShip_Deck\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3617,7 +4203,9 @@
       "map_id": "MAP_ABANDONED_SHIP_CORRIDORS_1F",
       "layout_id": "LAYOUT_ABANDONED_SHIP_CORRIDORS_1F",
       "map_json_path": "data\\maps\\AbandonedShip_Corridors_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3627,7 +4215,9 @@
       "map_id": "MAP_ABANDONED_SHIP_ROOMS_1F",
       "layout_id": "LAYOUT_ABANDONED_SHIP_ROOMS_1F",
       "map_json_path": "data\\maps\\AbandonedShip_Rooms_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3637,7 +4227,9 @@
       "map_id": "MAP_ABANDONED_SHIP_CORRIDORS_B1F",
       "layout_id": "LAYOUT_ABANDONED_SHIP_CORRIDORS_B1F",
       "map_json_path": "data\\maps\\AbandonedShip_Corridors_B1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3647,7 +4239,9 @@
       "map_id": "MAP_ABANDONED_SHIP_ROOMS_B1F",
       "layout_id": "LAYOUT_ABANDONED_SHIP_ROOMS_B1F",
       "map_json_path": "data\\maps\\AbandonedShip_Rooms_B1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3657,7 +4251,9 @@
       "map_id": "MAP_ABANDONED_SHIP_ROOMS2_B1F",
       "layout_id": "LAYOUT_ABANDONED_SHIP_ROOMS2_B1F",
       "map_json_path": "data\\maps\\AbandonedShip_Rooms2_B1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3667,7 +4263,9 @@
       "map_id": "MAP_ABANDONED_SHIP_UNDERWATER1",
       "layout_id": "LAYOUT_ABANDONED_SHIP_UNDERWATER1",
       "map_json_path": "data\\maps\\AbandonedShip_Underwater1\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3677,7 +4275,9 @@
       "map_id": "MAP_ABANDONED_SHIP_ROOM_B1F",
       "layout_id": "LAYOUT_ABANDONED_SHIP_ROOM_B1F",
       "map_json_path": "data\\maps\\AbandonedShip_Room_B1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3687,7 +4287,9 @@
       "map_id": "MAP_ABANDONED_SHIP_ROOMS2_1F",
       "layout_id": "LAYOUT_ABANDONED_SHIP_ROOMS2_1F",
       "map_json_path": "data\\maps\\AbandonedShip_Rooms2_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3697,7 +4299,9 @@
       "map_id": "MAP_ABANDONED_SHIP_CAPTAINS_OFFICE",
       "layout_id": "LAYOUT_ABANDONED_SHIP_CAPTAINS_OFFICE",
       "map_json_path": "data\\maps\\AbandonedShip_CaptainsOffice\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3707,7 +4311,9 @@
       "map_id": "MAP_ABANDONED_SHIP_UNDERWATER2",
       "layout_id": "LAYOUT_ABANDONED_SHIP_UNDERWATER2",
       "map_json_path": "data\\maps\\AbandonedShip_Underwater2\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3717,7 +4323,9 @@
       "map_id": "MAP_ABANDONED_SHIP_HIDDEN_FLOOR_CORRIDORS",
       "layout_id": "LAYOUT_ABANDONED_SHIP_HIDDEN_FLOOR_CORRIDORS",
       "map_json_path": "data\\maps\\AbandonedShip_HiddenFloorCorridors\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3727,7 +4335,9 @@
       "map_id": "MAP_ABANDONED_SHIP_HIDDEN_FLOOR_ROOMS",
       "layout_id": "LAYOUT_ABANDONED_SHIP_HIDDEN_FLOOR_ROOMS",
       "map_json_path": "data\\maps\\AbandonedShip_HiddenFloorRooms\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3737,7 +4347,9 @@
       "map_id": "MAP_ISLAND_CAVE",
       "layout_id": "LAYOUT_ISLAND_CAVE",
       "map_json_path": "data\\maps\\IslandCave\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3747,7 +4359,9 @@
       "map_id": "MAP_ANCIENT_TOMB",
       "layout_id": "LAYOUT_ANCIENT_TOMB",
       "map_json_path": "data\\maps\\AncientTomb\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3757,7 +4371,9 @@
       "map_id": "MAP_UNDERWATER_ROUTE134",
       "layout_id": "LAYOUT_UNDERWATER_ROUTE134",
       "map_json_path": "data\\maps\\Underwater_Route134\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3767,7 +4383,9 @@
       "map_id": "MAP_UNDERWATER_SEALED_CHAMBER",
       "layout_id": "LAYOUT_UNDERWATER_SEALED_CHAMBER",
       "map_json_path": "data\\maps\\Underwater_SealedChamber\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3777,7 +4395,9 @@
       "map_id": "MAP_SEALED_CHAMBER_OUTER_ROOM",
       "layout_id": "LAYOUT_SEALED_CHAMBER_OUTER_ROOM",
       "map_json_path": "data\\maps\\SealedChamber_OuterRoom\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3787,7 +4407,9 @@
       "map_id": "MAP_SEALED_CHAMBER_INNER_ROOM",
       "layout_id": "LAYOUT_SEALED_CHAMBER_INNER_ROOM",
       "map_json_path": "data\\maps\\SealedChamber_InnerRoom\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3797,7 +4419,9 @@
       "map_id": "MAP_SCORCHED_SLAB",
       "layout_id": "LAYOUT_SCORCHED_SLAB",
       "map_json_path": "data\\maps\\ScorchedSlab\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3807,7 +4431,9 @@
       "map_id": "MAP_AQUA_HIDEOUT_UNUSED_RUBY_MAP1",
       "layout_id": "LAYOUT_AQUA_HIDEOUT_UNUSED_RUBY_MAP1",
       "map_json_path": "data\\maps\\AquaHideout_UnusedRubyMap1\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3817,7 +4443,9 @@
       "map_id": "MAP_AQUA_HIDEOUT_UNUSED_RUBY_MAP2",
       "layout_id": "LAYOUT_AQUA_HIDEOUT_UNUSED_RUBY_MAP2",
       "map_json_path": "data\\maps\\AquaHideout_UnusedRubyMap2\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3827,7 +4455,9 @@
       "map_id": "MAP_AQUA_HIDEOUT_UNUSED_RUBY_MAP3",
       "layout_id": "LAYOUT_AQUA_HIDEOUT_UNUSED_RUBY_MAP3",
       "map_json_path": "data\\maps\\AquaHideout_UnusedRubyMap3\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3837,7 +4467,9 @@
       "map_id": "MAP_SKY_PILLAR_ENTRANCE",
       "layout_id": "LAYOUT_SKY_PILLAR_ENTRANCE",
       "map_json_path": "data\\maps\\SkyPillar_Entrance\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3847,7 +4479,9 @@
       "map_id": "MAP_SKY_PILLAR_OUTSIDE",
       "layout_id": "LAYOUT_SKY_PILLAR_OUTSIDE",
       "map_json_path": "data\\maps\\SkyPillar_Outside\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3857,7 +4491,9 @@
       "map_id": "MAP_SKY_PILLAR_1F",
       "layout_id": "LAYOUT_SKY_PILLAR_1F",
       "map_json_path": "data\\maps\\SkyPillar_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3867,7 +4503,9 @@
       "map_id": "MAP_SKY_PILLAR_2F",
       "layout_id": "LAYOUT_SKY_PILLAR_2F",
       "map_json_path": "data\\maps\\SkyPillar_2F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3877,7 +4515,9 @@
       "map_id": "MAP_SKY_PILLAR_3F",
       "layout_id": "LAYOUT_SKY_PILLAR_3F",
       "map_json_path": "data\\maps\\SkyPillar_3F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3887,7 +4527,9 @@
       "map_id": "MAP_SKY_PILLAR_4F",
       "layout_id": "LAYOUT_SKY_PILLAR_4F",
       "map_json_path": "data\\maps\\SkyPillar_4F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3897,7 +4539,9 @@
       "map_id": "MAP_SHOAL_CAVE_LOW_TIDE_ICE_ROOM",
       "layout_id": "LAYOUT_SHOAL_CAVE_LOW_TIDE_ICE_ROOM",
       "map_json_path": "data\\maps\\ShoalCave_LowTideIceRoom\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3907,7 +4551,9 @@
       "map_id": "MAP_SKY_PILLAR_5F",
       "layout_id": "LAYOUT_SKY_PILLAR_5F",
       "map_json_path": "data\\maps\\SkyPillar_5F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3917,7 +4563,9 @@
       "map_id": "MAP_SKY_PILLAR_TOP",
       "layout_id": "LAYOUT_SKY_PILLAR_TOP",
       "map_json_path": "data\\maps\\SkyPillar_Top\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3927,7 +4575,9 @@
       "map_id": "MAP_MAGMA_HIDEOUT_1F",
       "layout_id": "LAYOUT_MAGMA_HIDEOUT_1F",
       "map_json_path": "data\\maps\\MagmaHideout_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3937,7 +4587,9 @@
       "map_id": "MAP_MAGMA_HIDEOUT_2F_1R",
       "layout_id": "LAYOUT_MAGMA_HIDEOUT_2F_1R",
       "map_json_path": "data\\maps\\MagmaHideout_2F_1R\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3947,7 +4599,9 @@
       "map_id": "MAP_MAGMA_HIDEOUT_2F_2R",
       "layout_id": "LAYOUT_MAGMA_HIDEOUT_2F_2R",
       "map_json_path": "data\\maps\\MagmaHideout_2F_2R\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3957,7 +4611,9 @@
       "map_id": "MAP_MAGMA_HIDEOUT_3F_1R",
       "layout_id": "LAYOUT_MAGMA_HIDEOUT_3F_1R",
       "map_json_path": "data\\maps\\MagmaHideout_3F_1R\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3967,7 +4623,9 @@
       "map_id": "MAP_MAGMA_HIDEOUT_3F_2R",
       "layout_id": "LAYOUT_MAGMA_HIDEOUT_3F_2R",
       "map_json_path": "data\\maps\\MagmaHideout_3F_2R\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3977,7 +4635,9 @@
       "map_id": "MAP_MAGMA_HIDEOUT_4F",
       "layout_id": "LAYOUT_MAGMA_HIDEOUT_4F",
       "map_json_path": "data\\maps\\MagmaHideout_4F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3987,7 +4647,9 @@
       "map_id": "MAP_MAGMA_HIDEOUT_3F_3R",
       "layout_id": "LAYOUT_MAGMA_HIDEOUT_3F_3R",
       "map_json_path": "data\\maps\\MagmaHideout_3F_3R\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -3997,7 +4659,9 @@
       "map_id": "MAP_MAGMA_HIDEOUT_2F_3R",
       "layout_id": "LAYOUT_MAGMA_HIDEOUT_2F_3R",
       "map_json_path": "data\\maps\\MagmaHideout_2F_3R\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -4007,7 +4671,9 @@
       "map_id": "MAP_MIRAGE_TOWER_1F",
       "layout_id": "LAYOUT_MIRAGE_TOWER_1F",
       "map_json_path": "data\\maps\\MirageTower_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -4017,7 +4683,9 @@
       "map_id": "MAP_MIRAGE_TOWER_2F",
       "layout_id": "LAYOUT_MIRAGE_TOWER_2F",
       "map_json_path": "data\\maps\\MirageTower_2F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -4027,7 +4695,9 @@
       "map_id": "MAP_MIRAGE_TOWER_3F",
       "layout_id": "LAYOUT_MIRAGE_TOWER_3F",
       "map_json_path": "data\\maps\\MirageTower_3F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -4037,7 +4707,9 @@
       "map_id": "MAP_MIRAGE_TOWER_4F",
       "layout_id": "LAYOUT_MIRAGE_TOWER_4F",
       "map_json_path": "data\\maps\\MirageTower_4F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -4047,7 +4719,9 @@
       "map_id": "MAP_DESERT_UNDERPASS",
       "layout_id": "LAYOUT_DESERT_UNDERPASS",
       "map_json_path": "data\\maps\\DesertUnderpass\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -4057,7 +4731,9 @@
       "map_id": "MAP_ARTISAN_CAVE_B1F",
       "layout_id": "LAYOUT_ARTISAN_CAVE_B1F",
       "map_json_path": "data\\maps\\ArtisanCave_B1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -4067,7 +4743,9 @@
       "map_id": "MAP_ARTISAN_CAVE_1F",
       "layout_id": "LAYOUT_ARTISAN_CAVE_1F",
       "map_json_path": "data\\maps\\ArtisanCave_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -4077,7 +4755,9 @@
       "map_id": "MAP_UNDERWATER_MARINE_CAVE",
       "layout_id": "LAYOUT_UNDERWATER_MARINE_CAVE",
       "map_json_path": "data\\maps\\Underwater_MarineCave\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -4087,7 +4767,9 @@
       "map_id": "MAP_MARINE_CAVE_ENTRANCE",
       "layout_id": "LAYOUT_MARINE_CAVE_ENTRANCE",
       "map_json_path": "data\\maps\\MarineCave_Entrance\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -4097,7 +4779,9 @@
       "map_id": "MAP_MARINE_CAVE_END",
       "layout_id": "LAYOUT_MARINE_CAVE_END",
       "map_json_path": "data\\maps\\MarineCave_End\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -4107,7 +4791,9 @@
       "map_id": "MAP_TERRA_CAVE_ENTRANCE",
       "layout_id": "LAYOUT_TERRA_CAVE_ENTRANCE",
       "map_json_path": "data\\maps\\TerraCave_Entrance\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -4117,7 +4803,9 @@
       "map_id": "MAP_TERRA_CAVE_END",
       "layout_id": "LAYOUT_TERRA_CAVE_END",
       "map_json_path": "data\\maps\\TerraCave_End\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -4127,7 +4815,9 @@
       "map_id": "MAP_ALTERING_CAVE",
       "layout_id": "LAYOUT_ALTERING_CAVE",
       "map_json_path": "data\\maps\\AlteringCave\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_Dungeons",
@@ -4137,7 +4827,9 @@
       "map_id": "MAP_METEOR_FALLS_STEVENS_CAVE",
       "layout_id": "LAYOUT_METEOR_FALLS_STEVENS_CAVE",
       "map_json_path": "data\\maps\\MeteorFalls_StevensCave\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4147,7 +4839,9 @@
       "map_id": "MAP_SECRET_BASE_RED_CAVE1",
       "layout_id": "LAYOUT_SECRET_BASE_RED_CAVE1",
       "map_json_path": "data\\maps\\SecretBase_RedCave1\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4157,7 +4851,9 @@
       "map_id": "MAP_SECRET_BASE_BROWN_CAVE1",
       "layout_id": "LAYOUT_SECRET_BASE_BROWN_CAVE1",
       "map_json_path": "data\\maps\\SecretBase_BrownCave1\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4167,7 +4863,9 @@
       "map_id": "MAP_SECRET_BASE_BLUE_CAVE1",
       "layout_id": "LAYOUT_SECRET_BASE_BLUE_CAVE1",
       "map_json_path": "data\\maps\\SecretBase_BlueCave1\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4177,7 +4875,9 @@
       "map_id": "MAP_SECRET_BASE_YELLOW_CAVE1",
       "layout_id": "LAYOUT_SECRET_BASE_YELLOW_CAVE1",
       "map_json_path": "data\\maps\\SecretBase_YellowCave1\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4187,7 +4887,9 @@
       "map_id": "MAP_SECRET_BASE_TREE1",
       "layout_id": "LAYOUT_SECRET_BASE_TREE1",
       "map_json_path": "data\\maps\\SecretBase_Tree1\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4197,7 +4899,9 @@
       "map_id": "MAP_SECRET_BASE_SHRUB1",
       "layout_id": "LAYOUT_SECRET_BASE_SHRUB1",
       "map_json_path": "data\\maps\\SecretBase_Shrub1\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4207,7 +4911,9 @@
       "map_id": "MAP_SECRET_BASE_RED_CAVE2",
       "layout_id": "LAYOUT_SECRET_BASE_RED_CAVE2",
       "map_json_path": "data\\maps\\SecretBase_RedCave2\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4217,7 +4923,9 @@
       "map_id": "MAP_SECRET_BASE_BROWN_CAVE2",
       "layout_id": "LAYOUT_SECRET_BASE_BROWN_CAVE2",
       "map_json_path": "data\\maps\\SecretBase_BrownCave2\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4227,7 +4935,9 @@
       "map_id": "MAP_SECRET_BASE_BLUE_CAVE2",
       "layout_id": "LAYOUT_SECRET_BASE_BLUE_CAVE2",
       "map_json_path": "data\\maps\\SecretBase_BlueCave2\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4237,7 +4947,9 @@
       "map_id": "MAP_SECRET_BASE_YELLOW_CAVE2",
       "layout_id": "LAYOUT_SECRET_BASE_YELLOW_CAVE2",
       "map_json_path": "data\\maps\\SecretBase_YellowCave2\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4247,7 +4959,9 @@
       "map_id": "MAP_SECRET_BASE_TREE2",
       "layout_id": "LAYOUT_SECRET_BASE_TREE2",
       "map_json_path": "data\\maps\\SecretBase_Tree2\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4257,7 +4971,9 @@
       "map_id": "MAP_SECRET_BASE_SHRUB2",
       "layout_id": "LAYOUT_SECRET_BASE_SHRUB2",
       "map_json_path": "data\\maps\\SecretBase_Shrub2\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4267,7 +4983,9 @@
       "map_id": "MAP_SECRET_BASE_RED_CAVE3",
       "layout_id": "LAYOUT_SECRET_BASE_RED_CAVE3",
       "map_json_path": "data\\maps\\SecretBase_RedCave3\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4277,7 +4995,9 @@
       "map_id": "MAP_SECRET_BASE_BROWN_CAVE3",
       "layout_id": "LAYOUT_SECRET_BASE_BROWN_CAVE3",
       "map_json_path": "data\\maps\\SecretBase_BrownCave3\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4287,7 +5007,9 @@
       "map_id": "MAP_SECRET_BASE_BLUE_CAVE3",
       "layout_id": "LAYOUT_SECRET_BASE_BLUE_CAVE3",
       "map_json_path": "data\\maps\\SecretBase_BlueCave3\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4297,7 +5019,9 @@
       "map_id": "MAP_SECRET_BASE_YELLOW_CAVE3",
       "layout_id": "LAYOUT_SECRET_BASE_YELLOW_CAVE3",
       "map_json_path": "data\\maps\\SecretBase_YellowCave3\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4307,7 +5031,9 @@
       "map_id": "MAP_SECRET_BASE_TREE3",
       "layout_id": "LAYOUT_SECRET_BASE_TREE3",
       "map_json_path": "data\\maps\\SecretBase_Tree3\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4317,7 +5043,9 @@
       "map_id": "MAP_SECRET_BASE_SHRUB3",
       "layout_id": "LAYOUT_SECRET_BASE_SHRUB3",
       "map_json_path": "data\\maps\\SecretBase_Shrub3\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4327,7 +5055,9 @@
       "map_id": "MAP_SECRET_BASE_RED_CAVE4",
       "layout_id": "LAYOUT_SECRET_BASE_RED_CAVE4",
       "map_json_path": "data\\maps\\SecretBase_RedCave4\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4337,7 +5067,9 @@
       "map_id": "MAP_SECRET_BASE_BROWN_CAVE4",
       "layout_id": "LAYOUT_SECRET_BASE_BROWN_CAVE4",
       "map_json_path": "data\\maps\\SecretBase_BrownCave4\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4347,7 +5079,9 @@
       "map_id": "MAP_SECRET_BASE_BLUE_CAVE4",
       "layout_id": "LAYOUT_SECRET_BASE_BLUE_CAVE4",
       "map_json_path": "data\\maps\\SecretBase_BlueCave4\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4357,7 +5091,9 @@
       "map_id": "MAP_SECRET_BASE_YELLOW_CAVE4",
       "layout_id": "LAYOUT_SECRET_BASE_YELLOW_CAVE4",
       "map_json_path": "data\\maps\\SecretBase_YellowCave4\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4367,7 +5103,9 @@
       "map_id": "MAP_SECRET_BASE_TREE4",
       "layout_id": "LAYOUT_SECRET_BASE_TREE4",
       "map_json_path": "data\\maps\\SecretBase_Tree4\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4377,7 +5115,9 @@
       "map_id": "MAP_SECRET_BASE_SHRUB4",
       "layout_id": "LAYOUT_SECRET_BASE_SHRUB4",
       "map_json_path": "data\\maps\\SecretBase_Shrub4\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4387,7 +5127,9 @@
       "map_id": "MAP_BATTLE_COLOSSEUM_2P",
       "layout_id": "LAYOUT_BATTLE_COLOSSEUM_2P",
       "map_json_path": "data\\maps\\BattleColosseum_2P\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4397,7 +5139,9 @@
       "map_id": "MAP_TRADE_CENTER",
       "layout_id": "LAYOUT_TRADE_CENTER",
       "map_json_path": "data\\maps\\TradeCenter\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4407,7 +5151,9 @@
       "map_id": "MAP_RECORD_CORNER",
       "layout_id": "LAYOUT_RECORD_CORNER",
       "map_json_path": "data\\maps\\RecordCorner\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4417,7 +5163,9 @@
       "map_id": "MAP_BATTLE_COLOSSEUM_4P",
       "layout_id": "LAYOUT_BATTLE_COLOSSEUM_4P",
       "map_json_path": "data\\maps\\BattleColosseum_4P\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4427,7 +5175,9 @@
       "map_id": "MAP_CONTEST_HALL",
       "layout_id": "LAYOUT_CONTEST_HALL",
       "map_json_path": "data\\maps\\ContestHall\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4437,7 +5187,9 @@
       "map_id": "MAP_UNUSED_CONTEST_HALL1",
       "layout_id": "LAYOUT_UNUSED_CONTEST_HALL1",
       "map_json_path": "data\\maps\\UnusedContestHall1\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4447,7 +5199,9 @@
       "map_id": "MAP_UNUSED_CONTEST_HALL2",
       "layout_id": "LAYOUT_UNUSED_CONTEST_HALL2",
       "map_json_path": "data\\maps\\UnusedContestHall2\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4457,7 +5211,9 @@
       "map_id": "MAP_UNUSED_CONTEST_HALL3",
       "layout_id": "LAYOUT_UNUSED_CONTEST_HALL3",
       "map_json_path": "data\\maps\\UnusedContestHall3\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4467,7 +5223,9 @@
       "map_id": "MAP_UNUSED_CONTEST_HALL4",
       "layout_id": "LAYOUT_UNUSED_CONTEST_HALL4",
       "map_json_path": "data\\maps\\UnusedContestHall4\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4477,7 +5235,9 @@
       "map_id": "MAP_UNUSED_CONTEST_HALL5",
       "layout_id": "LAYOUT_UNUSED_CONTEST_HALL5",
       "map_json_path": "data\\maps\\UnusedContestHall5\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4487,7 +5247,9 @@
       "map_id": "MAP_UNUSED_CONTEST_HALL6",
       "layout_id": "LAYOUT_UNUSED_CONTEST_HALL6",
       "map_json_path": "data\\maps\\UnusedContestHall6\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4497,7 +5259,9 @@
       "map_id": "MAP_CONTEST_HALL_BEAUTY",
       "layout_id": "LAYOUT_CONTEST_HALL_BEAUTY",
       "map_json_path": "data\\maps\\ContestHallBeauty\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4507,7 +5271,9 @@
       "map_id": "MAP_CONTEST_HALL_TOUGH",
       "layout_id": "LAYOUT_CONTEST_HALL_TOUGH",
       "map_json_path": "data\\maps\\ContestHallTough\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4517,7 +5283,9 @@
       "map_id": "MAP_CONTEST_HALL_COOL",
       "layout_id": "LAYOUT_CONTEST_HALL_COOL",
       "map_json_path": "data\\maps\\ContestHallCool\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4527,7 +5295,9 @@
       "map_id": "MAP_CONTEST_HALL_SMART",
       "layout_id": "LAYOUT_CONTEST_HALL_SMART",
       "map_json_path": "data\\maps\\ContestHallSmart\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4537,7 +5307,9 @@
       "map_id": "MAP_CONTEST_HALL_CUTE",
       "layout_id": "LAYOUT_CONTEST_HALL_CUTE",
       "map_json_path": "data\\maps\\ContestHallCute\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4547,7 +5319,9 @@
       "map_id": "MAP_INSIDE_OF_TRUCK",
       "layout_id": "LAYOUT_INSIDE_OF_TRUCK",
       "map_json_path": "data\\maps\\InsideOfTruck\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4557,7 +5331,9 @@
       "map_id": "MAP_SS_TIDAL_CORRIDOR",
       "layout_id": "LAYOUT_SS_TIDAL_CORRIDOR",
       "map_json_path": "data\\maps\\SSTidalCorridor\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4567,7 +5343,9 @@
       "map_id": "MAP_SS_TIDAL_LOWER_DECK",
       "layout_id": "LAYOUT_SS_TIDAL_LOWER_DECK",
       "map_json_path": "data\\maps\\SSTidalLowerDeck\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4577,7 +5355,9 @@
       "map_id": "MAP_SS_TIDAL_ROOMS",
       "layout_id": "LAYOUT_SS_TIDAL_ROOMS",
       "map_json_path": "data\\maps\\SSTidalRooms\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4587,7 +5367,9 @@
       "map_id": "MAP_BATTLE_PYRAMID_SQUARE01",
       "layout_id": "LAYOUT_BATTLE_PYRAMID_SQUARE01",
       "map_json_path": "data\\maps\\BattlePyramidSquare01\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4597,7 +5379,9 @@
       "map_id": "MAP_BATTLE_PYRAMID_SQUARE02",
       "layout_id": "LAYOUT_BATTLE_PYRAMID_SQUARE02",
       "map_json_path": "data\\maps\\BattlePyramidSquare02\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4607,7 +5391,9 @@
       "map_id": "MAP_BATTLE_PYRAMID_SQUARE03",
       "layout_id": "LAYOUT_BATTLE_PYRAMID_SQUARE03",
       "map_json_path": "data\\maps\\BattlePyramidSquare03\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4617,7 +5403,9 @@
       "map_id": "MAP_BATTLE_PYRAMID_SQUARE04",
       "layout_id": "LAYOUT_BATTLE_PYRAMID_SQUARE04",
       "map_json_path": "data\\maps\\BattlePyramidSquare04\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4627,7 +5415,9 @@
       "map_id": "MAP_BATTLE_PYRAMID_SQUARE05",
       "layout_id": "LAYOUT_BATTLE_PYRAMID_SQUARE05",
       "map_json_path": "data\\maps\\BattlePyramidSquare05\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4637,7 +5427,9 @@
       "map_id": "MAP_BATTLE_PYRAMID_SQUARE06",
       "layout_id": "LAYOUT_BATTLE_PYRAMID_SQUARE06",
       "map_json_path": "data\\maps\\BattlePyramidSquare06\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4647,7 +5439,9 @@
       "map_id": "MAP_BATTLE_PYRAMID_SQUARE07",
       "layout_id": "LAYOUT_BATTLE_PYRAMID_SQUARE07",
       "map_json_path": "data\\maps\\BattlePyramidSquare07\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4657,7 +5451,9 @@
       "map_id": "MAP_BATTLE_PYRAMID_SQUARE08",
       "layout_id": "LAYOUT_BATTLE_PYRAMID_SQUARE08",
       "map_json_path": "data\\maps\\BattlePyramidSquare08\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4667,7 +5463,9 @@
       "map_id": "MAP_BATTLE_PYRAMID_SQUARE09",
       "layout_id": "LAYOUT_BATTLE_PYRAMID_SQUARE09",
       "map_json_path": "data\\maps\\BattlePyramidSquare09\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4677,7 +5475,9 @@
       "map_id": "MAP_BATTLE_PYRAMID_SQUARE10",
       "layout_id": "LAYOUT_BATTLE_PYRAMID_SQUARE10",
       "map_json_path": "data\\maps\\BattlePyramidSquare10\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4687,7 +5487,9 @@
       "map_id": "MAP_BATTLE_PYRAMID_SQUARE11",
       "layout_id": "LAYOUT_BATTLE_PYRAMID_SQUARE11",
       "map_json_path": "data\\maps\\BattlePyramidSquare11\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4697,7 +5499,9 @@
       "map_id": "MAP_BATTLE_PYRAMID_SQUARE12",
       "layout_id": "LAYOUT_BATTLE_PYRAMID_SQUARE12",
       "map_json_path": "data\\maps\\BattlePyramidSquare12\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4707,7 +5511,9 @@
       "map_id": "MAP_BATTLE_PYRAMID_SQUARE13",
       "layout_id": "LAYOUT_BATTLE_PYRAMID_SQUARE13",
       "map_json_path": "data\\maps\\BattlePyramidSquare13\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4717,7 +5523,9 @@
       "map_id": "MAP_BATTLE_PYRAMID_SQUARE14",
       "layout_id": "LAYOUT_BATTLE_PYRAMID_SQUARE14",
       "map_json_path": "data\\maps\\BattlePyramidSquare14\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4727,7 +5535,9 @@
       "map_id": "MAP_BATTLE_PYRAMID_SQUARE15",
       "layout_id": "LAYOUT_BATTLE_PYRAMID_SQUARE15",
       "map_json_path": "data\\maps\\BattlePyramidSquare15\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4737,7 +5547,9 @@
       "map_id": "MAP_BATTLE_PYRAMID_SQUARE16",
       "layout_id": "LAYOUT_BATTLE_PYRAMID_SQUARE16",
       "map_json_path": "data\\maps\\BattlePyramidSquare16\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorDynamic",
@@ -4747,7 +5559,9 @@
       "map_id": "MAP_UNION_ROOM",
       "layout_id": "LAYOUT_UNION_ROOM",
       "map_json_path": "data\\maps\\UnionRoom\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -4768,7 +5582,9 @@
           "offset": 0,
           "target_map_id": "MAP_SAFARI_ZONE_SOUTHWEST"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -4794,7 +5610,9 @@
           "offset": 0,
           "target_map_id": "MAP_SAFARI_ZONE_NORTHEAST"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -4815,7 +5633,9 @@
           "offset": 0,
           "target_map_id": "MAP_SAFARI_ZONE_SOUTH"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -4841,7 +5661,9 @@
           "offset": 0,
           "target_map_id": "MAP_SAFARI_ZONE_SOUTHEAST"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -4857,7 +5679,9 @@
           "offset": 0,
           "target_map_id": "MAP_BATTLE_FRONTIER_OUTSIDE_EAST"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -4867,7 +5691,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_BATTLE_TOWER_LOBBY",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_BATTLE_TOWER_LOBBY",
       "map_json_path": "data\\maps\\BattleFrontier_BattleTowerLobby\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -4877,7 +5703,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_BATTLE_TOWER_ELEVATOR",
       "layout_id": "LAYOUT_BATTLE_ELEVATOR",
       "map_json_path": "data\\maps\\BattleFrontier_BattleTowerElevator\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -4887,7 +5715,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_BATTLE_TOWER_CORRIDOR",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_BATTLE_TOWER_CORRIDOR",
       "map_json_path": "data\\maps\\BattleFrontier_BattleTowerCorridor\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -4897,7 +5727,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_BATTLE_TOWER_BATTLE_ROOM",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_BATTLE_TOWER_BATTLE_ROOM",
       "map_json_path": "data\\maps\\BattleFrontier_BattleTowerBattleRoom\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -4907,7 +5739,9 @@
       "map_id": "MAP_SOUTHERN_ISLAND_EXTERIOR",
       "layout_id": "LAYOUT_SOUTHERN_ISLAND_EXTERIOR",
       "map_json_path": "data\\maps\\SouthernIsland_Exterior\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -4917,7 +5751,9 @@
       "map_id": "MAP_SOUTHERN_ISLAND_INTERIOR",
       "layout_id": "LAYOUT_SOUTHERN_ISLAND_INTERIOR",
       "map_json_path": "data\\maps\\SouthernIsland_Interior\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -4927,7 +5763,9 @@
       "map_id": "MAP_SAFARI_ZONE_REST_HOUSE",
       "layout_id": "LAYOUT_SAFARI_ZONE_REST_HOUSE",
       "map_json_path": "data\\maps\\SafariZone_RestHouse\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -4948,7 +5786,9 @@
           "offset": 0,
           "target_map_id": "MAP_SAFARI_ZONE_SOUTHEAST"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -4969,7 +5809,9 @@
           "offset": 0,
           "target_map_id": "MAP_SAFARI_ZONE_NORTHEAST"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -4985,7 +5827,9 @@
           "offset": 0,
           "target_map_id": "MAP_BATTLE_FRONTIER_OUTSIDE_WEST"
         }
-      ]
+      ],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -4995,7 +5839,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_BATTLE_TOWER_MULTI_PARTNER_ROOM",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_BATTLE_TOWER_MULTI_PARTNER_ROOM",
       "map_json_path": "data\\maps\\BattleFrontier_BattleTowerMultiPartnerRoom\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5005,7 +5851,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_BATTLE_TOWER_MULTI_CORRIDOR",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_BATTLE_TOWER_MULTI_CORRIDOR",
       "map_json_path": "data\\maps\\BattleFrontier_BattleTowerMultiCorridor\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5015,7 +5863,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_BATTLE_TOWER_MULTI_BATTLE_ROOM",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_BATTLE_TOWER_BATTLE_ROOM",
       "map_json_path": "data\\maps\\BattleFrontier_BattleTowerMultiBattleRoom\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5025,7 +5875,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_BATTLE_DOME_LOBBY",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_BATTLE_DOME_LOBBY",
       "map_json_path": "data\\maps\\BattleFrontier_BattleDomeLobby\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5035,7 +5887,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_BATTLE_DOME_CORRIDOR",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_BATTLE_DOME_CORRIDOR",
       "map_json_path": "data\\maps\\BattleFrontier_BattleDomeCorridor\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5045,7 +5899,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_BATTLE_DOME_PRE_BATTLE_ROOM",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_BATTLE_DOME_PRE_BATTLE_ROOM",
       "map_json_path": "data\\maps\\BattleFrontier_BattleDomePreBattleRoom\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5055,7 +5911,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_BATTLE_DOME_BATTLE_ROOM",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_BATTLE_DOME_BATTLE_ROOM",
       "map_json_path": "data\\maps\\BattleFrontier_BattleDomeBattleRoom\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5065,7 +5923,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_BATTLE_PALACE_LOBBY",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_BATTLE_PALACE_LOBBY",
       "map_json_path": "data\\maps\\BattleFrontier_BattlePalaceLobby\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5075,7 +5935,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_BATTLE_PALACE_CORRIDOR",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_BATTLE_PALACE_CORRIDOR",
       "map_json_path": "data\\maps\\BattleFrontier_BattlePalaceCorridor\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5085,7 +5947,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_BATTLE_PALACE_BATTLE_ROOM",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_BATTLE_PALACE_BATTLE_ROOM",
       "map_json_path": "data\\maps\\BattleFrontier_BattlePalaceBattleRoom\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5095,7 +5959,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_BATTLE_PYRAMID_LOBBY",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_BATTLE_PYRAMID_LOBBY",
       "map_json_path": "data\\maps\\BattleFrontier_BattlePyramidLobby\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5105,7 +5971,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_BATTLE_PYRAMID_FLOOR",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_BATTLE_PYRAMID_FLOOR",
       "map_json_path": "data\\maps\\BattleFrontier_BattlePyramidFloor\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5115,7 +5983,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_BATTLE_PYRAMID_TOP",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_BATTLE_PYRAMID_TOP",
       "map_json_path": "data\\maps\\BattleFrontier_BattlePyramidTop\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5125,7 +5995,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_BATTLE_ARENA_LOBBY",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_BATTLE_ARENA_LOBBY",
       "map_json_path": "data\\maps\\BattleFrontier_BattleArenaLobby\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5135,7 +6007,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_BATTLE_ARENA_CORRIDOR",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_BATTLE_ARENA_CORRIDOR",
       "map_json_path": "data\\maps\\BattleFrontier_BattleArenaCorridor\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5145,7 +6019,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_BATTLE_ARENA_BATTLE_ROOM",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_BATTLE_ARENA_BATTLE_ROOM",
       "map_json_path": "data\\maps\\BattleFrontier_BattleArenaBattleRoom\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5155,7 +6031,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_BATTLE_FACTORY_LOBBY",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_BATTLE_FACTORY_LOBBY",
       "map_json_path": "data\\maps\\BattleFrontier_BattleFactoryLobby\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5165,7 +6043,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_BATTLE_FACTORY_PRE_BATTLE_ROOM",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_BATTLE_FACTORY_PRE_BATTLE_ROOM",
       "map_json_path": "data\\maps\\BattleFrontier_BattleFactoryPreBattleRoom\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5175,7 +6055,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_BATTLE_FACTORY_BATTLE_ROOM",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_BATTLE_FACTORY_BATTLE_ROOM",
       "map_json_path": "data\\maps\\BattleFrontier_BattleFactoryBattleRoom\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5185,7 +6067,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_BATTLE_PIKE_LOBBY",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_BATTLE_PIKE_LOBBY",
       "map_json_path": "data\\maps\\BattleFrontier_BattlePikeLobby\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5195,7 +6079,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_BATTLE_PIKE_CORRIDOR",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_BATTLE_PIKE_CORRIDOR",
       "map_json_path": "data\\maps\\BattleFrontier_BattlePikeCorridor\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5205,7 +6091,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_BATTLE_PIKE_THREE_PATH_ROOM",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_BATTLE_PIKE_THREE_PATH_ROOM",
       "map_json_path": "data\\maps\\BattleFrontier_BattlePikeThreePathRoom\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5215,7 +6103,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_BATTLE_PIKE_ROOM_NORMAL",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_BATTLE_PIKE_ROOM_NORMAL",
       "map_json_path": "data\\maps\\BattleFrontier_BattlePikeRoomNormal\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5225,7 +6115,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_BATTLE_PIKE_ROOM_FINAL",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_BATTLE_PIKE_ROOM_FINAL",
       "map_json_path": "data\\maps\\BattleFrontier_BattlePikeRoomFinal\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5235,7 +6127,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_BATTLE_PIKE_ROOM_WILD_MONS",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_BATTLE_PIKE_ROOM_WILD_MONS",
       "map_json_path": "data\\maps\\BattleFrontier_BattlePikeRoomWildMons\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5245,7 +6139,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_RANKING_HALL",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_RANKING_HALL",
       "map_json_path": "data\\maps\\BattleFrontier_RankingHall\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5255,7 +6151,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_LOUNGE1",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_LOUNGE2",
       "map_json_path": "data\\maps\\BattleFrontier_Lounge1\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5265,7 +6163,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_EXCHANGE_SERVICE_CORNER",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_EXCHANGE_SERVICE_CORNER",
       "map_json_path": "data\\maps\\BattleFrontier_ExchangeServiceCorner\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5275,7 +6175,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_LOUNGE2",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_LOUNGE1",
       "map_json_path": "data\\maps\\BattleFrontier_Lounge2\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5285,7 +6187,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_LOUNGE3",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_LOUNGE2",
       "map_json_path": "data\\maps\\BattleFrontier_Lounge3\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5295,7 +6199,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_LOUNGE4",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_LOUNGE2",
       "map_json_path": "data\\maps\\BattleFrontier_Lounge4\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5305,7 +6211,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_SCOTTS_HOUSE",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_SCOTTS_HOUSE",
       "map_json_path": "data\\maps\\BattleFrontier_ScottsHouse\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5315,7 +6223,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_LOUNGE5",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_LOUNGE1",
       "map_json_path": "data\\maps\\BattleFrontier_Lounge5\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5325,7 +6235,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_LOUNGE6",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_LOUNGE2",
       "map_json_path": "data\\maps\\BattleFrontier_Lounge6\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5335,7 +6247,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_LOUNGE7",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_LOUNGE2",
       "map_json_path": "data\\maps\\BattleFrontier_Lounge7\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5345,7 +6259,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_RECEPTION_GATE",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_RECEPTION_GATE",
       "map_json_path": "data\\maps\\BattleFrontier_ReceptionGate\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5355,7 +6271,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_LOUNGE8",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_LOUNGE2",
       "map_json_path": "data\\maps\\BattleFrontier_Lounge8\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5365,7 +6283,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_LOUNGE9",
       "layout_id": "LAYOUT_BATTLE_FRONTIER_LOUNGE2",
       "map_json_path": "data\\maps\\BattleFrontier_Lounge9\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5375,7 +6295,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_POKEMON_CENTER_1F",
       "layout_id": "LAYOUT_POKEMON_CENTER_1F",
       "map_json_path": "data\\maps\\BattleFrontier_PokemonCenter_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5385,7 +6307,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_POKEMON_CENTER_2F",
       "layout_id": "LAYOUT_POKEMON_CENTER_2F",
       "map_json_path": "data\\maps\\BattleFrontier_PokemonCenter_2F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5395,7 +6319,9 @@
       "map_id": "MAP_BATTLE_FRONTIER_MART",
       "layout_id": "LAYOUT_MART",
       "map_json_path": "data\\maps\\BattleFrontier_Mart\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5405,7 +6331,9 @@
       "map_id": "MAP_FARAWAY_ISLAND_ENTRANCE",
       "layout_id": "LAYOUT_FARAWAY_ISLAND_ENTRANCE",
       "map_json_path": "data\\maps\\FarawayIsland_Entrance\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5415,7 +6343,9 @@
       "map_id": "MAP_FARAWAY_ISLAND_INTERIOR",
       "layout_id": "LAYOUT_FARAWAY_ISLAND_INTERIOR",
       "map_json_path": "data\\maps\\FarawayIsland_Interior\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5425,7 +6355,9 @@
       "map_id": "MAP_BIRTH_ISLAND_EXTERIOR",
       "layout_id": "LAYOUT_BIRTH_ISLAND_EXTERIOR",
       "map_json_path": "data\\maps\\BirthIsland_Exterior\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5435,7 +6367,9 @@
       "map_id": "MAP_BIRTH_ISLAND_HARBOR",
       "layout_id": "LAYOUT_ISLAND_HARBOR",
       "map_json_path": "data\\maps\\BirthIsland_Harbor\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5445,7 +6379,9 @@
       "map_id": "MAP_TRAINER_HILL_ENTRANCE",
       "layout_id": "LAYOUT_TRAINER_HILL_ENTRANCE",
       "map_json_path": "data\\maps\\TrainerHill_Entrance\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5455,7 +6391,9 @@
       "map_id": "MAP_TRAINER_HILL_1F",
       "layout_id": "LAYOUT_TRAINER_HILL_1F",
       "map_json_path": "data\\maps\\TrainerHill_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5465,7 +6403,9 @@
       "map_id": "MAP_TRAINER_HILL_2F",
       "layout_id": "LAYOUT_TRAINER_HILL_2F",
       "map_json_path": "data\\maps\\TrainerHill_2F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5475,7 +6415,9 @@
       "map_id": "MAP_TRAINER_HILL_3F",
       "layout_id": "LAYOUT_TRAINER_HILL_3F",
       "map_json_path": "data\\maps\\TrainerHill_3F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5485,7 +6427,9 @@
       "map_id": "MAP_TRAINER_HILL_4F",
       "layout_id": "LAYOUT_TRAINER_HILL_4F",
       "map_json_path": "data\\maps\\TrainerHill_4F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5495,7 +6439,9 @@
       "map_id": "MAP_TRAINER_HILL_ROOF",
       "layout_id": "LAYOUT_TRAINER_HILL_ROOF",
       "map_json_path": "data\\maps\\TrainerHill_Roof\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5505,7 +6451,9 @@
       "map_id": "MAP_NAVEL_ROCK_EXTERIOR",
       "layout_id": "LAYOUT_NAVEL_ROCK_EXTERIOR",
       "map_json_path": "data\\maps\\NavelRock_Exterior\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5515,7 +6463,9 @@
       "map_id": "MAP_NAVEL_ROCK_HARBOR",
       "layout_id": "LAYOUT_ISLAND_HARBOR",
       "map_json_path": "data\\maps\\NavelRock_Harbor\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5525,7 +6475,9 @@
       "map_id": "MAP_NAVEL_ROCK_ENTRANCE",
       "layout_id": "LAYOUT_NAVEL_ROCK_ENTRANCE",
       "map_json_path": "data\\maps\\NavelRock_Entrance\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5535,7 +6487,9 @@
       "map_id": "MAP_NAVEL_ROCK_B1F",
       "layout_id": "LAYOUT_NAVEL_ROCK_B1F",
       "map_json_path": "data\\maps\\NavelRock_B1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5545,7 +6499,9 @@
       "map_id": "MAP_NAVEL_ROCK_FORK",
       "layout_id": "LAYOUT_NAVEL_ROCK_FORK",
       "map_json_path": "data\\maps\\NavelRock_Fork\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5555,7 +6511,9 @@
       "map_id": "MAP_NAVEL_ROCK_UP1",
       "layout_id": "LAYOUT_NAVEL_ROCK_LADDER_ROOM1",
       "map_json_path": "data\\maps\\NavelRock_Up1\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5565,7 +6523,9 @@
       "map_id": "MAP_NAVEL_ROCK_UP2",
       "layout_id": "LAYOUT_NAVEL_ROCK_LADDER_ROOM2",
       "map_json_path": "data\\maps\\NavelRock_Up2\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5575,7 +6535,9 @@
       "map_id": "MAP_NAVEL_ROCK_UP3",
       "layout_id": "LAYOUT_NAVEL_ROCK_LADDER_ROOM1",
       "map_json_path": "data\\maps\\NavelRock_Up3\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5585,7 +6547,9 @@
       "map_id": "MAP_NAVEL_ROCK_UP4",
       "layout_id": "LAYOUT_NAVEL_ROCK_LADDER_ROOM2",
       "map_json_path": "data\\maps\\NavelRock_Up4\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5595,7 +6559,9 @@
       "map_id": "MAP_NAVEL_ROCK_TOP",
       "layout_id": "LAYOUT_NAVEL_ROCK_TOP",
       "map_json_path": "data\\maps\\NavelRock_Top\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5605,7 +6571,9 @@
       "map_id": "MAP_NAVEL_ROCK_DOWN01",
       "layout_id": "LAYOUT_NAVEL_ROCK_LADDER_ROOM1",
       "map_json_path": "data\\maps\\NavelRock_Down01\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5615,7 +6583,9 @@
       "map_id": "MAP_NAVEL_ROCK_DOWN02",
       "layout_id": "LAYOUT_NAVEL_ROCK_LADDER_ROOM2",
       "map_json_path": "data\\maps\\NavelRock_Down02\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5625,7 +6595,9 @@
       "map_id": "MAP_NAVEL_ROCK_DOWN03",
       "layout_id": "LAYOUT_NAVEL_ROCK_LADDER_ROOM1",
       "map_json_path": "data\\maps\\NavelRock_Down03\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5635,7 +6607,9 @@
       "map_id": "MAP_NAVEL_ROCK_DOWN04",
       "layout_id": "LAYOUT_NAVEL_ROCK_LADDER_ROOM2",
       "map_json_path": "data\\maps\\NavelRock_Down04\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5645,7 +6619,9 @@
       "map_id": "MAP_NAVEL_ROCK_DOWN05",
       "layout_id": "LAYOUT_NAVEL_ROCK_LADDER_ROOM1",
       "map_json_path": "data\\maps\\NavelRock_Down05\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5655,7 +6631,9 @@
       "map_id": "MAP_NAVEL_ROCK_DOWN06",
       "layout_id": "LAYOUT_NAVEL_ROCK_LADDER_ROOM2",
       "map_json_path": "data\\maps\\NavelRock_Down06\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5665,7 +6643,9 @@
       "map_id": "MAP_NAVEL_ROCK_DOWN07",
       "layout_id": "LAYOUT_NAVEL_ROCK_LADDER_ROOM1",
       "map_json_path": "data\\maps\\NavelRock_Down07\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5675,7 +6655,9 @@
       "map_id": "MAP_NAVEL_ROCK_DOWN08",
       "layout_id": "LAYOUT_NAVEL_ROCK_LADDER_ROOM2",
       "map_json_path": "data\\maps\\NavelRock_Down08\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5685,7 +6667,9 @@
       "map_id": "MAP_NAVEL_ROCK_DOWN09",
       "layout_id": "LAYOUT_NAVEL_ROCK_LADDER_ROOM1",
       "map_json_path": "data\\maps\\NavelRock_Down09\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5695,7 +6679,9 @@
       "map_id": "MAP_NAVEL_ROCK_DOWN10",
       "layout_id": "LAYOUT_NAVEL_ROCK_LADDER_ROOM2",
       "map_json_path": "data\\maps\\NavelRock_Down10\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5705,7 +6691,9 @@
       "map_id": "MAP_NAVEL_ROCK_DOWN11",
       "layout_id": "LAYOUT_NAVEL_ROCK_LADDER_ROOM1",
       "map_json_path": "data\\maps\\NavelRock_Down11\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5715,7 +6703,9 @@
       "map_id": "MAP_NAVEL_ROCK_BOTTOM",
       "layout_id": "LAYOUT_NAVEL_ROCK_BOTTOM",
       "map_json_path": "data\\maps\\NavelRock_Bottom\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": true
     },
     {
       "group_name": "gMapGroup_SpecialArea",
@@ -5725,7 +6715,9 @@
       "map_id": "MAP_TRAINER_HILL_ELEVATOR",
       "layout_id": "LAYOUT_BATTLE_ELEVATOR",
       "map_json_path": "data\\maps\\TrainerHill_Elevator\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRoute104Prototype",
@@ -5735,7 +6727,9 @@
       "map_id": "MAP_ROUTE104_PROTOTYPE",
       "layout_id": "LAYOUT_ROUTE104_PROTOTYPE",
       "map_json_path": "data\\maps\\Route104_Prototype\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRoute104Prototype",
@@ -5745,7 +6739,9 @@
       "map_id": "MAP_ROUTE104_PROTOTYPE_PRETTY_PETAL_FLOWER_SHOP",
       "layout_id": "LAYOUT_ROUTE104_PRETTY_PETAL_FLOWER_SHOP",
       "map_json_path": "data\\maps\\Route104_PrototypePrettyPetalFlowerShop\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRoute109",
@@ -5755,7 +6751,9 @@
       "map_id": "MAP_ROUTE109_SEASHORE_HOUSE",
       "layout_id": "LAYOUT_ROUTE109_SEASHORE_HOUSE",
       "map_json_path": "data\\maps\\Route109_SeashoreHouse\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRoute110",
@@ -5765,7 +6763,9 @@
       "map_id": "MAP_ROUTE110_TRICK_HOUSE_ENTRANCE",
       "layout_id": "LAYOUT_ROUTE110_TRICK_HOUSE_ENTRANCE",
       "map_json_path": "data\\maps\\Route110_TrickHouseEntrance\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRoute110",
@@ -5775,7 +6775,9 @@
       "map_id": "MAP_ROUTE110_TRICK_HOUSE_END",
       "layout_id": "LAYOUT_ROUTE110_TRICK_HOUSE_END",
       "map_json_path": "data\\maps\\Route110_TrickHouseEnd\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRoute110",
@@ -5785,7 +6787,9 @@
       "map_id": "MAP_ROUTE110_TRICK_HOUSE_CORRIDOR",
       "layout_id": "LAYOUT_ROUTE110_TRICK_HOUSE_CORRIDOR",
       "map_json_path": "data\\maps\\Route110_TrickHouseCorridor\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRoute110",
@@ -5795,7 +6799,9 @@
       "map_id": "MAP_ROUTE110_TRICK_HOUSE_PUZZLE1",
       "layout_id": "LAYOUT_ROUTE110_TRICK_HOUSE_PUZZLE1",
       "map_json_path": "data\\maps\\Route110_TrickHousePuzzle1\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRoute110",
@@ -5805,7 +6811,9 @@
       "map_id": "MAP_ROUTE110_TRICK_HOUSE_PUZZLE2",
       "layout_id": "LAYOUT_ROUTE110_TRICK_HOUSE_PUZZLE2",
       "map_json_path": "data\\maps\\Route110_TrickHousePuzzle2\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRoute110",
@@ -5815,7 +6823,9 @@
       "map_id": "MAP_ROUTE110_TRICK_HOUSE_PUZZLE3",
       "layout_id": "LAYOUT_ROUTE110_TRICK_HOUSE_PUZZLE3",
       "map_json_path": "data\\maps\\Route110_TrickHousePuzzle3\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRoute110",
@@ -5825,7 +6835,9 @@
       "map_id": "MAP_ROUTE110_TRICK_HOUSE_PUZZLE4",
       "layout_id": "LAYOUT_ROUTE110_TRICK_HOUSE_PUZZLE4",
       "map_json_path": "data\\maps\\Route110_TrickHousePuzzle4\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRoute110",
@@ -5835,7 +6847,9 @@
       "map_id": "MAP_ROUTE110_TRICK_HOUSE_PUZZLE5",
       "layout_id": "LAYOUT_ROUTE110_TRICK_HOUSE_PUZZLE5",
       "map_json_path": "data\\maps\\Route110_TrickHousePuzzle5\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRoute110",
@@ -5845,7 +6859,9 @@
       "map_id": "MAP_ROUTE110_TRICK_HOUSE_PUZZLE6",
       "layout_id": "LAYOUT_ROUTE110_TRICK_HOUSE_PUZZLE6",
       "map_json_path": "data\\maps\\Route110_TrickHousePuzzle6\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRoute110",
@@ -5855,7 +6871,9 @@
       "map_id": "MAP_ROUTE110_TRICK_HOUSE_PUZZLE7",
       "layout_id": "LAYOUT_ROUTE110_TRICK_HOUSE_PUZZLE7",
       "map_json_path": "data\\maps\\Route110_TrickHousePuzzle7\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRoute110",
@@ -5865,7 +6883,9 @@
       "map_id": "MAP_ROUTE110_TRICK_HOUSE_PUZZLE8",
       "layout_id": "LAYOUT_ROUTE110_TRICK_HOUSE_PUZZLE8",
       "map_json_path": "data\\maps\\Route110_TrickHousePuzzle8\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRoute110",
@@ -5875,7 +6895,9 @@
       "map_id": "MAP_ROUTE110_SEASIDE_CYCLING_ROAD_SOUTH_ENTRANCE",
       "layout_id": "LAYOUT_ROUTE110_SEASIDE_CYCLING_ROAD_ENTRANCE",
       "map_json_path": "data\\maps\\Route110_SeasideCyclingRoadSouthEntrance\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRoute110",
@@ -5885,7 +6907,9 @@
       "map_id": "MAP_ROUTE110_SEASIDE_CYCLING_ROAD_NORTH_ENTRANCE",
       "layout_id": "LAYOUT_ROUTE110_SEASIDE_CYCLING_ROAD_ENTRANCE",
       "map_json_path": "data\\maps\\Route110_SeasideCyclingRoadNorthEntrance\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": true,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRoute113",
@@ -5895,7 +6919,9 @@
       "map_id": "MAP_ROUTE113_GLASS_WORKSHOP",
       "layout_id": "LAYOUT_HOUSE4",
       "map_json_path": "data\\maps\\Route113_GlassWorkshop\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRoute123",
@@ -5905,7 +6931,9 @@
       "map_id": "MAP_ROUTE123_BERRY_MASTERS_HOUSE",
       "layout_id": "LAYOUT_HOUSE2",
       "map_json_path": "data\\maps\\Route123_BerryMastersHouse\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRoute119",
@@ -5915,7 +6943,9 @@
       "map_id": "MAP_ROUTE119_WEATHER_INSTITUTE_1F",
       "layout_id": "LAYOUT_ROUTE119_WEATHER_INSTITUTE_1F",
       "map_json_path": "data\\maps\\Route119_WeatherInstitute_1F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRoute119",
@@ -5925,7 +6955,9 @@
       "map_id": "MAP_ROUTE119_WEATHER_INSTITUTE_2F",
       "layout_id": "LAYOUT_ROUTE119_WEATHER_INSTITUTE_2F",
       "map_json_path": "data\\maps\\Route119_WeatherInstitute_2F\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRoute119",
@@ -5935,7 +6967,9 @@
       "map_id": "MAP_ROUTE119_HOUSE",
       "layout_id": "LAYOUT_HOUSE1",
       "map_json_path": "data\\maps\\Route119_House\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     },
     {
       "group_name": "gMapGroup_IndoorRoute124",
@@ -5945,7 +6979,9 @@
       "map_id": "MAP_ROUTE124_DIVING_TREASURE_HUNTERS_HOUSE",
       "layout_id": "LAYOUT_ROUTE124_DIVING_TREASURE_HUNTERS_HOUSE",
       "map_json_path": "data\\maps\\Route124_DivingTreasureHuntersHouse\\map.json",
-      "connections": []
+      "connections": [],
+      "allow_cycling": false,
+      "allow_running": false
     }
   ]
 }

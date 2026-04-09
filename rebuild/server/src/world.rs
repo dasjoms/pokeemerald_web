@@ -17,8 +17,8 @@ use crate::{
         MovementMap, WALK_SAMPLE_MS,
     },
     protocol::{
-        Direction, PlayerAvatar, RejectionReason, ServerMessage, SessionAccepted, WalkInput,
-        WalkResult, WorldSnapshot,
+        Direction, MovementMode, PlayerAvatar, RejectionReason, ServerMessage, SessionAccepted,
+        WalkInput, WalkResult, WorldSnapshot,
     },
     session::{ActiveWalkTransition, PlayerState, Session, SessionInit, MAX_PENDING_WALK_INPUTS},
 };
@@ -47,6 +47,8 @@ pub struct MapData {
     pub metatile_id: Vec<u16>,
     pub collision: Vec<u8>,
     pub behavior: Vec<u8>,
+    pub allow_cycling: bool,
+    pub allow_running: bool,
     pub connections: Vec<MapConnection>,
 }
 
@@ -111,6 +113,8 @@ impl World {
             let map = MapData::from_layout_file(
                 &map_id,
                 &layout_path,
+                map_entry.allow_cycling,
+                map_entry.allow_running,
                 map_entry
                     .connections
                     .iter()
@@ -169,6 +173,7 @@ impl World {
                 tile_y: spawn_y,
                 facing: Direction::Down,
                 avatar: PlayerAvatar::Brendan,
+                is_on_bike: false,
             },
             outbound,
         );
@@ -370,6 +375,20 @@ impl World {
                     continue;
                 };
 
+                if session.player_state.is_on_bike && !current_map.allow_cycling {
+                    session.player_state.is_on_bike = false;
+                }
+
+                let resolved_movement_mode = if session.player_state.is_on_bike {
+                    input.movement_mode
+                } else if matches!(input.movement_mode, MovementMode::Run)
+                    && !current_map.allow_running
+                {
+                    MovementMode::Walk
+                } else {
+                    input.movement_mode
+                };
+
                 let (dx, dy) = facing_delta(input.direction);
                 let attempted_x = session.player_state.tile_x as i32 + dx;
                 let attempted_y = session.player_state.tile_y as i32 + dy;
@@ -424,7 +443,7 @@ impl World {
                             next_x,
                             next_y,
                             input.direction,
-                            input.movement_mode,
+                            resolved_movement_mode,
                         ));
                         (true, RejectionReason::None, next_x, next_y)
                     }
@@ -622,6 +641,8 @@ impl MapData {
     fn from_layout_file(
         map_id: impl Into<String>,
         layout_path: &str,
+        allow_cycling: bool,
+        allow_running: bool,
         connections: Vec<MapConnection>,
     ) -> anyhow::Result<Self> {
         let raw = fs::read_to_string(layout_path)
@@ -653,6 +674,8 @@ impl MapData {
             metatile_id,
             collision,
             behavior,
+            allow_cycling,
+            allow_running,
             connections,
         })
     }
@@ -695,6 +718,10 @@ struct MapEntry {
     group_index: u16,
     map_index: u16,
     layout_id: String,
+    #[serde(default = "default_true")]
+    allow_cycling: bool,
+    #[serde(default = "default_true")]
+    allow_running: bool,
     #[serde(default)]
     connections: Vec<MapIndexConnection>,
 }
@@ -721,6 +748,10 @@ fn load_maps_index(path: &str) -> anyhow::Result<MapsIndex> {
     let raw = std::fs::read_to_string(path)
         .with_context(|| format!("failed to read maps index at {path}"))?;
     serde_json::from_str(&raw).with_context(|| format!("failed to parse maps index at {path}"))
+}
+
+fn default_true() -> bool {
+    true
 }
 
 fn load_layouts_index(path: &str) -> anyhow::Result<LayoutsIndex> {
