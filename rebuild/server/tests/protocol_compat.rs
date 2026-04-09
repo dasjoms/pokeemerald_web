@@ -107,7 +107,7 @@ fn walk_result_wire_encoding_with_forced_movement_disabled_is_canonical() {
 
     assert_eq!(
         hex::encode(&frame),
-        "0700831400000004030201002211443302060d0c0b0a0000040000"
+        "0800831400000004030201002211443302060d0c0b0a0000040000"
     );
 
     let status = Command::new("python3")

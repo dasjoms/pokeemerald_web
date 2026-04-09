@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from enum import IntEnum
 import struct
 
-PROTOCOL_VERSION = 7
+PROTOCOL_VERSION = 8
 
 _HEADER = struct.Struct("<HBI")  # protocol_version, message_type, payload_len
 _U8 = struct.Struct("<B")
@@ -28,7 +28,8 @@ class MessageType(IntEnum):
     # Client -> Server
     JOIN_SESSION = 0x01
     WALK_INPUT = 0x02
-    DEBUG_TRAVERSAL_INPUT = 0x03
+    PLAYER_ACTION_INPUT = 0x03
+    DEBUG_TRAVERSAL_INPUT = 0x04
 
     # Server -> Client
     SESSION_ACCEPTED = 0x81
@@ -64,6 +65,11 @@ class HeldButtons(IntEnum):
 
 class DebugTraversalAction(IntEnum):
     TOGGLE_MOUNT = 0
+    SWAP_BIKE_TYPE = 1
+
+
+class PlayerAction(IntEnum):
+    USE_REGISTERED_BIKE = 0
     SWAP_BIKE_TYPE = 1
 
 
@@ -144,6 +150,11 @@ class DebugTraversalInput:
 
 
 @dataclass(frozen=True)
+class PlayerActionInput:
+    action: PlayerAction
+
+
+@dataclass(frozen=True)
 class SessionAccepted:
     session_id: int
     server_frame: int
@@ -195,6 +206,7 @@ class WorldDelta:
 WireMessage = (
     JoinSession
     | WalkInput
+    | PlayerActionInput
     | DebugTraversalInput
     | SessionAccepted
     | WorldSnapshot
@@ -242,6 +254,9 @@ def _encode_payload(message: WireMessage) -> tuple[MessageType, bytes]:
                 _U64.pack(message.client_time),
             ]
         )
+
+    if isinstance(message, PlayerActionInput):
+        return MessageType.PLAYER_ACTION_INPUT, _U8.pack(int(message.action))
 
     if isinstance(message, DebugTraversalInput):
         return MessageType.DEBUG_TRAVERSAL_INPUT, _U8.pack(int(message.action))
@@ -339,6 +354,11 @@ def _decode_payload(message_type: MessageType, payload: bytes) -> WireMessage:
             input_seq=input_seq,
             client_time=client_time,
         )
+
+    if message_type is MessageType.PLAYER_ACTION_INPUT:
+        action, offset = _unpack_u8(payload, offset)
+        _ensure_done(payload, offset)
+        return PlayerActionInput(action=PlayerAction(action))
 
     if message_type is MessageType.DEBUG_TRAVERSAL_INPUT:
         action, offset = _unpack_u8(payload, offset)

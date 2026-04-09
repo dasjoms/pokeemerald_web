@@ -22,12 +22,14 @@ use rebuild_server::{
 
 const DEFAULT_INITIAL_MAP_ID: &str = "MAP_LITTLEROOT_TOWN";
 const INITIAL_MAP_ENV_VAR: &str = "REBUILD_INITIAL_MAP";
+const DEBUG_ACTIONS_ENV_VAR: &str = "REBUILD_ENABLE_DEBUG_ACTIONS";
 const MAPS_INDEX_PATH: &str = "../assets/maps_index.json";
 const LAYOUTS_INDEX_PATH: &str = "../assets/layouts_index.json";
 
 #[derive(Clone)]
 struct AppState {
     world: Arc<World>,
+    allow_debug_actions: bool,
 }
 
 #[tokio::main]
@@ -37,12 +39,14 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let initial_map_id = resolve_initial_map_id()?;
+    let allow_debug_actions = resolve_debug_actions_enabled();
     let world = Arc::new(World::load_from_assets(
         &initial_map_id,
         MAPS_INDEX_PATH,
         LAYOUTS_INDEX_PATH,
     )?);
     info!(map_id = %initial_map_id, "loaded startup map configuration");
+    info!(allow_debug_actions, "debug traversal actions configuration");
 
     let simulation_world = Arc::clone(&world);
     tokio::spawn(async move {
@@ -54,7 +58,10 @@ async fn main() -> anyhow::Result<()> {
         }
     });
 
-    let app_state = AppState { world };
+    let app_state = AppState {
+        world,
+        allow_debug_actions,
+    };
     let app = Router::new()
         .route("/ws", get(ws_handler))
         .with_state(app_state);
@@ -94,6 +101,18 @@ fn resolve_initial_map_id() -> anyhow::Result<String> {
     }
 
     Ok(DEFAULT_INITIAL_MAP_ID.to_string())
+}
+
+fn resolve_debug_actions_enabled() -> bool {
+    env::var(DEBUG_ACTIONS_ENV_VAR)
+        .ok()
+        .map(|value| {
+            matches!(
+                value.trim().to_ascii_lowercase().as_str(),
+                "1" | "true" | "yes" | "on"
+            )
+        })
+        .unwrap_or(false)
 }
 
 async fn ws_handler(ws: WebSocketUpgrade, State(state): State<AppState>) -> impl IntoResponse {
@@ -158,7 +177,27 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                         );
                     }
                 }
+                Ok(ClientMessage::PlayerActionInput(input)) => {
+                    if let Err(err) = state
+                        .world
+                        .handle_player_action_input(session.connection_id, input)
+                        .await
+                    {
+                        warn!(
+                            ?err,
+                            connection_id = session.connection_id,
+                            "failed to process player action input"
+                        );
+                    }
+                }
                 Ok(ClientMessage::DebugTraversalInput(input)) => {
+                    if !state.allow_debug_actions {
+                        warn!(
+                            connection_id = session.connection_id,
+                            "ignoring debug traversal input because debug actions are disabled"
+                        );
+                        continue;
+                    }
                     if let Err(err) = state
                         .world
                         .handle_debug_traversal_input(session.connection_id, input)
