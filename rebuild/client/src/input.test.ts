@@ -22,7 +22,7 @@ describe('virtual B parity input mapping', () => {
       sendWalkInput: (direction, movementMode, heldButtons) => {
         sent.push({ direction, movementMode, heldButtons });
       },
-      sendHeldInputState: () => {},
+      sendHeldInputState: () => null,
       isMovementLocked: () => false,
       onFacingIntent: () => {},
     });
@@ -51,7 +51,7 @@ describe('virtual B parity input mapping', () => {
       sendWalkInput: (_direction, _movementMode, heldButtons) => {
         sent.push({ heldButtons });
       },
-      sendHeldInputState: () => {},
+      sendHeldInputState: () => null,
       isMovementLocked: () => false,
       onFacingIntent: () => {},
     });
@@ -79,6 +79,7 @@ describe('virtual B parity input mapping', () => {
       },
       sendHeldInputState: (heldDirection, heldButtons) => {
         sentHeld.push({ heldDirection, heldButtons });
+        return sentHeld.length - 1;
       },
       isMovementLocked: () => false,
       onFacingIntent: () => {},
@@ -113,6 +114,7 @@ describe('virtual B parity input mapping', () => {
       },
       sendHeldInputState: (heldDirection, heldButtons) => {
         sentHeld.push({ heldDirection, heldButtons });
+        return sentHeld.length - 1;
       },
       isMovementLocked: () => false,
       onFacingIntent: () => {},
