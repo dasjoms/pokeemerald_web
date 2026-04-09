@@ -17,9 +17,12 @@ type AnimationFrameMeta = {
   h_flip: boolean;
 };
 
+type AnimationLoopMode = 'loop' | 'end_hold';
+
 type DirectionalAnimationMeta = {
   action_id?: string;
   anim_cmd_symbol: string;
+  loop_mode?: AnimationLoopMode;
   frames: AnimationFrameMeta[];
 };
 
@@ -387,7 +390,16 @@ export class PlayerAnimationController {
       return;
     }
 
-    const commands = this.currentDirectionalAnimation().frames;
+    const directionalAnimation = this.currentDirectionalAnimation();
+    const commands = directionalAnimation.frames;
+    const isEndHold = directionalAnimation.loop_mode === 'end_hold';
+    const lastCommandIndex = commands.length - 1;
+    if (isEndHold && this.frameCommandIndex >= lastCommandIndex) {
+      this.frameCommandIndex = lastCommandIndex;
+      this.ticksUntilAdvance = Number.MAX_SAFE_INTEGER;
+      return;
+    }
+
     this.frameCommandIndex = (this.frameCommandIndex + 1) % commands.length;
     this.resetFrameTimer();
   }
