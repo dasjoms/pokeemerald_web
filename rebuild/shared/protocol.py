@@ -68,6 +68,13 @@ class BikeTransitionType(IntEnum):
     ENTER_WHEELIE = 3
     EXIT_WHEELIE = 4
     HOP = 5
+    WHEELIE_IDLE = 6
+    WHEELIE_POP = 7
+    WHEELIE_END = 8
+    HOP_STANDING = 9
+    HOP_MOVING = 10
+    SIDE_JUMP = 11
+    TURN_JUMP = 12
 
 
 class RejectionReason(IntEnum):
