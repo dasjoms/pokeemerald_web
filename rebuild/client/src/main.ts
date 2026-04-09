@@ -595,7 +595,10 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     startAuthoritativeWalkTransition(result.facing, acceptedMovementMode);
     playerAnimation.startStep(
       result.facing,
-      acceptedMovementMode === MovementMode.RUN ? 'run' : 'walk',
+      resolveAnimationStepMode({
+        traversalState: result.traversal_state,
+        movementMode: acceptedMovementMode,
+      }),
     );
     bikeEffectRenderer.onAuthoritativeStep({
       fromX: previousAuthoritativeTileX,
@@ -1816,7 +1819,26 @@ function applyPredictedWalk(
   state.renderTileX = state.playerTileX;
   state.renderTileY = state.playerTileY;
   state.facing = direction;
-  playerAnimation.startStep(direction, movementMode === MovementMode.RUN ? 'run' : 'walk');
+  playerAnimation.startStep(
+    direction,
+    resolveAnimationStepMode({
+      traversalState: state.traversalState,
+      movementMode,
+    }),
+  );
+}
+
+function resolveAnimationStepMode({
+  traversalState,
+  movementMode,
+}: {
+  traversalState: TraversalState;
+  movementMode: MovementMode;
+}): 'walk' | 'run' {
+  if (traversalState === TraversalState.ON_FOOT && movementMode === MovementMode.RUN) {
+    return 'run';
+  }
+  return 'walk';
 }
 
 function positionPlayerSprite(): void {

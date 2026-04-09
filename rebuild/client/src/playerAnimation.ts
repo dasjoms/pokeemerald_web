@@ -473,7 +473,7 @@ export class PlayerAnimationController {
     if (this.machSpeedStage === 2) {
       return 'bike_faster';
     }
-    if (this.machSpeedStage === 1 || this.mode.kind === 'run') {
+    if (this.machSpeedStage === 1) {
       return 'bike_fast';
     }
     return 'bike_walk';

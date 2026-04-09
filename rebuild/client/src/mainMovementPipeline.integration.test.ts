@@ -8,7 +8,15 @@ import {
   type WalkTransition,
   type WalkTransitionMutableState,
 } from './walkTransitionPipeline';
-import { Direction, MovementMode, RejectionReason, TraversalState, type WalkResult } from './protocol_generated';
+import {
+  AcroBikeSubstate,
+  BikeTransitionType,
+  Direction,
+  MovementMode,
+  RejectionReason,
+  TraversalState,
+  type WalkResult,
+} from './protocol_generated';
 
 type PipelineState = WalkTransitionMutableState & {
   facing: Direction;
@@ -17,6 +25,13 @@ type PipelineState = WalkTransitionMutableState & {
 type PlayerAnimationControllerCtor = new (assets: PlayerAnimationAssets) => {
   stopMoving: (direction: Direction) => void;
   startStep: (direction: Direction, mode: 'walk' | 'run') => void;
+  setTraversalState: (state: {
+    traversalState: TraversalState;
+    machSpeedStage?: number;
+    acroSubstate?: AcroBikeSubstate;
+    bikeTransition?: BikeTransitionType;
+  }) => void;
+  applyPendingModeChanges: () => void;
   getDebugState: () => PlayerAnimationDebugState;
   tick: (deltaMs: number) => void;
 };
@@ -138,6 +153,63 @@ describe('main movement pipeline integration', () => {
       expect(stepStartDebugStates[0].stridePhase).toBe(stepStartDebugStates[2].stridePhase);
     },
   );
+
+  it('replays authoritative acro runtime states for animation ids without inferring from run mode', () => {
+    const playerAnimation = new PlayerAnimationController(makeMockAssets());
+    const direction = Direction.RIGHT;
+    const sequence = [
+      {
+        traversalState: TraversalState.ACRO_BIKE,
+        acroSubstate: AcroBikeSubstate.NONE,
+        bikeTransition: BikeTransitionType.NONE,
+        expectedAnimId: 'anim_bike_walk_east',
+      },
+      {
+        traversalState: TraversalState.ACRO_BIKE,
+        acroSubstate: AcroBikeSubstate.MOVING_WHEELIE,
+        bikeTransition: BikeTransitionType.NONE,
+        expectedAnimId: 'anim_acro_moving_wheelie_east',
+      },
+      {
+        traversalState: TraversalState.ACRO_BIKE,
+        acroSubstate: AcroBikeSubstate.NONE,
+        bikeTransition: BikeTransitionType.HOP_MOVING,
+        expectedAnimId: 'anim_acro_bunny_hop_front_east',
+      },
+      {
+        traversalState: TraversalState.ACRO_BIKE,
+        acroSubstate: AcroBikeSubstate.BUNNY_HOP,
+        bikeTransition: BikeTransitionType.HOP_STANDING,
+        expectedAnimId: 'anim_acro_bunny_hop_back_east',
+        stationary: true,
+      },
+      {
+        traversalState: TraversalState.ACRO_BIKE,
+        acroSubstate: AcroBikeSubstate.STANDING_WHEELIE,
+        bikeTransition: BikeTransitionType.WHEELIE_IDLE,
+        expectedAnimId: 'anim_acro_standing_wheelie_back_east',
+        stationary: true,
+      },
+    ] as const;
+
+    const actualAnimIds: string[] = [];
+    for (const entry of sequence) {
+      playerAnimation.setTraversalState({
+        traversalState: entry.traversalState,
+        acroSubstate: entry.acroSubstate,
+        bikeTransition: entry.bikeTransition,
+      });
+      if (entry.stationary) {
+        playerAnimation.stopMoving(direction);
+        playerAnimation.applyPendingModeChanges();
+      } else {
+        playerAnimation.startStep(direction, 'run');
+      }
+      actualAnimIds.push(playerAnimation.getDebugState().animId);
+    }
+
+    expect(actualAnimIds).toEqual(sequence.map((entry) => entry.expectedAnimId));
+  });
 });
 
 function makeMockAssets(): PlayerAnimationAssets {
@@ -224,6 +296,60 @@ function makeMockAssets(): PlayerAnimationAssets {
         ],
       },
     },
+    bike_walk: {
+      south: { anim_cmd_symbol: 'anim_bike_walk_south', frames: [{ duration: 3, frame: 400, h_flip: false }] },
+      north: { anim_cmd_symbol: 'anim_bike_walk_north', frames: [{ duration: 3, frame: 401, h_flip: false }] },
+      west: { anim_cmd_symbol: 'anim_bike_walk_west', frames: [{ duration: 3, frame: 402, h_flip: false }] },
+      east: { anim_cmd_symbol: 'anim_bike_walk_east', frames: [{ duration: 3, frame: 403, h_flip: false }] },
+    },
+    bike_fast: {
+      south: { anim_cmd_symbol: 'anim_bike_fast_south', frames: [{ duration: 2, frame: 410, h_flip: false }] },
+      north: { anim_cmd_symbol: 'anim_bike_fast_north', frames: [{ duration: 2, frame: 411, h_flip: false }] },
+      west: { anim_cmd_symbol: 'anim_bike_fast_west', frames: [{ duration: 2, frame: 412, h_flip: false }] },
+      east: { anim_cmd_symbol: 'anim_bike_fast_east', frames: [{ duration: 2, frame: 413, h_flip: false }] },
+    },
+    bike_faster: {
+      south: { anim_cmd_symbol: 'anim_bike_faster_south', frames: [{ duration: 2, frame: 420, h_flip: false }] },
+      north: { anim_cmd_symbol: 'anim_bike_faster_north', frames: [{ duration: 2, frame: 421, h_flip: false }] },
+      west: { anim_cmd_symbol: 'anim_bike_faster_west', frames: [{ duration: 2, frame: 422, h_flip: false }] },
+      east: { anim_cmd_symbol: 'anim_bike_faster_east', frames: [{ duration: 2, frame: 423, h_flip: false }] },
+    },
+    bike_fastest: {
+      south: { anim_cmd_symbol: 'anim_bike_fastest_south', frames: [{ duration: 1, frame: 430, h_flip: false }] },
+      north: { anim_cmd_symbol: 'anim_bike_fastest_north', frames: [{ duration: 1, frame: 431, h_flip: false }] },
+      west: { anim_cmd_symbol: 'anim_bike_fastest_west', frames: [{ duration: 1, frame: 432, h_flip: false }] },
+      east: { anim_cmd_symbol: 'anim_bike_fastest_east', frames: [{ duration: 1, frame: 433, h_flip: false }] },
+    },
+    acro_moving_wheelie: {
+      south: { anim_cmd_symbol: 'anim_acro_moving_wheelie_south', frames: [{ duration: 2, frame: 440, h_flip: false }] },
+      north: { anim_cmd_symbol: 'anim_acro_moving_wheelie_north', frames: [{ duration: 2, frame: 441, h_flip: false }] },
+      west: { anim_cmd_symbol: 'anim_acro_moving_wheelie_west', frames: [{ duration: 2, frame: 442, h_flip: false }] },
+      east: { anim_cmd_symbol: 'anim_acro_moving_wheelie_east', frames: [{ duration: 2, frame: 443, h_flip: false }] },
+    },
+    acro_bunny_hop_front_wheel: {
+      south: { anim_cmd_symbol: 'anim_acro_bunny_hop_front_south', frames: [{ duration: 2, frame: 450, h_flip: false }] },
+      north: { anim_cmd_symbol: 'anim_acro_bunny_hop_front_north', frames: [{ duration: 2, frame: 451, h_flip: false }] },
+      west: { anim_cmd_symbol: 'anim_acro_bunny_hop_front_west', frames: [{ duration: 2, frame: 452, h_flip: false }] },
+      east: { anim_cmd_symbol: 'anim_acro_bunny_hop_front_east', frames: [{ duration: 2, frame: 453, h_flip: false }] },
+    },
+    acro_bunny_hop_back_wheel: {
+      south: { anim_cmd_symbol: 'anim_acro_bunny_hop_back_south', frames: [{ duration: 2, frame: 460, h_flip: false }] },
+      north: { anim_cmd_symbol: 'anim_acro_bunny_hop_back_north', frames: [{ duration: 2, frame: 461, h_flip: false }] },
+      west: { anim_cmd_symbol: 'anim_acro_bunny_hop_back_west', frames: [{ duration: 2, frame: 462, h_flip: false }] },
+      east: { anim_cmd_symbol: 'anim_acro_bunny_hop_back_east', frames: [{ duration: 2, frame: 463, h_flip: false }] },
+    },
+    acro_standing_wheelie_front_wheel: {
+      south: { anim_cmd_symbol: 'anim_acro_standing_wheelie_front_south', frames: [{ duration: 2, frame: 470, h_flip: false }] },
+      north: { anim_cmd_symbol: 'anim_acro_standing_wheelie_front_north', frames: [{ duration: 2, frame: 471, h_flip: false }] },
+      west: { anim_cmd_symbol: 'anim_acro_standing_wheelie_front_west', frames: [{ duration: 2, frame: 472, h_flip: false }] },
+      east: { anim_cmd_symbol: 'anim_acro_standing_wheelie_front_east', frames: [{ duration: 2, frame: 473, h_flip: false }] },
+    },
+    acro_standing_wheelie_back_wheel: {
+      south: { anim_cmd_symbol: 'anim_acro_standing_wheelie_back_south', frames: [{ duration: 2, frame: 480, h_flip: false }] },
+      north: { anim_cmd_symbol: 'anim_acro_standing_wheelie_back_north', frames: [{ duration: 2, frame: 481, h_flip: false }] },
+      west: { anim_cmd_symbol: 'anim_acro_standing_wheelie_back_west', frames: [{ duration: 2, frame: 482, h_flip: false }] },
+      east: { anim_cmd_symbol: 'anim_acro_standing_wheelie_back_east', frames: [{ duration: 2, frame: 483, h_flip: false }] },
+    },
   };
 
   const frameTextures = new Map<number, unknown>();
@@ -237,6 +363,15 @@ function makeMockAssets(): PlayerAnimationAssets {
     310, 311, 312, 313,
     320, 321, 322, 323,
     330, 331, 332, 333,
+    400, 401, 402, 403,
+    410, 411, 412, 413,
+    420, 421, 422, 423,
+    430, 431, 432, 433,
+    440, 441, 442, 443,
+    450, 451, 452, 453,
+    460, 461, 462, 463,
+    470, 471, 472, 473,
+    480, 481, 482, 483,
   ]) {
     frameTextures.set(frame, {});
   }
@@ -257,11 +392,28 @@ function makeMockAssets(): PlayerAnimationAssets {
       },
       mach_bike: {
         anim_table_symbol: 'sAnimTable_Standard',
-        actions: {},
+        actions: {
+          bike_walk: directionalBindings.bike_walk,
+          bike_fast: directionalBindings.bike_fast,
+          bike_faster: directionalBindings.bike_faster,
+          bike_fastest: directionalBindings.bike_fastest,
+          face: directionalBindings.face,
+        },
       },
       acro_bike: {
         anim_table_symbol: 'sAnimTable_AcroBike',
-        actions: {},
+        actions: {
+          bike_walk: directionalBindings.bike_walk,
+          bike_fast: directionalBindings.bike_fast,
+          bike_faster: directionalBindings.bike_faster,
+          bike_fastest: directionalBindings.bike_fastest,
+          acro_moving_wheelie: directionalBindings.acro_moving_wheelie,
+          acro_bunny_hop_front_wheel: directionalBindings.acro_bunny_hop_front_wheel,
+          acro_bunny_hop_back_wheel: directionalBindings.acro_bunny_hop_back_wheel,
+          acro_standing_wheelie_front_wheel: directionalBindings.acro_standing_wheelie_front_wheel,
+          acro_standing_wheelie_back_wheel: directionalBindings.acro_standing_wheelie_back_wheel,
+          face: directionalBindings.face,
+        },
       },
     },
     frameTextures: frameTextures as PlayerAnimationAssets['frameTextures'],
