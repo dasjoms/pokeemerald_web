@@ -223,6 +223,8 @@ def load_map_group_index() -> dict[str, Any]:
                     "map_name": map_name,
                     "map_id": map_json.get("id"),
                     "layout_id": map_json.get("layout"),
+                    "allow_cycling": bool(map_json.get("allow_cycling", True)),
+                    "allow_running": bool(map_json.get("allow_running", True)),
                     "map_json_path": str(map_json_path.relative_to(ROOT)),
                     "connections": normalize_connections(map_json.get("connections")),
                 }

@@ -16,6 +16,7 @@ pub struct PlayerState {
     pub tile_y: u16,
     pub facing: Direction,
     pub avatar: PlayerAvatar,
+    pub is_on_bike: bool,
 }
 
 #[derive(Debug, Clone)]
