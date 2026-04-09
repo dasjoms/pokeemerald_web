@@ -471,7 +471,7 @@ export class PlayerAnimationController {
         return 'acro_end_wheelie_stationary';
       case BikeTransitionType.HOP:
       case BikeTransitionType.HOP_STANDING:
-        return 'acro_ledge_hop_back_wheel';
+        return 'acro_bunny_hop_back_wheel';
       case BikeTransitionType.WHEELIE_HOPPING_STANDING:
         return 'acro_bunny_hop_back_wheel';
       default:
