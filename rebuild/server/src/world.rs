@@ -35,6 +35,7 @@ const BIKE_EFFECT_HOP_SFX: u8 = 1 << 1;
 const BIKE_EFFECT_COLLISION_SFX: u8 = 1 << 2;
 const BIKE_EFFECT_CYCLING_BGM_MOUNT: u8 = 1 << 3;
 const BIKE_EFFECT_CYCLING_BGM_DISMOUNT: u8 = 1 << 4;
+const MB_BUMPY_SLOPE: u8 = 0xD1;
 
 #[derive(Debug, Clone)]
 pub struct MapConnection {
@@ -345,9 +346,17 @@ impl World {
                 if current_map.allow_cycling {
                     if matches!(session.player_state.traversal_state, TraversalState::OnFoot) {
                         let preferred_bike_type = session.player_state.preferred_bike_type;
+                        let source_tile_behavior = current_map
+                            .behavior
+                            .get(
+                                session.player_state.tile_y as usize * current_map.width as usize
+                                    + session.player_state.tile_x as usize,
+                            )
+                            .copied();
                         set_traversal_state(
                             &mut session.player_state,
                             preferred_bike_type,
+                            source_tile_behavior,
                             BikeTransitionType::Mount,
                             true,
                         );
@@ -355,6 +364,7 @@ impl World {
                         set_traversal_state(
                             &mut session.player_state,
                             TraversalState::OnFoot,
+                            None,
                             BikeTransitionType::Dismount,
                             true,
                         );
@@ -369,9 +379,17 @@ impl World {
                     TraversalState::MachBike | TraversalState::AcroBike
                 ) {
                     let preferred_bike_type = session.player_state.preferred_bike_type;
+                    let source_tile_behavior = current_map
+                        .behavior
+                        .get(
+                            session.player_state.tile_y as usize * current_map.width as usize
+                                + session.player_state.tile_x as usize,
+                        )
+                        .copied();
                     set_traversal_state(
                         &mut session.player_state,
                         preferred_bike_type,
+                        source_tile_behavior,
                         BikeTransitionType::None,
                         false,
                     );
@@ -402,7 +420,7 @@ impl World {
                 let idx = session.player_state.tile_y as usize * map.width as usize
                     + session.player_state.tile_x as usize;
                 map.behavior.get(idx).copied()
-            }) == Some(0xD1);
+            }) == Some(MB_BUMPY_SLOPE);
             session
                 .player_state
                 .bike_runtime
@@ -498,6 +516,7 @@ impl World {
                     set_traversal_state(
                         &mut session.player_state,
                         TraversalState::OnFoot,
+                        None,
                         BikeTransitionType::Dismount,
                         true,
                     );
@@ -656,7 +675,11 @@ impl World {
                     );
                     break;
                 } else {
-                    reset_bike_runtime_on_reject(&mut session.player_state);
+                    reset_bike_runtime_on_reject(
+                        &mut session.player_state,
+                        reason,
+                        source_behavior,
+                    );
                 }
             }
         }
@@ -882,6 +905,7 @@ fn swap_bike_type(current: TraversalState) -> TraversalState {
 fn set_traversal_state(
     player_state: &mut PlayerState,
     traversal_state: TraversalState,
+    source_tile_behavior: Option<u8>,
     transition: BikeTransitionType,
     preserve_until_walk_result: bool,
 ) {
@@ -891,12 +915,30 @@ fn set_traversal_state(
     player_state
         .bike_runtime
         .preserve_transition_until_walk_result = preserve_until_walk_result;
+
+    if matches!(traversal_state, TraversalState::AcroBike)
+        && source_tile_behavior == Some(MB_BUMPY_SLOPE)
+    {
+        let action = player_state
+            .bike_runtime
+            .acro_runtime
+            .handle_bumpy_slope_mount_transition(player_state.facing);
+        player_state.bike_runtime.acro_state = AcroBikeSubstate::StandingWheelie;
+        player_state.bike_runtime.last_transition = match action {
+            AcroAnimationAction::WheelieIdle => BikeTransitionType::WheelieIdle,
+            _ => BikeTransitionType::None,
+        };
+    }
 }
 
 const MB_CRACKED_FLOOR: u8 = 0xD2;
 const MB_CRACKED_FLOOR_HOLE: u8 = 0x6B;
 
-fn reset_bike_runtime_on_reject(player_state: &mut PlayerState) {
+fn reset_bike_runtime_on_reject(
+    player_state: &mut PlayerState,
+    reason: RejectionReason,
+    source_behavior: u8,
+) {
     if matches!(player_state.traversal_state, TraversalState::MachBike) {
         player_state.bike_runtime.bike_frame_counter = player_state
             .bike_runtime
@@ -905,6 +947,35 @@ fn reset_bike_runtime_on_reject(player_state: &mut PlayerState) {
         player_state.bike_runtime.mach_speed_stage = player_state.bike_runtime.bike_frame_counter;
         player_state.bike_runtime.speed_tier =
             mach_speed_tier_for_frame_counter(player_state.bike_runtime.bike_frame_counter) as u8;
+        return;
+    }
+
+    if matches!(player_state.traversal_state, TraversalState::AcroBike)
+        && matches!(reason, RejectionReason::Collision)
+        && source_behavior == MB_BUMPY_SLOPE
+    {
+        player_state
+            .bike_runtime
+            .acro_runtime
+            .set_on_bumpy_slope(true);
+        if let Some(action) = player_state
+            .bike_runtime
+            .acro_runtime
+            .handle_wheelie_collision_response()
+        {
+            player_state.bike_runtime.last_transition = match action {
+                AcroAnimationAction::WheelieIdle => BikeTransitionType::WheelieIdle,
+                _ => BikeTransitionType::None,
+            };
+        }
+        player_state.bike_runtime.acro_state = match player_state.bike_runtime.acro_runtime.state {
+            AcroState::Normal | AcroState::Turning | AcroState::SideJump | AcroState::TurnJump => {
+                AcroBikeSubstate::None
+            }
+            AcroState::WheelieStanding => AcroBikeSubstate::StandingWheelie,
+            AcroState::BunnyHop => AcroBikeSubstate::BunnyHop,
+            AcroState::WheelieMoving => AcroBikeSubstate::MovingWheelie,
+        };
     }
 }
 
@@ -1360,6 +1431,20 @@ mod tests {
             .update_history(Some(direction), crate::protocol::HeldButtons::B as u8);
     }
 
+    fn bumpy_slope_map() -> MapData {
+        MapData {
+            map_id: "MAP_BUMPY_TEST".to_string(),
+            width: 2,
+            height: 2,
+            metatile_id: vec![0; 4],
+            collision: vec![0, 1, 0, 0],
+            behavior: vec![MB_BUMPY_SLOPE, 0, 0, 0],
+            allow_cycling: true,
+            allow_running: true,
+            connections: vec![],
+        }
+    }
+
     #[test]
     fn tick_then_step_order_preserves_side_jump_transition() {
         let mut player = test_player_state();
@@ -1398,6 +1483,89 @@ mod tests {
             BikeTransitionType::TurnJump
         );
         assert_eq!(player.bike_runtime.acro_runtime.state, AcroState::TurnJump);
+    }
+
+    #[test]
+    fn mounting_acro_on_bumpy_slope_auto_enters_idle_wheelie() {
+        let mut player = test_player_state();
+        player.traversal_state = TraversalState::OnFoot;
+        player.preferred_bike_type = TraversalState::AcroBike;
+        let map = bumpy_slope_map();
+        let source_behavior = map.behavior[0];
+
+        set_traversal_state(
+            &mut player,
+            TraversalState::AcroBike,
+            Some(source_behavior),
+            BikeTransitionType::Mount,
+            true,
+        );
+
+        assert_eq!(
+            player.bike_runtime.acro_state,
+            AcroBikeSubstate::StandingWheelie
+        );
+        assert_eq!(
+            player.bike_runtime.last_transition,
+            BikeTransitionType::WheelieIdle
+        );
+        assert_eq!(
+            player.bike_runtime.acro_runtime.state,
+            AcroState::WheelieStanding
+        );
+    }
+
+    #[test]
+    fn bumpy_slope_release_keeps_wheelie_state() {
+        let mut player = test_player_state();
+        player.traversal_state = TraversalState::AcroBike;
+        player.bike_runtime.acro_runtime.state = AcroState::WheelieMoving;
+        player.bike_runtime.acro_state = AcroBikeSubstate::MovingWheelie;
+
+        let map = bumpy_slope_map();
+        player
+            .bike_runtime
+            .acro_runtime
+            .set_on_bumpy_slope(map.behavior[0] == MB_BUMPY_SLOPE);
+
+        update_bike_runtime_per_tick(&mut player, None, 0);
+
+        assert_eq!(
+            player.bike_runtime.acro_state,
+            AcroBikeSubstate::StandingWheelie
+        );
+        assert_eq!(
+            player.bike_runtime.last_transition,
+            BikeTransitionType::WheelieIdle
+        );
+        assert_eq!(
+            player.bike_runtime.acro_runtime.state,
+            AcroState::WheelieStanding
+        );
+    }
+
+    #[test]
+    fn bumpy_slope_collision_uses_idle_wheelie_response() {
+        let mut player = test_player_state();
+        player.traversal_state = TraversalState::AcroBike;
+        player.bike_runtime.acro_runtime.state = AcroState::WheelieMoving;
+        player.bike_runtime.acro_state = AcroBikeSubstate::MovingWheelie;
+
+        let map = bumpy_slope_map();
+        reset_bike_runtime_on_reject(&mut player, RejectionReason::Collision, map.behavior[0]);
+
+        assert_eq!(
+            player.bike_runtime.acro_state,
+            AcroBikeSubstate::StandingWheelie
+        );
+        assert_eq!(
+            player.bike_runtime.last_transition,
+            BikeTransitionType::WheelieIdle
+        );
+        assert_eq!(
+            player.bike_runtime.acro_runtime.state,
+            AcroState::WheelieStanding
+        );
     }
 
     #[test]
