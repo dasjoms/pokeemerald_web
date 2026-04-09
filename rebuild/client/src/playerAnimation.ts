@@ -267,7 +267,12 @@ export class PlayerAnimationController {
     this.resetFrameTimer();
   }
 
-  setIdle(direction: Direction): void {
+  setFacing(direction: Direction): void {
+    this.mode.direction = mapDirection(direction);
+    this.resetFrameTimer();
+  }
+
+  stopMoving(direction: Direction): void {
     this.mode = {
       kind: 'face',
       direction: mapDirection(direction),

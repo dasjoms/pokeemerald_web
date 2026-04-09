@@ -48,7 +48,8 @@ type PlayerAnimationAssets = {
 };
 
 type PlayerAnimationControllerCtor = new (assets: PlayerAnimationAssets) => {
-  setIdle: (direction: Direction) => void;
+  setFacing: (direction: Direction) => void;
+  stopMoving: (direction: Direction) => void;
   startWalkStep: (direction: Direction) => void;
   startRunStep: (direction: Direction) => void;
   startStep: (direction: Direction, mode: 'walk' | 'run') => void;
@@ -99,7 +100,7 @@ describe('player animation parity fixtures', () => {
         for (const event of tickEvents) {
           const direction = fixtureDirections[event.direction];
           if (event.action === 'set_idle') {
-            controller.setIdle(direction);
+            controller.stopMoving(direction);
           } else if (event.action === 'start_walk') {
             controller.startWalkStep(direction);
           } else {
