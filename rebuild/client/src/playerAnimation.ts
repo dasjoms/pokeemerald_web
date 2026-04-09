@@ -426,42 +426,11 @@ export class PlayerAnimationController {
       if (this.traversalState !== TraversalState.ACRO_BIKE) {
         return 'face';
       }
-      if (
-        this.bikeTransition === BikeTransitionType.WHEELIE_IDLE ||
-        this.acroSubstate === AcroBikeSubstate.STANDING_WHEELIE
-      ) {
-        return 'acro_standing_wheelie_back_wheel';
-      }
-      if (
-        this.bikeTransition === BikeTransitionType.WHEELIE_POP ||
-        this.bikeTransition === BikeTransitionType.NORMAL_TO_WHEELIE
-      ) {
-        return 'acro_standing_wheelie_front_wheel';
-      }
-      if (
-        this.bikeTransition === BikeTransitionType.HOP ||
-        this.bikeTransition === BikeTransitionType.HOP_STANDING ||
-        this.bikeTransition === BikeTransitionType.WHEELIE_HOPPING_STANDING ||
-        this.acroSubstate === AcroBikeSubstate.BUNNY_HOP
-      ) {
-        return 'acro_bunny_hop_back_wheel';
-      }
-      return 'face';
+      return this.resolveAcroStationaryActionId();
     }
 
     if (this.traversalState === TraversalState.ACRO_BIKE) {
-      if (this.acroSubstate === AcroBikeSubstate.MOVING_WHEELIE) {
-        return 'acro_moving_wheelie';
-      }
-      if (
-        this.bikeTransition === BikeTransitionType.HOP_MOVING ||
-        this.bikeTransition === BikeTransitionType.WHEELIE_HOPPING_MOVING ||
-        this.bikeTransition === BikeTransitionType.SIDE_JUMP ||
-        this.bikeTransition === BikeTransitionType.TURN_JUMP
-      ) {
-        return 'acro_bunny_hop_front_wheel';
-      }
-      return this.resolveBikeSpeedActionId();
+      return this.resolveAcroMovingActionId();
     }
 
     if (this.traversalState === TraversalState.MACH_BIKE) {
@@ -482,6 +451,66 @@ export class PlayerAnimationController {
       return 'bike_fast';
     }
     return 'bike_walk';
+  }
+
+  private resolveAcroStationaryActionId(): string {
+    switch (this.bikeTransition) {
+      case BikeTransitionType.WHEELIE_IDLE:
+        return 'acro_wheelie_in_place';
+      case BikeTransitionType.WHEELIE_POP:
+      case BikeTransitionType.NORMAL_TO_WHEELIE:
+      case BikeTransitionType.ENTER_WHEELIE:
+        return 'acro_pop_wheelie_stationary';
+      case BikeTransitionType.WHEELIE_END:
+      case BikeTransitionType.WHEELIE_TO_NORMAL:
+      case BikeTransitionType.EXIT_WHEELIE:
+        return 'acro_end_wheelie_stationary';
+      case BikeTransitionType.HOP:
+      case BikeTransitionType.HOP_STANDING:
+        return 'acro_ledge_hop_back_wheel';
+      case BikeTransitionType.WHEELIE_HOPPING_STANDING:
+        return 'acro_bunny_hop_back_wheel';
+      default:
+        break;
+    }
+
+    if (this.acroSubstate === AcroBikeSubstate.STANDING_WHEELIE) {
+      return 'acro_wheelie_in_place';
+    }
+    if (this.acroSubstate === AcroBikeSubstate.BUNNY_HOP) {
+      return 'acro_bunny_hop_back_wheel';
+    }
+    return 'face';
+  }
+
+  private resolveAcroMovingActionId(): string {
+    switch (this.bikeTransition) {
+      case BikeTransitionType.HOP_MOVING:
+        return 'acro_ledge_hop_front_wheel';
+      case BikeTransitionType.WHEELIE_HOPPING_MOVING:
+        return 'acro_bunny_hop_front_wheel';
+      case BikeTransitionType.SIDE_JUMP:
+        return 'acro_side_jump_front_wheel';
+      case BikeTransitionType.TURN_JUMP:
+        return 'acro_turn_jump_front_wheel';
+      case BikeTransitionType.WHEELIE_POP:
+      case BikeTransitionType.NORMAL_TO_WHEELIE:
+      case BikeTransitionType.WHEELIE_RISING_MOVING:
+        return 'acro_pop_wheelie_moving';
+      case BikeTransitionType.WHEELIE_END:
+      case BikeTransitionType.WHEELIE_TO_NORMAL:
+      case BikeTransitionType.WHEELIE_LOWERING_MOVING:
+        return 'acro_end_wheelie_moving';
+      case BikeTransitionType.WHEELIE_MOVING:
+        return 'acro_moving_wheelie';
+      default:
+        break;
+    }
+
+    if (this.acroSubstate === AcroBikeSubstate.MOVING_WHEELIE) {
+      return 'acro_moving_wheelie';
+    }
+    return this.resolveBikeSpeedActionId();
   }
 }
 
