@@ -20,7 +20,7 @@ use crate::{
         Direction, PlayerAvatar, RejectionReason, ServerMessage, SessionAccepted, WalkInput,
         WalkResult, WorldSnapshot,
     },
-    session::{ActiveWalkTransition, PlayerState, Session, SessionInit},
+    session::{ActiveWalkTransition, PlayerState, Session, SessionInit, MAX_PENDING_WALK_INPUTS},
 };
 
 #[derive(Debug, Clone)]
@@ -225,6 +225,19 @@ impl World {
                 tick,
             ));
             return Ok(());
+        }
+
+        if session.walk_inputs_len() >= MAX_PENDING_WALK_INPUTS {
+            let dropped = session.drop_oldest_walk_input();
+            if let Some(dropped_input) = dropped {
+                trace!(
+                    connection_id,
+                    dropped_seq = dropped_input.input_seq,
+                    incoming_seq = input.input_seq,
+                    queue_capacity = MAX_PENDING_WALK_INPUTS,
+                    "walk input queue at capacity; dropping oldest queued input"
+                );
+            }
         }
 
         session.next_expected_input_seq = session.next_expected_input_seq.saturating_add(1);
