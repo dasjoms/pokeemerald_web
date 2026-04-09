@@ -1,7 +1,10 @@
 export type PlayerLayerTileContext = {
   metatileLayerType: number | undefined;
   behaviorId: number;
+  layer0SubtileMask: number;
   layer1SubtileMask: number;
+  hasLayer0: boolean;
+  hasLayer1: boolean;
 };
 
 export type PlayerObjectRenderPriorityState = 'normal' | 'below-bg2';
@@ -27,6 +30,48 @@ export type PlayerRenderPrioritySelection = {
 };
 
 const STABLE_FOOTPOINT_EPSILON = 1e-6;
+
+export type LayeredSubtileSlot = {
+  subtile_index: number;
+  layer: number;
+};
+
+export function encodeSubtileSlotBit(subtileIndex: number): number {
+  if (!Number.isInteger(subtileIndex) || subtileIndex < 0 || subtileIndex > 31) {
+    return 0;
+  }
+
+  return 1 << subtileIndex;
+}
+
+export function buildLayerSubtileOccupancy(subtiles: readonly LayeredSubtileSlot[]): {
+  layer0SubtileMask: number;
+  layer1SubtileMask: number;
+  hasLayer0: boolean;
+  hasLayer1: boolean;
+} {
+  let layer0SubtileMask = 0;
+  let layer1SubtileMask = 0;
+
+  for (const subtile of subtiles) {
+    const subtileBit = encodeSubtileSlotBit(subtile.subtile_index);
+    if (subtileBit === 0) {
+      continue;
+    }
+    if (subtile.layer === 0) {
+      layer0SubtileMask |= subtileBit;
+    } else if (subtile.layer === 1) {
+      layer1SubtileMask |= subtileBit;
+    }
+  }
+
+  return {
+    layer0SubtileMask,
+    layer1SubtileMask,
+    hasLayer0: layer0SubtileMask !== 0,
+    hasLayer1: layer1SubtileMask !== 0,
+  };
+}
 
 export function resolvePlayerLayerSampleTile(state: PlayerLayerSelectionState): { x: number; y: number } {
   if (!state.activeWalkTransition) {

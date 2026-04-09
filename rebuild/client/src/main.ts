@@ -31,6 +31,7 @@ import {
   PlayerAnimationController,
 } from './playerAnimation';
 import {
+  buildLayerSubtileOccupancy,
   resolvePlayerLayerSampleTile,
   resolvePlayerRenderPriority,
   type PlayerObjectRenderPriorityState,
@@ -219,6 +220,8 @@ type MapTileRenderPriorityContext = {
   behaviorId: number;
   layer0SubtileMask: number;
   layer1SubtileMask: number;
+  hasLayer0: boolean;
+  hasLayer1: boolean;
 };
 
 const TILE_SIZE = 16;
@@ -721,16 +724,8 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
       if (!metatile) {
         continue;
       }
-      let layer0SubtileMask = 0;
-      let layer1SubtileMask = 0;
-      for (const subtile of metatile.subtiles) {
-        const subtileBit = 1 << (subtile.subtile_index & 0b11);
-        if (subtile.layer === 0) {
-          layer0SubtileMask |= subtileBit;
-        } else if (subtile.layer === 1) {
-          layer1SubtileMask |= subtileBit;
-        }
-      }
+      const { layer0SubtileMask, layer1SubtileMask, hasLayer0, hasLayer1 } =
+        buildLayerSubtileOccupancy(metatile.subtiles);
       activeMapTileRenderPriorityContexts[y * runtimeChunk.width + x] = {
         metatileGlobalId: tile.metatile_id,
         metatileLocalId: metatile.metatile_index,
@@ -738,6 +733,8 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
         behaviorId: tile.behavior_id,
         layer0SubtileMask,
         layer1SubtileMask,
+        hasLayer0,
+        hasLayer1,
       };
 
       const sourcePalettes = isPrimaryMetatile ? primaryPalettes : secondaryPalettes;
