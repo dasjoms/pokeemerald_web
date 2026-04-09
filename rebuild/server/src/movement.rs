@@ -1,4 +1,4 @@
-use crate::protocol::{Direction, MovementMode};
+use crate::protocol::{AcroBikeSubstate, Direction, MovementMode, TraversalState};
 
 const MB_INVALID: u8 = u8::MAX;
 const MB_WALK_EAST: u8 = 0x40;
@@ -19,7 +19,12 @@ const MB_ICE: u8 = 0x20;
 const MB_SECRET_BASE_JUMP_MAT: u8 = 0xBB;
 const MB_SECRET_BASE_SPIN_MAT: u8 = 0xBC;
 const MB_MUDDY_SLOPE: u8 = 0xD0;
+const MB_BUMPY_SLOPE: u8 = 0xD1;
 const MB_CRACKED_FLOOR: u8 = 0xD2;
+const MB_ISOLATED_VERTICAL_RAIL: u8 = 0xD3;
+const MB_ISOLATED_HORIZONTAL_RAIL: u8 = 0xD4;
+const MB_VERTICAL_RAIL: u8 = 0xD5;
+const MB_HORIZONTAL_RAIL: u8 = 0xD6;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MoveValidation {
@@ -35,17 +40,33 @@ pub enum MoveRejectReason {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TraversalContext {
+    pub traversal_state: TraversalState,
+    pub movement_mode: MovementMode,
+    pub acro_substate: Option<AcroBikeSubstate>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ForcedMovementClass {
     Walk,
     Slide,
     Current,
     Ice,
     Waterfall,
-    MuddySlope,
     TrickHouseSlippery,
     SecretBaseJumpMat,
     SecretBaseSpinMat,
-    CrackedFloor,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum CollisionClass {
+    None,
+    Impassable,
+    WheelieHop,
+    IsolatedVerticalRail,
+    IsolatedHorizontalRail,
+    VerticalRail,
+    HorizontalRail,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -80,6 +101,28 @@ pub fn validate_walk(
     map: MovementMap<'_>,
     connected_destination: Option<ConnectedDestination>,
 ) -> MoveValidation {
+    validate_walk_with_context(
+        x,
+        y,
+        facing,
+        map,
+        connected_destination,
+        TraversalContext {
+            traversal_state: TraversalState::OnFoot,
+            movement_mode: MovementMode::Walk,
+            acro_substate: None,
+        },
+    )
+}
+
+pub fn validate_walk_with_context(
+    x: u16,
+    y: u16,
+    facing: Direction,
+    map: MovementMap<'_>,
+    connected_destination: Option<ConnectedDestination>,
+    traversal_context: TraversalContext,
+) -> MoveValidation {
     let source = tile_query(x as i32, y as i32, &map);
     let (dx, dy) = facing_delta(facing);
     let destination = tile_query(source.x + dx, source.y + dy, &map);
@@ -103,12 +146,24 @@ pub fn validate_walk(
         return MoveValidation::Rejected(MoveRejectReason::OutOfBounds);
     };
 
-    if destination.collision_bits != 0 {
+    if !can_bike_face_dir_on_metatile(facing, source.behavior_id) {
         trace_walk_attempt(
             facing,
             source,
             destination,
-            "rejected: static_collision_bit_set",
+            "rejected: bike_dir_not_allowed_for_current_rail",
+        );
+        return MoveValidation::Rejected(MoveRejectReason::Collision);
+    }
+
+    let collision_class = classify_collision(destination);
+    if collision_reject_reason(collision_class, traversal_context).is_some() {
+        trace_walk_attempt(
+            facing,
+            source,
+            destination,
+            collision_reject_reason(collision_class, traversal_context)
+                .expect("checked is_some above"),
         );
         return MoveValidation::Rejected(MoveRejectReason::Collision);
     }
@@ -122,6 +177,16 @@ pub fn validate_walk(
             destination,
             forced_movement_reject_reason(forced_class),
         );
+        return MoveValidation::Rejected(MoveRejectReason::ForcedMovementDisabled);
+    }
+
+    if let Some(reason) = movement_behavior_gate_reject_reason(
+        source.behavior_id,
+        destination.behavior_id,
+        facing,
+        traversal_context,
+    ) {
+        trace_walk_attempt(facing, source, destination, reason);
         return MoveValidation::Rejected(MoveRejectReason::ForcedMovementDisabled);
     }
 
@@ -234,11 +299,9 @@ fn forced_movement_class(behavior_id: u8) -> Option<ForcedMovementClass> {
         }
         MB_ICE => Some(ForcedMovementClass::Ice),
         MB_WATERFALL => Some(ForcedMovementClass::Waterfall),
-        MB_MUDDY_SLOPE => Some(ForcedMovementClass::MuddySlope),
         MB_TRICK_HOUSE_PUZZLE_8_FLOOR => Some(ForcedMovementClass::TrickHouseSlippery),
         MB_SECRET_BASE_JUMP_MAT => Some(ForcedMovementClass::SecretBaseJumpMat),
         MB_SECRET_BASE_SPIN_MAT => Some(ForcedMovementClass::SecretBaseSpinMat),
-        MB_CRACKED_FLOOR => Some(ForcedMovementClass::CrackedFloor),
         _ => None,
     }
 }
@@ -250,7 +313,6 @@ fn forced_movement_reject_reason(class: ForcedMovementClass) -> &'static str {
         ForcedMovementClass::Current => "rejected: forced_current_tile_pending_phase1_parity",
         ForcedMovementClass::Ice => "rejected: forced_ice_tile_pending_phase1_parity",
         ForcedMovementClass::Waterfall => "rejected: forced_waterfall_tile_pending_phase1_parity",
-        ForcedMovementClass::MuddySlope => "rejected: forced_muddy_slope_pending_phase1_parity",
         ForcedMovementClass::TrickHouseSlippery => {
             "rejected: trick_house_slippery_tile_pending_phase1_parity"
         }
@@ -260,8 +322,122 @@ fn forced_movement_reject_reason(class: ForcedMovementClass) -> &'static str {
         ForcedMovementClass::SecretBaseSpinMat => {
             "rejected: secret_base_spin_mat_pending_phase1_parity"
         }
-        ForcedMovementClass::CrackedFloor => {
-            "rejected: cracked_floor_forced_behavior_pending_phase1_parity"
+    }
+}
+
+fn classify_collision(destination: TileQuery) -> CollisionClass {
+    if destination.collision_bits != 0 {
+        return CollisionClass::Impassable;
+    }
+
+    match destination.behavior_id {
+        MB_BUMPY_SLOPE => CollisionClass::WheelieHop,
+        MB_ISOLATED_VERTICAL_RAIL => CollisionClass::IsolatedVerticalRail,
+        MB_ISOLATED_HORIZONTAL_RAIL => CollisionClass::IsolatedHorizontalRail,
+        MB_VERTICAL_RAIL => CollisionClass::VerticalRail,
+        MB_HORIZONTAL_RAIL => CollisionClass::HorizontalRail,
+        _ => CollisionClass::None,
+    }
+}
+
+fn collision_reject_reason(
+    collision: CollisionClass,
+    traversal_context: TraversalContext,
+) -> Option<&'static str> {
+    match collision {
+        CollisionClass::None => None,
+        CollisionClass::Impassable => Some("rejected: impassable_collision"),
+        CollisionClass::WheelieHop => {
+            if matches!(traversal_context.traversal_state, TraversalState::AcroBike)
+                && matches!(
+                    traversal_context.acro_substate,
+                    Some(AcroBikeSubstate::BunnyHop)
+                )
+            {
+                None
+            } else {
+                Some("rejected: wheelie_hop_requires_acro_bunny_hop")
+            }
+        }
+        CollisionClass::IsolatedVerticalRail | CollisionClass::VerticalRail => {
+            if matches!(traversal_context.traversal_state, TraversalState::OnFoot) {
+                Some("rejected: vertical_rail_requires_bike")
+            } else {
+                None
+            }
+        }
+        CollisionClass::IsolatedHorizontalRail | CollisionClass::HorizontalRail => {
+            if matches!(traversal_context.traversal_state, TraversalState::OnFoot) {
+                Some("rejected: horizontal_rail_requires_bike")
+            } else {
+                None
+            }
+        }
+    }
+}
+
+fn can_bike_face_dir_on_metatile(direction: Direction, tile_behavior: u8) -> bool {
+    if !matches!(
+        tile_behavior,
+        MB_ISOLATED_VERTICAL_RAIL
+            | MB_ISOLATED_HORIZONTAL_RAIL
+            | MB_VERTICAL_RAIL
+            | MB_HORIZONTAL_RAIL
+    ) {
+        return true;
+    }
+
+    match direction {
+        Direction::Left | Direction::Right => {
+            !matches!(tile_behavior, MB_ISOLATED_VERTICAL_RAIL | MB_VERTICAL_RAIL)
+        }
+        Direction::Up | Direction::Down => !matches!(
+            tile_behavior,
+            MB_ISOLATED_HORIZONTAL_RAIL | MB_HORIZONTAL_RAIL
+        ),
+    }
+}
+
+fn movement_behavior_gate_reject_reason(
+    source_behavior_id: u8,
+    destination_behavior_id: u8,
+    facing: Direction,
+    traversal_context: TraversalContext,
+) -> Option<&'static str> {
+    if source_behavior_id == MB_MUDDY_SLOPE {
+        let mud_slide_allowed = matches!(facing, Direction::Up)
+            && is_fastest_player_speed(
+                traversal_context.traversal_state,
+                traversal_context.movement_mode,
+            );
+        if !mud_slide_allowed {
+            return Some("rejected: muddy_slope_slide_back_rule");
+        }
+    }
+
+    if source_behavior_id == MB_BUMPY_SLOPE
+        && !matches!(traversal_context.traversal_state, TraversalState::AcroBike)
+    {
+        return Some("rejected: bumpy_slope_requires_acro");
+    }
+
+    if source_behavior_id == MB_CRACKED_FLOOR || destination_behavior_id == MB_CRACKED_FLOOR {
+        if !is_fastest_player_speed(
+            traversal_context.traversal_state,
+            traversal_context.movement_mode,
+        ) {
+            return Some("rejected: cracked_floor_requires_fastest_speed");
+        }
+    }
+
+    None
+}
+
+fn is_fastest_player_speed(traversal_state: TraversalState, movement_mode: MovementMode) -> bool {
+    match traversal_state {
+        TraversalState::OnFoot => matches!(movement_mode, MovementMode::Run),
+        TraversalState::MachBike | TraversalState::AcroBike => {
+            matches!(movement_mode, MovementMode::Run)
         }
     }
 }
@@ -298,14 +474,23 @@ mod tests {
         }
     }
 
+    fn on_foot_walk() -> TraversalContext {
+        TraversalContext {
+            traversal_state: TraversalState::OnFoot,
+            movement_mode: MovementMode::Walk,
+            acro_substate: None,
+        }
+    }
+
     #[test]
     fn accepts_basic_walk() {
-        let result = validate_walk(
+        let result = validate_walk_with_context(
             0,
             0,
             Direction::Right,
             map(&[0, 0, 0, 0], &[0, 0, 0, 0]),
             None,
+            on_foot_walk(),
         );
         assert_eq!(
             result,
@@ -318,12 +503,13 @@ mod tests {
 
     #[test]
     fn rejects_collision_tiles() {
-        let result = validate_walk(
+        let result = validate_walk_with_context(
             0,
             0,
             Direction::Right,
             map(&[0, 1, 0, 0], &[0, 0, 0, 0]),
             None,
+            on_foot_walk(),
         );
         assert_eq!(
             result,
@@ -333,7 +519,14 @@ mod tests {
 
     #[test]
     fn rejects_out_of_bounds_tiles() {
-        let result = validate_walk(0, 0, Direction::Up, map(&[0, 0, 0, 0], &[0, 0, 0, 0]), None);
+        let result = validate_walk_with_context(
+            0,
+            0,
+            Direction::Up,
+            map(&[0, 0, 0, 0], &[0, 0, 0, 0]),
+            None,
+            on_foot_walk(),
+        );
         assert_eq!(
             result,
             MoveValidation::Rejected(MoveRejectReason::OutOfBounds)
@@ -342,7 +535,7 @@ mod tests {
 
     #[test]
     fn accepts_connected_destinations() {
-        let result = validate_walk(
+        let result = validate_walk_with_context(
             0,
             0,
             Direction::Up,
@@ -353,6 +546,7 @@ mod tests {
                 collision_bits: 0,
                 behavior_id: 0,
             }),
+            on_foot_walk(),
         );
         assert_eq!(
             result,
@@ -365,12 +559,13 @@ mod tests {
 
     #[test]
     fn rejects_forced_movement_tiles_in_phase1() {
-        let result = validate_walk(
+        let result = validate_walk_with_context(
             0,
             0,
             Direction::Right,
             map(&[0, 0, 0, 0], &[0, MB_WALK_EAST, 0, 0]),
             None,
+            on_foot_walk(),
         );
         assert_eq!(
             result,
