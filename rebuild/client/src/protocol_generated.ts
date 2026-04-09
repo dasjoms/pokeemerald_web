@@ -20,6 +20,11 @@ export enum Direction {
 export enum MovementMode {
   WALK = 0,
   RUN = 1,
+  MACH_BIKE = 2,
+  ACRO_CRUISE = 3,
+  ACRO_WHEELIE_PREP = 4,
+  ACRO_WHEELIE_MOVE = 5,
+  BUNNY_HOP = 6,
 }
 
 export enum RejectionReason {
