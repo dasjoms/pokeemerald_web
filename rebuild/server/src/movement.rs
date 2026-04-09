@@ -18,7 +18,7 @@ const MB_WATERFALL: u8 = 0x13;
 const MB_ICE: u8 = 0x20;
 const MB_SECRET_BASE_JUMP_MAT: u8 = 0xBB;
 const MB_SECRET_BASE_SPIN_MAT: u8 = 0xBC;
-pub const MB_MUDDY_SLOPE: u8 = 0xD0;
+const MB_MUDDY_SLOPE: u8 = 0xD0;
 const MB_CRACKED_FLOOR: u8 = 0xD2;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -55,11 +55,6 @@ struct TileQuery {
     in_bounds: bool,
     collision_bits: u8,
     behavior_id: u8,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct TileProbe {
-    pub behavior_id: u8,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -135,13 +130,6 @@ pub fn validate_walk(
     MoveValidation::Accepted {
         next_x: destination.x as u16,
         next_y: destination.y as u16,
-    }
-}
-
-pub fn tile_probe(map: MovementMap<'_>, x: u16, y: u16) -> TileProbe {
-    let query = tile_query(x as i32, y as i32, &map);
-    TileProbe {
-        behavior_id: query.behavior_id,
     }
 }
 

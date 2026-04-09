@@ -11,11 +11,10 @@ use tokio::sync::{mpsc, RwLock};
 use tracing::{error, trace};
 
 use crate::{
-    bike::{advance_bike_state_for_tick, decide_bike_traversal},
     map_chunk::{serialize_world_snapshot_map_chunk, world_snapshot_map_chunk_hash},
     movement::{
-        facing_delta, tile_probe, validate_walk, ConnectedDestination, MoveRejectReason,
-        MoveValidation, MovementMap, WALK_SAMPLE_MS,
+        facing_delta, validate_walk, ConnectedDestination, MoveRejectReason, MoveValidation,
+        MovementMap, WALK_SAMPLE_MS,
     },
     protocol::{
         Direction, PlayerAvatar, RejectionReason, ServerMessage, SessionAccepted, WalkInput,
@@ -310,7 +309,6 @@ impl World {
         const SERVER_TICK_MS: f32 = WALK_SAMPLE_MS;
 
         for session in sessions.values_mut() {
-            session.traversal_state = advance_bike_state_for_tick(session.traversal_state);
             if let Some(active_walk) = session.active_walk_transition.as_mut() {
                 active_walk.advance(SERVER_TICK_MS);
                 if active_walk.is_complete() {
@@ -399,67 +397,6 @@ impl World {
                         behavior_id: resolved.destination_behavior,
                     });
 
-                let source_behavior = tile_probe(
-                    MovementMap {
-                        width: current_map.width,
-                        height: current_map.height,
-                        collision: &current_map.collision,
-                        behavior: &current_map.behavior,
-                    },
-                    session.player_state.tile_x,
-                    session.player_state.tile_y,
-                )
-                .behavior_id;
-                let destination_behavior = connected_destination.map_or_else(
-                    || {
-                        if attempted_x < 0
-                            || attempted_y < 0
-                            || attempted_x >= current_map.width as i32
-                            || attempted_y >= current_map.height as i32
-                        {
-                            u8::MAX
-                        } else {
-                            tile_probe(
-                                MovementMap {
-                                    width: current_map.width,
-                                    height: current_map.height,
-                                    collision: &current_map.collision,
-                                    behavior: &current_map.behavior,
-                                },
-                                attempted_x as u16,
-                                attempted_y as u16,
-                            )
-                            .behavior_id
-                        }
-                    },
-                    |dest| dest.behavior_id,
-                );
-
-                let bike_decision = match decide_bike_traversal(
-                    session.traversal_state,
-                    input.movement_mode,
-                    input.direction,
-                    source_behavior,
-                    destination_behavior,
-                    tick,
-                ) {
-                    Ok(decision) => decision,
-                    Err(reason) => {
-                        let _ = session.send(ServerMessage::WalkResult(WalkResult {
-                            input_seq: input.input_seq,
-                            accepted: false,
-                            authoritative_pos: crate::protocol::Position {
-                                x: session.player_state.tile_x,
-                                y: session.player_state.tile_y,
-                            },
-                            facing: session.player_state.facing,
-                            reason,
-                            server_frame: tick as u32,
-                        }));
-                        continue;
-                    }
-                };
-
                 let (accepted, reason, authoritative_x, authoritative_y) = match validate_walk(
                     session.player_state.tile_x,
                     session.player_state.tile_y,
@@ -478,20 +415,17 @@ impl World {
                             .map_or(previous_map_id.clone(), |resolved| {
                                 resolved.target_map_id.clone()
                             });
-                        session.active_walk_transition =
-                            Some(ActiveWalkTransition::new_with_step_speed(
-                                input.input_seq,
-                                previous_map_id.clone(),
-                                session.player_state.tile_x,
-                                session.player_state.tile_y,
-                                target_map_id,
-                                next_x,
-                                next_y,
-                                input.direction,
-                                input.movement_mode,
-                                Some(bike_decision.step_speed),
-                            ));
-                        session.traversal_state = bike_decision.next_state;
+                        session.active_walk_transition = Some(ActiveWalkTransition::new(
+                            input.input_seq,
+                            previous_map_id.clone(),
+                            session.player_state.tile_x,
+                            session.player_state.tile_y,
+                            target_map_id,
+                            next_x,
+                            next_y,
+                            input.direction,
+                            input.movement_mode,
+                        ));
                         (true, RejectionReason::None, next_x, next_y)
                     }
                     MoveValidation::Rejected(reason) => (
