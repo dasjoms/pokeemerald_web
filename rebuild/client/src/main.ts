@@ -232,6 +232,7 @@ type WalkInputController = {
   tick: () => void;
   markWalkResultReceived: (result: WalkResult) => void;
   markWalkTransitionCompleted: () => void;
+  hasPendingAcceptedOrDispatchableStep: () => boolean;
   getMovementMode: () => MovementMode;
   reset: () => void;
 };
@@ -1344,6 +1345,23 @@ function createWalkInputController(config: {
     }
   };
 
+  const hasPendingAcceptedOrDispatchableStep = (nowMs: number): boolean => {
+    updateBufferedIntentFromHeldDirections(nowMs);
+    if (hasPendingWalkRequest) {
+      return true;
+    }
+
+    if (
+      bufferedIntent !== null &&
+      heldDirections.has(bufferedIntent) &&
+      hasSatisfiedTapThreshold(bufferedIntent, nowMs)
+    ) {
+      return true;
+    }
+
+    return getEligibleHeldDirection(nowMs) !== null;
+  };
+
   return {
     handleKeyDown(event: KeyboardEvent): void {
       const direction = keyToDirection(event.key);
@@ -1399,6 +1417,9 @@ function createWalkInputController(config: {
     markWalkTransitionCompleted(): void {
       activeIntent = null;
       maybeDispatchIntent(performance.now());
+    },
+    hasPendingAcceptedOrDispatchableStep(): boolean {
+      return hasPendingAcceptedOrDispatchableStep(performance.now());
     },
     getMovementMode(): MovementMode {
       return movementMode;
@@ -1693,9 +1714,14 @@ function tickWalkTransition(deltaMs: number): void {
   if (t >= 1) {
     state.renderTileX = activeWalkTransition.targetX;
     state.renderTileY = activeWalkTransition.targetY;
-    playerAnimation.setIdle(activeWalkTransition.facing);
+    const completedTransitionFacing = activeWalkTransition.facing;
+    const shouldRemainInLocomotion =
+      walkInputController.hasPendingAcceptedOrDispatchableStep();
     activeWalkTransition = null;
     walkInputController.markWalkTransitionCompleted();
+    if (!shouldRemainInLocomotion) {
+      playerAnimation.setIdle(completedTransitionFacing);
+    }
   }
 }
 
