@@ -448,23 +448,9 @@ fn can_bike_face_dir_on_metatile(direction: Direction, tile_behavior: u8) -> boo
 fn movement_behavior_gate_reject_reason(
     source_behavior_id: u8,
     _destination_behavior_id: u8,
-    facing: Direction,
+    _facing: Direction,
     traversal_context: TraversalContext,
 ) -> Option<&'static str> {
-    let player_speed = get_player_speed(
-        traversal_context.traversal_state,
-        traversal_context.movement_mode,
-        traversal_context.bike_frame_counter,
-    );
-
-    if source_behavior_id == MB_MUDDY_SLOPE {
-        let mud_slide_allowed =
-            matches!(facing, Direction::Up) && matches!(player_speed, PlayerSpeed::Fastest);
-        if !mud_slide_allowed {
-            return Some("rejected: muddy_slope_slide_back_rule");
-        }
-    }
-
     if source_behavior_id == MB_BUMPY_SLOPE
         && !matches!(traversal_context.traversal_state, TraversalState::AcroBike)
     {
@@ -472,6 +458,15 @@ fn movement_behavior_gate_reject_reason(
     }
 
     None
+}
+
+pub fn should_force_muddy_slope_slide_back(
+    source_behavior_id: u8,
+    facing: Direction,
+    player_speed: PlayerSpeed,
+) -> bool {
+    source_behavior_id == MB_MUDDY_SLOPE
+        && !(matches!(facing, Direction::Up) && matches!(player_speed, PlayerSpeed::Fastest))
 }
 
 fn trace_walk_attempt(facing: Direction, source: TileQuery, destination: TileQuery, reason: &str) {
@@ -623,5 +618,32 @@ mod tests {
                 next_y: 0
             }
         );
+    }
+
+    #[test]
+    fn muddy_slope_forces_slide_back_on_foot() {
+        assert!(should_force_muddy_slope_slide_back(
+            MB_MUDDY_SLOPE,
+            Direction::Up,
+            PlayerSpeed::Normal
+        ));
+    }
+
+    #[test]
+    fn muddy_slope_forces_slide_back_for_mach_insufficient_speed() {
+        assert!(should_force_muddy_slope_slide_back(
+            MB_MUDDY_SLOPE,
+            Direction::Up,
+            PlayerSpeed::Faster
+        ));
+    }
+
+    #[test]
+    fn muddy_slope_allows_fastest_north_on_mach() {
+        assert!(!should_force_muddy_slope_slide_back(
+            MB_MUDDY_SLOPE,
+            Direction::Up,
+            PlayerSpeed::Fastest
+        ));
     }
 }

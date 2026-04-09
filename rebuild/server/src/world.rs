@@ -15,8 +15,9 @@ use crate::{
     map_chunk::{serialize_world_snapshot_map_chunk, world_snapshot_map_chunk_hash},
     movement::{
         facing_delta, get_player_speed, mach_speed_tier_for_frame_counter, player_speed_step_speed,
-        validate_walk_with_context, ConnectedDestination, MoveRejectReason, MoveValidation,
-        MovementMap, PlayerSpeed, TraversalContext, WALK_SAMPLE_MS,
+        should_force_muddy_slope_slide_back, validate_walk_with_context, ConnectedDestination,
+        MoveRejectReason, MoveValidation, MovementMap, PlayerSpeed, TraversalContext,
+        WALK_SAMPLE_MS,
     },
     protocol::{
         AcroBikeSubstate, BikeTransitionType, DebugTraversalAction, DebugTraversalInput, Direction,
@@ -433,9 +434,9 @@ impl World {
 
             while let Some(input) = session.pop_walk_input() {
                 let previous_map_id = session.player_state.map_id.clone();
-                session.player_state.facing = input.direction;
 
                 let Some(current_map) = self.maps.get(&session.player_state.map_id) else {
+                    session.player_state.facing = input.direction;
                     let _ = session.send(ServerMessage::WalkResult(WalkResult {
                         input_seq: input.input_seq,
                         accepted: false,
@@ -485,8 +486,25 @@ impl World {
                     session.player_state.bike_runtime.bike_frame_counter,
                 );
                 let step_speed = player_speed_step_speed(attempted_player_speed);
+                let source_idx = session.player_state.tile_y as usize * current_map.width as usize
+                    + session.player_state.tile_x as usize;
+                let source_behavior = current_map
+                    .behavior
+                    .get(source_idx)
+                    .copied()
+                    .unwrap_or_default();
+                let movement_direction = if should_force_muddy_slope_slide_back(
+                    source_behavior,
+                    input.direction,
+                    attempted_player_speed,
+                ) {
+                    Direction::Down
+                } else {
+                    input.direction
+                };
+                session.player_state.facing = movement_direction;
 
-                let (dx, dy) = facing_delta(input.direction);
+                let (dx, dy) = facing_delta(movement_direction);
                 let attempted_x = session.player_state.tile_x as i32 + dx;
                 let attempted_y = session.player_state.tile_y as i32 + dy;
 
@@ -499,7 +517,7 @@ impl World {
                         current_map,
                         session.player_state.tile_x,
                         session.player_state.tile_y,
-                        input.direction,
+                        movement_direction,
                     )
                 } else {
                     None
@@ -517,7 +535,7 @@ impl World {
                     match validate_walk_with_context(
                         session.player_state.tile_x,
                         session.player_state.tile_y,
-                        input.direction,
+                        movement_direction,
                         MovementMap {
                             width: current_map.width,
                             height: current_map.height,
@@ -549,7 +567,7 @@ impl World {
                                 target_map_id,
                                 next_x,
                                 next_y,
-                                input.direction,
+                                movement_direction,
                                 resolved_movement_mode,
                                 step_speed,
                             ));
@@ -588,7 +606,7 @@ impl World {
                 let _ = session.send(result);
 
                 if accepted {
-                    update_bike_runtime_after_step(&mut session.player_state, input.direction);
+                    update_bike_runtime_after_step(&mut session.player_state, movement_direction);
                     cracked_floor_per_step_callback(
                         &mut session.player_state,
                         current_map,
@@ -948,16 +966,17 @@ fn cracked_floor_per_step_callback(
     player_state.cracked_floor.prev_x = x;
     player_state.cracked_floor.prev_y = y;
 
-    let stepped_on_collapsed_floor = player_state
-        .cracked_floor
-        .pending_floors
-        .iter()
-        .any(|pending| {
-            pending.collapsed
-                && pending.map_id == player_state.map_id
-                && pending.x == x
-                && pending.y == y
-        });
+    let stepped_on_collapsed_floor =
+        player_state
+            .cracked_floor
+            .pending_floors
+            .iter()
+            .any(|pending| {
+                pending.collapsed
+                    && pending.map_id == player_state.map_id
+                    && pending.x == x
+                    && pending.y == y
+            });
 
     let idx = y as usize * map.width as usize + x as usize;
     let behavior = map.behavior.get(idx).copied().unwrap_or_default();
