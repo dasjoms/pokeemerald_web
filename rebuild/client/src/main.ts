@@ -32,7 +32,8 @@ import {
 } from './playerAnimation';
 import {
   resolvePlayerLayerSampleTile,
-  resolvePlayerRenderPriorityAtTile,
+  resolvePlayerRenderPriority,
+  type PlayerObjectRenderPriorityState,
 } from './playerLayerSelection';
 
 type ServerMessage =
@@ -351,6 +352,7 @@ playerSprite.anchor.set(
 actorBetweenBg2Bg1Layer.addChild(playerSprite);
 let playerActiveActorLayer = actorBetweenBg2Bg1Layer;
 let activeMapTileRenderPriorityContexts: (MapTileRenderPriorityContext | undefined)[] = [];
+let playerObjectRenderPriorityState: PlayerObjectRenderPriorityState = 'normal';
 
 app.ticker.add(() => {
   tickWalkTransition(app.ticker.deltaMS);
@@ -1413,12 +1415,14 @@ function updatePlayerActorLayer(): void {
 }
 
 function resolveActorLayerForPlayer(tileX: number, tileY: number): Container {
-  if (tileX < 0 || tileY < 0 || tileX >= state.mapWidth || tileY >= state.mapHeight) {
-    return actorBetweenBg2Bg1Layer;
-  }
-
-  const tileContext = activeMapTileRenderPriorityContexts[tileY * state.mapWidth + tileX];
-  const actorStratum = resolvePlayerRenderPriorityAtTile(tileContext);
+  const tileContext =
+    tileX < 0 || tileY < 0 || tileX >= state.mapWidth || tileY >= state.mapHeight
+      ? undefined
+      : activeMapTileRenderPriorityContexts[tileY * state.mapWidth + tileX];
+  const actorStratum = resolvePlayerRenderPriority({
+    objectPriorityState: playerObjectRenderPriorityState,
+    tileContext,
+  });
   if (actorStratum === 'below-bg2') {
     return actorBelowBg2Layer;
   }
