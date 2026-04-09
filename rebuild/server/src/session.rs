@@ -6,8 +6,8 @@ use crate::{
     acro::AcroRuntime,
     movement::{step_progress_pixels, StepSpeed, WALK_SAMPLE_MS},
     protocol::{
-        AcroBikeSubstate, BikeTransitionType, Direction, MovementMode, PlayerAvatar, ServerMessage,
-        TraversalState, WalkInput,
+        AcroBikeSubstate, BikeTransitionType, Direction, HeldInputState, MovementMode,
+        PlayerAvatar, ServerMessage, TraversalState, WalkInput,
     },
 };
 
@@ -167,6 +167,7 @@ pub struct Session {
     pub player_state: PlayerState,
     pub joined: bool,
     pub next_expected_input_seq: u32,
+    pub next_expected_held_input_seq: u32,
     pub active_walk_transition: Option<ActiveWalkTransition>,
     pub held_direction: Option<Direction>,
     pub held_buttons: u8,
@@ -187,6 +188,7 @@ impl Session {
             player_state,
             joined: false,
             next_expected_input_seq: 0,
+            next_expected_held_input_seq: 0,
             active_walk_transition: None,
             held_direction: None,
             held_buttons: 0,
@@ -197,6 +199,11 @@ impl Session {
 
     pub fn enqueue_walk_input(&mut self, input: WalkInput) {
         self.walk_inputs.push_back(input);
+    }
+
+    pub fn apply_held_input_state(&mut self, input: HeldInputState) {
+        self.held_direction = input.held_direction;
+        self.held_buttons = input.held_buttons;
     }
 
     pub fn walk_inputs_len(&self) -> usize {

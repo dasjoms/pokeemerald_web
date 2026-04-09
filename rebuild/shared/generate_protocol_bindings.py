@@ -39,6 +39,7 @@ pub enum MessageType {{
     WalkInput = 0x{int(MessageType.WALK_INPUT):02x},
     PlayerActionInput = 0x{int(MessageType.PLAYER_ACTION_INPUT):02x},
     DebugTraversalInput = 0x{int(MessageType.DEBUG_TRAVERSAL_INPUT):02x},
+    HeldInputState = 0x{int(MessageType.HELD_INPUT_STATE):02x},
     SessionAccepted = 0x{int(MessageType.SESSION_ACCEPTED):02x},
     WorldSnapshot = 0x{int(MessageType.WORLD_SNAPSHOT):02x},
     WalkResult = 0x{int(MessageType.WALK_RESULT):02x},
@@ -184,6 +185,14 @@ pub struct WalkInput {{
 }}
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+pub struct HeldInputState {{
+    pub held_direction: Option<Direction>,
+    pub held_buttons: u8,
+    pub input_seq: u32,
+    pub client_time: u64,
+}}
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 pub struct DebugTraversalInput {{
     pub action: DebugTraversalAction,
 }}
@@ -255,6 +264,7 @@ export enum MessageType {{
   WALK_INPUT = 0x{int(MessageType.WALK_INPUT):02x},
   PLAYER_ACTION_INPUT = 0x{int(MessageType.PLAYER_ACTION_INPUT):02x},
   DEBUG_TRAVERSAL_INPUT = 0x{int(MessageType.DEBUG_TRAVERSAL_INPUT):02x},
+  HELD_INPUT_STATE = 0x{int(MessageType.HELD_INPUT_STATE):02x},
   SESSION_ACCEPTED = 0x{int(MessageType.SESSION_ACCEPTED):02x},
   WORLD_SNAPSHOT = 0x{int(MessageType.WORLD_SNAPSHOT):02x},
   WALK_RESULT = 0x{int(MessageType.WALK_RESULT):02x},
@@ -352,6 +362,12 @@ export type JoinSession = {{ player_id: string }};
 export type WalkInput = {{
   direction: Direction;
   movement_mode: MovementMode;
+  held_buttons: number;
+  input_seq: number;
+  client_time: bigint;
+}};
+export type HeldInputState = {{
+  held_direction?: Direction;
   held_buttons: number;
   input_seq: number;
   client_time: bigint;

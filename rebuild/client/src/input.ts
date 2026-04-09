@@ -49,6 +49,7 @@ export function keyToDirection(key: string): Direction | null {
 
 export function createWalkInputController(config: {
   sendWalkInput: (direction: Direction, movementMode: MovementMode, heldButtons: number) => void;
+  sendHeldInputState: (heldDirection: Direction | null, heldButtons: number) => void;
   isMovementLocked: () => boolean;
   onFacingIntent: (direction: Direction) => void;
 }): WalkInputController {
@@ -59,6 +60,23 @@ export function createWalkInputController(config: {
   let hasPendingWalkRequest = false;
   let movementMode: MovementMode = MovementMode.WALK;
   let virtualBHeld = false;
+
+  const heldButtons = (): number => (virtualBHeld ? HeldButtons.B : HeldButtons.NONE);
+
+  const getActiveHeldDirection = (): Direction | null => {
+    for (let i = directionOrder.length - 1; i >= 0; i -= 1) {
+      const direction = directionOrder[i];
+      if (heldDirections.has(direction)) {
+        return direction;
+      }
+    }
+    return null;
+  };
+
+  const emitHeldInputState = (): void => {
+    const heldDirection = getActiveHeldDirection();
+    config.sendHeldInputState(heldDirection, heldButtons());
+  };
 
   const removeDirectionFromOrder = (direction: Direction): void => {
     const index = directionOrder.indexOf(direction);
@@ -96,7 +114,7 @@ export function createWalkInputController(config: {
     config.sendWalkInput(
       direction,
       movementMode,
-      virtualBHeld ? HeldButtons.B : HeldButtons.NONE,
+      heldButtons(),
     );
     hasPendingWalkRequest = true;
   };
@@ -176,10 +194,15 @@ export function createWalkInputController(config: {
         config.onFacingIntent(direction);
       }
 
+      emitHeldInputState();
       maybeDispatchIntent(performance.now());
     },
     setVirtualBHeld(held: boolean): void {
+      if (virtualBHeld === held) {
+        return;
+      }
       virtualBHeld = held;
+      emitHeldInputState();
     },
     toggleMovementMode(): void {
       movementMode =
@@ -198,6 +221,7 @@ export function createWalkInputController(config: {
       if (bufferedIntent === direction) {
         bufferedIntent = null;
       }
+      emitHeldInputState();
     },
     tick(): void {
       maybeDispatchIntent(performance.now());
@@ -223,6 +247,7 @@ export function createWalkInputController(config: {
       heldDirections.clear();
       heldDirectionPressedAtMs.clear();
       directionOrder.length = 0;
+      config.sendHeldInputState(null, HeldButtons.NONE);
     },
   };
 }
@@ -246,6 +271,29 @@ export function encodeWalkInput(
   const view = new DataView(frame.buffer);
   view.setUint16(0, PROTOCOL_VERSION, true);
   view.setUint8(2, MessageType.WALK_INPUT);
+  view.setUint32(3, payload.length, true);
+  frame.set(payload, 7);
+  return frame;
+}
+
+export function encodeHeldInputState(
+  heldDirection: Direction | null,
+  heldButtons: number,
+  inputSeq: number,
+  clientTime: bigint,
+): Uint8Array {
+  const payload = new Uint8Array(15);
+  const payloadView = new DataView(payload.buffer);
+  payloadView.setUint8(0, heldDirection === null ? 0 : 1);
+  payloadView.setUint8(1, heldDirection ?? Direction.UP);
+  payloadView.setUint8(2, heldButtons);
+  payloadView.setUint32(3, inputSeq, true);
+  payloadView.setBigUint64(7, clientTime, true);
+
+  const frame = new Uint8Array(7 + payload.length);
+  const view = new DataView(frame.buffer);
+  view.setUint16(0, PROTOCOL_VERSION, true);
+  view.setUint8(2, MessageType.HELD_INPUT_STATE);
   view.setUint32(3, payload.length, true);
   frame.set(payload, 7);
   return frame;
