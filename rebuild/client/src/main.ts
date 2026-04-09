@@ -30,10 +30,8 @@ import { applyCopyTilesOpsToActiveSwaps, type ActiveTileSwapSource } from './til
 import {
   loadPlayerAnimationAssets,
   PlayerAnimationController,
-  type PlayerAnimationActionId,
 } from './playerAnimation';
 import {
-  movementModeStepDurationMs,
   startAuthoritativeWalkTransition as createAuthoritativeWalkTransition,
   tickWalkTransition as tickWalkTransitionState,
   type WalkTransition,
@@ -552,16 +550,14 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
   );
   state.playerTileX = clampedAuthoritativeTile.x;
   state.playerTileY = clampedAuthoritativeTile.y;
-  const previousFacing = state.facing;
   state.facing = result.facing;
   if (result.accepted) {
     // Contract: on accepted input, authoritative_pos is the server tile *after* applying that step.
     // This lets the first interpolation run immediately toward the accepted destination.
     startAuthoritativeWalkTransition(result.facing, acceptedMovementMode);
-    playerAnimation.startActionStep(
+    playerAnimation.startStep(
       result.facing,
-      movementModeToAnimationActionId(acceptedMovementMode, result.facing, previousFacing),
-      movementModeStepDurationMs(acceptedMovementMode),
+      movementModeToAnimationState(acceptedMovementMode),
     );
   } else {
     activeWalkTransition = null;
@@ -1621,26 +1617,17 @@ function readU32(raw: Uint8Array, offset: number): number {
   return new DataView(raw.buffer, raw.byteOffset, raw.byteLength).getUint32(offset, true);
 }
 
-function movementModeToAnimationActionId(
-  movementMode: MovementMode,
-  facing: Direction,
-  previousFacing: Direction,
-): PlayerAnimationActionId {
+function movementModeToAnimationState(movementMode: MovementMode): 'walk' | 'run' {
   switch (movementMode) {
     case MovementMode.WALK:
+    case MovementMode.ACRO_WHEELIE_PREP:
+    case MovementMode.BUNNY_HOP:
       return 'walk';
     case MovementMode.RUN:
-      return 'run';
     case MovementMode.MACH_BIKE:
-      return facing === previousFacing ? 'mach_travel' : 'mach_turn';
     case MovementMode.ACRO_CRUISE:
-      return facing === previousFacing ? 'acro_travel' : 'acro_turn';
-    case MovementMode.ACRO_WHEELIE_PREP:
-      return 'acro_wheelie';
     case MovementMode.ACRO_WHEELIE_MOVE:
-      return facing === previousFacing ? 'acro_wheelie_move' : 'acro_turn';
-    case MovementMode.BUNNY_HOP:
-      return 'acro_hop';
+      return 'run';
   }
 }
 
@@ -1661,12 +1648,8 @@ function applyPredictedWalk(
   state.playerTileY = predictedTile.y;
   state.renderTileX = state.playerTileX;
   state.renderTileY = state.playerTileY;
-  const previousFacing = state.facing;
   state.facing = direction;
-  playerAnimation.startActionStep(
-    direction,
-    movementModeToAnimationActionId(movementMode, direction, previousFacing),
-  );
+  playerAnimation.startStep(direction, movementModeToAnimationState(movementMode));
 }
 
 function positionPlayerSprite(): void {
