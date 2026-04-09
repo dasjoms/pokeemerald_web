@@ -3,9 +3,9 @@ mod protocol_generated;
 
 pub use protocol_generated::{
     AcroBikeSubstate, BikeTransitionType, DebugTraversalAction, DebugTraversalInput, Direction,
-    HeldButtons, JoinSession, MessageType, MovementMode, PlayerAvatar, Position, RejectionReason,
-    SessionAccepted, StepSpeed, TraversalState, WalkInput, WalkResult, WorldDelta, WorldSnapshot,
-    PROTOCOL_VERSION,
+    HeldButtons, JoinSession, MessageType, MovementMode, PlayerAction, PlayerActionInput,
+    PlayerAvatar, Position, RejectionReason, SessionAccepted, StepSpeed, TraversalState, WalkInput,
+    WalkResult, WorldDelta, WorldSnapshot, PROTOCOL_VERSION,
 };
 pub type Facing = Direction;
 
@@ -13,6 +13,7 @@ pub type Facing = Direction;
 pub enum ClientMessage {
     JoinSession(JoinSession),
     WalkInput(WalkInput),
+    PlayerActionInput(PlayerActionInput),
     DebugTraversalInput(DebugTraversalInput),
     WalkInputInvalidDirection { input_seq: u32, client_time: u64 },
 }
@@ -187,6 +188,13 @@ pub fn decode_client_message(frame: &[u8]) -> Result<ClientMessage, ProtocolErro
                 action: decode_debug_traversal_action(action)?,
             }))
         }
+        x if x == MessageType::PlayerActionInput as u8 => {
+            let (action, offset) = unpack_u8(payload, 0)?;
+            ensure_done(payload, offset)?;
+            Ok(ClientMessage::PlayerActionInput(PlayerActionInput {
+                action: decode_player_action(action)?,
+            }))
+        }
         _ => Err(ProtocolError::UnknownMessageType(message_type)),
     }
 }
@@ -195,6 +203,14 @@ fn decode_debug_traversal_action(raw: u8) -> Result<DebugTraversalAction, Protoc
     match raw {
         0 => Ok(DebugTraversalAction::ToggleMount),
         1 => Ok(DebugTraversalAction::SwapBikeType),
+        _ => Err(ProtocolError::InvalidEnum),
+    }
+}
+
+fn decode_player_action(raw: u8) -> Result<PlayerAction, ProtocolError> {
+    match raw {
+        0 => Ok(PlayerAction::UseRegisteredBike),
+        1 => Ok(PlayerAction::SwapBikeType),
         _ => Err(ProtocolError::InvalidEnum),
     }
 }

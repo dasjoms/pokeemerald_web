@@ -9,6 +9,7 @@ from protocol import (
     BikeTransitionType,
     DebugTraversalAction,
     HeldButtons,
+    PlayerAction,
     PROTOCOL_VERSION,
     Direction,
     MessageType,
@@ -36,6 +37,7 @@ pub const PROTOCOL_VERSION: u16 = {PROTOCOL_VERSION};
 pub enum MessageType {{
     JoinSession = 0x{int(MessageType.JOIN_SESSION):02x},
     WalkInput = 0x{int(MessageType.WALK_INPUT):02x},
+    PlayerActionInput = 0x{int(MessageType.PLAYER_ACTION_INPUT):02x},
     DebugTraversalInput = 0x{int(MessageType.DEBUG_TRAVERSAL_INPUT):02x},
     SessionAccepted = 0x{int(MessageType.SESSION_ACCEPTED):02x},
     WorldSnapshot = 0x{int(MessageType.WORLD_SNAPSHOT):02x},
@@ -85,6 +87,14 @@ pub enum HeldButtons {{
 pub enum DebugTraversalAction {{
     ToggleMount = {int(DebugTraversalAction.TOGGLE_MOUNT)},
     SwapBikeType = {int(DebugTraversalAction.SWAP_BIKE_TYPE)},
+}}
+
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum PlayerAction {{
+    UseRegisteredBike = {int(PlayerAction.USE_REGISTERED_BIKE)},
+    SwapBikeType = {int(PlayerAction.SWAP_BIKE_TYPE)},
 }}
 
 #[repr(u8)]
@@ -179,6 +189,11 @@ pub struct DebugTraversalInput {{
 }}
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+pub struct PlayerActionInput {{
+    pub action: PlayerAction,
+}}
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 pub struct SessionAccepted {{
     pub session_id: u32,
     pub server_frame: u32,
@@ -238,6 +253,7 @@ export const PROTOCOL_VERSION = {PROTOCOL_VERSION} as const;
 export enum MessageType {{
   JOIN_SESSION = 0x{int(MessageType.JOIN_SESSION):02x},
   WALK_INPUT = 0x{int(MessageType.WALK_INPUT):02x},
+  PLAYER_ACTION_INPUT = 0x{int(MessageType.PLAYER_ACTION_INPUT):02x},
   DEBUG_TRAVERSAL_INPUT = 0x{int(MessageType.DEBUG_TRAVERSAL_INPUT):02x},
   SESSION_ACCEPTED = 0x{int(MessageType.SESSION_ACCEPTED):02x},
   WORLD_SNAPSHOT = 0x{int(MessageType.WORLD_SNAPSHOT):02x},
@@ -273,6 +289,11 @@ export enum HeldButtons {{
 export enum DebugTraversalAction {{
   TOGGLE_MOUNT = {int(DebugTraversalAction.TOGGLE_MOUNT)},
   SWAP_BIKE_TYPE = {int(DebugTraversalAction.SWAP_BIKE_TYPE)},
+}}
+
+export enum PlayerAction {{
+  USE_REGISTERED_BIKE = {int(PlayerAction.USE_REGISTERED_BIKE)},
+  SWAP_BIKE_TYPE = {int(PlayerAction.SWAP_BIKE_TYPE)},
 }}
 
 export enum TraversalState {{
@@ -337,6 +358,9 @@ export type WalkInput = {{
 }};
 export type DebugTraversalInput = {{
   action: DebugTraversalAction;
+}};
+export type PlayerActionInput = {{
+  action: PlayerAction;
 }};
 export type SessionAccepted = {{ session_id: number; server_frame: number; avatar: PlayerAvatar }};
 export type WorldSnapshot = {{

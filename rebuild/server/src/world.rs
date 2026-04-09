@@ -14,15 +14,17 @@ use crate::{
     acro::{AcroAnimationAction, AcroState},
     map_chunk::{serialize_world_snapshot_map_chunk, world_snapshot_map_chunk_hash},
     movement::{
-        facing_delta, get_player_speed, mach_speed_tier_for_frame_counter, player_speed_step_speed,
+        facing_delta, get_player_speed, is_biking_disallowed_by_player as movement_bike_gate,
+        mach_speed_tier_for_frame_counter, player_speed_step_speed,
         should_force_muddy_slope_slide_back, validate_walk_with_context, CollisionOutcome,
         ConnectedDestination, MoveRejectReason, MoveValidation, MovementMap, PlayerSpeed,
         StepSpeed as MovementStepSpeed, TraversalContext, WALK_SAMPLE_MS,
     },
     protocol::{
         AcroBikeSubstate, BikeTransitionType, DebugTraversalAction, DebugTraversalInput, Direction,
-        MovementMode, PlayerAvatar, RejectionReason, ServerMessage, SessionAccepted, StepSpeed,
-        TraversalState, WalkInput, WalkResult, WorldSnapshot,
+        MovementMode, PlayerAction, PlayerActionInput, PlayerAvatar, RejectionReason,
+        ServerMessage, SessionAccepted, StepSpeed, TraversalState, WalkInput, WalkResult,
+        WorldSnapshot,
     },
     session::{
         ActiveWalkTransition, BikeRuntimeState, CrackedFloorRuntimeState, PlayerState, Session,
@@ -343,57 +345,39 @@ impl World {
 
         match input.action {
             DebugTraversalAction::ToggleMount => {
-                if current_map.allow_cycling {
-                    if matches!(session.player_state.traversal_state, TraversalState::OnFoot) {
-                        let preferred_bike_type = session.player_state.preferred_bike_type;
-                        let source_tile_behavior = current_map
-                            .behavior
-                            .get(
-                                session.player_state.tile_y as usize * current_map.width as usize
-                                    + session.player_state.tile_x as usize,
-                            )
-                            .copied();
-                        set_traversal_state(
-                            &mut session.player_state,
-                            preferred_bike_type,
-                            source_tile_behavior,
-                            BikeTransitionType::Mount,
-                            true,
-                        );
-                    } else {
-                        set_traversal_state(
-                            &mut session.player_state,
-                            TraversalState::OnFoot,
-                            None,
-                            BikeTransitionType::Dismount,
-                            true,
-                        );
-                    }
-                }
+                apply_bike_mount_toggle(&mut session.player_state, current_map, false);
             }
             DebugTraversalAction::SwapBikeType => {
-                session.player_state.preferred_bike_type =
-                    swap_bike_type(session.player_state.preferred_bike_type);
-                if matches!(
-                    session.player_state.traversal_state,
-                    TraversalState::MachBike | TraversalState::AcroBike
-                ) {
-                    let preferred_bike_type = session.player_state.preferred_bike_type;
-                    let source_tile_behavior = current_map
-                        .behavior
-                        .get(
-                            session.player_state.tile_y as usize * current_map.width as usize
-                                + session.player_state.tile_x as usize,
-                        )
-                        .copied();
-                    set_traversal_state(
-                        &mut session.player_state,
-                        preferred_bike_type,
-                        source_tile_behavior,
-                        BikeTransitionType::None,
-                        false,
-                    );
-                }
+                apply_bike_swap(&mut session.player_state, current_map, false);
+            }
+        }
+
+        session.send(ServerMessage::WorldSnapshot(
+            self.world_snapshot_for_player_state(&session.player_state, tick)?,
+        ))?;
+        Ok(())
+    }
+
+    pub async fn handle_player_action_input(
+        &self,
+        connection_id: u64,
+        input: PlayerActionInput,
+    ) -> anyhow::Result<()> {
+        let tick = self.current_tick().await as u32;
+        let mut sessions = self.sessions.write().await;
+        let session = sessions
+            .get_mut(&connection_id)
+            .ok_or_else(|| anyhow!("unknown session {connection_id}"))?;
+        let Some(current_map) = self.maps.get(&session.player_state.map_id) else {
+            return Ok(());
+        };
+
+        match input.action {
+            PlayerAction::UseRegisteredBike => {
+                apply_bike_mount_toggle(&mut session.player_state, current_map, true);
+            }
+            PlayerAction::SwapBikeType => {
+                apply_bike_swap(&mut session.player_state, current_map, true);
             }
         }
 
@@ -903,6 +887,72 @@ fn bike_acro_substate_for_traversal(player_state: &PlayerState) -> Option<AcroBi
     } else {
         None
     }
+}
+
+fn source_tile_behavior(map: &MapData, player_state: &PlayerState) -> Option<u8> {
+    map.behavior
+        .get(player_state.tile_y as usize * map.width as usize + player_state.tile_x as usize)
+        .copied()
+}
+
+fn is_biking_disallowed_by_player(
+    map: &MapData,
+    player_state: &PlayerState,
+    source_behavior: Option<u8>,
+) -> bool {
+    if !map.allow_cycling {
+        return true;
+    }
+    let Some(behavior) = source_behavior else {
+        return true;
+    };
+    movement_bike_gate(player_state.facing, behavior)
+}
+
+fn apply_bike_mount_toggle(player_state: &mut PlayerState, current_map: &MapData, strict: bool) {
+    if matches!(player_state.traversal_state, TraversalState::OnFoot) {
+        let source_behavior = source_tile_behavior(current_map, player_state);
+        if strict && is_biking_disallowed_by_player(current_map, player_state, source_behavior) {
+            return;
+        }
+        set_traversal_state(
+            player_state,
+            player_state.preferred_bike_type,
+            source_behavior,
+            BikeTransitionType::Mount,
+            true,
+        );
+    } else {
+        set_traversal_state(
+            player_state,
+            TraversalState::OnFoot,
+            None,
+            BikeTransitionType::Dismount,
+            true,
+        );
+    }
+}
+
+fn apply_bike_swap(player_state: &mut PlayerState, current_map: &MapData, strict: bool) {
+    player_state.preferred_bike_type = swap_bike_type(player_state.preferred_bike_type);
+    if !matches!(
+        player_state.traversal_state,
+        TraversalState::MachBike | TraversalState::AcroBike
+    ) {
+        return;
+    }
+
+    let source_behavior = source_tile_behavior(current_map, player_state);
+    if strict && is_biking_disallowed_by_player(current_map, player_state, source_behavior) {
+        return;
+    }
+    set_traversal_state(
+        player_state,
+        player_state.preferred_bike_type,
+        source_behavior,
+        BikeTransitionType::None,
+        false,
+    );
 }
 
 fn swap_bike_type(current: TraversalState) -> TraversalState {

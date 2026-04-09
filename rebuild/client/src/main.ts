@@ -6,6 +6,7 @@ import {
   Direction,
   MessageType,
   MovementMode,
+  PlayerAction,
   PlayerAvatar,
   PROTOCOL_VERSION,
   RejectionReason,
@@ -251,6 +252,8 @@ const ENABLE_CLIENT_PREDICTION =
   new URLSearchParams(window.location.search).get('predict') === '1';
 const ENABLE_DEBUG_OVERLAY_DEFAULT =
   new URLSearchParams(window.location.search).get('debug') === '1';
+const ENABLE_DEV_DEBUG_ACTIONS =
+  new URLSearchParams(window.location.search).get('devDebugActions') === '1';
 const jsonAssetLoaders = import.meta.glob('../../assets/**/*.json');
 const binaryAssetUrls = import.meta.glob('../../assets/**/*.bin', {
   query: '?url',
@@ -1287,7 +1290,7 @@ function bindWalkInput(): void {
       if (event.repeat) {
         return;
       }
-      sendDebugTraversalInput(DebugTraversalAction.TOGGLE_MOUNT);
+      sendPlayerActionInput(PlayerAction.USE_REGISTERED_BIKE);
       return;
     }
     if (event.key === 'n' || event.key === 'N') {
@@ -1295,7 +1298,22 @@ function bindWalkInput(): void {
       if (event.repeat) {
         return;
       }
-      sendDebugTraversalInput(DebugTraversalAction.SWAP_BIKE_TYPE);
+      sendPlayerActionInput(PlayerAction.SWAP_BIKE_TYPE);
+      return;
+    }
+    if (
+      ENABLE_DEV_DEBUG_ACTIONS &&
+      (event.key === 'F6' || event.key === 'F7')
+    ) {
+      event.preventDefault();
+      if (event.repeat) {
+        return;
+      }
+      sendDebugTraversalInput(
+        event.key === 'F6'
+          ? DebugTraversalAction.TOGGLE_MOUNT
+          : DebugTraversalAction.SWAP_BIKE_TYPE,
+      );
       return;
     }
     walkInputController.handleKeyDown(event);
@@ -1314,7 +1332,17 @@ function sendDebugTraversalInput(action: DebugTraversalAction): void {
   if (!socket || socket.readyState !== WebSocket.OPEN) {
     return;
   }
+  if (!ENABLE_DEV_DEBUG_ACTIONS) {
+    return;
+  }
   socket.send(encodeDebugTraversalInput(action));
+}
+
+function sendPlayerActionInput(action: PlayerAction): void {
+  if (!socket || socket.readyState !== WebSocket.OPEN) {
+    return;
+  }
+  socket.send(encodePlayerActionInput(action));
 }
 
 function sendWalkInput(
@@ -1365,6 +1393,20 @@ function encodeDebugTraversalInput(action: DebugTraversalAction): Uint8Array {
   const view = new DataView(frame.buffer);
   view.setUint16(0, PROTOCOL_VERSION, true);
   view.setUint8(2, MessageType.DEBUG_TRAVERSAL_INPUT);
+  view.setUint32(3, payload.length, true);
+  frame.set(payload, 7);
+  return frame;
+}
+
+function encodePlayerActionInput(action: PlayerAction): Uint8Array {
+  const payload = new Uint8Array(1);
+  const payloadView = new DataView(payload.buffer);
+  payloadView.setUint8(0, action);
+
+  const frame = new Uint8Array(7 + payload.length);
+  const view = new DataView(frame.buffer);
+  view.setUint16(0, PROTOCOL_VERSION, true);
+  view.setUint8(2, MessageType.PLAYER_ACTION_INPUT);
   view.setUint32(3, payload.length, true);
   frame.set(payload, 7);
   return frame;

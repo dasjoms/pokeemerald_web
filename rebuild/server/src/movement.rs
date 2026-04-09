@@ -557,6 +557,10 @@ fn can_bike_face_dir_on_metatile(direction: Direction, tile_behavior: u8) -> boo
     }
 }
 
+pub fn is_biking_disallowed_by_player(facing: Direction, tile_behavior: u8) -> bool {
+    !can_bike_face_dir_on_metatile(facing, tile_behavior)
+}
+
 fn movement_behavior_gate_reject_reason(
     source_behavior_id: u8,
     _destination_behavior_id: u8,
