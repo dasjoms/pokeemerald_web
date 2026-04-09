@@ -21,6 +21,7 @@ pub struct PlayerState {
     pub facing: Direction,
     pub avatar: PlayerAvatar,
     pub traversal_state: TraversalState,
+    pub preferred_bike_type: TraversalState,
     pub bike_runtime: BikeRuntimeState,
     pub cracked_floor: CrackedFloorRuntimeState,
 }
