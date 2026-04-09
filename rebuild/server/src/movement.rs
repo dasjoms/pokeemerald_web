@@ -217,16 +217,13 @@ pub fn validate_walk_with_context(
     if let Some(forced_class) = forced_movement_class(source.behavior_id)
         .or_else(|| forced_movement_class(destination.behavior_id))
     {
-        trace_walk_attempt(
-            facing,
-            source,
-            destination,
-            forced_movement_reject_reason(forced_class),
-        );
-        return MoveValidation::Rejected {
-            reason: MoveRejectReason::ForcedMovementDisabled,
-            collision: CollisionOutcome::None,
-        };
+        if let Some(reason) = forced_movement_gate_reject_reason(forced_class, traversal_context) {
+            trace_walk_attempt(facing, source, destination, reason);
+            return MoveValidation::Rejected {
+                reason: MoveRejectReason::ForcedMovementDisabled,
+                collision: CollisionOutcome::None,
+            };
+        }
     }
 
     if let Some(reason) = movement_behavior_gate_reject_reason(
@@ -422,6 +419,31 @@ fn forced_movement_reject_reason(class: ForcedMovementClass) -> &'static str {
     }
 }
 
+fn forced_movement_gate_reject_reason(
+    class: ForcedMovementClass,
+    traversal_context: TraversalContext,
+) -> Option<&'static str> {
+    match class {
+        ForcedMovementClass::Current | ForcedMovementClass::Slide | ForcedMovementClass::Ice => {
+            match traversal_context.traversal_state {
+                TraversalState::MachBike => None,
+                TraversalState::AcroBike => {
+                    if matches!(
+                        traversal_context.acro_substate,
+                        Some(AcroBikeSubstate::BunnyHop)
+                    ) {
+                        Some("rejected: forced_tile_requires_grounded_acro_state")
+                    } else {
+                        None
+                    }
+                }
+                TraversalState::OnFoot => Some(forced_movement_reject_reason(class)),
+            }
+        }
+        _ => Some(forced_movement_reject_reason(class)),
+    }
+}
+
 fn classify_collision(destination: TileQuery, facing: Direction) -> CollisionClass {
     if destination.collision_bits != 0 {
         return CollisionClass::Impassable;
@@ -600,6 +622,24 @@ mod tests {
         }
     }
 
+    fn mach_bike() -> TraversalContext {
+        TraversalContext {
+            traversal_state: TraversalState::MachBike,
+            movement_mode: MovementMode::Walk,
+            bike_frame_counter: 2,
+            acro_substate: None,
+        }
+    }
+
+    fn acro_bike(substate: AcroBikeSubstate) -> TraversalContext {
+        TraversalContext {
+            traversal_state: TraversalState::AcroBike,
+            movement_mode: MovementMode::Walk,
+            bike_frame_counter: 0,
+            acro_substate: Some(substate),
+        }
+    }
+
     #[test]
     fn accepts_basic_walk() {
         let result = validate_walk_with_context(
@@ -697,6 +737,104 @@ mod tests {
             result,
             MoveValidation::Rejected {
                 reason: MoveRejectReason::ForcedMovementDisabled,
+                collision: CollisionOutcome::None,
+            }
+        );
+    }
+
+    #[test]
+    fn accepts_mach_bike_traversal_into_current_tile() {
+        let result = validate_walk_with_context(
+            0,
+            0,
+            Direction::Right,
+            map(&[0, 0, 0, 0], &[0, MB_EASTWARD_CURRENT, 0, 0]),
+            None,
+            mach_bike(),
+        );
+        assert_eq!(
+            result,
+            MoveValidation::Accepted {
+                next_x: 1,
+                next_y: 0,
+                collision: CollisionOutcome::None,
+            }
+        );
+    }
+
+    #[test]
+    fn rejects_on_foot_traversal_into_current_tile() {
+        let result = validate_walk_with_context(
+            0,
+            0,
+            Direction::Right,
+            map(&[0, 0, 0, 0], &[0, MB_EASTWARD_CURRENT, 0, 0]),
+            None,
+            on_foot_walk(),
+        );
+        assert_eq!(
+            result,
+            MoveValidation::Rejected {
+                reason: MoveRejectReason::ForcedMovementDisabled,
+                collision: CollisionOutcome::None,
+            }
+        );
+    }
+
+    #[test]
+    fn rejects_acro_bunny_hop_into_current_tile() {
+        let result = validate_walk_with_context(
+            0,
+            0,
+            Direction::Right,
+            map(&[0, 0, 0, 0], &[0, MB_EASTWARD_CURRENT, 0, 0]),
+            None,
+            acro_bike(AcroBikeSubstate::BunnyHop),
+        );
+        assert_eq!(
+            result,
+            MoveValidation::Rejected {
+                reason: MoveRejectReason::ForcedMovementDisabled,
+                collision: CollisionOutcome::None,
+            }
+        );
+    }
+
+    #[test]
+    fn accepts_acro_grounded_into_ice_tile() {
+        let result = validate_walk_with_context(
+            0,
+            0,
+            Direction::Right,
+            map(&[0, 0, 0, 0], &[0, MB_ICE, 0, 0]),
+            None,
+            acro_bike(AcroBikeSubstate::MovingWheelie),
+        );
+        assert_eq!(
+            result,
+            MoveValidation::Accepted {
+                next_x: 1,
+                next_y: 0,
+                collision: CollisionOutcome::None,
+            }
+        );
+    }
+
+    #[test]
+    fn accepts_mach_bike_when_starting_on_slide_tile() {
+        let result = validate_walk_with_context(
+            0,
+            0,
+            Direction::Right,
+            map(&[0, 0, 0, 0], &[MB_SLIDE_EAST, 0, 0, 0]),
+            None,
+            mach_bike(),
+        );
+        assert_eq!(
+            result,
+            MoveValidation::Accepted {
+                next_x: 1,
+                next_y: 0,
                 collision: CollisionOutcome::None,
             }
         );
