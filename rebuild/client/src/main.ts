@@ -368,7 +368,7 @@ const walkInputController = createWalkInputController({
   onFacingIntent: (direction) => {
     state.facing = direction;
     if (!activeWalkTransition) {
-      playerAnimation.setIdle(direction);
+      playerAnimation.setFacing(direction);
     }
   },
 });
@@ -528,7 +528,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     activeWalkTransition = null;
     state.facing = snapshot.facing;
     await applyAuthoritativeAvatar(snapshot.avatar);
-    playerAnimation.setIdle(snapshot.facing);
+    playerAnimation.stopMoving(snapshot.facing);
     state.lastAckServerTick = snapshot.server_frame;
     pendingPredictedInputs.clear();
     pendingMovementModesByInputSeq.clear();
@@ -566,7 +566,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     activeWalkTransition = null;
     state.renderTileX = state.playerTileX;
     state.renderTileY = state.playerTileY;
-    playerAnimation.setIdle(result.facing);
+    playerAnimation.stopMoving(result.facing);
   }
   state.lastAckServerTick = result.server_frame;
   if (!result.accepted) {
@@ -1578,7 +1578,7 @@ async function applyAuthoritativeAvatar(avatar: PlayerAvatar): Promise<void> {
     resolveImageUrlFromAssets,
   });
   playerAnimation = new PlayerAnimationController(playerAnimationAssets);
-  playerAnimation.setIdle(state.facing);
+  playerAnimation.stopMoving(state.facing);
   playerSprite.anchor.set(
     playerAnimationAssets.anchorX / playerAnimationAssets.frameWidth,
     playerAnimationAssets.anchorY / playerAnimationAssets.frameHeight,
@@ -1720,7 +1720,7 @@ function tickWalkTransition(deltaMs: number): void {
     activeWalkTransition = null;
     walkInputController.markWalkTransitionCompleted();
     if (!shouldRemainInLocomotion) {
-      playerAnimation.setIdle(completedTransitionFacing);
+      playerAnimation.stopMoving(completedTransitionFacing);
     }
   }
 }
