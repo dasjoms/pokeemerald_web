@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from enum import IntEnum
 import struct
 
-PROTOCOL_VERSION = 1
+PROTOCOL_VERSION = 2
 
 _HEADER = struct.Struct("<HBI")  # protocol_version, message_type, payload_len
 _U8 = struct.Struct("<B")
@@ -43,6 +43,11 @@ class Direction(IntEnum):
     RIGHT = 3
 
 
+class MovementMode(IntEnum):
+    WALK = 0
+    RUN = 1
+
+
 class RejectionReason(IntEnum):
     NONE = 0
     COLLISION = 1
@@ -72,6 +77,7 @@ class JoinSession:
 @dataclass(frozen=True)
 class WalkInput:
     direction: Direction
+    movement_mode: MovementMode
     input_seq: int
     client_time: int
 
@@ -147,6 +153,7 @@ def _encode_payload(message: WireMessage) -> tuple[MessageType, bytes]:
         return MessageType.WALK_INPUT, b"".join(
             [
                 _U8.pack(int(message.direction)),
+                _U8.pack(int(message.movement_mode)),
                 _U32.pack(message.input_seq),
                 _U64.pack(message.client_time),
             ]
@@ -210,10 +217,16 @@ def _decode_payload(message_type: MessageType, payload: bytes) -> WireMessage:
 
     if message_type is MessageType.WALK_INPUT:
         direction, offset = _unpack_u8(payload, offset)
+        movement_mode, offset = _unpack_u8(payload, offset)
         input_seq, offset = _unpack_u32(payload, offset)
         client_time, offset = _unpack_u64(payload, offset)
         _ensure_done(payload, offset)
-        return WalkInput(direction=Direction(direction), input_seq=input_seq, client_time=client_time)
+        return WalkInput(
+            direction=Direction(direction),
+            movement_mode=MovementMode(movement_mode),
+            input_seq=input_seq,
+            client_time=client_time,
+        )
 
     if message_type is MessageType.SESSION_ACCEPTED:
         session_id, offset = _unpack_u32(payload, offset)

@@ -4,7 +4,14 @@ from __future__ import annotations
 from pathlib import Path
 from textwrap import dedent
 
-from protocol import PROTOCOL_VERSION, Direction, MessageType, PlayerAvatar, RejectionReason
+from protocol import (
+    PROTOCOL_VERSION,
+    Direction,
+    MessageType,
+    MovementMode,
+    PlayerAvatar,
+    RejectionReason,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 SERVER_OUT = ROOT / "server" / "src" / "protocol_generated.rs"
@@ -42,6 +49,14 @@ pub enum Direction {{
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum MovementMode {{
+    Walk = {int(MovementMode.WALK)},
+    Run = {int(MovementMode.RUN)},
+}}
+
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum RejectionReason {{
     None = {int(RejectionReason.NONE)},
     Collision = {int(RejectionReason.COLLISION)},
@@ -74,6 +89,7 @@ pub struct JoinSession {{
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 pub struct WalkInput {{
     pub direction: Direction,
+    pub movement_mode: MovementMode,
     pub input_seq: u32,
     pub client_time: u64,
 }}
@@ -137,6 +153,11 @@ export enum Direction {{
   RIGHT = {int(Direction.RIGHT)},
 }}
 
+export enum MovementMode {{
+  WALK = {int(MovementMode.WALK)},
+  RUN = {int(MovementMode.RUN)},
+}}
+
 export enum RejectionReason {{
   NONE = {int(RejectionReason.NONE)},
   COLLISION = {int(RejectionReason.COLLISION)},
@@ -154,7 +175,12 @@ export enum PlayerAvatar {{
 
 export type Position = {{ x: number; y: number }};
 export type JoinSession = {{ player_id: string }};
-export type WalkInput = {{ direction: Direction; input_seq: number; client_time: bigint }};
+export type WalkInput = {{
+  direction: Direction;
+  movement_mode: MovementMode;
+  input_seq: number;
+  client_time: bigint;
+}};
 export type SessionAccepted = {{ session_id: number; server_frame: number; avatar: PlayerAvatar }};
 export type WorldSnapshot = {{
   map_id: number;

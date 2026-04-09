@@ -1,7 +1,7 @@
 use std::process::Command;
 
 use rebuild_server::protocol::{
-    decode_client_message, encode_server_message, ClientMessage, Direction, Position,
+    decode_client_message, encode_server_message, ClientMessage, Direction, MovementMode, Position,
     RejectionReason, ServerMessage, WalkResult,
 };
 
@@ -10,7 +10,7 @@ fn shared_walk_input_decodes_in_server_runtime() {
     let output = Command::new("python3")
         .args([
             "-c",
-            r#"import pathlib, sys; sys.path.insert(0, str(pathlib.Path('../shared').resolve())); import protocol; frame=protocol.encode_message(protocol.WalkInput(direction=protocol.Direction.LEFT,input_seq=7,client_time=42)); print(frame.hex())"#,
+            r#"import pathlib, sys; sys.path.insert(0, str(pathlib.Path('../shared').resolve())); import protocol; frame=protocol.encode_message(protocol.WalkInput(direction=protocol.Direction.LEFT,movement_mode=protocol.MovementMode.WALK,input_seq=7,client_time=42)); print(frame.hex())"#,
         ])
         .output()
         .expect("python must run");
@@ -23,6 +23,7 @@ fn shared_walk_input_decodes_in_server_runtime() {
         decoded,
         ClientMessage::WalkInput(rebuild_server::protocol::WalkInput {
             direction: Direction::Left,
+            movement_mode: MovementMode::Walk,
             input_seq: 7,
             client_time: 42,
         })
@@ -91,7 +92,7 @@ fn walk_result_wire_encoding_with_forced_movement_disabled_is_canonical() {
 
     assert_eq!(
         hex::encode(&frame),
-        "0100830f00000004030201002211443302060d0c0b0a"
+        "0200830f00000004030201002211443302060d0c0b0a"
     );
 
     let status = Command::new("python3")

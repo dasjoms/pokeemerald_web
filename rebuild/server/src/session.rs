@@ -3,8 +3,8 @@ use std::collections::VecDeque;
 use tokio::sync::mpsc;
 
 use crate::{
-    movement::{normal_walk_samples_per_tile, step_progress_pixels, StepSpeed, WALK_SAMPLE_MS},
-    protocol::{Direction, PlayerAvatar, ServerMessage, WalkInput},
+    movement::{step_progress_pixels, StepSpeed, WALK_SAMPLE_MS},
+    protocol::{Direction, MovementMode, PlayerAvatar, ServerMessage, WalkInput},
 };
 
 pub const MAX_PENDING_WALK_INPUTS: usize = 2;
@@ -28,6 +28,7 @@ pub struct ActiveWalkTransition {
     pub target_x: u16,
     pub target_y: u16,
     pub direction: Direction,
+    pub movement_mode: MovementMode,
     pub speed: StepSpeed,
     sample_accumulator_ms: f32,
     elapsed_samples: u16,
@@ -43,7 +44,12 @@ impl ActiveWalkTransition {
         target_x: u16,
         target_y: u16,
         direction: Direction,
+        movement_mode: MovementMode,
     ) -> Self {
+        let speed = match movement_mode {
+            MovementMode::Walk => StepSpeed::Step1,
+            MovementMode::Run => StepSpeed::Step2,
+        };
         Self {
             input_seq,
             start_map_id,
@@ -53,7 +59,8 @@ impl ActiveWalkTransition {
             target_x,
             target_y,
             direction,
-            speed: StepSpeed::Step1,
+            movement_mode,
+            speed,
             sample_accumulator_ms: 0.0,
             elapsed_samples: 0,
         }
@@ -72,7 +79,7 @@ impl ActiveWalkTransition {
     }
 
     pub fn is_complete(&self) -> bool {
-        self.elapsed_samples >= normal_walk_samples_per_tile()
+        self.elapsed_samples >= self.speed.samples_per_tile()
     }
 }
 

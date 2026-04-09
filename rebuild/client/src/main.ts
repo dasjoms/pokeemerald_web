@@ -2,6 +2,7 @@ import { Application, Assets, Container, Graphics, Sprite, TextureSource, Textur
 import {
   Direction,
   MessageType,
+  MovementMode,
   PlayerAvatar,
   PROTOCOL_VERSION,
   RejectionReason,
@@ -286,6 +287,7 @@ const pendingPredictedInputs = new Map<number, Direction>();
 let hasLoggedPrimaryTileCountMismatch = false;
 let socket: WebSocket | null = null;
 let debugOverlayEnabled = ENABLE_DEBUG_OVERLAY_DEFAULT;
+let preferredMovementMode: MovementMode = MovementMode.WALK;
 const indexedAtlasPageCache = new Map<string, IndexedAtlasPages>();
 const metatileTextureCaches = new Map<string, MetatileTextureCache>();
 const tilesetAnimationStates = new Map<string, TilesetAnimationState>();
@@ -1192,9 +1194,15 @@ function bindWalkInput(): void {
       debugOverlayLayer.visible = debugOverlayEnabled;
       return;
     }
+    if (event.key === 'Shift') {
+      preferredMovementMode = MovementMode.RUN;
+    }
     walkInputController.handleKeyDown(event);
   });
   window.addEventListener('keyup', (event) => {
+    if (event.key === 'Shift') {
+      preferredMovementMode = MovementMode.WALK;
+    }
     walkInputController.handleKeyUp(event);
   });
 }
@@ -1229,7 +1237,7 @@ function sendWalkInput(direction: Direction): void {
 
   const inputSeq = state.lastInputSeq;
   state.lastInputSeq += 1;
-  socket.send(encodeWalkInput(direction, inputSeq, BigInt(Date.now())));
+  socket.send(encodeWalkInput(direction, preferredMovementMode, inputSeq, BigInt(Date.now())));
 
   if (ENABLE_CLIENT_PREDICTION) {
     applyPredictedWalk(direction, inputSeq);
@@ -1403,12 +1411,18 @@ function encodeJoinSession(playerId: string): Uint8Array {
   return frame;
 }
 
-function encodeWalkInput(direction: Direction, inputSeq: number, clientTime: bigint): Uint8Array {
-  const payload = new Uint8Array(13);
+function encodeWalkInput(
+  direction: Direction,
+  movementMode: MovementMode,
+  inputSeq: number,
+  clientTime: bigint,
+): Uint8Array {
+  const payload = new Uint8Array(14);
   const payloadView = new DataView(payload.buffer);
   payloadView.setUint8(0, direction);
-  payloadView.setUint32(1, inputSeq, true);
-  payloadView.setBigUint64(5, clientTime, true);
+  payloadView.setUint8(1, movementMode);
+  payloadView.setUint32(2, inputSeq, true);
+  payloadView.setBigUint64(6, clientTime, true);
 
   const frame = new Uint8Array(7 + payload.length);
   const view = new DataView(frame.buffer);
