@@ -340,6 +340,7 @@ impl World {
                         connection_id = session.connection_id,
                         input_seq = active_walk.input_seq,
                         direction = ?active_walk.direction,
+                        movement_mode = ?active_walk.movement_mode,
                         progress_pixels = active_walk.progress_pixels(),
                         "walk transition advanced"
                     );
@@ -423,6 +424,7 @@ impl World {
                             next_x,
                             next_y,
                             input.direction,
+                            input.movement_mode,
                         ));
                         (true, RejectionReason::None, next_x, next_y)
                     }

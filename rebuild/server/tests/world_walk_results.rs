@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use rebuild_server::{
     movement::{validate_walk, MoveValidation, MovementMap},
-    protocol::{Direction, RejectionReason, ServerMessage, WalkInput},
+    protocol::{Direction, MovementMode, RejectionReason, ServerMessage, WalkInput},
     world::World,
 };
 use tokio::sync::mpsc;
@@ -74,6 +74,7 @@ async fn accepted_walk_result_reports_destination_coordinates_immediately() {
             session.connection_id,
             WalkInput {
                 direction: accepted_direction.0,
+                movement_mode: MovementMode::Walk,
                 input_seq: 0,
                 client_time: 0,
             },

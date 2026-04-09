@@ -2,8 +2,8 @@
 mod protocol_generated;
 
 pub use protocol_generated::{
-    Direction, JoinSession, MessageType, PlayerAvatar, Position, RejectionReason, SessionAccepted,
-    WalkInput, WalkResult, WorldDelta, WorldSnapshot, PROTOCOL_VERSION,
+    Direction, JoinSession, MessageType, MovementMode, PlayerAvatar, Position, RejectionReason,
+    SessionAccepted, WalkInput, WalkResult, WorldDelta, WorldSnapshot, PROTOCOL_VERSION,
 };
 pub type Facing = Direction;
 
@@ -42,6 +42,8 @@ pub enum ProtocolError {
     InvalidEnum,
     #[error("invalid direction value: {0}")]
     InvalidDirection(u8),
+    #[error("invalid movement mode value: {0}")]
+    InvalidMovementMode(u8),
     #[error("map_chunk_hash must be <= 255 bytes")]
     MapChunkHashTooLong,
 }
@@ -127,15 +129,25 @@ pub fn decode_client_message(frame: &[u8]) -> Result<ClientMessage, ProtocolErro
         }
         x if x == MessageType::WalkInput as u8 => {
             let (raw_direction, offset) = unpack_u8(payload, 0)?;
+            let (raw_movement_mode, offset) = unpack_u8(payload, offset)?;
             let (input_seq, offset) = unpack_u32(payload, offset)?;
             let (client_time, offset) = unpack_u64(payload, offset)?;
             ensure_done(payload, offset)?;
             match decode_direction(raw_direction) {
-                Ok(direction) => Ok(ClientMessage::WalkInput(WalkInput {
-                    direction,
-                    input_seq,
-                    client_time,
-                })),
+                Ok(direction) => match decode_movement_mode(raw_movement_mode) {
+                    Ok(movement_mode) => Ok(ClientMessage::WalkInput(WalkInput {
+                        direction,
+                        movement_mode,
+                        input_seq,
+                        client_time,
+                    })),
+                    Err(_) => Ok(ClientMessage::WalkInput(WalkInput {
+                        direction,
+                        movement_mode: MovementMode::Walk,
+                        input_seq,
+                        client_time,
+                    })),
+                },
                 Err(_) => Ok(ClientMessage::WalkInputInvalidDirection {
                     input_seq,
                     client_time,
@@ -143,6 +155,14 @@ pub fn decode_client_message(frame: &[u8]) -> Result<ClientMessage, ProtocolErro
             }
         }
         _ => Err(ProtocolError::UnknownMessageType(message_type)),
+    }
+}
+
+fn decode_movement_mode(raw: u8) -> Result<MovementMode, ProtocolError> {
+    match raw {
+        0 => Ok(MovementMode::Walk),
+        1 => Ok(MovementMode::Run),
+        _ => Err(ProtocolError::InvalidMovementMode(raw)),
     }
 }
 
