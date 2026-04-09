@@ -1342,6 +1342,64 @@ mod tests {
         assert_eq!(player.bike_runtime.bike_frame_counter, 1);
     }
 
+    fn seed_turning_jump_window(player: &mut PlayerState, direction: Direction) {
+        player.traversal_state = TraversalState::AcroBike;
+        player.bike_runtime.acro_runtime.state = AcroState::Turning;
+        player.bike_runtime.acro_runtime.new_dir_backup = Some(direction);
+        player
+            .bike_runtime
+            .acro_runtime
+            .update_history(Some(direction), 0);
+        player
+            .bike_runtime
+            .acro_runtime
+            .update_history(Some(direction), 0);
+        player
+            .bike_runtime
+            .acro_runtime
+            .update_history(Some(direction), crate::protocol::HeldButtons::B as u8);
+    }
+
+    #[test]
+    fn tick_then_step_order_preserves_side_jump_transition() {
+        let mut player = test_player_state();
+        player.facing = Direction::Up;
+        seed_turning_jump_window(&mut player, Direction::Right);
+
+        update_bike_runtime_per_tick(
+            &mut player,
+            Some(Direction::Right),
+            crate::protocol::HeldButtons::B as u8,
+        );
+        update_bike_runtime_after_step(&mut player, Direction::Right);
+
+        assert_eq!(
+            player.bike_runtime.last_transition,
+            BikeTransitionType::SideJump
+        );
+        assert_eq!(player.bike_runtime.acro_runtime.state, AcroState::SideJump);
+    }
+
+    #[test]
+    fn tick_then_step_order_preserves_turn_jump_transition() {
+        let mut player = test_player_state();
+        player.facing = Direction::Left;
+        seed_turning_jump_window(&mut player, Direction::Right);
+
+        update_bike_runtime_per_tick(
+            &mut player,
+            Some(Direction::Right),
+            crate::protocol::HeldButtons::B as u8,
+        );
+        update_bike_runtime_after_step(&mut player, Direction::Right);
+
+        assert_eq!(
+            player.bike_runtime.last_transition,
+            BikeTransitionType::TurnJump
+        );
+        assert_eq!(player.bike_runtime.acro_runtime.state, AcroState::TurnJump);
+    }
+
     #[test]
     fn cracked_floor_callback_schedules_delayed_collapse_and_speed_gate() {
         let mut player = test_player_state();

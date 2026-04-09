@@ -3,6 +3,7 @@ use crate::protocol::Direction;
 const INPUT_HISTORY_LEN: usize = 8;
 const TIMER_END: u8 = 0;
 const ACRO_JUMP_TIMER_LIST: [u8; 2] = [4, TIMER_END];
+const JUMP_INTENT_TTL_TICKS: u8 = 2;
 
 const ABSS_A: u8 = 1 << 0;
 const ABSS_B: u8 = 1 << 1;
@@ -114,6 +115,13 @@ pub struct AcroRuntime {
     pub movement_direction: Direction,
     pub on_bumpy_slope: bool,
     pending_action: Option<AcroAnimationAction>,
+    pending_jump_intent: Option<PendingJumpIntent>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct PendingJumpIntent {
+    direction: Direction,
+    expires_in_ticks: u8,
 }
 
 impl Default for AcroRuntime {
@@ -132,6 +140,7 @@ impl Default for AcroRuntime {
             movement_direction: Direction::Down,
             on_bumpy_slope: false,
             pending_action: None,
+            pending_jump_intent: None,
         }
     }
 }
@@ -147,7 +156,13 @@ impl AcroRuntime {
     }
 
     pub fn advance_tick(&mut self) {
+        self.age_pending_jump_intent();
         self.update_history(self.held_direction, if self.holding_b { ABSS_B } else { 0 });
+        self.refresh_pending_jump_intent();
+        if matches!(self.state, AcroState::Turning) {
+            self.pending_action = None;
+            return;
+        }
         self.pending_action = Some(self.handle_input(self.held_direction, self.movement_direction));
     }
 
@@ -294,7 +309,10 @@ impl AcroRuntime {
             return AcroAnimationAction::TurnDirection;
         }
 
-        if Some(new_direction) == self.get_jump_direction() {
+        if self.consume_jump_intent_for(new_direction)
+            || Some(new_direction) == self.get_jump_direction()
+        {
+            self.pending_jump_intent = None;
             if new_direction == opposite_direction(facing_direction) {
                 self.state = AcroState::TurnJump;
                 return AcroAnimationAction::TurnJump;
@@ -305,6 +323,41 @@ impl AcroRuntime {
         }
 
         AcroAnimationAction::FaceDirection
+    }
+
+    fn age_pending_jump_intent(&mut self) {
+        let Some(mut intent) = self.pending_jump_intent else {
+            return;
+        };
+
+        if intent.expires_in_ticks <= 1 {
+            self.pending_jump_intent = None;
+            return;
+        }
+
+        intent.expires_in_ticks -= 1;
+        self.pending_jump_intent = Some(intent);
+    }
+
+    fn refresh_pending_jump_intent(&mut self) {
+        if let Some(direction) = self.get_jump_direction() {
+            self.pending_jump_intent = Some(PendingJumpIntent {
+                direction,
+                expires_in_ticks: JUMP_INTENT_TTL_TICKS,
+            });
+        }
+    }
+
+    fn consume_jump_intent_for(&mut self, direction: Direction) -> bool {
+        matches!(
+            self.pending_jump_intent,
+            Some(PendingJumpIntent {
+                direction: candidate,
+                ..
+            }) if candidate == direction
+        )
+        .then(|| self.pending_jump_intent.take())
+        .is_some()
     }
 
     fn handle_input_wheelie_standing(
@@ -607,6 +660,28 @@ mod tests {
     }
 
     #[test]
+    fn advance_tick_with_direction_only_updates_jump_intent_without_state_overwrite() {
+        let mut runtime = AcroRuntime {
+            state: AcroState::Turning,
+            new_dir_backup: Some(Direction::Right),
+            ..Default::default()
+        };
+        runtime.update_history(Some(Direction::Right), 0);
+        runtime.update_history(Some(Direction::Right), 0);
+        runtime.update_history(Some(Direction::Right), holding_b_mask());
+        runtime.set_held_input(Some(Direction::Right), true);
+
+        runtime.advance_tick();
+
+        assert_eq!(runtime.state, AcroState::Turning);
+        assert_eq!(runtime.take_pending_action(), None);
+        assert_eq!(
+            runtime.apply_step(Direction::Up, Direction::Right),
+            AcroAnimationAction::SideJump
+        );
+    }
+
+    #[test]
     fn wheelie_standing_handler_covers_idle_move_hop_and_release() {
         let mut runtime = AcroRuntime {
             state: AcroState::WheelieStanding,
@@ -727,7 +802,7 @@ mod tests {
             ..Default::default()
         };
 
-        runtime.set_held_input(Some(Direction::Right), false);
+        runtime.set_held_input(None, false);
         runtime.advance_tick();
         assert_eq!(runtime.state, AcroState::WheelieStanding);
         assert_eq!(
