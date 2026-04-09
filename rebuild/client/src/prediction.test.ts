@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Direction, RejectionReason, type WalkResult } from './protocol_generated';
+import { Direction, RejectionReason, TraversalState, type WalkResult } from './protocol_generated';
 import { applyPredictedStep, clampToMapBounds, reconcilePredictions } from './prediction';
 
 describe('client prediction helpers', () => {
@@ -92,6 +92,7 @@ function makeWalkResult(partial: Partial<WalkResult>): WalkResult {
     facing: Direction.DOWN,
     reason: RejectionReason.NONE,
     server_frame: 1,
+    traversal_state: TraversalState.ON_FOOT,
     ...partial,
   };
 }

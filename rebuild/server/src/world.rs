@@ -17,10 +17,14 @@ use crate::{
         MovementMap, WALK_SAMPLE_MS,
     },
     protocol::{
-        Direction, MovementMode, PlayerAvatar, RejectionReason, ServerMessage, SessionAccepted,
-        WalkInput, WalkResult, WorldSnapshot,
+        AcroBikeSubstate, BikeTransitionType, Direction, MovementMode, PlayerAvatar,
+        RejectionReason, ServerMessage, SessionAccepted, TraversalState, WalkInput, WalkResult,
+        WorldSnapshot,
     },
-    session::{ActiveWalkTransition, PlayerState, Session, SessionInit, MAX_PENDING_WALK_INPUTS},
+    session::{
+        ActiveWalkTransition, BikeRuntimeState, PlayerState, Session, SessionInit,
+        MAX_PENDING_WALK_INPUTS,
+    },
 };
 
 #[derive(Debug, Clone)]
@@ -173,7 +177,8 @@ impl World {
                 tile_y: spawn_y,
                 facing: Direction::Down,
                 avatar: PlayerAvatar::Brendan,
-                is_on_bike: false,
+                traversal_state: TraversalState::OnFoot,
+                bike_runtime: BikeRuntimeState::default(),
             },
             outbound,
         );
@@ -371,15 +376,29 @@ impl World {
                         facing: session.player_state.facing,
                         reason: RejectionReason::OutOfBounds,
                         server_frame: tick as u32,
+                        traversal_state: session.player_state.traversal_state,
+                        mach_speed_stage: bike_mach_speed_for_traversal(&session.player_state),
+                        acro_substate: bike_acro_substate_for_traversal(&session.player_state),
+                        bike_transition: Some(session.player_state.bike_runtime.last_transition),
                     }));
                     continue;
                 };
 
-                if session.player_state.is_on_bike && !current_map.allow_cycling {
-                    session.player_state.is_on_bike = false;
+                session.player_state.bike_runtime.last_transition = BikeTransitionType::None;
+
+                if !current_map.allow_cycling
+                    && !matches!(session.player_state.traversal_state, TraversalState::OnFoot)
+                {
+                    session.player_state.traversal_state = TraversalState::OnFoot;
+                    session.player_state.bike_runtime = BikeRuntimeState::default();
+                    session.player_state.bike_runtime.last_transition =
+                        BikeTransitionType::Dismount;
                 }
 
-                let resolved_movement_mode = if session.player_state.is_on_bike {
+                let resolved_movement_mode = if matches!(
+                    session.player_state.traversal_state,
+                    TraversalState::MachBike | TraversalState::AcroBike
+                ) {
                     input.movement_mode
                 } else if matches!(input.movement_mode, MovementMode::Run)
                     && !current_map.allow_running
@@ -465,12 +484,19 @@ impl World {
                     facing: session.player_state.facing,
                     reason,
                     server_frame: tick as u32,
+                    traversal_state: session.player_state.traversal_state,
+                    mach_speed_stage: bike_mach_speed_for_traversal(&session.player_state),
+                    acro_substate: bike_acro_substate_for_traversal(&session.player_state),
+                    bike_transition: Some(session.player_state.bike_runtime.last_transition),
                 });
 
                 let _ = session.send(result);
 
                 if accepted {
+                    update_bike_runtime_after_step(&mut session.player_state, input.direction);
                     break;
+                } else {
+                    reset_bike_runtime_on_reject(&mut session.player_state);
                 }
             }
         }
@@ -511,6 +537,10 @@ impl World {
             map_chunk_hash,
             map_chunk,
             server_frame,
+            traversal_state: player_state.traversal_state,
+            mach_speed_stage: bike_mach_speed_for_traversal(player_state),
+            acro_substate: bike_acro_substate_for_traversal(player_state),
+            bike_transition: Some(player_state.bike_runtime.last_transition),
         })
     }
 
@@ -587,7 +617,91 @@ impl World {
             facing: session.player_state.facing,
             reason,
             server_frame,
+            traversal_state: session.player_state.traversal_state,
+            mach_speed_stage: bike_mach_speed_for_traversal(&session.player_state),
+            acro_substate: bike_acro_substate_for_traversal(&session.player_state),
+            bike_transition: Some(session.player_state.bike_runtime.last_transition),
         })
+    }
+}
+
+fn bike_mach_speed_for_traversal(player_state: &PlayerState) -> Option<u8> {
+    if matches!(player_state.traversal_state, TraversalState::MachBike) {
+        Some(player_state.bike_runtime.mach_speed_stage)
+    } else {
+        None
+    }
+}
+
+fn bike_acro_substate_for_traversal(player_state: &PlayerState) -> Option<AcroBikeSubstate> {
+    if matches!(player_state.traversal_state, TraversalState::AcroBike) {
+        Some(player_state.bike_runtime.acro_state)
+    } else {
+        None
+    }
+}
+
+fn reset_bike_runtime_on_reject(player_state: &mut PlayerState) {
+    if matches!(player_state.traversal_state, TraversalState::MachBike) {
+        player_state.bike_runtime.mach_speed_counter = 0;
+        player_state.bike_runtime.mach_speed_stage = 0;
+    }
+}
+
+fn update_bike_runtime_after_step(player_state: &mut PlayerState, direction: Direction) {
+    match player_state.traversal_state {
+        TraversalState::OnFoot => {
+            player_state.bike_runtime.mach_speed_counter = 0;
+            player_state.bike_runtime.mach_speed_stage = 0;
+            player_state.bike_runtime.acro_state = AcroBikeSubstate::None;
+        }
+        TraversalState::MachBike => {
+            let counter = player_state
+                .bike_runtime
+                .mach_speed_counter
+                .saturating_add(1);
+            player_state.bike_runtime.mach_speed_counter = counter;
+            player_state.bike_runtime.mach_speed_stage = counter.min(3);
+        }
+        TraversalState::AcroBike => {
+            const ACRO_HISTORY_CAPACITY: usize = 8;
+            const ACRO_HISTORY_RESET_MS: u16 = 350;
+            player_state.bike_runtime.acro_history_timer_ms = player_state
+                .bike_runtime
+                .acro_history_timer_ms
+                .saturating_add(WALK_SAMPLE_MS as u16);
+            if player_state.bike_runtime.acro_history_timer_ms > ACRO_HISTORY_RESET_MS {
+                player_state.bike_runtime.acro_input_history.clear();
+                player_state.bike_runtime.acro_history_timer_ms = 0;
+            }
+            if player_state.bike_runtime.acro_input_history.len() >= ACRO_HISTORY_CAPACITY {
+                let _ = player_state.bike_runtime.acro_input_history.pop_front();
+            }
+            player_state
+                .bike_runtime
+                .acro_input_history
+                .push_back(direction);
+            let trailing_same_direction = player_state
+                .bike_runtime
+                .acro_input_history
+                .iter()
+                .rev()
+                .take_while(|&&sample| sample == direction)
+                .count();
+            player_state.bike_runtime.acro_state = if trailing_same_direction >= 2 {
+                AcroBikeSubstate::MovingWheelie
+            } else {
+                AcroBikeSubstate::None
+            };
+            player_state.bike_runtime.last_transition = if matches!(
+                player_state.bike_runtime.acro_state,
+                AcroBikeSubstate::MovingWheelie
+            ) {
+                BikeTransitionType::EnterWheelie
+            } else {
+                BikeTransitionType::None
+            };
+        }
     }
 }
 

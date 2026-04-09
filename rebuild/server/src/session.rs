@@ -4,7 +4,10 @@ use tokio::sync::mpsc;
 
 use crate::{
     movement::{movement_mode_step_speed, step_progress_pixels, StepSpeed, WALK_SAMPLE_MS},
-    protocol::{Direction, MovementMode, PlayerAvatar, ServerMessage, WalkInput},
+    protocol::{
+        AcroBikeSubstate, BikeTransitionType, Direction, MovementMode, PlayerAvatar, ServerMessage,
+        TraversalState, WalkInput,
+    },
 };
 
 pub const MAX_PENDING_WALK_INPUTS: usize = 2;
@@ -16,7 +19,31 @@ pub struct PlayerState {
     pub tile_y: u16,
     pub facing: Direction,
     pub avatar: PlayerAvatar,
-    pub is_on_bike: bool,
+    pub traversal_state: TraversalState,
+    pub bike_runtime: BikeRuntimeState,
+}
+
+#[derive(Debug, Clone)]
+pub struct BikeRuntimeState {
+    pub mach_speed_stage: u8,
+    pub mach_speed_counter: u8,
+    pub acro_state: AcroBikeSubstate,
+    pub last_transition: BikeTransitionType,
+    pub acro_input_history: VecDeque<Direction>,
+    pub acro_history_timer_ms: u16,
+}
+
+impl Default for BikeRuntimeState {
+    fn default() -> Self {
+        Self {
+            mach_speed_stage: 0,
+            mach_speed_counter: 0,
+            acro_state: AcroBikeSubstate::None,
+            last_transition: BikeTransitionType::None,
+            acro_input_history: VecDeque::with_capacity(8),
+            acro_history_timer_ms: 0,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
