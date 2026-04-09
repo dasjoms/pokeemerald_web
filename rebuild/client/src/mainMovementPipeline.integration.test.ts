@@ -248,7 +248,20 @@ function makeMockAssets(): PlayerAnimationAssets {
     paletteColors: ['#000000'],
     reflectionPaletteColors: null,
     reflectionPaletteSourcePath: null,
-    directionalBindings,
+    animationSets: {
+      on_foot: {
+        anim_table_symbol: 'sAnimTable_BrendanMayNormal',
+        actions: directionalBindings,
+      },
+      mach_bike: {
+        anim_table_symbol: 'sAnimTable_Standard',
+        actions: {},
+      },
+      acro_bike: {
+        anim_table_symbol: 'sAnimTable_AcroBike',
+        actions: {},
+      },
+    },
     frameTextures: frameTextures as PlayerAnimationAssets['frameTextures'],
   };
 }

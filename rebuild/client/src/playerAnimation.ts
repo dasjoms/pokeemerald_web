@@ -1,10 +1,15 @@
 import { Rectangle, Texture } from 'pixi.js';
-import { Direction } from './protocol_generated';
+import {
+  AcroBikeSubstate,
+  BikeTransitionType,
+  Direction,
+  TraversalState,
+} from './protocol_generated';
 import { decodeIndexed4bppPngFromUrl } from './metatileRenderer';
 
 type Cardinal = 'south' | 'north' | 'west' | 'east';
 type AnimationKind = 'face' | 'walk' | 'run';
-type SpriteSheetKind = 'normal' | 'running';
+type TraversalMode = 'on_foot' | 'mach_bike' | 'acro_bike';
 
 type AnimationFrameMeta = {
   duration: number;
@@ -13,13 +18,20 @@ type AnimationFrameMeta = {
 };
 
 type DirectionalAnimationMeta = {
+  action_id?: string;
   anim_cmd_symbol: string;
   frames: AnimationFrameMeta[];
 };
 
 type AvatarDefinition = {
   avatar_id: string;
-  animation_bindings: Record<AnimationKind, Record<Cardinal, DirectionalAnimationMeta>>;
+  animation_sets: Record<
+    TraversalMode,
+    {
+      anim_table_symbol: string;
+      actions: Record<string, Record<Cardinal, DirectionalAnimationMeta>>;
+    }
+  >;
   frame_atlas: Record<
     string,
     {
@@ -48,7 +60,7 @@ type AvatarDefinition = {
     };
   };
   sheet_sources: Record<
-    SpriteSheetKind,
+    'normal' | 'running' | 'mach_bike' | 'acro_bike',
     {
       source_path: string;
       symbol: string;
@@ -82,7 +94,7 @@ export type PlayerAnimationAssets = {
   paletteColors: string[];
   reflectionPaletteColors: string[] | null;
   reflectionPaletteSourcePath: string | null;
-  directionalBindings: AvatarDefinition['animation_bindings'];
+  animationSets: AvatarDefinition['animation_sets'];
   frameTextures: Map<number, Texture>;
 };
 
@@ -113,25 +125,17 @@ export async function loadPlayerAnimationAssets(
     throw new Error(`missing player avatar metadata for avatar_id=${options.avatarId}`);
   }
 
-  const [walkingBaseTexture, runningBaseTexture] = await Promise.all([
-    loadBaseTexture(
-      options.resolveImageUrlFromAssets,
-      resolveSheetPngPathFromManifest(avatar.sheet_sources.normal.source_path),
-      avatar.palettes.normal.colors,
-    ),
-    loadBaseTexture(
-      options.resolveImageUrlFromAssets,
-      resolveSheetPngPathFromManifest(avatar.sheet_sources.running.source_path),
-      avatar.palettes.normal.colors,
-    ),
-  ]);
-
-  const normalSheetSymbol = avatar.sheet_sources.normal.symbol;
-  const runningSheetSymbol = avatar.sheet_sources.running.symbol;
-  const sheetTexturesBySymbol = new Map<string, Texture>([
-    [normalSheetSymbol, walkingBaseTexture],
-    [runningSheetSymbol, runningBaseTexture],
-  ]);
+  const sheetTexturesBySymbol = new Map<string, Texture>();
+  await Promise.all(
+    Object.values(avatar.sheet_sources).map(async (source) => {
+      const texture = await loadBaseTexture(
+        options.resolveImageUrlFromAssets,
+        resolveSheetPngPathFromManifest(source.source_path),
+        avatar.palettes.normal.colors,
+      );
+      sheetTexturesBySymbol.set(source.symbol, texture);
+    }),
+  );
 
   const frameTextures = new Map<number, Texture>();
   for (const [frameIdRaw, atlasEntry] of Object.entries(avatar.frame_atlas)) {
@@ -167,7 +171,7 @@ export async function loadPlayerAnimationAssets(
     paletteColors: avatar.palettes.normal.colors,
     reflectionPaletteColors: avatar.palettes.reflection?.colors ?? null,
     reflectionPaletteSourcePath: avatar.palettes.reflection?.source_path ?? null,
-    directionalBindings: avatar.animation_bindings,
+    animationSets: avatar.animation_sets,
     frameTextures,
   };
 }
@@ -257,6 +261,10 @@ function parseHexPaletteColor(color: string | undefined): [number, number, numbe
 export class PlayerAnimationController {
   private readonly assets: PlayerAnimationAssets;
   private mode: PlayerAnimationMode = { kind: 'face', direction: 'south' };
+  private traversalState: TraversalState = TraversalState.ON_FOOT;
+  private machSpeedStage = 0;
+  private acroSubstate: AcroBikeSubstate = AcroBikeSubstate.NONE;
+  private bikeTransition: BikeTransitionType = BikeTransitionType.NONE;
   private pendingMode: PlayerAnimationMode | null = null;
   private frameCommandIndex = 0;
   private ticksUntilAdvance = 0;
@@ -278,6 +286,19 @@ export class PlayerAnimationController {
       kind: 'face',
       direction: mapDirection(direction),
     };
+  }
+
+  setTraversalState(state: {
+    traversalState: TraversalState;
+    machSpeedStage?: number;
+    acroSubstate?: AcroBikeSubstate;
+    bikeTransition?: BikeTransitionType;
+  }): void {
+    this.traversalState = state.traversalState;
+    this.machSpeedStage = state.machSpeedStage ?? 0;
+    this.acroSubstate = state.acroSubstate ?? AcroBikeSubstate.NONE;
+    this.bikeTransition = state.bikeTransition ?? BikeTransitionType.NONE;
+    this.resetFrameTimer();
   }
 
   applyPendingModeChanges(): void {
@@ -381,7 +402,81 @@ export class PlayerAnimationController {
   }
 
   private currentDirectionalAnimation(): DirectionalAnimationMeta {
-    return this.assets.directionalBindings[this.mode.kind][this.mode.direction];
+    const modeSet = this.resolveCurrentAnimationSet();
+    const action = modeSet.actions[this.resolveCurrentActionId()] ?? modeSet.actions.face;
+    const directional = action?.[this.mode.direction] ?? modeSet.actions.face?.south;
+    if (!directional) {
+      throw new Error('player directional animation binding is missing');
+    }
+    return directional;
+  }
+
+  private resolveCurrentAnimationSet(): PlayerAnimationAssets['animationSets'][TraversalMode] {
+    if (this.traversalState === TraversalState.MACH_BIKE) {
+      return this.assets.animationSets.mach_bike;
+    }
+    if (this.traversalState === TraversalState.ACRO_BIKE) {
+      return this.assets.animationSets.acro_bike;
+    }
+    return this.assets.animationSets.on_foot;
+  }
+
+  private resolveCurrentActionId(): string {
+    if (this.mode.kind === 'face') {
+      if (this.traversalState !== TraversalState.ACRO_BIKE) {
+        return 'face';
+      }
+      if (
+        this.bikeTransition === BikeTransitionType.WHEELIE_IDLE ||
+        this.acroSubstate === AcroBikeSubstate.STANDING_WHEELIE
+      ) {
+        return 'acro_standing_wheelie_back_wheel';
+      }
+      if (this.bikeTransition === BikeTransitionType.WHEELIE_POP) {
+        return 'acro_standing_wheelie_front_wheel';
+      }
+      if (
+        this.bikeTransition === BikeTransitionType.HOP ||
+        this.bikeTransition === BikeTransitionType.HOP_STANDING ||
+        this.acroSubstate === AcroBikeSubstate.BUNNY_HOP
+      ) {
+        return 'acro_bunny_hop_back_wheel';
+      }
+      return 'face';
+    }
+
+    if (this.traversalState === TraversalState.ACRO_BIKE) {
+      if (this.acroSubstate === AcroBikeSubstate.MOVING_WHEELIE) {
+        return 'acro_moving_wheelie';
+      }
+      if (
+        this.bikeTransition === BikeTransitionType.HOP_MOVING ||
+        this.bikeTransition === BikeTransitionType.SIDE_JUMP ||
+        this.bikeTransition === BikeTransitionType.TURN_JUMP
+      ) {
+        return 'acro_bunny_hop_front_wheel';
+      }
+      return this.resolveBikeSpeedActionId();
+    }
+
+    if (this.traversalState === TraversalState.MACH_BIKE) {
+      return this.resolveBikeSpeedActionId();
+    }
+
+    return this.mode.kind;
+  }
+
+  private resolveBikeSpeedActionId(): string {
+    if (this.machSpeedStage >= 3) {
+      return 'bike_fastest';
+    }
+    if (this.machSpeedStage === 2) {
+      return 'bike_faster';
+    }
+    if (this.machSpeedStage === 1 || this.mode.kind === 'run') {
+      return 'bike_fast';
+    }
+    return 'bike_walk';
   }
 }
 

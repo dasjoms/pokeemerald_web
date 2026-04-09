@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[3]
-PLAYER_ASSETS_VERSION = 1
+PLAYER_ASSETS_VERSION = 2
 TILE_SIZE_PX = 8
 
 
@@ -20,8 +20,14 @@ class AvatarSpec:
     avatar_id: str
     normal_pic_symbol: str
     running_pic_symbol: str
+    mach_bike_pic_symbol: str
+    acro_bike_pic_symbol: str
     normal_pic_table_symbol: str
+    mach_bike_pic_table_symbol: str
+    acro_bike_pic_table_symbol: str
     graphics_info_symbol: str
+    mach_bike_graphics_info_symbol: str
+    acro_bike_graphics_info_symbol: str
     normal_palette_symbol: str
 
 
@@ -30,19 +36,113 @@ AVATARS: tuple[AvatarSpec, ...] = (
         avatar_id="brendan",
         normal_pic_symbol="gObjectEventPic_BrendanNormal",
         running_pic_symbol="gObjectEventPic_BrendanRunning",
+        mach_bike_pic_symbol="gObjectEventPic_BrendanMachBike",
+        acro_bike_pic_symbol="gObjectEventPic_BrendanAcroBike",
         normal_pic_table_symbol="sPicTable_BrendanNormal",
+        mach_bike_pic_table_symbol="sPicTable_BrendanMachBike",
+        acro_bike_pic_table_symbol="sPicTable_BrendanAcroBike",
         graphics_info_symbol="gObjectEventGraphicsInfo_BrendanNormal",
+        mach_bike_graphics_info_symbol="gObjectEventGraphicsInfo_BrendanMachBike",
+        acro_bike_graphics_info_symbol="gObjectEventGraphicsInfo_BrendanAcroBike",
         normal_palette_symbol="gObjectEventPal_Brendan",
     ),
     AvatarSpec(
         avatar_id="may",
         normal_pic_symbol="gObjectEventPic_MayNormal",
         running_pic_symbol="gObjectEventPic_MayRunning",
+        mach_bike_pic_symbol="gObjectEventPic_MayMachBike",
+        acro_bike_pic_symbol="gObjectEventPic_MayAcroBike",
         normal_pic_table_symbol="sPicTable_MayNormal",
+        mach_bike_pic_table_symbol="sPicTable_MayMachBike",
+        acro_bike_pic_table_symbol="sPicTable_MayAcroBike",
         graphics_info_symbol="gObjectEventGraphicsInfo_MayNormal",
+        mach_bike_graphics_info_symbol="gObjectEventGraphicsInfo_MayMachBike",
+        acro_bike_graphics_info_symbol="gObjectEventGraphicsInfo_MayAcroBike",
         normal_palette_symbol="gObjectEventPal_May",
     ),
 )
+
+ON_FOOT_ACTIONS = {
+    "face": {
+        "south": "ANIM_STD_FACE_SOUTH",
+        "north": "ANIM_STD_FACE_NORTH",
+        "west": "ANIM_STD_FACE_WEST",
+        "east": "ANIM_STD_FACE_EAST",
+    },
+    "walk": {
+        "south": "ANIM_STD_GO_SOUTH",
+        "north": "ANIM_STD_GO_NORTH",
+        "west": "ANIM_STD_GO_WEST",
+        "east": "ANIM_STD_GO_EAST",
+    },
+    "run": {
+        "south": "ANIM_RUN_SOUTH",
+        "north": "ANIM_RUN_NORTH",
+        "west": "ANIM_RUN_WEST",
+        "east": "ANIM_RUN_EAST",
+    },
+}
+
+MACH_BIKE_ACTIONS = {
+    "face": ON_FOOT_ACTIONS["face"],
+    "bike_walk": ON_FOOT_ACTIONS["walk"],
+    "bike_fast": {
+        "south": "ANIM_STD_GO_FAST_SOUTH",
+        "north": "ANIM_STD_GO_FAST_NORTH",
+        "west": "ANIM_STD_GO_FAST_WEST",
+        "east": "ANIM_STD_GO_FAST_EAST",
+    },
+    "bike_faster": {
+        "south": "ANIM_STD_GO_FASTER_SOUTH",
+        "north": "ANIM_STD_GO_FASTER_NORTH",
+        "west": "ANIM_STD_GO_FASTER_WEST",
+        "east": "ANIM_STD_GO_FASTER_EAST",
+    },
+    "bike_fastest": {
+        "south": "ANIM_STD_GO_FASTEST_SOUTH",
+        "north": "ANIM_STD_GO_FASTEST_NORTH",
+        "west": "ANIM_STD_GO_FASTEST_WEST",
+        "east": "ANIM_STD_GO_FASTEST_EAST",
+    },
+}
+
+ACRO_BIKE_ACTIONS = {
+    "face": ON_FOOT_ACTIONS["face"],
+    "bike_walk": ON_FOOT_ACTIONS["walk"],
+    "bike_fast": MACH_BIKE_ACTIONS["bike_fast"],
+    "bike_faster": MACH_BIKE_ACTIONS["bike_faster"],
+    "bike_fastest": MACH_BIKE_ACTIONS["bike_fastest"],
+    "acro_bunny_hop_back_wheel": {
+        "south": "ANIM_BUNNY_HOP_BACK_WHEEL_SOUTH",
+        "north": "ANIM_BUNNY_HOP_BACK_WHEEL_NORTH",
+        "west": "ANIM_BUNNY_HOP_BACK_WHEEL_WEST",
+        "east": "ANIM_BUNNY_HOP_BACK_WHEEL_EAST",
+    },
+    "acro_bunny_hop_front_wheel": {
+        "south": "ANIM_BUNNY_HOP_FRONT_WHEEL_SOUTH",
+        "north": "ANIM_BUNNY_HOP_FRONT_WHEEL_NORTH",
+        "west": "ANIM_BUNNY_HOP_FRONT_WHEEL_WEST",
+        "east": "ANIM_BUNNY_HOP_FRONT_WHEEL_EAST",
+    },
+    "acro_standing_wheelie_back_wheel": {
+        "south": "ANIM_STANDING_WHEELIE_BACK_WHEEL_SOUTH",
+        "north": "ANIM_STANDING_WHEELIE_BACK_WHEEL_NORTH",
+        "west": "ANIM_STANDING_WHEELIE_BACK_WHEEL_WEST",
+        "east": "ANIM_STANDING_WHEELIE_BACK_WHEEL_EAST",
+    },
+    "acro_standing_wheelie_front_wheel": {
+        "south": "ANIM_STANDING_WHEELIE_FRONT_WHEEL_SOUTH",
+        "north": "ANIM_STANDING_WHEELIE_FRONT_WHEEL_NORTH",
+        "west": "ANIM_STANDING_WHEELIE_FRONT_WHEEL_WEST",
+        "east": "ANIM_STANDING_WHEELIE_FRONT_WHEEL_EAST",
+    },
+    "acro_moving_wheelie": {
+        "south": "ANIM_MOVING_WHEELIE_SOUTH",
+        "north": "ANIM_MOVING_WHEELIE_NORTH",
+        "west": "ANIM_MOVING_WHEELIE_WEST",
+        "east": "ANIM_MOVING_WHEELIE_EAST",
+    },
+}
 
 
 def read_text(path: Path) -> str:
@@ -137,47 +237,34 @@ def parse_anim_cmds(cmd_symbols: set[str]) -> dict[str, list[dict[str, Any]]]:
     return parsed
 
 
-def parse_brendan_may_anim_bindings() -> dict[str, dict[str, str]]:
+def parse_anim_table_bindings(anim_table_symbol: str) -> dict[str, str]:
     text = read_text(ROOT / "src/data/object_events/object_event_anims.h")
     table_match = re.search(
-        r"static\s+const\s+union\s+AnimCmd\s*\*const\s+sAnimTable_BrendanMayNormal\[\]\s*=\s*\{(.*?)\};",
+        rf"static\s+const\s+union\s+AnimCmd\s*\*const\s+{re.escape(anim_table_symbol)}\[\]\s*=\s*\{{(.*?)\}};",
         text,
         re.S,
     )
     if not table_match:
-        raise ValueError("Missing sAnimTable_BrendanMayNormal")
+        raise ValueError(f"Missing {anim_table_symbol}")
 
-    symbol_map = dict(re.findall(r"\[(ANIM_[A-Z0-9_]+)\]\s*=\s*(sAnim_[A-Za-z0-9_]+)", table_match.group(1)))
+    return dict(
+        re.findall(r"\[(ANIM_[A-Z0-9_]+)\]\s*=\s*(sAnim_[A-Za-z0-9_]+)", table_match.group(1))
+    )
 
-    desired = {
-        "face": {
-            "south": "ANIM_STD_FACE_SOUTH",
-            "north": "ANIM_STD_FACE_NORTH",
-            "west": "ANIM_STD_FACE_WEST",
-            "east": "ANIM_STD_FACE_EAST",
-        },
-        "walk": {
-            "south": "ANIM_STD_GO_SOUTH",
-            "north": "ANIM_STD_GO_NORTH",
-            "west": "ANIM_STD_GO_WEST",
-            "east": "ANIM_STD_GO_EAST",
-        },
-        "run": {
-            "south": "ANIM_RUN_SOUTH",
-            "north": "ANIM_RUN_NORTH",
-            "west": "ANIM_RUN_WEST",
-            "east": "ANIM_RUN_EAST",
-        },
-    }
 
+def select_directional_action_bindings(
+    anim_table_bindings: dict[str, str],
+    desired: dict[str, dict[str, str]],
+    anim_table_symbol: str,
+) -> dict[str, dict[str, str]]:
     bindings: dict[str, dict[str, str]] = {}
-    for action, by_dir in desired.items():
-        bindings[action] = {}
+    for action_id, by_dir in desired.items():
+        bindings[action_id] = {}
         for direction, const_name in by_dir.items():
-            cmd_symbol = symbol_map.get(const_name)
+            cmd_symbol = anim_table_bindings.get(const_name)
             if cmd_symbol is None:
-                raise ValueError(f"Missing {const_name} in sAnimTable_BrendanMayNormal")
-            bindings[action][direction] = cmd_symbol
+                raise ValueError(f"Missing {const_name} in {anim_table_symbol}")
+            bindings[action_id][direction] = cmd_symbol
     return bindings
 
 
@@ -274,8 +361,26 @@ def validate_frame_atlas_bounds(avatar_id: str, frame_atlas: dict[str, Any], she
 
 def resolve_assets() -> list[dict[str, Any]]:
     incbins = parse_incbin_paths()
-    anim_bindings = parse_brendan_may_anim_bindings()
-    cmd_symbols = {symbol for action in anim_bindings.values() for symbol in action.values()}
+    animation_table_specs = {
+        "on_foot": ("sAnimTable_BrendanMayNormal", ON_FOOT_ACTIONS),
+        "mach_bike": ("sAnimTable_Standard", MACH_BIKE_ACTIONS),
+        "acro_bike": ("sAnimTable_AcroBike", ACRO_BIKE_ACTIONS),
+    }
+    animation_sets: dict[str, dict[str, Any]] = {}
+    cmd_symbols: set[str] = set()
+    for traversal_mode, (anim_table_symbol, action_specs) in animation_table_specs.items():
+        action_bindings = select_directional_action_bindings(
+            parse_anim_table_bindings(anim_table_symbol),
+            action_specs,
+            anim_table_symbol,
+        )
+        animation_sets[traversal_mode] = {
+            "anim_table_symbol": anim_table_symbol,
+            "actions": action_bindings,
+        }
+        for by_dir in action_bindings.values():
+            cmd_symbols.update(by_dir.values())
+
     anim_cmds = parse_anim_cmds(cmd_symbols)
 
     if "gObjectEventPal_BridgeReflection" not in incbins:
@@ -283,10 +388,21 @@ def resolve_assets() -> list[dict[str, Any]]:
 
     avatars: list[dict[str, Any]] = []
     for avatar in AVATARS:
-        pic_entries = parse_pic_table_entries(avatar.normal_pic_table_symbol)
+        normal_pic_entries = parse_pic_table_entries(avatar.normal_pic_table_symbol)
+        mach_pic_entries = parse_pic_table_entries(avatar.mach_bike_pic_table_symbol)
+        acro_pic_entries = parse_pic_table_entries(avatar.acro_bike_pic_table_symbol)
+        pic_entries = normal_pic_entries + mach_pic_entries + acro_pic_entries
         info = parse_graphics_info(avatar.graphics_info_symbol)
+        mach_info = parse_graphics_info(avatar.mach_bike_graphics_info_symbol)
+        acro_info = parse_graphics_info(avatar.acro_bike_graphics_info_symbol)
 
-        for required in (avatar.normal_pic_symbol, avatar.running_pic_symbol, avatar.normal_palette_symbol):
+        for required in (
+            avatar.normal_pic_symbol,
+            avatar.running_pic_symbol,
+            avatar.mach_bike_pic_symbol,
+            avatar.acro_bike_pic_symbol,
+            avatar.normal_palette_symbol,
+        ):
             if required not in incbins:
                 raise ValueError(f"Missing source path for {required}")
 
@@ -341,14 +457,28 @@ def resolve_assets() -> list[dict[str, Any]]:
                         "source_path": incbins[avatar.normal_pic_symbol],
                         "tile_width": 2,
                         "tile_height": 4,
-                        "frame_count": 9,
+                        "frame_count": len(normal_pic_entries),
                     },
                     "running": {
                         "symbol": avatar.running_pic_symbol,
                         "source_path": incbins[avatar.running_pic_symbol],
                         "tile_width": 2,
                         "tile_height": 4,
-                        "frame_count": 9,
+                        "frame_count": len(normal_pic_entries),
+                    },
+                    "mach_bike": {
+                        "symbol": avatar.mach_bike_pic_symbol,
+                        "source_path": incbins[avatar.mach_bike_pic_symbol],
+                        "tile_width": int(mach_info["width"]),
+                        "tile_height": int(mach_info["height"]),
+                        "frame_count": len(mach_pic_entries),
+                    },
+                    "acro_bike": {
+                        "symbol": avatar.acro_bike_pic_symbol,
+                        "source_path": incbins[avatar.acro_bike_pic_symbol],
+                        "tile_width": int(acro_info["width"]),
+                        "tile_height": int(acro_info["height"]),
+                        "frame_count": len(acro_pic_entries),
                     },
                 },
                 "frame_atlas": frame_atlas,
@@ -364,20 +494,33 @@ def resolve_assets() -> list[dict[str, Any]]:
                         "colors": decode_palette(reflection_palette_path),
                     },
                 },
-                "animation_bindings": {
-                    action: {
-                        direction: {
-                            "anim_cmd_symbol": cmd_symbol,
-                            "frames": anim_cmds[cmd_symbol],
-                        }
-                        for direction, cmd_symbol in by_dir.items()
+                "animation_sets": {
+                    traversal_mode: {
+                        "anim_table_symbol": set_spec["anim_table_symbol"],
+                        "actions": {
+                            action_id: {
+                                direction: {
+                                    "action_id": action_id,
+                                    "anim_cmd_symbol": cmd_symbol,
+                                    "frames": anim_cmds[cmd_symbol],
+                                }
+                                for direction, cmd_symbol in by_dir.items()
+                            }
+                            for action_id, by_dir in set_spec["actions"].items()
+                        },
                     }
-                    for action, by_dir in anim_bindings.items()
+                    for traversal_mode, set_spec in animation_sets.items()
                 },
                 "reference": {
                     "graphics_info_symbol": avatar.graphics_info_symbol,
                     "pic_table_symbol": avatar.normal_pic_table_symbol,
-                    "anim_table_symbol": "sAnimTable_BrendanMayNormal",
+                    "mach_bike_graphics_info_symbol": avatar.mach_bike_graphics_info_symbol,
+                    "acro_bike_graphics_info_symbol": avatar.acro_bike_graphics_info_symbol,
+                    "mach_bike_pic_table_symbol": avatar.mach_bike_pic_table_symbol,
+                    "acro_bike_pic_table_symbol": avatar.acro_bike_pic_table_symbol,
+                    "anim_table_symbols": {
+                        key: spec["anim_table_symbol"] for key, spec in animation_sets.items()
+                    },
                     "palette_tag": info["paletteTag"],
                     "reflection_palette_tag": info["reflectionPaletteTag"],
                     "images_symbol": info["images"],
@@ -412,7 +555,13 @@ def extract(output_dir: Path, clean: bool) -> None:
         avatar_dir = target_root / avatar.avatar_id
         avatar_dir.mkdir(parents=True, exist_ok=True)
 
-        for symbol in (avatar.normal_pic_symbol, avatar.running_pic_symbol, avatar.normal_palette_symbol):
+        for symbol in (
+            avatar.normal_pic_symbol,
+            avatar.running_pic_symbol,
+            avatar.mach_bike_pic_symbol,
+            avatar.acro_bike_pic_symbol,
+            avatar.normal_palette_symbol,
+        ):
             src_path = resolve_existing_source_path(incbins[symbol])
             shutil.copy2(src_path, avatar_dir / src_path.name)
 

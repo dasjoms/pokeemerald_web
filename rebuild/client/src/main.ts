@@ -149,6 +149,10 @@ type ClientWorldState = {
   playerTileX: number;
   playerTileY: number;
   facing: Direction;
+  traversalState: TraversalState;
+  machSpeedStage?: number;
+  acroSubstate?: AcroBikeSubstate;
+  bikeTransition?: BikeTransitionType;
   lastInputSeq: number;
   lastAckServerTick: number;
   renderTileX: number;
@@ -216,10 +220,7 @@ type RenderedSubtileBinding = {
 type PlayersManifestFile = {
   avatars: Array<{
     avatar_id: 'brendan' | 'may';
-    sheet_sources: {
-      normal: { source_path: string };
-      running: { source_path: string };
-    };
+    sheet_sources: Record<string, { source_path: string }>;
   }>;
 };
 
@@ -273,6 +274,7 @@ const state: ClientWorldState = {
   playerTileX: 0,
   playerTileY: 0,
   facing: Direction.DOWN,
+  traversalState: TraversalState.ON_FOOT,
   lastInputSeq: 0,
   lastAckServerTick: 0,
   renderTileX: 0,
@@ -447,16 +449,11 @@ async function preloadPlayerAvatarSheets(): Promise<void> {
       continue;
     }
 
-    preloadUrls.push(
-      await resolveImageUrlFromAssets(
-        resolvePlayerSheetPngPathFromManifest(avatar.sheet_sources.normal.source_path),
-      ),
-    );
-    preloadUrls.push(
-      await resolveImageUrlFromAssets(
-        resolvePlayerSheetPngPathFromManifest(avatar.sheet_sources.running.source_path),
-      ),
-    );
+    for (const source of Object.values(avatar.sheet_sources)) {
+      preloadUrls.push(
+        await resolveImageUrlFromAssets(resolvePlayerSheetPngPathFromManifest(source.source_path)),
+      );
+    }
   }
 
   if (preloadUrls.length > 0) {
@@ -527,7 +524,17 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     state.renderTileY = state.playerTileY;
     activeWalkTransition = null;
     state.facing = snapshot.facing;
+    state.traversalState = snapshot.traversal_state;
+    state.machSpeedStage = snapshot.mach_speed_stage;
+    state.acroSubstate = snapshot.acro_substate;
+    state.bikeTransition = snapshot.bike_transition;
     await applyAuthoritativeAvatar(snapshot.avatar);
+    playerAnimation.setTraversalState({
+      traversalState: state.traversalState,
+      machSpeedStage: state.machSpeedStage,
+      acroSubstate: state.acroSubstate,
+      bikeTransition: state.bikeTransition,
+    });
     playerAnimation.stopMoving(snapshot.facing);
     state.lastAckServerTick = snapshot.server_frame;
     pendingPredictedInputs.clear();
@@ -554,6 +561,16 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
   state.playerTileX = clampedAuthoritativeTile.x;
   state.playerTileY = clampedAuthoritativeTile.y;
   state.facing = result.facing;
+  state.traversalState = result.traversal_state;
+  state.machSpeedStage = result.mach_speed_stage;
+  state.acroSubstate = result.acro_substate;
+  state.bikeTransition = result.bike_transition;
+  playerAnimation.setTraversalState({
+    traversalState: state.traversalState,
+    machSpeedStage: state.machSpeedStage,
+    acroSubstate: state.acroSubstate,
+    bikeTransition: state.bikeTransition,
+  });
   if (result.accepted) {
     // Contract: on accepted input, authoritative_pos is the server tile *after* applying that step.
     // This lets the first interpolation run immediately toward the accepted destination.
@@ -1642,6 +1659,12 @@ async function applyAvatarAssets(avatar: PlayerAvatar): Promise<void> {
     resolveImageUrlFromAssets,
   });
   playerAnimation = new PlayerAnimationController(playerAnimationAssets);
+  playerAnimation.setTraversalState({
+    traversalState: state.traversalState,
+    machSpeedStage: state.machSpeedStage,
+    acroSubstate: state.acroSubstate,
+    bikeTransition: state.bikeTransition,
+  });
   playerAnimation.stopMoving(state.facing);
   playerSprite.anchor.set(
     playerAnimationAssets.anchorX / playerAnimationAssets.frameWidth,
