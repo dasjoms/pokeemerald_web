@@ -39,40 +39,13 @@ export function resolvePlayerLayerSampleTile(state: PlayerLayerSelectionState): 
 }
 
 export function resolvePlayerRenderPriorityAtTile(
-  tileContext: PlayerLayerTileContext | undefined,
-  coveredLayerType: number,
+  _tileContext: PlayerLayerTileContext | undefined,
 ): 'below-bg2' | 'between-bg2-bg1' {
-  if (!tileContext) {
-    return 'between-bg2-bg1';
-  }
-
-  if (tileContext.metatileLayerType !== coveredLayerType) {
-    return 'between-bg2-bg1';
-  }
-
-  if (isCoveredDecorativeOverlay(tileContext)) {
-    return 'between-bg2-bg1';
-  }
-
-  return 'below-bg2';
+  // Default walking player stratum for overworld parity:
+  // covered metatile type alone does not force full-sprite underlay.
+  return 'between-bg2-bg1';
 }
 
 function stableFootpointTile(value: number): number {
   return Math.floor(value + STABLE_FOOTPOINT_EPSILON);
-}
-
-function isCoveredDecorativeOverlay(tileContext: PlayerLayerTileContext): boolean {
-  if (tileContext.layer1SubtileMask === 0) {
-    return false;
-  }
-
-  switch (tileContext.behaviorId) {
-    case 33: // MB_DEEP_SAND
-    case 34: // MB_SAND
-    case 36: // MB_ASHGRASS
-    case 37: // MB_FOOTPRINTS
-      return true;
-    default:
-      return false;
-  }
 }

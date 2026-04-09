@@ -22,7 +22,6 @@ import {
 } from './metatileRenderer';
 import {
   MapRenderStratum,
-  MetatileLayerType,
   resolveMapRenderStratum,
 } from './mapLayerComposition';
 import { createTilesetAnimationState, type TileAnimsFile } from './tilesetAnimation';
@@ -1419,7 +1418,7 @@ function resolveActorLayerForPlayer(tileX: number, tileY: number): Container {
   }
 
   const tileContext = activeMapTileRenderPriorityContexts[tileY * state.mapWidth + tileX];
-  const actorStratum = resolvePlayerRenderPriorityAtTile(tileContext, MetatileLayerType.COVERED);
+  const actorStratum = resolvePlayerRenderPriorityAtTile(tileContext);
   if (actorStratum === 'below-bg2') {
     return actorBelowBg2Layer;
   }
