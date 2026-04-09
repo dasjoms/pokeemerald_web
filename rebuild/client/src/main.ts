@@ -224,6 +224,14 @@ type MapTileRenderPriorityContext = {
   hasLayer1: boolean;
 };
 
+type WalkInputController = {
+  handleKeyDown: (event: KeyboardEvent) => void;
+  handleKeyUp: (event: KeyboardEvent) => void;
+  tick: (deltaMs: number) => void;
+  markWalkResultReceived: () => void;
+  reset: () => void;
+};
+
 const TILE_SIZE = 16;
 const SUBTILE_SIZE = 8;
 const RENDER_SCALE = 4;
@@ -258,6 +266,7 @@ const state: ClientWorldState = {
 };
 
 const WALK_STEP_DURATION_MS = (1000 / 60) * 16;
+const WALK_INPUT_CADENCE_MS = WALK_STEP_DURATION_MS;
 let activeWalkTransition:
   | {
       startX: number;
@@ -344,6 +353,17 @@ let playerAnimationAssets = await loadPlayerAnimationAssets({
   resolveImageUrlFromAssets,
 });
 let playerAnimation = new PlayerAnimationController(playerAnimationAssets);
+const walkInputController = createWalkInputController({
+  cadenceMs: WALK_INPUT_CADENCE_MS,
+  sendWalkInput,
+  isMovementLocked: () => activeWalkTransition !== null,
+  onFacingIntent: (direction) => {
+    state.facing = direction;
+    if (!activeWalkTransition) {
+      playerAnimation.setIdle(direction);
+    }
+  },
+});
 const initialPlayerFrame = playerAnimation.getCurrentFrame();
 const playerSprite = new Sprite(initialPlayerFrame.texture);
 playerSprite.scale.x = initialPlayerFrame.hFlip ? -1 : 1;
@@ -358,6 +378,7 @@ let activeMapTileRenderPriorityContexts: (MapTileRenderPriorityContext | undefin
 let playerObjectRenderPriorityState: PlayerObjectRenderPriorityState = 'normal';
 
 app.ticker.add(() => {
+  walkInputController.tick(app.ticker.deltaMS);
   tickWalkTransition(app.ticker.deltaMS);
   playerAnimation.tick(app.ticker.deltaMS);
   presentPlayerAnimationFrame();
@@ -502,12 +523,14 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     playerAnimation.setIdle(snapshot.facing);
     state.lastAckServerTick = snapshot.server_frame;
     pendingPredictedInputs.clear();
+    walkInputController.reset();
 
     await renderMapFromSnapshot(snapshot);
     return;
   }
 
   const result = message.payload;
+  walkInputController.markWalkResultReceived();
   const clampedAuthoritativeTile = clampToMapBounds(
     {
       x: result.authoritative_pos.x,
@@ -1167,14 +1190,10 @@ function bindWalkInput(): void {
       debugOverlayLayer.visible = debugOverlayEnabled;
       return;
     }
-
-    const direction = keyToDirection(event.key);
-    if (direction === null) {
-      return;
-    }
-
-    event.preventDefault();
-    sendWalkInput(direction);
+    walkInputController.handleKeyDown(event);
+  });
+  window.addEventListener('keyup', (event) => {
+    walkInputController.handleKeyUp(event);
   });
 }
 
@@ -1213,6 +1232,95 @@ function sendWalkInput(direction: Direction): void {
   if (ENABLE_CLIENT_PREDICTION) {
     applyPredictedWalk(direction, inputSeq);
   }
+}
+
+function createWalkInputController(config: {
+  cadenceMs: number;
+  sendWalkInput: (direction: Direction) => void;
+  isMovementLocked: () => boolean;
+  onFacingIntent: (direction: Direction) => void;
+}): WalkInputController {
+  const heldDirections = new Set<Direction>();
+  const directionOrder: Direction[] = [];
+  let elapsedSinceLastEmissionMs = config.cadenceMs;
+  let hasPendingWalkRequest = false;
+
+  const removeDirectionFromOrder = (direction: Direction): void => {
+    const index = directionOrder.indexOf(direction);
+    if (index >= 0) {
+      directionOrder.splice(index, 1);
+    }
+  };
+
+  const getActiveDirection = (): Direction | null => {
+    for (let i = directionOrder.length - 1; i >= 0; i -= 1) {
+      const direction = directionOrder[i];
+      if (heldDirections.has(direction)) {
+        return direction;
+      }
+    }
+    return null;
+  };
+
+  return {
+    handleKeyDown(event: KeyboardEvent): void {
+      const direction = keyToDirection(event.key);
+      if (direction === null) {
+        return;
+      }
+
+      event.preventDefault();
+      if (event.repeat) {
+        return;
+      }
+
+      const isFirstPressForDirection = !heldDirections.has(direction);
+      heldDirections.add(direction);
+      removeDirectionFromOrder(direction);
+      directionOrder.push(direction);
+
+      if (isFirstPressForDirection) {
+        config.onFacingIntent(direction);
+        elapsedSinceLastEmissionMs = config.cadenceMs;
+      }
+    },
+    handleKeyUp(event: KeyboardEvent): void {
+      const direction = keyToDirection(event.key);
+      if (direction === null) {
+        return;
+      }
+
+      event.preventDefault();
+      heldDirections.delete(direction);
+      removeDirectionFromOrder(direction);
+    },
+    tick(deltaMs: number): void {
+      elapsedSinceLastEmissionMs += Math.max(0, deltaMs);
+      const direction = getActiveDirection();
+      if (direction === null) {
+        return;
+      }
+      if (hasPendingWalkRequest || config.isMovementLocked()) {
+        return;
+      }
+      if (elapsedSinceLastEmissionMs < config.cadenceMs) {
+        return;
+      }
+
+      config.sendWalkInput(direction);
+      elapsedSinceLastEmissionMs = 0;
+      hasPendingWalkRequest = true;
+    },
+    markWalkResultReceived(): void {
+      hasPendingWalkRequest = false;
+    },
+    reset(): void {
+      hasPendingWalkRequest = false;
+      elapsedSinceLastEmissionMs = config.cadenceMs;
+      heldDirections.clear();
+      directionOrder.length = 0;
+    },
+  };
 }
 
 function encodeJoinSession(playerId: string): Uint8Array {
