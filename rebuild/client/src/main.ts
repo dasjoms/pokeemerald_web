@@ -361,7 +361,7 @@ let playerAnimationAssets = await loadPlayerAnimationAssets({
 let playerAnimation = new PlayerAnimationController(playerAnimationAssets);
 const walkInputController = createWalkInputController({
   sendWalkInput,
-  isMovementLocked: () => activeWalkTransition !== null,
+  isMovementLocked: () => false,
   onFacingIntent: (direction) => {
     state.facing = direction;
     if (!activeWalkTransition) {

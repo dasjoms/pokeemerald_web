@@ -55,7 +55,6 @@ export function createWalkInputController(config: {
   const heldDirections = new Set<Direction>();
   const heldDirectionPressedAtMs = new Map<Direction, number>();
   const directionOrder: Direction[] = [];
-  let activeIntent: Direction | null = null;
   let bufferedIntent: Direction | null = null;
   let hasPendingWalkRequest = false;
   let movementMode: MovementMode = MovementMode.WALK;
@@ -69,7 +68,7 @@ export function createWalkInputController(config: {
   };
 
   const canDispatchNewIntent = (): boolean =>
-    !hasPendingWalkRequest && !config.isMovementLocked() && activeIntent === null;
+    !hasPendingWalkRequest && !config.isMovementLocked();
 
   const hasSatisfiedTapThreshold = (direction: Direction, nowMs: number): boolean => {
     const pressedAtMs = heldDirectionPressedAtMs.get(direction);
@@ -99,7 +98,6 @@ export function createWalkInputController(config: {
       movementMode,
       virtualBHeld ? HeldButtons.B : HeldButtons.NONE,
     );
-    activeIntent = direction;
     hasPendingWalkRequest = true;
   };
 
@@ -204,15 +202,11 @@ export function createWalkInputController(config: {
     tick(): void {
       maybeDispatchIntent(performance.now());
     },
-    markWalkResultReceived(result: WalkResult): void {
+    markWalkResultReceived(_result: WalkResult): void {
       hasPendingWalkRequest = false;
-      if (!result.accepted) {
-        activeIntent = null;
-        maybeDispatchIntent(performance.now());
-      }
+      maybeDispatchIntent(performance.now());
     },
     markWalkTransitionCompleted(): void {
-      activeIntent = null;
       maybeDispatchIntent(performance.now());
     },
     hasPendingAcceptedOrDispatchableStep(): boolean {
@@ -223,7 +217,6 @@ export function createWalkInputController(config: {
     },
     reset(): void {
       hasPendingWalkRequest = false;
-      activeIntent = null;
       bufferedIntent = null;
       movementMode = MovementMode.WALK;
       virtualBHeld = false;
