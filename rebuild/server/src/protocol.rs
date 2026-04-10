@@ -86,6 +86,7 @@ pub fn encode_server_message(message: &ServerMessage) -> Result<Vec<u8>, Protoco
                 msg.mach_speed_stage,
                 msg.acro_substate,
                 msg.bike_transition,
+                msg.bunny_hop_cycle_tick,
             );
             payload.push(msg.bike_effect_flags);
             payload.push(msg.map_chunk_hash.len() as u8);
@@ -110,6 +111,7 @@ pub fn encode_server_message(message: &ServerMessage) -> Result<Vec<u8>, Protoco
                 msg.mach_speed_stage,
                 msg.acro_substate,
                 msg.bike_transition,
+                msg.bunny_hop_cycle_tick,
             );
             payload.push(msg.bike_effect_flags);
             payload.push(u8::from(msg.hop_landing_particle_class.is_some()));
@@ -141,6 +143,7 @@ pub fn encode_server_message(message: &ServerMessage) -> Result<Vec<u8>, Protoco
                 msg.mach_speed_stage,
                 msg.acro_substate,
                 msg.bike_transition,
+                msg.bunny_hop_cycle_tick,
             );
             payload.push(u8::from(msg.hop_landing_particle_class.is_some()));
             payload.push(
@@ -284,6 +287,7 @@ fn encode_bike_runtime(
     mach_speed_stage: Option<u8>,
     acro_substate: Option<AcroBikeSubstate>,
     bike_transition: Option<BikeTransitionType>,
+    bunny_hop_cycle_tick: Option<u8>,
 ) {
     let mut flags = 0u8;
     if authoritative_step_speed.is_some() {
@@ -298,6 +302,9 @@ fn encode_bike_runtime(
     if bike_transition.is_some() {
         flags |= 0b100;
     }
+    if bunny_hop_cycle_tick.is_some() {
+        flags |= 0b1_0000;
+    }
     payload.push(flags);
     if let Some(speed) = authoritative_step_speed {
         payload.push(speed as u8);
@@ -310,6 +317,9 @@ fn encode_bike_runtime(
     }
     if let Some(transition) = bike_transition {
         payload.push(transition as u8);
+    }
+    if let Some(cycle_tick) = bunny_hop_cycle_tick {
+        payload.push(cycle_tick);
     }
 }
 

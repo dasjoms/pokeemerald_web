@@ -503,6 +503,9 @@ impl World {
                     mach_speed_stage: bike_mach_speed_for_traversal(&session.player_state),
                     acro_substate: current_acro_substate,
                     bike_transition: Some(current_bike_transition),
+                    bunny_hop_cycle_tick: bike_bunny_hop_cycle_tick_for_traversal(
+                        &session.player_state,
+                    ),
                     hop_landing_particle_class,
                     hop_landing_tile_x: hop_landing_tile.map(|tile| tile.0),
                     hop_landing_tile_y: hop_landing_tile.map(|tile| tile.1),
@@ -579,6 +582,9 @@ impl World {
                         acro_substate: bike_acro_substate_for_traversal(&session.player_state),
                         bike_transition: Some(session.player_state.bike_runtime.last_transition),
                         bike_effect_flags: 0,
+                        bunny_hop_cycle_tick: bike_bunny_hop_cycle_tick_for_traversal(
+                            &session.player_state,
+                        ),
                         hop_landing_particle_class: None,
                         hop_landing_tile_x: None,
                         hop_landing_tile_y: None,
@@ -607,6 +613,9 @@ impl World {
                         acro_substate: bike_acro_substate_for_traversal(&session.player_state),
                         bike_transition: Some(session.player_state.bike_runtime.last_transition),
                         bike_effect_flags: 0,
+                        bunny_hop_cycle_tick: bike_bunny_hop_cycle_tick_for_traversal(
+                            &session.player_state,
+                        ),
                         hop_landing_particle_class: None,
                         hop_landing_tile_x: None,
                         hop_landing_tile_y: None,
@@ -828,6 +837,9 @@ impl World {
                         accepted,
                         reason,
                     ),
+                    bunny_hop_cycle_tick: bike_bunny_hop_cycle_tick_for_traversal(
+                        &session.player_state,
+                    ),
                     hop_landing_particle_class,
                     hop_landing_tile_x: hop_landing_tile.map(|tile| tile.0),
                     hop_landing_tile_y: hop_landing_tile.map(|tile| tile.1),
@@ -887,6 +899,7 @@ impl World {
             mach_speed_stage: bike_mach_speed_for_traversal(player_state),
             acro_substate: bike_acro_substate_for_traversal(player_state),
             bike_transition: Some(player_state.bike_runtime.last_transition),
+            bunny_hop_cycle_tick: bike_bunny_hop_cycle_tick_for_traversal(player_state),
             bike_effect_flags: bike_effect_flags_for_snapshot(player_state),
         })
     }
@@ -971,6 +984,7 @@ impl World {
             acro_substate: bike_acro_substate_for_traversal(&session.player_state),
             bike_transition: Some(session.player_state.bike_runtime.last_transition),
             bike_effect_flags: bike_effect_flags_for_step(&session.player_state, false, reason),
+            bunny_hop_cycle_tick: bike_bunny_hop_cycle_tick_for_traversal(&session.player_state),
             hop_landing_particle_class: None,
             hop_landing_tile_x: None,
             hop_landing_tile_y: None,
@@ -990,6 +1004,17 @@ fn player_step_speed_for_snapshot(player_state: &PlayerState) -> StepSpeed {
         bike_acro_substate_for_traversal(player_state),
     );
     step_speed_to_protocol(player_speed_step_speed(player_speed))
+}
+
+fn bike_bunny_hop_cycle_tick_for_traversal(player_state: &PlayerState) -> Option<u8> {
+    if !matches!(player_state.traversal_state, TraversalState::AcroBike) {
+        return None;
+    }
+    if !matches!(bike_acro_substate_for_traversal(player_state), Some(AcroBikeSubstate::BunnyHop))
+    {
+        return None;
+    }
+    Some(player_state.bike_runtime.acro_runtime.bunny_hop_cycle_tick())
 }
 
 fn step_speed_to_protocol(step_speed: MovementStepSpeed) -> StepSpeed {

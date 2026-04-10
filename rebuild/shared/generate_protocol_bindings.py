@@ -237,6 +237,7 @@ pub struct WorldSnapshot {{
     pub mach_speed_stage: Option<u8>,
     pub acro_substate: Option<AcroBikeSubstate>,
     pub bike_transition: Option<BikeTransitionType>,
+    pub bunny_hop_cycle_tick: Option<u8>,
     pub bike_effect_flags: u8,
 }}
 
@@ -255,6 +256,7 @@ pub struct WalkResult {{
     pub acro_substate: Option<AcroBikeSubstate>,
     pub bike_transition: Option<BikeTransitionType>,
     pub bike_effect_flags: u8,
+    pub bunny_hop_cycle_tick: Option<u8>,
     pub hop_landing_particle_class: Option<HopLandingParticleClass>,
     pub hop_landing_tile_x: Option<u16>,
     pub hop_landing_tile_y: Option<u16>,
@@ -275,6 +277,7 @@ pub struct BikeRuntimeDelta {{
     pub mach_speed_stage: Option<u8>,
     pub acro_substate: Option<AcroBikeSubstate>,
     pub bike_transition: Option<BikeTransitionType>,
+    pub bunny_hop_cycle_tick: Option<u8>,
     pub hop_landing_particle_class: Option<HopLandingParticleClass>,
     pub hop_landing_tile_x: Option<u16>,
     pub hop_landing_tile_y: Option<u16>,
@@ -431,6 +434,7 @@ export type WorldSnapshot = {{
   mach_speed_stage?: number;
   acro_substate?: AcroBikeSubstate;
   bike_transition?: BikeTransitionType;
+  bunny_hop_cycle_tick?: number;
   bike_effect_flags: number;
 }};
 export type WalkResult = {{
@@ -447,6 +451,7 @@ export type WalkResult = {{
   acro_substate?: AcroBikeSubstate;
   bike_transition?: BikeTransitionType;
   bike_effect_flags: number;
+  bunny_hop_cycle_tick?: number;
   hop_landing_particle_class?: HopLandingParticleClass;
   hop_landing_tile_x?: number;
   hop_landing_tile_y?: number;
@@ -459,6 +464,7 @@ export type BikeRuntimeDelta = {{
   mach_speed_stage?: number;
   acro_substate?: AcroBikeSubstate;
   bike_transition?: BikeTransitionType;
+  bunny_hop_cycle_tick?: number;
   hop_landing_particle_class?: HopLandingParticleClass;
   hop_landing_tile_x?: number;
   hop_landing_tile_y?: number;

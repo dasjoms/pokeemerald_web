@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from enum import IntEnum
 import struct
 
-PROTOCOL_VERSION = 11
+PROTOCOL_VERSION = 12
 
 _HEADER = struct.Struct("<HBI")  # protocol_version, message_type, payload_len
 _U8 = struct.Struct("<B")
@@ -193,6 +193,7 @@ class WorldSnapshot:
     mach_speed_stage: int | None = None
     acro_substate: AcroBikeSubstate | None = None
     bike_transition: BikeTransitionType | None = None
+    bunny_hop_cycle_tick: int | None = None
     bike_effect_flags: int = 0
 
 
@@ -211,6 +212,7 @@ class WalkResult:
     acro_substate: AcroBikeSubstate | None = None
     bike_transition: BikeTransitionType | None = None
     bike_effect_flags: int = 0
+    bunny_hop_cycle_tick: int | None = None
     hop_landing_particle_class: HopLandingParticleClass | None = None
     hop_landing_tile_x: int | None = None
     hop_landing_tile_y: int | None = None
@@ -231,6 +233,7 @@ class BikeRuntimeDelta:
     mach_speed_stage: int | None = None
     acro_substate: AcroBikeSubstate | None = None
     bike_transition: BikeTransitionType | None = None
+    bunny_hop_cycle_tick: int | None = None
     hop_landing_particle_class: HopLandingParticleClass | None = None
     hop_landing_tile_x: int | None = None
     hop_landing_tile_y: int | None = None
@@ -327,6 +330,7 @@ def _encode_payload(message: WireMessage) -> tuple[MessageType, bytes]:
             message.mach_speed_stage,
             message.acro_substate,
             message.bike_transition,
+            message.bunny_hop_cycle_tick,
         )
 
         return MessageType.WORLD_SNAPSHOT, b"".join(
@@ -354,6 +358,7 @@ def _encode_payload(message: WireMessage) -> tuple[MessageType, bytes]:
             message.mach_speed_stage,
             message.acro_substate,
             message.bike_transition,
+            message.bunny_hop_cycle_tick,
         )
         return MessageType.WALK_RESULT, b"".join(
             [
@@ -393,6 +398,7 @@ def _encode_payload(message: WireMessage) -> tuple[MessageType, bytes]:
             message.mach_speed_stage,
             message.acro_substate,
             message.bike_transition,
+            message.bunny_hop_cycle_tick,
         )
         return MessageType.BIKE_RUNTIME_DELTA, b"".join(
             [
@@ -502,6 +508,7 @@ def _decode_payload(message_type: MessageType, payload: bytes) -> WireMessage:
             mach_speed_stage=runtime.mach_speed_stage,
             acro_substate=runtime.acro_substate,
             bike_transition=runtime.bike_transition,
+            bunny_hop_cycle_tick=runtime.bunny_hop_cycle_tick,
             bike_effect_flags=bike_effect_flags,
         )
 
@@ -536,6 +543,7 @@ def _decode_payload(message_type: MessageType, payload: bytes) -> WireMessage:
             mach_speed_stage=runtime.mach_speed_stage,
             acro_substate=runtime.acro_substate,
             bike_transition=runtime.bike_transition,
+            bunny_hop_cycle_tick=runtime.bunny_hop_cycle_tick,
             bike_effect_flags=bike_effect_flags,
             hop_landing_particle_class=(
                 HopLandingParticleClass(hop_landing_particle_class_raw)
@@ -570,6 +578,7 @@ def _decode_payload(message_type: MessageType, payload: bytes) -> WireMessage:
             mach_speed_stage=runtime.mach_speed_stage,
             acro_substate=runtime.acro_substate,
             bike_transition=runtime.bike_transition,
+            bunny_hop_cycle_tick=runtime.bunny_hop_cycle_tick,
             hop_landing_particle_class=(
                 HopLandingParticleClass(hop_landing_particle_class_raw)
                 if has_hop_landing_particle_class != 0
@@ -588,6 +597,7 @@ class _DecodedBikeRuntime:
     mach_speed_stage: int | None
     acro_substate: AcroBikeSubstate | None
     bike_transition: BikeTransitionType | None
+    bunny_hop_cycle_tick: int | None
 
 
 def _encode_bike_runtime(
@@ -595,6 +605,7 @@ def _encode_bike_runtime(
     mach_speed_stage: int | None,
     acro_substate: AcroBikeSubstate | None,
     bike_transition: BikeTransitionType | None,
+    bunny_hop_cycle_tick: int | None,
 ) -> tuple[bytes, int]:
     flags = 0
     payload = bytearray()
@@ -611,6 +622,9 @@ def _encode_bike_runtime(
     if bike_transition is not None:
         flags |= 0b100
         payload.extend(_U8.pack(int(bike_transition)))
+    if bunny_hop_cycle_tick is not None:
+        flags |= 0b1_0000
+        payload.extend(_U8.pack(bunny_hop_cycle_tick))
 
     return bytes(payload), flags
 
@@ -622,6 +636,7 @@ def _decode_bike_runtime(raw: bytes, offset: int) -> tuple[_DecodedBikeRuntime, 
     mach_speed_stage = None
     acro_substate = None
     bike_transition = None
+    bunny_hop_cycle_tick = None
 
     if flags & 0b1000:
         value, offset = _unpack_u8(raw, offset)
@@ -634,6 +649,8 @@ def _decode_bike_runtime(raw: bytes, offset: int) -> tuple[_DecodedBikeRuntime, 
     if flags & 0b100:
         value, offset = _unpack_u8(raw, offset)
         bike_transition = BikeTransitionType(value)
+    if flags & 0b1_0000:
+        bunny_hop_cycle_tick, offset = _unpack_u8(raw, offset)
 
     return (
         _DecodedBikeRuntime(
@@ -641,6 +658,7 @@ def _decode_bike_runtime(raw: bytes, offset: int) -> tuple[_DecodedBikeRuntime, 
             mach_speed_stage=mach_speed_stage,
             acro_substate=acro_substate,
             bike_transition=bike_transition,
+            bunny_hop_cycle_tick=bunny_hop_cycle_tick,
         ),
         offset,
     )
