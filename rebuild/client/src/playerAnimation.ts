@@ -577,6 +577,9 @@ export class PlayerAnimationController {
     if (this.acroSubstate === AcroBikeSubstate.STANDING_WHEELIE) {
       return 'acro_wheelie_face';
     }
+    if (this.acroSubstate === AcroBikeSubstate.MOVING_WHEELIE) {
+      return 'acro_wheelie_face';
+    }
     if (this.acroSubstate === AcroBikeSubstate.BUNNY_HOP) {
       return 'acro_bunny_hop_back_wheel';
     }

@@ -259,6 +259,37 @@ describe('main movement pipeline integration', () => {
     expect(startStepSpy).not.toHaveBeenCalled();
   });
 
+  it('keeps wheelie posture when stopMoving lands before authoritative wheelie-idle transition', () => {
+    const playerAnimation = new PlayerAnimationController(makeMockAssets());
+    const direction = Direction.RIGHT;
+
+    playerAnimation.setTraversalState({
+      traversalState: TraversalState.ACRO_BIKE,
+      acroSubstate: AcroBikeSubstate.MOVING_WHEELIE,
+      bikeTransition: BikeTransitionType.WHEELIE_MOVING,
+    });
+    playerAnimation.startStep(direction, 'run');
+    expect(playerAnimation.getDebugState().animId).toBe('anim_acro_moving_wheelie_east');
+
+    playerAnimation.setTraversalState({
+      traversalState: TraversalState.ACRO_BIKE,
+      acroSubstate: AcroBikeSubstate.MOVING_WHEELIE,
+      bikeTransition: BikeTransitionType.NONE,
+    });
+    playerAnimation.stopMoving(direction);
+    playerAnimation.applyPendingModeChanges();
+    expect(playerAnimation.getDebugState().animId).toBe('anim_acro_wheelie_face_east');
+
+    playerAnimation.setTraversalState({
+      traversalState: TraversalState.ACRO_BIKE,
+      acroSubstate: AcroBikeSubstate.STANDING_WHEELIE,
+      bikeTransition: BikeTransitionType.WHEELIE_IDLE,
+    });
+    playerAnimation.stopMoving(direction);
+    playerAnimation.applyPendingModeChanges();
+    expect(playerAnimation.getDebugState().animId).toBe('anim_acro_wheelie_face_east');
+  });
+
   it('holds pop-wheelie action for full one-shot duration before returning to idle wheelie hold', () => {
     const playerAnimation = new PlayerAnimationController(makeMockAssets());
     const direction = Direction.RIGHT;
