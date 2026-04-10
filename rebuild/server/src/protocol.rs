@@ -140,6 +140,7 @@ pub fn encode_server_message(message: &ServerMessage) -> Result<Vec<u8>, Protoco
             payload.extend_from_slice(&msg.server_frame.to_le_bytes());
             payload.push(msg.traversal_state as u8);
             payload.push(msg.player_elevation);
+            payload.push(msg.facing as u8);
             encode_bike_runtime(
                 &mut payload,
                 msg.authoritative_step_speed,

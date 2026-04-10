@@ -173,6 +173,7 @@ export type BikeRuntimeDelta = {
   server_frame: number;
   traversal_state: TraversalState;
   player_elevation: number;
+  facing: Direction;
   authoritative_step_speed?: StepSpeed;
   mach_speed_stage?: number;
   acro_substate?: AcroBikeSubstate;

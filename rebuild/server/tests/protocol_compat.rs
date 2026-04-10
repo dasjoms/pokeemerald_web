@@ -1,9 +1,9 @@
 use std::process::Command;
 
 use rebuild_server::protocol::{
-    decode_client_message, encode_server_message, BikeTransitionType, ClientMessage, Direction,
-    HeldInputState, MessageType, MovementMode, Position, RejectionReason, ServerMessage,
-    TraversalState, WalkResult, PROTOCOL_VERSION,
+    decode_client_message, encode_server_message, BikeRuntimeDelta, BikeTransitionType,
+    ClientMessage, Direction, HeldInputState, HopLandingParticleClass, MessageType, MovementMode,
+    Position, RejectionReason, ServerMessage, TraversalState, WalkResult, PROTOCOL_VERSION,
 };
 
 #[test]
@@ -163,5 +163,38 @@ fn walk_result_wire_encoding_with_forced_movement_disabled_is_canonical() {
     assert!(
         status.success(),
         "python walk result decoder assertions failed"
+    );
+}
+
+#[test]
+fn server_bike_runtime_delta_decodes_in_shared_python_runtime_with_authoritative_facing() {
+    let frame = encode_server_message(&ServerMessage::BikeRuntimeDelta(BikeRuntimeDelta {
+        server_frame: 55,
+        traversal_state: TraversalState::AcroBike,
+        player_elevation: 2,
+        facing: Direction::Right,
+        authoritative_step_speed: None,
+        mach_speed_stage: Some(1),
+        acro_substate: None,
+        bike_transition: Some(BikeTransitionType::HopStanding),
+        bunny_hop_cycle_tick: Some(7),
+        hop_landing_particle_class: Some(HopLandingParticleClass::NormalGroundDust),
+        hop_landing_tile_x: Some(9),
+        hop_landing_tile_y: Some(10),
+    }))
+    .expect("encode bike runtime delta");
+
+    let status = Command::new("python3")
+        .args([
+            "-c",
+            r#"import pathlib, sys, binascii; sys.path.insert(0, str(pathlib.Path('../shared').resolve())); import protocol; frame=binascii.unhexlify(sys.argv[1]); msg=protocol.decode_message(frame); assert isinstance(msg, protocol.BikeRuntimeDelta); assert msg.server_frame == 55; assert msg.traversal_state == protocol.TraversalState.ACRO_BIKE; assert msg.player_elevation == 2; assert msg.facing == protocol.Direction.RIGHT; assert msg.mach_speed_stage == 1; assert msg.bike_transition == protocol.BikeTransitionType.HOP_STANDING; assert msg.bunny_hop_cycle_tick == 7; assert msg.hop_landing_particle_class == protocol.HopLandingParticleClass.NORMAL_GROUND_DUST; assert msg.hop_landing_tile_x == 9 and msg.hop_landing_tile_y == 10"#,
+            &hex::encode(frame),
+        ])
+        .status()
+        .expect("python must run");
+
+    assert!(
+        status.success(),
+        "python bike runtime delta decoder assertions failed"
     );
 }
