@@ -490,6 +490,31 @@ describe("main movement pipeline integration", () => {
     expect(fakeLayer.removedCount).toBe(1);
   });
 
+  it("spawns hop shadow from bunny-hop continuity even when transition is NONE", () => {
+    const movementRuntime = new PlayerMovementActionRuntime();
+    const fakeLayer = new FakeShadowLayer();
+    const shadowRenderer = new HopShadowRenderer(() => fakeLayer, 16, () => ({
+      x: 0,
+      y: 0,
+      visible: true,
+    }));
+
+    shadowRenderer.setAuthoritativeState({
+      traversalState: TraversalState.ACRO_BIKE,
+      bikeTransition: BikeTransitionType.NONE,
+      acroSubstate: AcroBikeSubstate.BUNNY_HOP,
+    });
+    shadowRenderer.presentFrame({
+      tileX: 7,
+      tileY: 4,
+      visualState: movementRuntime.getVisualState(),
+    });
+
+    expect(shadowRenderer.hasActiveShadow()).toBe(true);
+    expect(fakeLayer.addedCount).toBe(1);
+    expect(fakeLayer.removedCount).toBe(0);
+  });
+
   it("keeps moving bunny-hop animation when authoritative transition clears to NONE mid-hop", () => {
     const playerAnimation = new PlayerAnimationController(makeMockAssets());
 
