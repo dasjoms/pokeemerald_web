@@ -24,7 +24,6 @@ import {
 import { PlayerMovementActionRuntime } from "./playerMovementActionRuntime";
 import { HopShadowRenderer } from "./hopShadowRenderer";
 import { resolveHopLandingPlacementTile } from "./hopLandingPlacement";
-import { resolveAuthoritativeWalkTransitionStartTile } from "./authoritativeWalkTransitionStartTile";
 
 type PipelineState = WalkTransitionMutableState & {
   facing: Direction;
@@ -994,89 +993,6 @@ describe("main movement pipeline integration", () => {
     expect(state.renderTileY).toBe(9);
     expect(movementActionRuntime.getVisualState().yOffsetPx).toBe(0);
     expect(landingPlacement).toEqual({ tileX: 12, tileY: 9 });
-  });
-
-  it("preserves in-flight directional bunny-hop render progress when chaining accepted hops", () => {
-    const state: WalkTransitionMutableState = {
-      playerTileX: 11,
-      playerTileY: 7,
-      renderTileX: 11.35,
-      renderTileY: 7,
-    };
-    const startSamples: number[] = [];
-    let activeWalkTransition: WalkTransition | null = {
-      startX: 11,
-      startY: 7,
-      targetX: 12,
-      targetY: 7,
-      elapsedMs: 4,
-      durationMs: 6,
-      facing: Direction.RIGHT,
-    };
-
-    for (let step = 0; step < 8; step += 1) {
-      const previousAuthoritativeTileX = state.playerTileX;
-      state.playerTileX += 1;
-      state.renderTileX = previousAuthoritativeTileX + 0.35;
-
-      const startTile = resolveAuthoritativeWalkTransitionStartTile({
-        traversalState: TraversalState.ACRO_BIKE,
-        acroSubstate: AcroBikeSubstate.BUNNY_HOP,
-        facing: Direction.RIGHT,
-        previousAuthoritativeTileX,
-        previousAuthoritativeTileY: state.playerTileY,
-        targetTileX: state.playerTileX,
-        targetTileY: state.playerTileY,
-        renderTileX: state.renderTileX,
-        renderTileY: state.renderTileY,
-        activeWalkTransition,
-      });
-      expect(startTile).toBeDefined();
-      expect(startTile!.tileX).toBeCloseTo(state.renderTileX, 5);
-      expect(startTile!.tileX).toBeLessThan(state.playerTileX);
-      expect(startTile!.tileY).toBe(state.playerTileY);
-      startSamples.push(startTile!.tileX);
-
-      activeWalkTransition = startAuthoritativeWalkTransition(
-        state,
-        Direction.RIGHT,
-        {
-          traversalState: TraversalState.ACRO_BIKE,
-          movementMode: MovementMode.WALK,
-        },
-        startTile,
-      );
-      activeWalkTransition = tickWalkTransition({
-        activeWalkTransition,
-        state,
-        deltaMs: activeWalkTransition!.durationMs * 0.2,
-        hasPendingAcceptedOrDispatchableStep: () => true,
-        noteWalkTransitionProgress: () => {},
-        markWalkTransitionCompleted: () => {},
-        stopMoving: () => {},
-      });
-    }
-
-    for (let index = 1; index < startSamples.length; index += 1) {
-      expect(startSamples[index]).toBeGreaterThan(startSamples[index - 1]);
-    }
-    expect(state.playerTileX - state.renderTileX).toBeLessThan(1);
-  });
-
-  it("falls back to previous authoritative tile when bunny-hop transition context is not in-flight", () => {
-    const startTile = resolveAuthoritativeWalkTransitionStartTile({
-      traversalState: TraversalState.ACRO_BIKE,
-      acroSubstate: AcroBikeSubstate.BUNNY_HOP,
-      facing: Direction.RIGHT,
-      previousAuthoritativeTileX: 15,
-      previousAuthoritativeTileY: 9,
-      targetTileX: 16,
-      targetTileY: 9,
-      renderTileX: 15.7,
-      renderTileY: 9,
-      activeWalkTransition: null,
-    });
-    expect(startTile).toEqual({ tileX: 15, tileY: 9 });
   });
 
   it.each([

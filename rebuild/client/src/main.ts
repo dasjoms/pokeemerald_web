@@ -54,7 +54,6 @@ import {
   type WalkTransitionStart,
   type WalkTransitionMutableState,
 } from './walkTransitionPipeline';
-import { resolveAuthoritativeWalkTransitionStartTile } from './authoritativeWalkTransitionStartTile';
 import { BikeEffectRenderer } from './bikeEffectRenderer';
 import {
   HopShadowRenderer,
@@ -879,14 +878,8 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
       resolveAuthoritativeWalkTransitionStartTile({
         traversalState: result.traversal_state,
         acroSubstate: result.acro_substate,
-        facing: result.facing,
         previousAuthoritativeTileX,
         previousAuthoritativeTileY,
-        targetTileX: state.playerTileX,
-        targetTileY: state.playerTileY,
-        renderTileX: state.renderTileX,
-        renderTileY: state.renderTileY,
-        activeWalkTransition,
       }),
     );
     playerAnimation.startStep(
@@ -2312,6 +2305,25 @@ function flushPendingHopParticleLandingEvent(): void {
   hopParticleRenderer.onLandingEvent(pendingHopLandingParticleEvent);
   pendingHopLandingParticleEvent = null;
 }
+
+function resolveAuthoritativeWalkTransitionStartTile(input: {
+  traversalState: TraversalState;
+  acroSubstate?: AcroBikeSubstate;
+  previousAuthoritativeTileX: number;
+  previousAuthoritativeTileY: number;
+}): WalkTransitionStart | undefined {
+  if (
+    input.traversalState !== TraversalState.ACRO_BIKE ||
+    input.acroSubstate !== AcroBikeSubstate.BUNNY_HOP
+  ) {
+    return undefined;
+  }
+  return {
+    tileX: input.previousAuthoritativeTileX,
+    tileY: input.previousAuthoritativeTileY,
+  };
+}
+
 
 function resolveMapBehaviorIdAtTile(tileX: number, tileY: number): number | undefined {
   if (tileX < 0 || tileY < 0 || tileX >= state.mapWidth || tileY >= state.mapHeight) {
