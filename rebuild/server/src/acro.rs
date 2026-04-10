@@ -4,6 +4,8 @@ const INPUT_HISTORY_LEN: usize = 8;
 const TIMER_END: u8 = 0;
 const ACRO_JUMP_TIMER_LIST: [u8; 2] = [4, TIMER_END];
 const JUMP_INTENT_TTL_TICKS: u8 = 2;
+const BUNNY_HOP_AIRBORNE_TICKS: u8 = 6;
+const BUNNY_HOP_GROUNDED_TICKS: u8 = 1;
 
 const ABSS_A: u8 = 1 << 0;
 const ABSS_B: u8 = 1 << 1;
@@ -48,6 +50,12 @@ pub enum AcroAnimationAction {
     WheelieMoving = 11,
     WheelieRisingMoving = 12,
     WheelieLoweringMoving = 13,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum BunnyHopPhase {
+    Airborne,
+    Grounded,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -114,6 +122,9 @@ pub struct AcroRuntime {
     pub new_dir_backup: Option<Direction>,
     pub movement_direction: Direction,
     pub on_bumpy_slope: bool,
+    bunny_hop_phase: BunnyHopPhase,
+    bunny_hop_phase_ticks_remaining: u8,
+    hop_landed_this_tick: bool,
     pending_action: Option<AcroAnimationAction>,
     pending_jump_intent: Option<PendingJumpIntent>,
 }
@@ -139,6 +150,9 @@ impl Default for AcroRuntime {
             new_dir_backup: None,
             movement_direction: Direction::Down,
             on_bumpy_slope: false,
+            bunny_hop_phase: BunnyHopPhase::Airborne,
+            bunny_hop_phase_ticks_remaining: 0,
+            hop_landed_this_tick: false,
             pending_action: None,
             pending_jump_intent: None,
         }
@@ -169,10 +183,12 @@ impl AcroRuntime {
     }
 
     pub fn advance_tick(&mut self) {
+        self.hop_landed_this_tick = false;
         self.age_pending_jump_intent();
         self.update_history(self.held_direction, if self.holding_b { ABSS_B } else { 0 });
         self.refresh_pending_jump_intent();
         self.pending_action = Some(self.handle_input(self.held_direction, self.movement_direction));
+        self.advance_bunny_hop_phase();
     }
 
     pub fn take_pending_action(&mut self) -> Option<AcroAnimationAction> {
@@ -233,16 +249,23 @@ impl AcroRuntime {
         facing_direction: Direction,
         requested_direction: Direction,
     ) -> AcroAnimationAction {
+        self.hop_landed_this_tick = false;
         if self.held_direction == Some(requested_direction) {
             if let Some(action) = self.pending_action.take() {
                 self.movement_direction = requested_direction;
+                self.advance_bunny_hop_phase();
                 return action;
             }
         }
 
         let action = self.handle_input(Some(requested_direction), facing_direction);
         self.movement_direction = requested_direction;
+        self.advance_bunny_hop_phase();
         action
+    }
+
+    pub fn hop_landed_this_tick(&self) -> bool {
+        self.hop_landed_this_tick
     }
 
     pub fn handle_wheelie_collision_response(&mut self) -> Option<AcroAnimationAction> {
@@ -510,6 +533,38 @@ impl AcroRuntime {
         self.state = AcroState::Normal;
         self.handle_input(requested_direction, facing_direction)
     }
+
+    fn advance_bunny_hop_phase(&mut self) {
+        if !matches!(self.state, AcroState::BunnyHop) {
+            self.bunny_hop_phase = BunnyHopPhase::Airborne;
+            self.bunny_hop_phase_ticks_remaining = 0;
+            return;
+        }
+
+        if self.bunny_hop_phase_ticks_remaining == 0 {
+            self.bunny_hop_phase = BunnyHopPhase::Airborne;
+            self.bunny_hop_phase_ticks_remaining = BUNNY_HOP_AIRBORNE_TICKS;
+            return;
+        }
+
+        self.bunny_hop_phase_ticks_remaining =
+            self.bunny_hop_phase_ticks_remaining.saturating_sub(1);
+        if self.bunny_hop_phase_ticks_remaining > 0 {
+            return;
+        }
+
+        match self.bunny_hop_phase {
+            BunnyHopPhase::Airborne => {
+                self.bunny_hop_phase = BunnyHopPhase::Grounded;
+                self.bunny_hop_phase_ticks_remaining = BUNNY_HOP_GROUNDED_TICKS;
+                self.hop_landed_this_tick = true;
+            }
+            BunnyHopPhase::Grounded => {
+                self.bunny_hop_phase = BunnyHopPhase::Airborne;
+                self.bunny_hop_phase_ticks_remaining = BUNNY_HOP_AIRBORNE_TICKS;
+            }
+        }
+    }
 }
 
 pub fn holding_b_mask() -> u8 {
@@ -732,7 +787,10 @@ mod tests {
         runtime.advance_tick();
 
         assert_eq!(runtime.state, AcroState::SideJump);
-        assert_eq!(runtime.take_pending_action(), Some(AcroAnimationAction::SideJump));
+        assert_eq!(
+            runtime.take_pending_action(),
+            Some(AcroAnimationAction::SideJump)
+        );
         assert_eq!(
             runtime.apply_step(Direction::Up, Direction::Right),
             AcroAnimationAction::Moving
@@ -1041,5 +1099,46 @@ mod tests {
             turn.take_pending_action(),
             Some(AcroAnimationAction::FaceDirection)
         );
+    }
+
+    #[test]
+    fn bunny_hop_phase_emits_landing_pulse_each_cycle_while_state_persists() {
+        let mut runtime = AcroRuntime {
+            state: AcroState::BunnyHop,
+            ..Default::default()
+        };
+        runtime.set_held_input(None, true);
+
+        let mut landing_ticks = 0;
+        for _ in 0..16 {
+            runtime.advance_tick();
+            if runtime.hop_landed_this_tick() {
+                landing_ticks += 1;
+            }
+            runtime.take_pending_action();
+        }
+
+        assert_eq!(landing_ticks, 2);
+        assert_eq!(runtime.state, AcroState::BunnyHop);
+    }
+
+    #[test]
+    fn directional_bunny_hop_shares_same_landing_pulse_path() {
+        let mut runtime = AcroRuntime {
+            state: AcroState::BunnyHop,
+            ..Default::default()
+        };
+        runtime.set_held_input(Some(Direction::Right), true);
+
+        let mut landing_ticks = 0;
+        for _ in 0..16 {
+            let _ = runtime.apply_step(Direction::Right, Direction::Right);
+            if runtime.hop_landed_this_tick() {
+                landing_ticks += 1;
+            }
+        }
+
+        assert_eq!(landing_ticks, 2);
+        assert_eq!(runtime.state, AcroState::BunnyHop);
     }
 }
