@@ -212,6 +212,8 @@ class WalkResult:
     bike_transition: BikeTransitionType | None = None
     bike_effect_flags: int = 0
     hop_landing_particle_class: HopLandingParticleClass | None = None
+    hop_landing_tile_x: int | None = None
+    hop_landing_tile_y: int | None = None
 
 
 @dataclass(frozen=True)
@@ -230,6 +232,8 @@ class BikeRuntimeDelta:
     acro_substate: AcroBikeSubstate | None = None
     bike_transition: BikeTransitionType | None = None
     hop_landing_particle_class: HopLandingParticleClass | None = None
+    hop_landing_tile_x: int | None = None
+    hop_landing_tile_y: int | None = None
 
 
 WireMessage = (
@@ -367,6 +371,14 @@ def _encode_payload(message: WireMessage) -> tuple[MessageType, bytes]:
                 _U8.pack(message.bike_effect_flags),
                 _U8.pack(1 if message.hop_landing_particle_class is not None else 0),
                 _U8.pack(int(message.hop_landing_particle_class or 0)),
+                _U8.pack(
+                    1
+                    if message.hop_landing_tile_x is not None
+                    and message.hop_landing_tile_y is not None
+                    else 0
+                ),
+                _U16.pack(message.hop_landing_tile_x or 0),
+                _U16.pack(message.hop_landing_tile_y or 0),
             ]
         )
 
@@ -390,6 +402,14 @@ def _encode_payload(message: WireMessage) -> tuple[MessageType, bytes]:
                 runtime_payload,
                 _U8.pack(1 if message.hop_landing_particle_class is not None else 0),
                 _U8.pack(int(message.hop_landing_particle_class or 0)),
+                _U8.pack(
+                    1
+                    if message.hop_landing_tile_x is not None
+                    and message.hop_landing_tile_y is not None
+                    else 0
+                ),
+                _U16.pack(message.hop_landing_tile_x or 0),
+                _U16.pack(message.hop_landing_tile_y or 0),
             ]
         )
 
@@ -499,6 +519,9 @@ def _decode_payload(message_type: MessageType, payload: bytes) -> WireMessage:
         bike_effect_flags, offset = _unpack_u8(payload, offset)
         has_hop_landing_particle_class, offset = _unpack_u8(payload, offset)
         hop_landing_particle_class_raw, offset = _unpack_u8(payload, offset)
+        has_hop_landing_tile, offset = _unpack_u8(payload, offset)
+        hop_landing_tile_x, offset = _unpack_u16(payload, offset)
+        hop_landing_tile_y, offset = _unpack_u16(payload, offset)
         _ensure_done(payload, offset)
         return WalkResult(
             input_seq=input_seq,
@@ -519,6 +542,8 @@ def _decode_payload(message_type: MessageType, payload: bytes) -> WireMessage:
                 if has_hop_landing_particle_class != 0
                 else None
             ),
+            hop_landing_tile_x=hop_landing_tile_x if has_hop_landing_tile != 0 else None,
+            hop_landing_tile_y=hop_landing_tile_y if has_hop_landing_tile != 0 else None,
         )
 
     if message_type is MessageType.WORLD_DELTA:
@@ -534,6 +559,9 @@ def _decode_payload(message_type: MessageType, payload: bytes) -> WireMessage:
         runtime, offset = _decode_bike_runtime(payload, offset)
         has_hop_landing_particle_class, offset = _unpack_u8(payload, offset)
         hop_landing_particle_class_raw, offset = _unpack_u8(payload, offset)
+        has_hop_landing_tile, offset = _unpack_u8(payload, offset)
+        hop_landing_tile_x, offset = _unpack_u16(payload, offset)
+        hop_landing_tile_y, offset = _unpack_u16(payload, offset)
         _ensure_done(payload, offset)
         return BikeRuntimeDelta(
             server_frame=server_frame,
@@ -547,6 +575,8 @@ def _decode_payload(message_type: MessageType, payload: bytes) -> WireMessage:
                 if has_hop_landing_particle_class != 0
                 else None
             ),
+            hop_landing_tile_x=hop_landing_tile_x if has_hop_landing_tile != 0 else None,
+            hop_landing_tile_y=hop_landing_tile_y if has_hop_landing_tile != 0 else None,
         )
 
     raise ProtocolError(f"unsupported message type: {message_type}")

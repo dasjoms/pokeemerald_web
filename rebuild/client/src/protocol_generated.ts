@@ -161,6 +161,8 @@ export type WalkResult = {
   bike_transition?: BikeTransitionType;
   bike_effect_flags: number;
   hop_landing_particle_class?: HopLandingParticleClass;
+  hop_landing_tile_x?: number;
+  hop_landing_tile_y?: number;
 };
 export type WorldDelta = { map_id: number; server_frame: number; delta_blob: Uint8Array };
 export type BikeRuntimeDelta = {
@@ -171,4 +173,6 @@ export type BikeRuntimeDelta = {
   acro_substate?: AcroBikeSubstate;
   bike_transition?: BikeTransitionType;
   hop_landing_particle_class?: HopLandingParticleClass;
+  hop_landing_tile_x?: number;
+  hop_landing_tile_y?: number;
 };

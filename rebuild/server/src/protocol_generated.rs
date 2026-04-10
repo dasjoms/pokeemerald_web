@@ -226,6 +226,8 @@ pub struct WalkResult {
     pub bike_transition: Option<BikeTransitionType>,
     pub bike_effect_flags: u8,
     pub hop_landing_particle_class: Option<HopLandingParticleClass>,
+    pub hop_landing_tile_x: Option<u16>,
+    pub hop_landing_tile_y: Option<u16>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
@@ -244,4 +246,6 @@ pub struct BikeRuntimeDelta {
     pub acro_substate: Option<AcroBikeSubstate>,
     pub bike_transition: Option<BikeTransitionType>,
     pub hop_landing_particle_class: Option<HopLandingParticleClass>,
+    pub hop_landing_tile_x: Option<u16>,
+    pub hop_landing_tile_y: Option<u16>,
 }
