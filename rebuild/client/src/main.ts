@@ -403,18 +403,22 @@ const gameContainer = new Container();
 const worldContainer = new Container();
 const mapBg3Layer = new Container();
 const shadowBelowBg2Layer = new Container();
+const bikeEffectsBelowBg2Layer = new Container();
 const actorBelowBg2Layer = new Container();
 const mapBg2Layer = new Container();
 const shadowBetweenBg2Bg1Layer = new Container();
+const bikeEffectsBetweenBg2Bg1Layer = new Container();
 const actorBetweenBg2Bg1Layer = new Container();
 const bikeEffectsLayer = new Container();
 const mapBg1Layer = new Container();
 const debugOverlayLayer = new Container();
 worldContainer.addChild(mapBg3Layer);
 worldContainer.addChild(shadowBelowBg2Layer);
+worldContainer.addChild(bikeEffectsBelowBg2Layer);
 worldContainer.addChild(actorBelowBg2Layer);
 worldContainer.addChild(mapBg2Layer);
 worldContainer.addChild(shadowBetweenBg2Bg1Layer);
+worldContainer.addChild(bikeEffectsBetweenBg2Bg1Layer);
 worldContainer.addChild(actorBetweenBg2Bg1Layer);
 worldContainer.addChild(bikeEffectsLayer);
 worldContainer.addChild(mapBg1Layer);
@@ -458,11 +462,18 @@ let playerActiveActorLayer = actorBetweenBg2Bg1Layer;
 let activeMapTileRenderPriorityContexts: (MapTileRenderPriorityContext | undefined)[] = [];
 let playerObjectRenderPriorityState: PlayerObjectRenderPriorityState = 'normal';
 const bikeEffectRenderer = new BikeEffectRenderer(bikeEffectsLayer, TILE_SIZE);
-const hopParticleRenderer = new HopParticleRenderer(bikeEffectsLayer, TILE_SIZE, {
-  loadJsonFromAssets,
-  resolveImageUrlFromAssets,
-  loadJascPaletteHexColorsFromAssets,
-});
+const hopParticleRenderer = new HopParticleRenderer(
+  () => {
+    const sampleTile = resolveCurrentPlayerLayerSampleTile();
+    return resolveHopEffectLayerForPlayer(sampleTile.x, sampleTile.y);
+  },
+  TILE_SIZE,
+  {
+    loadJsonFromAssets,
+    resolveImageUrlFromAssets,
+    loadJascPaletteHexColorsFromAssets,
+  },
+);
 const hopShadowRenderer = new HopShadowRenderer(
   () => {
     const sampleTile = resolveCurrentPlayerLayerSampleTile();
@@ -901,7 +912,9 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
   debugOverlayLayer.removeChildren();
   actorBelowBg2Layer.removeChildren();
   shadowBelowBg2Layer.removeChildren();
+  bikeEffectsBelowBg2Layer.removeChildren();
   shadowBetweenBg2Bg1Layer.removeChildren();
+  bikeEffectsBetweenBg2Bg1Layer.removeChildren();
   actorBetweenBg2Bg1Layer.removeChildren();
   bikeEffectsLayer.removeChildren();
   bikeEffectRenderer.clear();
@@ -2367,6 +2380,14 @@ function resolveShadowLayerForPlayer(tileX: number, tileY: number): Container {
     return shadowBelowBg2Layer;
   }
   return shadowBetweenBg2Bg1Layer;
+}
+
+function resolveHopEffectLayerForPlayer(tileX: number, tileY: number): Container {
+  const actorLayer = resolveActorLayerForPlayer(tileX, tileY);
+  if (actorLayer === actorBelowBg2Layer) {
+    return bikeEffectsBelowBg2Layer;
+  }
+  return bikeEffectsBetweenBg2Bg1Layer;
 }
 
 function presentPlayerAnimationFrame(): void {

@@ -2,6 +2,7 @@ import { Container, Rectangle, Sprite, Texture } from 'pixi.js';
 import { decodeIndexed4bppPngFromUrl } from './metatileRenderer';
 import { buildPlayerSheetRgba } from './playerAnimation';
 import { HopLandingParticleClass } from './protocol_generated';
+import type { ContainerChild } from 'pixi.js';
 
 type EffectKey =
   | 'ground_impact_dust'
@@ -51,6 +52,7 @@ type LoadedEffect = {
 
 type ActiveEffect = {
   sprite: Sprite;
+  layer: Container;
   steps: AnimationStep[];
   stepIndex: number;
   stepElapsedMs: number;
@@ -80,7 +82,7 @@ export class HopParticleRenderer {
   private lastConsumedServerFrame: number | null = null;
 
   constructor(
-    private readonly layer: Container,
+    private readonly resolveLayer: () => Container,
     private readonly tileSize: number,
     private readonly assets: RendererAssetLoaders,
   ) {}
@@ -119,9 +121,11 @@ export class HopParticleRenderer {
     sprite.anchor.set(0.5, 1);
     sprite.x = input.tileX * this.tileSize + this.tileSize / 2;
     sprite.y = input.tileY * this.tileSize + this.tileSize;
-    this.layer.addChild(sprite);
+    const layer = this.resolveLayer();
+    layer.addChild(sprite as unknown as ContainerChild);
     this.activeEffects.push({
       sprite,
+      layer,
       steps: effect.steps,
       stepIndex: 0,
       stepElapsedMs: 0,
@@ -146,7 +150,7 @@ export class HopParticleRenderer {
         active.stepElapsedMs -= currentStep.durationMs;
         active.stepIndex += 1;
         if (active.stepIndex >= active.steps.length) {
-          this.layer.removeChild(active.sprite);
+          active.layer.removeChild(active.sprite as unknown as ContainerChild);
           active.sprite.destroy();
           this.activeEffects.splice(i, 1);
           break;
@@ -158,7 +162,7 @@ export class HopParticleRenderer {
 
   clear(): void {
     for (const active of this.activeEffects) {
-      this.layer.removeChild(active.sprite);
+      active.layer.removeChild(active.sprite as unknown as ContainerChild);
       active.sprite.destroy();
     }
     this.activeEffects.length = 0;
