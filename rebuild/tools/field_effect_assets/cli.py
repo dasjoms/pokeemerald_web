@@ -16,6 +16,13 @@ def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def format_path_for_log(path: Path) -> str:
+    try:
+        return str(path.relative_to(ROOT))
+    except ValueError:
+        return str(path)
+
+
 def resolve_existing_source_path(source_path: str) -> Path:
     requested = ROOT / source_path
     if requested.exists():
@@ -31,6 +38,13 @@ def resolve_existing_source_path(source_path: str) -> Path:
             return pal_candidate
 
     raise FileNotFoundError(f"Missing source asset for {source_path} (also checked known extension fallbacks)")
+
+
+def resolve_existing_source_path_optional(source_path: str) -> Path | None:
+    try:
+        return resolve_existing_source_path(source_path)
+    except FileNotFoundError:
+        return None
 
 
 def parse_graphics_incbin_paths() -> dict[str, str]:
@@ -200,6 +214,46 @@ def parse_sprite_template(field_effect_objects_text: str, template_symbol: str) 
     return fields
 
 
+def build_effect_template_payload(
+    *,
+    effect_id: str,
+    helper_function: str,
+    template_symbol: str,
+    graphics_paths: dict[str, str],
+    field_effect_objects_text: str,
+) -> dict[str, Any]:
+    template = parse_sprite_template(field_effect_objects_text, template_symbol)
+    pic_entries = parse_pic_table(field_effect_objects_text, template["images"])
+    anim_table = parse_anim_table(field_effect_objects_text, template["anims"])
+    sources_map: dict[str, str] = {}
+    for entry in pic_entries:
+        src_symbol = entry["source_symbol"]
+        if src_symbol not in graphics_paths:
+            raise ValueError(f"Missing graphics source path for {src_symbol}")
+        sources_map[src_symbol] = graphics_paths[src_symbol]
+    sources = [
+        {"symbol": symbol, "source_path": source_path}
+        for symbol, source_path in sorted(sources_map.items())
+    ]
+
+    return {
+        "field_effect_id": effect_id,
+        "helper_function": helper_function,
+        "helper_update_callback": "UpdateJumpImpactEffect",
+        "template": {
+            "template_symbol": template_symbol,
+            "palette_tag": template["paletteTag"],
+            "oam_symbol": template["oam"],
+            "callback": template["callback"],
+            "pic_table_symbol": template["images"],
+            "anim_table_symbol": template["anims"],
+            "pic_table_entries": pic_entries,
+            "anim_table": anim_table,
+            "sources": sources,
+        },
+    }
+
+
 def resolve_assets() -> dict[str, Any]:
     graphics_paths = parse_graphics_incbin_paths()
     object_templates_text = read_text(ROOT / "src/data/field_effects/field_effect_objects.h")
@@ -253,20 +307,23 @@ def resolve_assets() -> dict[str, Any]:
             }
         )
 
-    dust_template_symbol = "gFieldEffectObjectTemplate_GroundImpactDust"
-    dust_template = parse_sprite_template(object_templates_text, dust_template_symbol)
-    dust_pic_entries = parse_pic_table(object_templates_text, dust_template["images"])
-    dust_anim_table = parse_anim_table(object_templates_text, dust_template["anims"])
-    dust_sources_map: dict[str, str] = {}
-    for entry in dust_pic_entries:
-        src_symbol = entry["source_symbol"]
-        if src_symbol not in graphics_paths:
-            raise ValueError(f"Missing graphics source path for {src_symbol}")
-        dust_sources_map[src_symbol] = graphics_paths[src_symbol]
-    dust_sources = [
-        {"symbol": symbol, "source_path": source_path}
-        for symbol, source_path in sorted(dust_sources_map.items())
+    jump_impact_effect_configs = [
+        ("ground_impact_dust", "FLDEFF_DUST", "FldEff_Dust", "gFieldEffectObjectTemplate_GroundImpactDust"),
+        ("jump_tall_grass", "FLDEFF_JUMP_TALL_GRASS", "FldEff_JumpTallGrass", "gFieldEffectObjectTemplate_JumpTallGrass"),
+        ("jump_long_grass", "FLDEFF_JUMP_LONG_GRASS", "FldEff_JumpLongGrass", "gFieldEffectObjectTemplate_JumpLongGrass"),
+        ("jump_small_splash", "FLDEFF_JUMP_SMALL_SPLASH", "FldEff_JumpSmallSplash", "gFieldEffectObjectTemplate_JumpSmallSplash"),
+        ("jump_big_splash", "FLDEFF_JUMP_BIG_SPLASH", "FldEff_JumpBigSplash", "gFieldEffectObjectTemplate_JumpBigSplash"),
     ]
+    jump_impact_effects = {
+        effect_key: build_effect_template_payload(
+            effect_id=effect_id,
+            helper_function=helper_function,
+            template_symbol=template_symbol,
+            graphics_paths=graphics_paths,
+            field_effect_objects_text=object_templates_text,
+        )
+        for effect_key, effect_id, helper_function, template_symbol in jump_impact_effect_configs
+    }
 
     palette_symbols = ["gFieldEffectObjectPalette0", "gFieldEffectObjectPalette1"]
     palettes = []
@@ -286,22 +343,7 @@ def resolve_assets() -> dict[str, Any]:
                 "shadow_vertical_offsets": shadow_vertical_offsets,
                 "templates": shadow_template_payload,
             },
-            "ground_impact_dust": {
-                "field_effect_id": "FLDEFF_DUST",
-                "helper_function": "FldEff_Dust",
-                "helper_update_callback": "UpdateJumpImpactEffect",
-                "template": {
-                    "template_symbol": dust_template_symbol,
-                    "palette_tag": dust_template["paletteTag"],
-                    "oam_symbol": dust_template["oam"],
-                    "callback": dust_template["callback"],
-                    "pic_table_symbol": dust_template["images"],
-                    "anim_table_symbol": dust_template["anims"],
-                    "pic_table_entries": dust_pic_entries,
-                    "anim_table": dust_anim_table,
-                    "sources": dust_sources,
-                },
-            },
+            **jump_impact_effects,
         },
         "palettes": palettes,
         "source_files": [
@@ -318,8 +360,11 @@ def collect_required_symbols(payload: dict[str, Any]) -> dict[str, str]:
     for template in payload["effects"]["shadow"]["templates"]:
         for source in template["sources"]:
             required[source["symbol"]] = source["source_path"]
-    for source in payload["effects"]["ground_impact_dust"]["template"]["sources"]:
-        required[source["symbol"]] = source["source_path"]
+    for effect in payload["effects"].values():
+        if "template" not in effect:
+            continue
+        for source in effect["template"]["sources"]:
+            required[source["symbol"]] = source["source_path"]
     for palette in payload["palettes"]:
         required[palette["symbol"]] = palette["source_path"]
     return required
@@ -341,19 +386,26 @@ def validate_assets(payload: dict[str, Any]) -> None:
         if template["callback"] != "UpdateShadowFieldEffect":
             raise ValueError(f"Unexpected shadow callback: {template['callback']}")
 
-    dust = payload["effects"]["ground_impact_dust"]["template"]
-    if dust["callback"] != "UpdateJumpImpactEffect":
-        raise ValueError(f"Unexpected dust callback: {dust['callback']}")
+    expected_durations = {
+        "ground_impact_dust": [8, 8, 8],
+        "jump_tall_grass": [8, 8, 8, 8],
+        "jump_long_grass": [4, 4, 8, 8, 8, 8],
+        "jump_small_splash": [4, 4, 4],
+        "jump_big_splash": [8, 8, 8, 8],
+    }
+    for effect_key, expected in expected_durations.items():
+        effect_template = payload["effects"][effect_key]["template"]
+        if effect_template["callback"] != "UpdateJumpImpactEffect":
+            raise ValueError(f"Unexpected {effect_key} callback: {effect_template['callback']}")
 
-    dust_anim_symbols = dust["anim_table"]["anim_cmd_symbols"]
-    if len(dust_anim_symbols) != 1:
-        raise ValueError("Expected one dust anim cmd symbol")
+        anim_symbols = effect_template["anim_table"]["anim_cmd_symbols"]
+        if len(anim_symbols) != 1:
+            raise ValueError(f"Expected one anim cmd symbol for {effect_key}")
 
-    frames = dust["anim_table"]["sequences"][dust_anim_symbols[0]]
-    expected = [8, 8, 8]
-    durations = [frame["duration"] for frame in frames]
-    if durations != expected:
-        raise ValueError(f"Unexpected dust frame durations: {durations} != {expected}")
+        frames = effect_template["anim_table"]["sequences"][anim_symbols[0]]
+        durations = [frame["duration"] for frame in frames]
+        if durations != expected:
+            raise ValueError(f"Unexpected {effect_key} frame durations: {durations} != {expected}")
 
 
 def write_manifest(output_dir: Path, payload: dict[str, Any]) -> Path:
@@ -373,8 +425,12 @@ def write_runtime_assets(output_dir: Path, payload: dict[str, Any]) -> Path:
 
     symbols = collect_required_symbols(payload)
     extracted: list[dict[str, str]] = []
+    unresolved: list[dict[str, str]] = []
     for symbol, source_path in sorted(symbols.items()):
-        source_abs = resolve_existing_source_path(source_path)
+        source_abs = resolve_existing_source_path_optional(source_path)
+        if source_abs is None:
+            unresolved.append({"symbol": symbol, "source_path": source_path})
+            continue
         is_palette = "palette" in symbol.lower() or source_abs.suffix.lower() in {".gbapal", ".pal"}
         destination_dir = palettes_dir if is_palette else pics_dir
         destination_path = destination_dir / source_abs.name
@@ -392,6 +448,7 @@ def write_runtime_assets(output_dir: Path, payload: dict[str, Any]) -> Path:
         "version": FIELD_EFFECT_ASSETS_VERSION,
         "artifact_group": "acro_bike_field_effects",
         "files": extracted,
+        "unresolved_sources": unresolved,
     }
     index_path = target_dir / "runtime_asset_index.json"
     index_path.write_text(json.dumps(runtime_index, indent=2) + "\n", encoding="utf-8")
@@ -406,24 +463,27 @@ def command_validate() -> int:
         for template in payload["effects"]["shadow"]["templates"]
         for source in template["sources"]
     }
-    dust_sources = {source["source_path"] for source in payload["effects"]["ground_impact_dust"]["template"]["sources"]}
+    jump_impact_sources = {
+        source["source_path"]
+        for effect in payload["effects"].values()
+        if "template" in effect
+        for source in effect["template"]["sources"]
+    }
 
     required = collect_required_symbols(payload)
-    unresolved = []
-    for source_path in required.values():
-        try:
-            resolve_existing_source_path(source_path)
-        except FileNotFoundError:
-            unresolved.append(source_path)
+    unresolved: list[tuple[str, str]] = []
+    for symbol, source_path in required.items():
+        if resolve_existing_source_path_optional(source_path) is None:
+            unresolved.append((symbol, source_path))
     if unresolved:
-        unresolved_csv = ", ".join(sorted(set(unresolved)))
+        unresolved_csv = ", ".join(f"{symbol} -> {source_path}" for symbol, source_path in sorted(set(unresolved)))
         raise ValueError(f"Missing source assets required for extraction: {unresolved_csv}")
 
     print(
         "Validated acro bike field effects extraction inputs: "
         f"shadow_templates={len(payload['effects']['shadow']['templates'])} "
         f"shadow_sources={len(shadow_sources)} "
-        f"dust_sources={len(dust_sources)} "
+        f"jump_impact_sources={len(jump_impact_sources)} "
         f"extractable_files={len(required)}"
     )
     return 0
@@ -439,8 +499,14 @@ def command_extract(output_dir: Path, clean: bool) -> int:
     validate_assets(payload)
     path = write_manifest(output_dir, payload)
     runtime_index_path = write_runtime_assets(output_dir, payload)
-    print(f"Wrote acro bike field effects manifest: {path.relative_to(ROOT)}")
-    print(f"Wrote runtime field-effect assets index: {runtime_index_path.relative_to(ROOT)}")
+    runtime_index = json.loads(runtime_index_path.read_text(encoding="utf-8"))
+    print(f"Wrote acro bike field effects manifest: {format_path_for_log(path)}")
+    print(f"Wrote runtime field-effect assets index: {format_path_for_log(runtime_index_path)}")
+    for missing in runtime_index.get("unresolved_sources", []):
+        print(
+            "Unresolved field-effect source (missing art/palette): "
+            f"{missing['symbol']} -> {missing['source_path']}"
+        )
     return 0
 
 
@@ -449,7 +515,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="python3 -m rebuild.tools.field_effect_assets.cli",
         description=(
             "Extract ROM-reference acro-bike hop field-effect metadata into rebuild assets "
-            "(shadow + ground impact dust)."
+            "(shadow + jump-landing effects)."
         ),
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
