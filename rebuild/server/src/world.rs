@@ -3095,7 +3095,7 @@ mod tests {
     }
 
     #[test]
-    fn releasing_b_while_in_bunny_hop_clears_hold_and_exits_wheelie_flow() {
+    fn releasing_b_while_in_bunny_hop_latches_until_landing_then_exits_wheelie_flow() {
         let mut player = test_player_state();
         player.traversal_state = TraversalState::AcroBike;
         player.bike_runtime.acro_runtime.state = AcroState::BunnyHop;
@@ -3106,6 +3106,19 @@ mod tests {
 
         update_bike_runtime_per_tick(&mut player, None, 0);
         assert!(!player.bike_runtime.acro_runtime.holding_b);
+        assert_eq!(player.bike_runtime.acro_runtime.state, AcroState::BunnyHop);
+        assert_ne!(
+            player.bike_runtime.last_transition,
+            BikeTransitionType::WheelieToNormal
+        );
+
+        for _ in 0..16 {
+            update_bike_runtime_per_tick(&mut player, None, 0);
+            if player.bike_runtime.acro_runtime.state == AcroState::Normal {
+                break;
+            }
+        }
+
         assert_eq!(player.bike_runtime.acro_runtime.state, AcroState::Normal);
         assert_eq!(
             player.bike_runtime.last_transition,

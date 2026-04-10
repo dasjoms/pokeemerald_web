@@ -117,6 +117,7 @@ pub struct AcroRuntime {
     pub on_bumpy_slope: bool,
     bunny_hop_cycle_tick: u8,
     hop_landed_this_tick: bool,
+    pending_bunny_hop_release: bool,
     pending_action: Option<AcroAnimationAction>,
     pending_jump_intent: Option<PendingJumpIntent>,
 }
@@ -144,6 +145,7 @@ impl Default for AcroRuntime {
             on_bumpy_slope: false,
             bunny_hop_cycle_tick: 0,
             hop_landed_this_tick: false,
+            pending_bunny_hop_release: false,
             pending_action: None,
             pending_jump_intent: None,
         }
@@ -178,8 +180,10 @@ impl AcroRuntime {
         self.age_pending_jump_intent();
         self.update_history(self.held_direction, if self.holding_b { ABSS_B } else { 0 });
         self.refresh_pending_jump_intent();
-        self.pending_action = Some(self.handle_input(self.held_direction, self.movement_direction));
+        // Tick the bunny-hop phase before input handling so state transitions can
+        // deterministically observe whether this evaluation is at a landing boundary.
         self.advance_bunny_hop_phase();
+        self.pending_action = Some(self.handle_input(self.held_direction, self.movement_direction));
     }
 
     pub fn take_pending_action(&mut self) -> Option<AcroAnimationAction> {
@@ -252,9 +256,11 @@ impl AcroRuntime {
         }
 
         self.hop_landed_this_tick = false;
+        // Keep phase progression and input evaluation ordering consistent with
+        // advance_tick so bunny-hop landing gating behaves identically.
+        self.advance_bunny_hop_phase();
         let action = self.handle_input(Some(requested_direction), facing_direction);
         self.movement_direction = requested_direction;
-        self.advance_bunny_hop_phase();
         action
     }
 
@@ -446,7 +452,20 @@ impl AcroRuntime {
         requested_direction: Option<Direction>,
         facing_direction: Direction,
     ) -> AcroAnimationAction {
-        if !self.holding_b {
+        if self.holding_b {
+            // Deterministic rule: re-pressing B before landing cancels any pending
+            // release, so bunny-hop continues uninterrupted.
+            self.pending_bunny_hop_release = false;
+        } else {
+            self.pending_bunny_hop_release = true;
+        }
+
+        if self.pending_bunny_hop_release {
+            if !self.hop_landed_this_tick {
+                return self.bunny_hop_action_for_input(requested_direction, facing_direction);
+            }
+
+            self.pending_bunny_hop_release = false;
             self.bike_frame_counter = 0;
             if self.on_bumpy_slope {
                 self.state = AcroState::WheelieStanding;
@@ -458,6 +477,14 @@ impl AcroRuntime {
             return AcroAnimationAction::WheelieToNormal;
         }
 
+        self.bunny_hop_action_for_input(requested_direction, facing_direction)
+    }
+
+    fn bunny_hop_action_for_input(
+        &mut self,
+        requested_direction: Option<Direction>,
+        facing_direction: Direction,
+    ) -> AcroAnimationAction {
         let Some(new_direction) = requested_direction else {
             self.running_state = RunningState::NotMoving;
             return AcroAnimationAction::WheelieHoppingStanding;
@@ -535,6 +562,7 @@ impl AcroRuntime {
     fn advance_bunny_hop_phase(&mut self) {
         if !matches!(self.state, AcroState::BunnyHop) {
             self.bunny_hop_cycle_tick = 0;
+            self.pending_bunny_hop_release = false;
             return;
         }
 
@@ -965,10 +993,44 @@ mod tests {
 
         runtime.set_held_input(None, false);
         runtime.advance_tick();
+        assert_eq!(runtime.state, AcroState::BunnyHop);
+        assert_eq!(
+            runtime.take_pending_action(),
+            Some(AcroAnimationAction::WheelieHoppingStanding)
+        );
+
+        runtime.bunny_hop_cycle_tick = BUNNY_HOP_CYCLE_TICKS - 1;
+        runtime.set_held_input(None, false);
+        runtime.advance_tick();
         assert_eq!(runtime.state, AcroState::Normal);
         assert_eq!(
             runtime.take_pending_action(),
             Some(AcroAnimationAction::WheelieToNormal)
+        );
+    }
+
+    #[test]
+    fn bunny_hop_repress_before_landing_clears_pending_release_latch() {
+        let mut runtime = AcroRuntime {
+            state: AcroState::BunnyHop,
+            bunny_hop_cycle_tick: BUNNY_HOP_CYCLE_TICKS - 2,
+            ..Default::default()
+        };
+
+        runtime.set_held_input(None, false);
+        runtime.advance_tick();
+        assert_eq!(runtime.state, AcroState::BunnyHop);
+        assert_eq!(
+            runtime.take_pending_action(),
+            Some(AcroAnimationAction::WheelieHoppingStanding)
+        );
+
+        runtime.set_held_input(None, true);
+        runtime.advance_tick();
+        assert_eq!(runtime.state, AcroState::BunnyHop);
+        assert_eq!(
+            runtime.take_pending_action(),
+            Some(AcroAnimationAction::WheelieHoppingStanding)
         );
     }
 
