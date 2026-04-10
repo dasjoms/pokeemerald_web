@@ -401,7 +401,7 @@ describe("main movement pipeline integration", () => {
     expect(playerAnimation.getDebugState().frameIndex).toBe(463);
   });
 
-  it("spawns hop shadow when entering hop transition families and despawns at hop arc completion", () => {
+  it("keeps one hop shadow instance across consecutive hop arcs and despawns only after hop context ends", () => {
     const movementRuntime = new PlayerMovementActionRuntime();
     const fakeLayer = new FakeShadowLayer();
     const shadowRenderer = new HopShadowRenderer(() => fakeLayer, 16, () => ({
@@ -418,6 +418,7 @@ describe("main movement pipeline integration", () => {
     shadowRenderer.setAuthoritativeState({
       traversalState: TraversalState.ACRO_BIKE,
       bikeTransition: BikeTransitionType.HOP_STANDING,
+      acroSubstate: AcroBikeSubstate.BUNNY_HOP,
     });
 
     shadowRenderer.presentFrame({
@@ -440,12 +441,51 @@ describe("main movement pipeline integration", () => {
     }
 
     movementRuntime.tickTicks(1);
+    shadowRenderer.setAuthoritativeState({
+      traversalState: TraversalState.ACRO_BIKE,
+      bikeTransition: BikeTransitionType.NONE,
+      acroSubstate: AcroBikeSubstate.BUNNY_HOP,
+    });
     shadowRenderer.presentFrame({
       tileX: 12,
       tileY: 9,
       visualState: movementRuntime.getVisualState(),
     });
 
+    expect(shadowRenderer.hasActiveShadow()).toBe(true);
+    expect(fakeLayer.addedCount).toBe(1);
+    expect(fakeLayer.removedCount).toBe(0);
+
+    movementRuntime.setAuthoritativeInput({
+      traversalState: TraversalState.ACRO_BIKE,
+      acroSubstate: AcroBikeSubstate.BUNNY_HOP,
+      bikeTransition: BikeTransitionType.HOP_STANDING,
+    });
+    shadowRenderer.setAuthoritativeState({
+      traversalState: TraversalState.ACRO_BIKE,
+      bikeTransition: BikeTransitionType.HOP_STANDING,
+      acroSubstate: AcroBikeSubstate.BUNNY_HOP,
+    });
+    shadowRenderer.presentFrame({
+      tileX: 12,
+      tileY: 9,
+      visualState: movementRuntime.getVisualState(),
+    });
+
+    expect(shadowRenderer.hasActiveShadow()).toBe(true);
+    expect(fakeLayer.addedCount).toBe(1);
+    expect(fakeLayer.removedCount).toBe(0);
+
+    shadowRenderer.setAuthoritativeState({
+      traversalState: TraversalState.ACRO_BIKE,
+      bikeTransition: BikeTransitionType.NONE,
+      acroSubstate: AcroBikeSubstate.NONE,
+    });
+    shadowRenderer.presentFrame({
+      tileX: 12,
+      tileY: 9,
+      visualState: movementRuntime.getVisualState(),
+    });
     expect(shadowRenderer.hasActiveShadow()).toBe(false);
     expect(fakeLayer.removedCount).toBe(1);
   });
