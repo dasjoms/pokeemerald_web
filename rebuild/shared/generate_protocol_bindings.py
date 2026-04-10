@@ -233,6 +233,7 @@ pub struct WorldSnapshot {{
     pub server_frame: u32,
     pub traversal_state: TraversalState,
     pub preferred_bike_type: TraversalState,
+    pub player_elevation: u8,
     pub authoritative_step_speed: Option<StepSpeed>,
     pub mach_speed_stage: Option<u8>,
     pub acro_substate: Option<AcroBikeSubstate>,
@@ -251,6 +252,7 @@ pub struct WalkResult {{
     pub server_frame: u32,
     pub traversal_state: TraversalState,
     pub preferred_bike_type: TraversalState,
+    pub player_elevation: u8,
     pub authoritative_step_speed: Option<StepSpeed>,
     pub mach_speed_stage: Option<u8>,
     pub acro_substate: Option<AcroBikeSubstate>,
@@ -273,6 +275,7 @@ pub struct WorldDelta {{
 pub struct BikeRuntimeDelta {{
     pub server_frame: u32,
     pub traversal_state: TraversalState,
+    pub player_elevation: u8,
     pub authoritative_step_speed: Option<StepSpeed>,
     pub mach_speed_stage: Option<u8>,
     pub acro_substate: Option<AcroBikeSubstate>,
@@ -430,6 +433,7 @@ export type WorldSnapshot = {{
   server_frame: number;
   traversal_state: TraversalState;
   preferred_bike_type: TraversalState;
+  player_elevation: number;
   authoritative_step_speed?: StepSpeed;
   mach_speed_stage?: number;
   acro_substate?: AcroBikeSubstate;
@@ -446,6 +450,7 @@ export type WalkResult = {{
   server_frame: number;
   traversal_state: TraversalState;
   preferred_bike_type: TraversalState;
+  player_elevation: number;
   authoritative_step_speed?: StepSpeed;
   mach_speed_stage?: number;
   acro_substate?: AcroBikeSubstate;
@@ -460,6 +465,7 @@ export type WorldDelta = {{ map_id: number; server_frame: number; delta_blob: Ui
 export type BikeRuntimeDelta = {{
   server_frame: number;
   traversal_state: TraversalState;
+  player_elevation: number;
   authoritative_step_speed?: StepSpeed;
   mach_speed_stage?: number;
   acro_substate?: AcroBikeSubstate;

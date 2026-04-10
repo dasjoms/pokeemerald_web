@@ -111,6 +111,7 @@ describe("main movement pipeline integration", () => {
           server_frame: seq,
           traversal_state: TraversalState.ON_FOOT,
           preferred_bike_type: TraversalState.MACH_BIKE,
+          player_elevation: 0,
           bike_effect_flags: 0,
         };
 
@@ -1053,6 +1054,7 @@ describe("main movement pipeline integration", () => {
         server_frame: 42,
         traversal_state: speed.traversalState,
         preferred_bike_type: TraversalState.MACH_BIKE,
+        player_elevation: 0,
         mach_speed_stage:
           speed.traversalState === TraversalState.MACH_BIKE ? 2 : undefined,
         bike_effect_flags: 0,

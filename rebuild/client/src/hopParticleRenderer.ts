@@ -37,6 +37,7 @@ type RendererAssetLoaders = {
 type SpawnEvent = {
   tileX: number;
   tileY: number;
+  elevation: number;
   particleClass: HopLandingParticleClass;
   serverFrame: number;
 };
@@ -55,6 +56,7 @@ type ActiveEffect = {
   layer: HopParticleLayer;
   tileX: number;
   tileY: number;
+  elevation: number;
   steps: AnimationStep[];
   stepIndex: number;
   stepElapsedMs: number;
@@ -69,6 +71,7 @@ export type HopParticleDepthSample = {
   sprite: Sprite;
   screenY: number;
   halfHeightPx: number;
+  elevation: number;
 };
 
 const ROM_TICK_MS = 1000 / 60;
@@ -150,6 +153,7 @@ export class HopParticleRenderer {
       layer,
       tileX: input.tileX,
       tileY: input.tileY,
+      elevation: input.elevation,
       steps: effect.steps,
       stepIndex: 0,
       stepElapsedMs: 0,
@@ -191,6 +195,7 @@ export class HopParticleRenderer {
       sprite: active.sprite,
       screenY: active.sprite.y,
       halfHeightPx: active.sprite.height * 0.5,
+      elevation: active.elevation,
     }));
   }
 

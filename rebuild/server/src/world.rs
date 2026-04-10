@@ -76,6 +76,7 @@ pub struct MapData {
     pub height: u16,
     pub metatile_id: Vec<u16>,
     pub collision: Vec<u8>,
+    pub elevation: Vec<u8>,
     pub behavior: Vec<u8>,
     pub allow_cycling: bool,
     pub allow_running: bool,
@@ -497,6 +498,10 @@ impl World {
                 let _ = session.send(ServerMessage::BikeRuntimeDelta(BikeRuntimeDelta {
                     server_frame: tick as u32,
                     traversal_state: session.player_state.traversal_state,
+                    player_elevation: player_elevation_for_state(
+                        self.maps.get(&session.player_state.map_id),
+                        &session.player_state,
+                    ),
                     authoritative_step_speed: Some(player_step_speed_for_snapshot(
                         &session.player_state,
                     )),
@@ -585,6 +590,10 @@ impl World {
                         server_frame: tick as u32,
                         traversal_state: session.player_state.traversal_state,
                         preferred_bike_type: session.player_state.preferred_bike_type,
+                        player_elevation: player_elevation_for_state(
+                            self.maps.get(&session.player_state.map_id),
+                            &session.player_state,
+                        ),
                         authoritative_step_speed: Some(player_step_speed_for_snapshot(
                             &session.player_state,
                         )),
@@ -628,6 +637,10 @@ impl World {
                         server_frame: tick as u32,
                         traversal_state: session.player_state.traversal_state,
                         preferred_bike_type: session.player_state.preferred_bike_type,
+                        player_elevation: player_elevation_for_state(
+                            self.maps.get(&session.player_state.map_id),
+                            &session.player_state,
+                        ),
                         authoritative_step_speed: Some(player_step_speed_for_snapshot(
                             &session.player_state,
                         )),
@@ -850,6 +863,10 @@ impl World {
                     server_frame: tick as u32,
                     traversal_state: session.player_state.traversal_state,
                     preferred_bike_type: session.player_state.preferred_bike_type,
+                    player_elevation: player_elevation_for_state(
+                        self.maps.get(&session.player_state.map_id),
+                        &session.player_state,
+                    ),
                     authoritative_step_speed: Some(step_speed_to_protocol(step_speed)),
                     mach_speed_stage: bike_mach_speed_for_traversal(&session.player_state),
                     acro_substate: bike_acro_substate_for_traversal(&session.player_state),
@@ -917,6 +934,10 @@ impl World {
             server_frame,
             traversal_state: player_state.traversal_state,
             preferred_bike_type: player_state.preferred_bike_type,
+            player_elevation: player_elevation_for_state(
+                self.maps.get(&session_map_id),
+                player_state,
+            ),
             authoritative_step_speed: Some(player_step_speed_for_snapshot(player_state)),
             mach_speed_stage: bike_mach_speed_for_traversal(player_state),
             acro_substate: bike_acro_substate_for_traversal(player_state),
@@ -1001,6 +1022,10 @@ impl World {
             server_frame,
             traversal_state: session.player_state.traversal_state,
             preferred_bike_type: session.player_state.preferred_bike_type,
+            player_elevation: player_elevation_for_state(
+                self.maps.get(&session.player_state.map_id),
+                &session.player_state,
+            ),
             authoritative_step_speed: Some(player_step_speed_for_snapshot(&session.player_state)),
             mach_speed_stage: bike_mach_speed_for_traversal(&session.player_state),
             acro_substate: bike_acro_substate_for_traversal(&session.player_state),
@@ -1168,8 +1193,21 @@ fn source_tile_behavior(map: &MapData, player_state: &PlayerState) -> Option<u8>
     tile_behavior(map, player_state.tile_x, player_state.tile_y)
 }
 
+fn player_elevation_for_state(map: Option<&MapData>, player_state: &PlayerState) -> u8 {
+    map.and_then(|current_map| {
+        tile_elevation(current_map, player_state.tile_x, player_state.tile_y)
+    })
+    .unwrap_or(0)
+}
+
 fn tile_behavior(map: &MapData, tile_x: u16, tile_y: u16) -> Option<u8> {
     map.behavior
+        .get(tile_y as usize * map.width as usize + tile_x as usize)
+        .copied()
+}
+
+fn tile_elevation(map: &MapData, tile_x: u16, tile_y: u16) -> Option<u8> {
+    map.elevation
         .get(tile_y as usize * map.width as usize + tile_x as usize)
         .copied()
 }
@@ -1448,16 +1486,12 @@ fn update_bike_runtime_per_tick(
             AcroAnimationAction::WheelieHoppingStanding => {
                 BikeTransitionType::WheelieHoppingStanding
             }
-            AcroAnimationAction::WheelieHoppingMoving => {
-                BikeTransitionType::WheelieHoppingMoving
-            }
+            AcroAnimationAction::WheelieHoppingMoving => BikeTransitionType::WheelieHoppingMoving,
             AcroAnimationAction::SideJump => BikeTransitionType::SideJump,
             AcroAnimationAction::TurnJump => BikeTransitionType::TurnJump,
             AcroAnimationAction::WheelieMoving => BikeTransitionType::WheelieMoving,
             AcroAnimationAction::WheelieRisingMoving => BikeTransitionType::WheelieRisingMoving,
-            AcroAnimationAction::WheelieLoweringMoving => {
-                BikeTransitionType::WheelieLoweringMoving
-            }
+            AcroAnimationAction::WheelieLoweringMoving => BikeTransitionType::WheelieLoweringMoving,
         };
     }
 }
@@ -1596,11 +1630,13 @@ impl MapData {
         }
 
         let mut collision = Vec::with_capacity(tile_count);
+        let mut elevation = Vec::with_capacity(tile_count);
         let mut behavior = Vec::with_capacity(tile_count);
         let mut metatile_id = Vec::with_capacity(tile_count);
         for tile in decoded.tiles {
             metatile_id.push(tile.metatile_id);
             collision.push(tile.collision);
+            elevation.push(tile.elevation);
             behavior.push(tile.behavior_id);
         }
 
@@ -1610,6 +1646,7 @@ impl MapData {
             height: decoded.height,
             metatile_id,
             collision,
+            elevation,
             behavior,
             allow_cycling,
             allow_running,
@@ -1641,6 +1678,7 @@ struct LayoutArtifact {
 struct LayoutTile {
     metatile_id: u16,
     collision: u8,
+    elevation: u8,
     behavior_id: u8,
 }
 
@@ -1803,6 +1841,7 @@ mod tests {
             height: 2,
             metatile_id: vec![0; 4],
             collision: vec![0, 1, 0, 0],
+            elevation: vec![0, 1, 0, 0],
             behavior: vec![MB_BUMPY_SLOPE, 0, 0, 0],
             allow_cycling: true,
             allow_running: true,
@@ -1821,6 +1860,7 @@ mod tests {
             height: 1,
             metatile_id: vec![0; width],
             collision: vec![0; width],
+            elevation: vec![0; width],
             behavior,
             allow_cycling: true,
             allow_running: true,
@@ -2343,6 +2383,7 @@ mod tests {
             height: 1,
             metatile_id: vec![0; 2],
             collision: vec![0; 2],
+            elevation: vec![0; 2],
             behavior: vec![0; 2],
             allow_cycling: true,
             allow_running: true,
@@ -2423,6 +2464,7 @@ mod tests {
             height: 1,
             metatile_id: vec![0; 2],
             collision: vec![0, 1],
+            elevation: vec![0, 1],
             behavior: vec![0; 2],
             allow_cycling: true,
             allow_running: true,
@@ -2502,6 +2544,7 @@ mod tests {
             height: 1,
             metatile_id: vec![0; 8],
             collision: vec![0; 8],
+            elevation: vec![0; 8],
             behavior: vec![0; 8],
             allow_cycling: true,
             allow_running: true,
@@ -2584,14 +2627,15 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn bunny_hop_repeated_directional_attempts_crossing_cadence_boundaries_eventually_accept(
-    ) {
+    async fn bunny_hop_repeated_directional_attempts_crossing_cadence_boundaries_eventually_accept()
+    {
         let world = test_world_with_initial_map(MapData {
             map_id: "MAP_BUNNY_HOP_CONTINUOUS_INPUT".to_string(),
             width: 64,
             height: 1,
             metatile_id: vec![0; 64],
             collision: vec![0; 64],
+            elevation: vec![0; 64],
             behavior: vec![0; 64],
             allow_cycling: true,
             allow_running: true,
@@ -3057,6 +3101,7 @@ mod tests {
             height: 1,
             metatile_id: vec![0],
             collision: vec![0],
+            elevation: vec![0],
             behavior: vec![MB_TALL_GRASS],
             allow_cycling: true,
             allow_running: true,
@@ -3197,6 +3242,7 @@ mod tests {
             height: 1,
             metatile_id: vec![0],
             collision: vec![0],
+            elevation: vec![0],
             behavior: vec![0],
             allow_cycling: true,
             allow_running: true,
@@ -3227,6 +3273,7 @@ mod tests {
             height: 1,
             metatile_id: vec![0; 3],
             collision: vec![0; 3],
+            elevation: vec![0; 3],
             behavior: vec![0, MB_TALL_GRASS, MB_PUDDLE],
             allow_cycling: true,
             allow_running: true,
@@ -3279,6 +3326,7 @@ mod tests {
             height: 1,
             metatile_id: vec![0; 4],
             collision: vec![0; 4],
+            elevation: vec![0; 4],
             behavior: vec![MB_CRACKED_FLOOR, 0, 0, 0],
             allow_cycling: true,
             allow_running: true,
@@ -3306,6 +3354,7 @@ mod tests {
             height: 1,
             metatile_id: vec![0; 4],
             collision: vec![0; 4],
+            elevation: vec![0; 4],
             behavior: vec![
                 MB_CRACKED_FLOOR,
                 MB_CRACKED_FLOOR,
@@ -3336,6 +3385,7 @@ mod tests {
             height: 1,
             metatile_id: vec![0; 4],
             collision: vec![0; 4],
+            elevation: vec![0; 4],
             behavior: vec![MB_CRACKED_FLOOR, 0, 0, 0],
             allow_cycling: true,
             allow_running: true,

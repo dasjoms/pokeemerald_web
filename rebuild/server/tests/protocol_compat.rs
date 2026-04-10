@@ -43,6 +43,7 @@ fn server_walk_result_decodes_in_shared_python_runtime() {
         server_frame: 88,
         traversal_state: TraversalState::OnFoot,
         preferred_bike_type: TraversalState::MachBike,
+        player_elevation: 0,
         authoritative_step_speed: None,
         mach_speed_stage: None,
         acro_substate: None,
@@ -127,6 +128,7 @@ fn walk_result_wire_encoding_with_forced_movement_disabled_is_canonical() {
         server_frame: 0x0a0b_0c0d,
         traversal_state: TraversalState::OnFoot,
         preferred_bike_type: TraversalState::OnFoot,
+        player_elevation: 0,
         authoritative_step_speed: None,
         mach_speed_stage: None,
         acro_substate: None,
@@ -142,9 +144,9 @@ fn walk_result_wire_encoding_with_forced_movement_disabled_is_canonical() {
     let mut expected_frame = Vec::new();
     expected_frame.extend_from_slice(&PROTOCOL_VERSION.to_le_bytes());
     expected_frame.push(MessageType::WalkResult as u8);
-    expected_frame.push(0x1b);
+    expected_frame.push(0x1c);
     expected_frame.extend(
-        hex::decode("00000004030201002211443302060d0c0b0a000004000000000000000000")
+        hex::decode("00000004030201002211443302060d0c0b0a00000004000000000000000000")
             .expect("valid expected payload"),
     );
     assert_eq!(frame, expected_frame);
