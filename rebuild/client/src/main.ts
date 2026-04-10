@@ -729,7 +729,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
       hopLandingTileX: delta.hop_landing_tile_x,
       hopLandingTileY: delta.hop_landing_tile_y,
       hopLandingElevation: delta.player_elevation,
-      facing: state.facing,
+      facing: delta.facing,
       traversalState: delta.traversal_state,
       acroSubstate: delta.acro_substate,
       bikeTransition: delta.bike_transition,
@@ -2053,6 +2053,8 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
     offset += 1;
     const playerElevation = readU8(payload, offset);
     offset += 1;
+    const facing = readU8(payload, offset) as Direction;
+    offset += 1;
     const bikeRuntimeFlags = readU8(payload, offset);
     offset += 1;
     const authoritativeStepSpeed =
@@ -2089,6 +2091,7 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
         server_frame: serverFrame,
         traversal_state: traversalState,
         player_elevation: playerElevation,
+        facing,
         authoritative_step_speed: authoritativeStepSpeed,
         mach_speed_stage: machSpeedStage,
         acro_substate: acroSubstate,

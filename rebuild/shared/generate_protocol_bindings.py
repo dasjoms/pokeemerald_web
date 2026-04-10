@@ -276,6 +276,7 @@ pub struct BikeRuntimeDelta {{
     pub server_frame: u32,
     pub traversal_state: TraversalState,
     pub player_elevation: u8,
+    pub facing: Direction,
     pub authoritative_step_speed: Option<StepSpeed>,
     pub mach_speed_stage: Option<u8>,
     pub acro_substate: Option<AcroBikeSubstate>,
@@ -466,6 +467,7 @@ export type BikeRuntimeDelta = {{
   server_frame: number;
   traversal_state: TraversalState;
   player_elevation: number;
+  facing: Direction;
   authoritative_step_speed?: StepSpeed;
   mach_speed_stage?: number;
   acro_substate?: AcroBikeSubstate;

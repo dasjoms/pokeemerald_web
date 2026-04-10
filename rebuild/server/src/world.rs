@@ -502,6 +502,7 @@ impl World {
                         self.maps.get(&session.player_state.map_id),
                         &session.player_state,
                     ),
+                    facing: session.player_state.facing,
                     authoritative_step_speed: Some(player_step_speed_for_snapshot(
                         &session.player_state,
                     )),
@@ -2789,6 +2790,78 @@ mod tests {
             has_repeated_runtime_state,
             "expected at least one pair of consecutive landing particle deltas with unchanged runtime state"
         );
+    }
+
+    async fn first_stationary_landing_delta_for_facing(facing: Direction) -> BikeRuntimeDelta {
+        let world = test_world_with_initial_map(landing_coordinate_regression_map());
+        let (tx, mut rx) = mpsc::unbounded_channel();
+        let session = world
+            .create_session(tx)
+            .await
+            .expect("session should create");
+        world
+            .join_session(session.connection_id, "stationary-runtime-delta-facing")
+            .await
+            .expect("session should join");
+        let _ = drain_server_messages(&mut rx);
+
+        {
+            let mut sessions = world.sessions.write().await;
+            let session_state = sessions
+                .get_mut(&session.connection_id)
+                .expect("session should exist");
+            session_state.player_state.map_id = "MAP_LANDING_COORD_REGRESSION".to_string();
+            session_state.player_state.tile_x = 0;
+            session_state.player_state.tile_y = 0;
+            session_state.player_state.traversal_state = TraversalState::AcroBike;
+            session_state.player_state.preferred_bike_type = TraversalState::AcroBike;
+            session_state.player_state.facing = facing;
+            session_state.player_state.bike_runtime.acro_runtime.state = AcroState::BunnyHop;
+            session_state.player_state.bike_runtime.acro_state = AcroBikeSubstate::BunnyHop;
+        }
+
+        for input_seq in 0..64_u32 {
+            world
+                .enqueue_held_input_state(
+                    session.connection_id,
+                    HeldInputState {
+                        input_seq,
+                        held_direction: None,
+                        held_buttons: crate::protocol::HeldButtons::B as u8,
+                        client_time: input_seq as u64,
+                    },
+                )
+                .await
+                .expect("held input should enqueue");
+            world.tick().await;
+            if let Some(delta) = drain_server_messages(&mut rx)
+                .into_iter()
+                .find_map(|message| match message {
+                    ServerMessage::BikeRuntimeDelta(delta)
+                        if delta.hop_landing_particle_class.is_some() =>
+                    {
+                        Some(delta)
+                    }
+                    _ => None,
+                })
+            {
+                return delta;
+            }
+        }
+
+        panic!("expected landing pulse from stationary acro bunny-hop");
+    }
+
+    #[tokio::test]
+    async fn stationary_bunny_hop_runtime_delta_reports_left_facing_authoritatively() {
+        let landing_delta = first_stationary_landing_delta_for_facing(Direction::Left).await;
+        assert_eq!(landing_delta.facing, Direction::Left);
+    }
+
+    #[tokio::test]
+    async fn stationary_bunny_hop_runtime_delta_reports_right_facing_authoritatively() {
+        let landing_delta = first_stationary_landing_delta_for_facing(Direction::Right).await;
+        assert_eq!(landing_delta.facing, Direction::Right);
     }
 
     #[tokio::test]
