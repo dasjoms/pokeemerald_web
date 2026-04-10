@@ -181,6 +181,7 @@ pub struct Session {
     authoritative_tick: u64,
     bunny_hop_cadence_open_on_tick: Option<u64>,
     bunny_hop_cadence_initialized: bool,
+    pending_bunny_hop_direction: Option<Direction>,
     step_end_direction_intent: Option<Direction>,
     walk_inputs: VecDeque<WalkInput>,
     outbound: mpsc::UnboundedSender<ServerMessage>,
@@ -206,6 +207,7 @@ impl Session {
             authoritative_tick: 0,
             bunny_hop_cadence_open_on_tick: None,
             bunny_hop_cadence_initialized: false,
+            pending_bunny_hop_direction: None,
             step_end_direction_intent: None,
             walk_inputs: VecDeque::new(),
             outbound,
@@ -230,6 +232,7 @@ impl Session {
         } else {
             self.bunny_hop_cadence_open_on_tick = None;
             self.bunny_hop_cadence_initialized = false;
+            self.pending_bunny_hop_direction = None;
         }
     }
 
@@ -285,33 +288,54 @@ impl Session {
         &mut self,
         input: &WalkInput,
     ) -> WalkIntentTimingValidation {
-        if !matches!(
+        let is_bunny_hop = matches!(
             self.player_state.bike_runtime.acro_state,
             AcroBikeSubstate::BunnyHop
-        ) && self.held_direction != Some(input.direction)
-        {
+        );
+        if !is_bunny_hop && self.held_direction != Some(input.direction) {
             return WalkIntentTimingValidation::HeldDirectionMismatch;
         }
 
-        if !matches!(
-            self.player_state.bike_runtime.acro_state,
-            AcroBikeSubstate::BunnyHop
-        ) {
+        if !is_bunny_hop {
             return WalkIntentTimingValidation::Accepted;
         }
 
-        if self.bunny_hop_cadence_open_on_tick == Some(self.authoritative_tick) {
+        if let Some(held_direction) = self.held_direction {
+            if held_direction != input.direction {
+                return WalkIntentTimingValidation::HeldDirectionMismatch;
+            }
+        }
+
+        if self.is_bunny_hop_cadence_open_this_tick() {
             self.bunny_hop_cadence_open_on_tick = None;
             self.bunny_hop_cadence_initialized = true;
+            self.pending_bunny_hop_direction = None;
             return WalkIntentTimingValidation::Accepted;
         }
 
         if !self.bunny_hop_cadence_initialized {
             self.bunny_hop_cadence_initialized = true;
+            self.pending_bunny_hop_direction = None;
             return WalkIntentTimingValidation::Accepted;
         }
+        self.pending_bunny_hop_direction = Some(input.direction);
+        WalkIntentTimingValidation::Accepted
+    }
 
-        WalkIntentTimingValidation::CadenceMiss
+    pub fn is_bunny_hop_cadence_open_this_tick(&self) -> bool {
+        self.bunny_hop_cadence_open_on_tick == Some(self.authoritative_tick)
+    }
+
+    pub fn has_pending_bunny_hop_direction(&self) -> bool {
+        self.pending_bunny_hop_direction.is_some()
+    }
+
+    pub fn bunny_hop_cadence_initialized(&self) -> bool {
+        self.bunny_hop_cadence_initialized
+    }
+
+    pub fn requeue_walk_input_front(&mut self, input: WalkInput) {
+        self.walk_inputs.push_front(input);
     }
 
     pub fn walk_inputs_len(&self) -> usize {
@@ -442,8 +466,9 @@ mod tests {
         session.update_authoritative_tick(17);
         assert_eq!(
             session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 1_050)),
-            WalkIntentTimingValidation::CadenceMiss
+            WalkIntentTimingValidation::Accepted
         );
+        assert!(session.has_pending_bunny_hop_direction());
 
         for tick in 18..=32 {
             session
@@ -505,7 +530,7 @@ mod tests {
     }
 
     #[test]
-    fn walk_intent_timing_bunny_hop_accepts_after_held_direction_changes_same_tick() {
+    fn walk_intent_timing_bunny_hop_rejects_when_held_direction_mismatches() {
         let mut session = test_session();
         session.player_state.traversal_state = TraversalState::AcroBike;
         session.player_state.bike_runtime.acro_state = AcroBikeSubstate::BunnyHop;
@@ -519,7 +544,7 @@ mod tests {
 
         assert_eq!(
             session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 1)),
-            WalkIntentTimingValidation::Accepted
+            WalkIntentTimingValidation::HeldDirectionMismatch
         );
     }
 }

@@ -601,6 +601,18 @@ impl World {
                     }));
                     continue;
                 }
+                let is_bunny_hop = matches!(
+                    session.player_state.bike_runtime.acro_state,
+                    AcroBikeSubstate::BunnyHop
+                );
+                if is_bunny_hop
+                    && session.bunny_hop_cadence_initialized()
+                    && session.has_pending_bunny_hop_direction()
+                    && !session.is_bunny_hop_cadence_open_this_tick()
+                {
+                    session.requeue_walk_input_front(input);
+                    break;
+                }
 
                 let Some(current_map) = self.maps.get(&session.player_state.map_id) else {
                     session.player_state.facing = input.direction;
@@ -2248,7 +2260,9 @@ mod tests {
             )
             .await
             .expect("walk input should enqueue");
-        world.tick().await;
+        for _ in 0..20 {
+            world.tick().await;
+        }
 
         let mut seen_transitions = Vec::new();
         let mut walk_result = None;
@@ -2402,7 +2416,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn bunny_hop_allows_first_directional_walk_before_held_direction_update() {
+    async fn bunny_hop_queues_first_directional_walk_before_held_direction_update() {
         let world = test_world_with_initial_map(MapData {
             map_id: "MAP_BUNNY_HOP_ORDERING".to_string(),
             width: 2,
@@ -2465,7 +2479,9 @@ mod tests {
             )
             .await
             .expect("walk input should enqueue");
-        world.tick().await;
+        for _ in 0..20 {
+            world.tick().await;
+        }
 
         let walk_result = drain_server_messages(&mut rx)
             .into_iter()
@@ -2479,7 +2495,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn bunny_hop_cadence_miss_is_not_reported_as_invalid_direction() {
+    async fn bunny_hop_off_cadence_directional_inputs_are_not_rejected() {
         let world = test_world_with_initial_map(MapData {
             map_id: "MAP_BUNNY_HOP_CADENCE_REASON".to_string(),
             width: 8,
@@ -2555,8 +2571,8 @@ mod tests {
         assert!(
             walk_results
                 .iter()
-                .any(|result| result.reason == RejectionReason::ForcedMovementDisabled),
-            "expected at least one cadence miss while repeatedly sampling inputs"
+                .all(|result| result.reason != RejectionReason::ForcedMovementDisabled),
+            "off-cadence bunny-hop directional samples should be queued instead of rejected"
         );
         assert!(
             walk_results
@@ -2568,7 +2584,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn bunny_hop_repeated_directional_attempts_crossing_cadence_boundaries_mix_accepts_and_cadence_misses(
+    async fn bunny_hop_repeated_directional_attempts_crossing_cadence_boundaries_eventually_accept(
     ) {
         let world = test_world_with_initial_map(MapData {
             map_id: "MAP_BUNNY_HOP_CONTINUOUS_INPUT".to_string(),
@@ -2649,8 +2665,8 @@ mod tests {
         assert!(
             walk_results
                 .iter()
-                .any(|result| result.reason == RejectionReason::ForcedMovementDisabled),
-            "expected at least one cadence miss rejection while repeatedly attempting movement"
+                .all(|result| result.reason != RejectionReason::ForcedMovementDisabled),
+            "off-cadence directional attempts should no longer surface forced-movement cadence misses"
         );
     }
 
