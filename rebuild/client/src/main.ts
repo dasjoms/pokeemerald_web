@@ -1,4 +1,4 @@
-import { Application, Assets, Container, Graphics, Sprite, TextureSource, TextureStyle } from 'pixi.js';
+import { Application, Assets, Container, Graphics, Sprite, Texture, TextureSource, TextureStyle } from 'pixi.js';
 import {
   AcroBikeSubstate,
   BikeTransitionType,
@@ -48,6 +48,11 @@ import {
   type WalkTransitionMutableState,
 } from './walkTransitionPipeline';
 import { BikeEffectRenderer } from './bikeEffectRenderer';
+import {
+  HopShadowRenderer,
+  ROM_SHADOW_TEMPLATE_ID_MEDIUM,
+  type HopShadowSizeVariant,
+} from './hopShadowRenderer';
 import {
   createWalkInputController,
   encodeHeldInputState,
@@ -421,6 +426,12 @@ let playerActiveActorLayer = actorBetweenBg2Bg1Layer;
 let activeMapTileRenderPriorityContexts: (MapTileRenderPriorityContext | undefined)[] = [];
 let playerObjectRenderPriorityState: PlayerObjectRenderPriorityState = 'normal';
 const bikeEffectRenderer = new BikeEffectRenderer(bikeEffectsLayer, TILE_SIZE);
+const hopShadowRenderer = new HopShadowRenderer(
+  bikeEffectsLayer,
+  TILE_SIZE,
+  createHopShadowSprite,
+);
+hopShadowRenderer.setShadowSizeTemplateId(ROM_SHADOW_TEMPLATE_ID_MEDIUM);
 const VISUAL_RUNTIME_TICK_MS = 1000 / 60;
 let visualRuntimeTickAccumulatorMs = 0;
 
@@ -583,6 +594,11 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
       acroSubstate: state.acroSubstate,
       bikeTransition: state.bikeTransition,
     });
+    hopShadowRenderer.setAuthoritativeState({
+      traversalState: state.traversalState,
+      bikeTransition: state.bikeTransition,
+    });
+    hopShadowRenderer.clear();
     bikeEffectRenderer.clear();
     await applyAuthoritativeAvatar(snapshot.avatar);
     playerAnimation.setTraversalState({
@@ -630,6 +646,10 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     playerMovementActionRuntime.setAuthoritativeInput({
       traversalState: state.traversalState,
       acroSubstate: state.acroSubstate,
+      bikeTransition: state.bikeTransition,
+    });
+    hopShadowRenderer.setAuthoritativeState({
+      traversalState: state.traversalState,
       bikeTransition: state.bikeTransition,
     });
     // BikeRuntimeDelta is change-only by design; consume it as authoritative
@@ -682,6 +702,10 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
   playerMovementActionRuntime.setAuthoritativeInput({
     traversalState: state.traversalState,
     acroSubstate: state.acroSubstate,
+    bikeTransition: state.bikeTransition,
+  });
+  hopShadowRenderer.setAuthoritativeState({
+    traversalState: state.traversalState,
     bikeTransition: state.bikeTransition,
   });
   if (result.accepted) {
@@ -808,6 +832,7 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
   actorBetweenBg2Bg1Layer.removeChildren();
   bikeEffectsLayer.removeChildren();
   bikeEffectRenderer.clear();
+  hopShadowRenderer.clear();
   actorBetweenBg2Bg1Layer.addChild(playerSprite);
   playerActiveActorLayer = actorBetweenBg2Bg1Layer;
   renderedSubtileBindings.length = 0;
@@ -2024,6 +2049,28 @@ function positionPlayerSprite(): void {
   const movementActionVisual = playerMovementActionRuntime.getVisualState();
   playerSprite.x = state.renderTileX * TILE_SIZE + TILE_SIZE / 2;
   playerSprite.y = state.renderTileY * TILE_SIZE + TILE_SIZE + movementActionVisual.yOffsetPx;
+  hopShadowRenderer.presentFrame({
+    tileX: state.renderTileX,
+    tileY: state.renderTileY,
+    visualState: movementActionVisual,
+  });
+}
+
+const HOP_SHADOW_ASSET_PATHS: Readonly<Record<HopShadowSizeVariant, string>> = {
+  small: 'field_effects/acro_bike/pics/shadow_small.png',
+  medium: 'field_effects/acro_bike/pics/shadow_medium.png',
+  large: 'field_effects/acro_bike/pics/shadow_large.png',
+  extra_large: 'field_effects/acro_bike/pics/shadow_extra_large.png',
+};
+
+function createHopShadowSprite(variant: HopShadowSizeVariant): Sprite {
+  const textureUrl = imageAssetUrls[`../../assets/${HOP_SHADOW_ASSET_PATHS[variant]}`];
+  if (!textureUrl) {
+    throw new Error(`missing hop shadow asset for variant=${variant}`);
+  }
+  const sprite = new Sprite(Texture.from(textureUrl));
+  sprite.anchor.set(0.5, 1);
+  return sprite;
 }
 
 function updatePlayerActorLayer(): void {
