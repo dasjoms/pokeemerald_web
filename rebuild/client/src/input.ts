@@ -24,11 +24,7 @@ export type WalkInputController = {
 // local facing updates immediately, but no WalkInput is emitted.
 const TURN_ONLY_TAP_MS = 90;
 const HELD_INPUT_SAMPLE_MS = 1000 / 60;
-const debugAcroHopSearch =
-  typeof window === 'undefined' ? '' : window.location.search;
-const DEBUG_ACRO_HOP =
-  import.meta.env.DEV &&
-  new URLSearchParams(debugAcroHopSearch).get('debugAcroHop') === '1';
+const DEBUG_ACRO_HOP = true;
 
 export function keyToDirection(key: string): Direction | null {
   switch (key) {
