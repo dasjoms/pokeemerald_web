@@ -24,6 +24,7 @@ type TickWalkTransitionArgs = {
   state: WalkTransitionMutableState;
   deltaMs: number;
   hasPendingAcceptedOrDispatchableStep: () => boolean;
+  noteWalkTransitionProgress: (normalizedProgress: number) => void;
   markWalkTransitionCompleted: () => void;
   stopMoving: (direction: Direction) => void;
 };
@@ -108,6 +109,7 @@ export function tickWalkTransition(args: TickWalkTransitionArgs): WalkTransition
     state,
     deltaMs,
     hasPendingAcceptedOrDispatchableStep,
+    noteWalkTransitionProgress,
     markWalkTransitionCompleted,
     stopMoving,
   } = args;
@@ -125,6 +127,7 @@ export function tickWalkTransition(args: TickWalkTransitionArgs): WalkTransition
   state.renderTileY =
     activeWalkTransition.startY +
     (activeWalkTransition.targetY - activeWalkTransition.startY) * t;
+  noteWalkTransitionProgress(t);
 
   if (t >= 1) {
     state.renderTileX = activeWalkTransition.targetX;

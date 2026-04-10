@@ -11,10 +11,7 @@ use crate::{
     },
 };
 
-pub const MAX_PENDING_WALK_INPUTS: usize = 2;
-pub const FIRST_STEP_COMMIT_MS: u64 = 90;
-pub const REPEAT_INITIAL_DELAY_MS: u64 = 220;
-pub const REPEAT_INTERVAL_MS: u64 = 90;
+pub const MAX_PENDING_WALK_INPUTS: usize = 1;
 
 #[derive(Debug, Clone)]
 pub struct PlayerState {
@@ -174,10 +171,6 @@ pub struct Session {
     pub active_walk_transition: Option<ActiveWalkTransition>,
     pub held_direction: Option<Direction>,
     pub held_buttons: u8,
-    held_direction_changed_client_time: Option<u64>,
-    held_direction_has_committed_first_step: bool,
-    held_direction_repeat_started: bool,
-    last_committed_walk_intent_client_time: Option<u64>,
     walk_inputs: VecDeque<WalkInput>,
     outbound: mpsc::UnboundedSender<ServerMessage>,
 }
@@ -199,10 +192,6 @@ impl Session {
             active_walk_transition: None,
             held_direction: None,
             held_buttons: 0,
-            held_direction_changed_client_time: None,
-            held_direction_has_committed_first_step: false,
-            held_direction_repeat_started: false,
-            last_committed_walk_intent_client_time: None,
             walk_inputs: VecDeque::new(),
             outbound,
         }
@@ -214,11 +203,7 @@ impl Session {
 
     pub fn apply_held_input_state(&mut self, input: HeldInputState) {
         if let Some(direction) = input.held_direction {
-            let changed = self.held_direction != Some(direction);
             self.press_direction(direction);
-            if changed {
-                self.set_held_direction_changed_client_time(input.client_time);
-            }
         } else {
             self.release_direction();
         }
@@ -226,20 +211,11 @@ impl Session {
     }
 
     pub fn press_direction(&mut self, direction: Direction) {
-        if self.held_direction != Some(direction) {
-            self.held_direction_has_committed_first_step = false;
-            self.held_direction_repeat_started = false;
-            self.last_committed_walk_intent_client_time = None;
-        }
         self.held_direction = Some(direction);
     }
 
     pub fn release_direction(&mut self) {
         self.held_direction = None;
-        self.held_direction_changed_client_time = None;
-        self.held_direction_has_committed_first_step = false;
-        self.held_direction_repeat_started = false;
-        self.last_committed_walk_intent_client_time = None;
     }
 
     pub fn press_buttons(&mut self, buttons: u8) {
@@ -262,46 +238,7 @@ impl Session {
     }
 
     pub fn validate_and_commit_walk_intent_timing(&mut self, input: &WalkInput) -> bool {
-        if self.held_direction != Some(input.direction) {
-            return false;
-        }
-
-        let held_direction_changed_client_time = self
-            .held_direction_changed_client_time
-            .unwrap_or(input.client_time);
-
-        if !self.held_direction_has_committed_first_step {
-            let first_step_allowed_at =
-                held_direction_changed_client_time.saturating_add(FIRST_STEP_COMMIT_MS);
-            if input.client_time < first_step_allowed_at {
-                return false;
-            }
-
-            self.held_direction_has_committed_first_step = true;
-            self.held_direction_repeat_started = false;
-            self.last_committed_walk_intent_client_time = Some(input.client_time);
-            return true;
-        }
-
-        let last_committed = self
-            .last_committed_walk_intent_client_time
-            .unwrap_or(held_direction_changed_client_time);
-        if input.client_time < last_committed {
-            return false;
-        }
-
-        let required_gap_ms = if self.held_direction_repeat_started {
-            REPEAT_INTERVAL_MS
-        } else {
-            REPEAT_INITIAL_DELAY_MS
-        };
-        if input.client_time < last_committed.saturating_add(required_gap_ms) {
-            return false;
-        }
-
-        self.held_direction_repeat_started = true;
-        self.last_committed_walk_intent_client_time = Some(input.client_time);
-        true
+        self.held_direction == Some(input.direction)
     }
 
     pub fn walk_inputs_len(&self) -> usize {
@@ -314,10 +251,6 @@ impl Session {
 
     pub fn pop_walk_input(&mut self) -> Option<WalkInput> {
         self.walk_inputs.pop_front()
-    }
-
-    pub fn set_held_direction_changed_client_time(&mut self, client_time: u64) {
-        self.held_direction_changed_client_time = Some(client_time);
     }
 
     pub fn send(
@@ -393,7 +326,7 @@ mod tests {
     }
 
     #[test]
-    fn walk_intent_timing_enforces_first_commit_and_repeat_cadence() {
+    fn walk_intent_timing_accepts_matching_held_direction_without_repeat_cadence_gate() {
         let mut session = test_session();
         session.apply_held_input_state(HeldInputState {
             held_direction: Some(Direction::Right),
@@ -402,24 +335,9 @@ mod tests {
             client_time: 1_000,
         });
 
-        assert!(
-            !session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 1_050))
-        );
-        assert!(
-            session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 1_090))
-        );
-        assert!(
-            !session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 1_300))
-        );
-        assert!(
-            session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 1_310))
-        );
-        assert!(
-            !session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 1_395))
-        );
-        assert!(
-            session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 1_400))
-        );
+        assert!(session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 1_010)));
+        assert!(session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 1_050)));
+        assert!(session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 1_080)));
     }
 
     #[test]
