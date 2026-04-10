@@ -5,6 +5,7 @@ import {
   type BikeRuntimeDelta,
   DebugTraversalAction,
   Direction,
+  HeldDpad,
   HeldButtons,
   HopLandingParticleClass,
   MessageType,
@@ -15,6 +16,7 @@ import {
   RejectionReason,
   StepSpeed,
   TraversalState,
+  resolveDirectionFromHeldDpad,
   type SessionAccepted,
   type WalkResult,
   type WorldSnapshot,
@@ -398,10 +400,10 @@ const REFLECTIVE_BEHAVIOR_IDS = new Set<number>([
 ]);
 const tilesetAnimationStates = new Map<string, TilesetAnimationState>();
 let mapIdToLayoutJsonPathPromise: Promise<Map<number, string>> | null = null;
-let latestHeldDirection: Direction | null = null;
+let latestHeldDpad = HeldDpad.NONE;
 let latestHeldButtons = HeldButtons.NONE;
 let latestHeldInputSeq: number | null = null;
-let lastLoggedOutboundHeldState: { heldDirection: Direction | null; heldButtons: number } | null = null;
+let lastLoggedOutboundHeldState: { heldDpad: number; heldButtons: number } | null = null;
 let lastLoggedPrereqBlockSignature: string | null = null;
 let nextAcroHopAttemptId = 1;
 let activeAcroHopAttempt: AcroHopAttempt | null = null;
@@ -1672,37 +1674,41 @@ function sendWalkInput(
   }
 }
 
-function sendHeldInputState(heldDirection: Direction | null, heldButtons: number): number | null {
+function sendHeldInputState(heldDpad: number, heldButtons: number): number | null {
   if (!socket || socket.readyState !== WebSocket.OPEN) {
     return null;
   }
 
   const inputSeq = state.lastHeldInputSeq;
   state.lastHeldInputSeq += 1;
-  latestHeldDirection = heldDirection;
+  latestHeldDpad = heldDpad;
   latestHeldButtons = heldButtons;
   latestHeldInputSeq = inputSeq;
   socket.send(
-    encodeHeldInputState(heldDirection, heldButtons, inputSeq, BigInt(Date.now())),
+    encodeHeldInputState(heldDpad, heldButtons, inputSeq, BigInt(Date.now())),
   );
   if (DEBUG_ACRO_HOP) {
     const shouldLogOutboundHeldState =
       lastLoggedOutboundHeldState === null ||
-      lastLoggedOutboundHeldState.heldDirection !== heldDirection ||
+      lastLoggedOutboundHeldState.heldDpad !== heldDpad ||
       lastLoggedOutboundHeldState.heldButtons !== heldButtons;
     if (shouldLogOutboundHeldState) {
       console.info('[acro-hop][outbound] held_input_state (state-change)', {
         inputSeq,
-        heldDirection,
+        heldDpad,
         heldButtons,
       });
       lastLoggedOutboundHeldState = {
-        heldDirection,
+        heldDpad,
         heldButtons,
       };
     }
   }
   return inputSeq;
+}
+
+function latestHeldDirection(): Direction | null {
+  return resolveDirectionFromHeldDpad(latestHeldDpad) ?? null;
 }
 
 function isBHeld(heldButtons: number): boolean {
@@ -1746,7 +1752,7 @@ function failAcroHopAttempt(
     endedAtServerFrame: details.serverFrame,
     elapsedTicks: details.serverFrame - attempt.startedAtServerFrame,
     startedAtHeldInputSeq: attempt.startedAtHeldInputSeq,
-    heldDirection: latestHeldDirection,
+    heldDirection: latestHeldDirection(),
     heldButtons: latestHeldButtons,
     traversal_state: details.traversalState,
     acro_substate: details.acroSubstate,
@@ -1766,7 +1772,7 @@ function trackAcroHopAttemptProgress(details: {
   }
 
   const bHeld = isBHeld(latestHeldButtons);
-  const directionHeld = latestHeldDirection !== null;
+  const directionHeld = latestHeldDirection() !== null;
   const standingWheelie = isStandingWheelie(details.traversalState, details.acroSubstate);
   const bunnyHopReached = isBunnyHopTransition(details.acroSubstate, details.bikeTransition);
 
@@ -1814,7 +1820,7 @@ function trackAcroHopAttemptProgress(details: {
     console.info(`[acro-hop][attempt ${attempt.id}] progress`, {
       source: details.source,
       serverFrame: details.serverFrame,
-      heldDirection: latestHeldDirection,
+      heldDirection: latestHeldDirection(),
       heldButtons: latestHeldButtons,
       traversal_state: details.traversalState,
       acro_substate: details.acroSubstate,
@@ -1837,7 +1843,7 @@ function trackAcroHopAttemptProgress(details: {
           source: details.source,
           serverFrame: details.serverFrame,
           blockReason,
-          heldDirection: latestHeldDirection,
+          heldDirection: latestHeldDirection(),
           heldButtons: latestHeldButtons,
           traversal_state: details.traversalState,
           acro_substate: details.acroSubstate,
@@ -1863,7 +1869,7 @@ function trackAcroHopAttemptProgress(details: {
     source: details.source,
     serverFrame: details.serverFrame,
     startedAtHeldInputSeq: attempt.startedAtHeldInputSeq,
-    heldDirection: latestHeldDirection,
+    heldDirection: latestHeldDirection(),
     heldButtons: latestHeldButtons,
     traversal_state: details.traversalState,
     acro_substate: details.acroSubstate,

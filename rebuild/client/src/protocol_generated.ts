@@ -39,6 +39,45 @@ export enum HeldButtons {
   B = 1,
 }
 
+export enum HeldDpad {
+  NONE = 0,
+  UP = 1 << 0,
+  DOWN = 1 << 1,
+  LEFT = 1 << 2,
+  RIGHT = 1 << 3,
+}
+
+export function resolveDirectionFromHeldDpad(mask: number): Direction | undefined {
+  if ((mask & HeldDpad.UP) !== 0) {
+    return Direction.UP;
+  }
+  if ((mask & HeldDpad.DOWN) !== 0) {
+    return Direction.DOWN;
+  }
+  if ((mask & HeldDpad.LEFT) !== 0) {
+    return Direction.LEFT;
+  }
+  if ((mask & HeldDpad.RIGHT) !== 0) {
+    return Direction.RIGHT;
+  }
+  return undefined;
+}
+
+export function directionToHeldDpadMask(direction: Direction): number {
+  switch (direction) {
+    case Direction.UP:
+      return HeldDpad.UP;
+    case Direction.DOWN:
+      return HeldDpad.DOWN;
+    case Direction.LEFT:
+      return HeldDpad.LEFT;
+    case Direction.RIGHT:
+      return HeldDpad.RIGHT;
+    default:
+      return HeldDpad.NONE;
+  }
+}
+
 export enum DebugTraversalAction {
   TOGGLE_MOUNT = 0,
   SWAP_BIKE_TYPE = 1,
@@ -118,7 +157,7 @@ export type WalkInput = {
   client_time: bigint;
 };
 export type HeldInputState = {
-  held_direction?: Direction;
+  held_dpad: number;
   held_buttons: number;
   input_seq: number;
   client_time: bigint;

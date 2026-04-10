@@ -119,7 +119,7 @@ async fn second_accepted_tick_for_run_inputs(initial_map_id: &str) -> u32 {
             session.connection_id,
             HeldInputState {
                 input_seq: 0,
-                held_direction: Some(direction),
+                held_dpad: rebuild_server::protocol::direction_to_held_dpad_mask(direction),
                 held_buttons: 0,
                 client_time: 0,
             },
@@ -164,7 +164,7 @@ async fn second_accepted_tick_for_run_inputs(initial_map_id: &str) -> u32 {
                     session.connection_id,
                     HeldInputState {
                         input_seq: 1,
-                        held_direction: Some(opposite),
+                        held_dpad: rebuild_server::protocol::direction_to_held_dpad_mask(opposite),
                         held_buttons: 0,
                         client_time: tick_index as u64,
                     },

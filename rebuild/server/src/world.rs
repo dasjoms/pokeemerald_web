@@ -455,9 +455,10 @@ impl World {
                 .bike_runtime
                 .acro_runtime
                 .set_on_bumpy_slope(on_bumpy_slope);
+            let effective_held_direction = session.effective_held_direction();
             update_bike_runtime_per_tick(
                 &mut session.player_state,
-                session.held_direction,
+                effective_held_direction,
                 session.held_buttons,
             );
             session.update_authoritative_tick(tick);
@@ -2186,7 +2187,7 @@ mod tests {
                     session.connection_id,
                     HeldInputState {
                         input_seq,
-                        held_direction: None,
+                        held_dpad: 0,
                         held_buttons: crate::protocol::HeldButtons::B as u8,
                         client_time: input_seq as u64,
                     },
@@ -2265,7 +2266,7 @@ mod tests {
                 session.connection_id,
                 HeldInputState {
                     input_seq: 0,
-                    held_direction: None,
+                    held_dpad: 0,
                     held_buttons: crate::protocol::HeldButtons::B as u8,
                     client_time: 0,
                 },
@@ -2278,7 +2279,7 @@ mod tests {
                     session.connection_id,
                     HeldInputState {
                         input_seq: seq + 1,
-                        held_direction: Some(Direction::Right),
+                        held_dpad: crate::protocol::HeldDpad::Right as u8,
                         held_buttons: crate::protocol::HeldButtons::B as u8,
                         client_time: (seq + 1) as u64,
                     },
@@ -2348,7 +2349,7 @@ mod tests {
                     session.connection_id,
                     HeldInputState {
                         input_seq,
-                        held_direction: None,
+                        held_dpad: 0,
                         held_buttons: crate::protocol::HeldButtons::B as u8,
                         client_time: input_seq as u64,
                     },
@@ -2421,7 +2422,7 @@ mod tests {
                 session.connection_id,
                 HeldInputState {
                     input_seq: 0,
-                    held_direction: Some(Direction::Right),
+                    held_dpad: crate::protocol::HeldDpad::Right as u8,
                     held_buttons: crate::protocol::HeldButtons::B as u8,
                     client_time: 0,
                 },
@@ -2502,7 +2503,7 @@ mod tests {
                 session.connection_id,
                 HeldInputState {
                     input_seq: 0,
-                    held_direction: None,
+                    held_dpad: 0,
                     held_buttons: crate::protocol::HeldButtons::B as u8,
                     client_time: 0,
                 },
@@ -2581,7 +2582,7 @@ mod tests {
                     session.connection_id,
                     HeldInputState {
                         input_seq: seq,
-                        held_direction: Some(Direction::Right),
+                        held_dpad: crate::protocol::HeldDpad::Right as u8,
                         held_buttons: crate::protocol::HeldButtons::B as u8,
                         client_time: seq as u64,
                     },
@@ -2672,7 +2673,7 @@ mod tests {
                     session.connection_id,
                     HeldInputState {
                         input_seq: seq,
-                        held_direction: Some(Direction::Right),
+                        held_dpad: crate::protocol::HeldDpad::Right as u8,
                         held_buttons: crate::protocol::HeldButtons::B as u8,
                         client_time: seq as u64,
                     },
@@ -2759,7 +2760,7 @@ mod tests {
                     session.connection_id,
                     HeldInputState {
                         input_seq,
-                        held_direction: None,
+                        held_dpad: 0,
                         held_buttons: crate::protocol::HeldButtons::B as u8,
                         client_time: input_seq as u64,
                     },
@@ -2826,7 +2827,7 @@ mod tests {
                     session.connection_id,
                     HeldInputState {
                         input_seq,
-                        held_direction: None,
+                        held_dpad: 0,
                         held_buttons: crate::protocol::HeldButtons::B as u8,
                         client_time: input_seq as u64,
                     },
@@ -2901,7 +2902,7 @@ mod tests {
                     session.connection_id,
                     HeldInputState {
                         input_seq: held_seq,
-                        held_direction: Some(Direction::Right),
+                        held_dpad: crate::protocol::HeldDpad::Right as u8,
                         held_buttons: crate::protocol::HeldButtons::B as u8,
                         client_time: held_seq as u64,
                     },
@@ -2934,7 +2935,7 @@ mod tests {
                     session.connection_id,
                     HeldInputState {
                         input_seq: held_seq,
-                        held_direction: Some(Direction::Right),
+                        held_dpad: crate::protocol::HeldDpad::Right as u8,
                         held_buttons: crate::protocol::HeldButtons::B as u8,
                         client_time: held_seq as u64,
                     },
@@ -2951,7 +2952,7 @@ mod tests {
                 session.connection_id,
                 HeldInputState {
                     input_seq: held_seq,
-                    held_direction: Some(Direction::Right),
+                    held_dpad: crate::protocol::HeldDpad::Right as u8,
                     held_buttons: crate::protocol::HeldButtons::B as u8,
                     client_time: held_seq as u64,
                 },
@@ -3050,7 +3051,7 @@ mod tests {
                     session.connection_id,
                     HeldInputState {
                         input_seq: held_seq,
-                        held_direction: Some(Direction::Right),
+                        held_dpad: crate::protocol::HeldDpad::Right as u8,
                         held_buttons: crate::protocol::HeldButtons::B as u8,
                         client_time: held_seq as u64,
                     },
@@ -3083,7 +3084,7 @@ mod tests {
                     session.connection_id,
                     HeldInputState {
                         input_seq: held_seq,
-                        held_direction: Some(Direction::Right),
+                        held_dpad: crate::protocol::HeldDpad::Right as u8,
                         held_buttons: crate::protocol::HeldButtons::B as u8,
                         client_time: held_seq as u64,
                     },
@@ -3100,7 +3101,7 @@ mod tests {
                 session.connection_id,
                 HeldInputState {
                     input_seq: held_seq,
-                    held_direction: Some(Direction::Right),
+                    held_dpad: crate::protocol::HeldDpad::Right as u8,
                     held_buttons: crate::protocol::HeldButtons::B as u8,
                     client_time: held_seq as u64,
                 },
@@ -3140,7 +3141,7 @@ mod tests {
                 session.connection_id,
                 HeldInputState {
                     input_seq: held_seq,
-                    held_direction: Some(Direction::Right),
+                    held_dpad: crate::protocol::HeldDpad::Right as u8,
                     held_buttons: crate::protocol::HeldButtons::B as u8,
                     client_time: held_seq as u64,
                 },

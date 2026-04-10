@@ -80,7 +80,7 @@ async fn walk_queue_drops_oldest_input_when_capacity_reached() {
         .enqueue_held_input_state(
             session.connection_id,
             HeldInputState {
-                held_direction: Some(walk_direction),
+                held_dpad: rebuild_server::protocol::direction_to_held_dpad_mask(walk_direction),
                 held_buttons: 0,
                 input_seq: 0,
                 client_time: 0,

@@ -56,6 +56,41 @@ pub enum HeldButtons {
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+pub enum HeldDpad {
+    None = 0,
+    Up = 1 << 0,
+    Down = 1 << 1,
+    Left = 1 << 2,
+    Right = 1 << 3,
+}
+
+pub fn resolve_direction_from_held_dpad(mask: u8) -> Option<Direction> {
+    if (mask & HeldDpad::Up as u8) != 0 {
+        return Some(Direction::Up);
+    }
+    if (mask & HeldDpad::Down as u8) != 0 {
+        return Some(Direction::Down);
+    }
+    if (mask & HeldDpad::Left as u8) != 0 {
+        return Some(Direction::Left);
+    }
+    if (mask & HeldDpad::Right as u8) != 0 {
+        return Some(Direction::Right);
+    }
+    None
+}
+
+pub fn direction_to_held_dpad_mask(direction: Direction) -> u8 {
+    match direction {
+        Direction::Up => HeldDpad::Up as u8,
+        Direction::Down => HeldDpad::Down as u8,
+        Direction::Left => HeldDpad::Left as u8,
+        Direction::Right => HeldDpad::Right as u8,
+    }
+}
+
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum DebugTraversalAction {
     ToggleMount = 0,
@@ -169,7 +204,7 @@ pub struct WalkInput {
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 pub struct HeldInputState {
-    pub held_direction: Option<Direction>,
+    pub held_dpad: u8,
     pub held_buttons: u8,
     pub input_seq: u32,
     pub client_time: u64,
