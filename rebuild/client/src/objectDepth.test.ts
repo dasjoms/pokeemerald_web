@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { computeObjectDepth, ELEVATION_TO_SUBPRIORITY } from './objectDepth';
 
 describe('computeObjectDepth', () => {
-  it('matches ROM tile-row phase math for object path (+1 subpriority base)', () => {
+  it('matches ROM top-edge tile-row phase math for object path (+1 subpriority base)', () => {
     const depth = computeObjectDepth({
       screenY: 48,
       halfHeightPx: 8,
@@ -11,8 +11,8 @@ describe('computeObjectDepth', () => {
       baseSubpriority: 1,
     });
 
-    // (48 + 8 + 8) >> 4 = 4, so (16 - 4) * 2 = 24.
-    expect(depth).toBe(24 + ELEVATION_TO_SUBPRIORITY[0] + 1);
+    // (48 - 8 + 8) >> 4 = 3, so (16 - 3) * 2 = 26.
+    expect(depth).toBe(26 + ELEVATION_TO_SUBPRIORITY[0] + 1);
   });
 
   it('uses the jump-impact base path (+0) and supports elevation offsets', () => {
@@ -23,7 +23,7 @@ describe('computeObjectDepth', () => {
       baseSubpriority: 0,
     });
 
-    expect(depth).toBe(24 + ELEVATION_TO_SUBPRIORITY[2]);
+    expect(depth).toBe(26 + ELEVATION_TO_SUBPRIORITY[2]);
   });
 
   it('wraps tile-row phase to 8-bit like ROM', () => {
@@ -34,7 +34,7 @@ describe('computeObjectDepth', () => {
       baseSubpriority: 1,
     });
 
-    // (255 + 8 + 8) = 271 => 0x10f, low byte 0x0f, phase=0, component=32.
-    expect(depth).toBe(32 + ELEVATION_TO_SUBPRIORITY[0] + 1);
+    // (255 - 8) + 8 = 255 => 0xff, low byte 0xff, phase=15, component=2.
+    expect(depth).toBe(2 + ELEVATION_TO_SUBPRIORITY[0] + 1);
   });
 });
