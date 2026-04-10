@@ -42,6 +42,31 @@ python3 -m rebuild.tools.map_assets.cli validate-render --output-dir rebuild/ass
     - failures stop with contextual details (layout file + tileset IDs),
     - prints a summary report (layouts checked, metatiles resolved, unresolved count).
 
+
+## Field effect asset extractor / validator
+
+Use the rebuild-owned extractor to convert Acro-bike hop field-effect definitions into rebuild-native metadata artifacts and runtime source copies:
+
+```bash
+python3 -m rebuild.tools.field_effect_assets.cli validate
+python3 -m rebuild.tools.field_effect_assets.cli extract --clean --output-dir rebuild/assets
+```
+
+### Commands
+
+- `validate`
+  - Checks ROM-reference symbols and animation/template metadata for:
+    - hop shadows (`FLDEFF_SHADOW`),
+    - landing dust (`FLDEFF_DUST` / ground impact dust).
+
+- `extract`
+  - Writes artifacts under `rebuild/assets/field_effects/` (or a custom output dir):
+    - `acro_bike_effects_manifest.json` with versioned metadata for shadow template mapping, vertical offsets, dust frame timing, source symbols, and palette references.
+    - runtime source copies under `field_effects/acro_bike/`:
+      - `pics/*.png` (resolved from declared `.4bpp` sources when available as PNG),
+      - `palettes/*.gbapal` or `palettes/*.pal` (fallback when declared `.gbapal` resolves to `.pal` in source tree),
+      - `runtime_asset_index.json` mapping symbols + declared source paths to emitted files.
+
 ## Player asset extractor / validator
 
 Use the rebuild-owned extractor to convert player avatar object-event definitions into rebuild-native artifacts:
