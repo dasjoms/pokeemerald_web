@@ -53,6 +53,8 @@ type LoadedEffect = {
 type ActiveEffect = {
   sprite: Sprite;
   layer: HopParticleLayer;
+  tileX: number;
+  tileY: number;
   steps: AnimationStep[];
   stepIndex: number;
   stepElapsedMs: number;
@@ -61,8 +63,12 @@ type ActiveEffect = {
 type HopParticleLayer = {
   addChild: (...children: ContainerChild[]) => unknown;
   removeChild: (...children: ContainerChild[]) => unknown;
-  getChildIndex?: (child: ContainerChild) => number;
-  setChildIndex?: (child: ContainerChild, index: number) => unknown;
+};
+
+export type HopParticleDepthSample = {
+  sprite: Sprite;
+  screenY: number;
+  halfHeightPx: number;
 };
 
 const ROM_TICK_MS = 1000 / 60;
@@ -89,10 +95,9 @@ export class HopParticleRenderer {
   private lastConsumedServerFrame: number | null = null;
 
   constructor(
-    private readonly resolveLayer: () => HopParticleLayer,
+    private readonly resolveLayerForTile: (tileX: number, tileY: number) => HopParticleLayer,
     private readonly tileSize: number,
     private readonly assets: RendererAssetLoaders,
-    private readonly resolveLinkedSprite?: () => ContainerChild | null,
   ) {}
 
   async init(): Promise<void> {
@@ -129,17 +134,18 @@ export class HopParticleRenderer {
     sprite.anchor.set(0.5, 1);
     sprite.x = input.tileX * this.tileSize + this.tileSize / 2;
     sprite.y = input.tileY * this.tileSize + this.tileSize;
-    const layer = this.resolveLayer();
+    const layer = this.resolveLayerForTile(input.tileX, input.tileY);
     layer.addChild(sprite as unknown as ContainerChild);
     const activeEffect: ActiveEffect = {
       sprite,
       layer,
+      tileX: input.tileX,
+      tileY: input.tileY,
       steps: effect.steps,
       stepIndex: 0,
       stepElapsedMs: 0,
     };
     this.activeEffects.push(activeEffect);
-    this.ensureParticleRendersBeforeLinkedSprite(activeEffect);
   }
 
   tick(deltaMs: number): void {
@@ -150,7 +156,7 @@ export class HopParticleRenderer {
     const safeDeltaMs = Math.max(0, deltaMs);
     for (let i = this.activeEffects.length - 1; i >= 0; i -= 1) {
       const active = this.activeEffects[i];
-      this.ensureLayerAndOrdering(active);
+      this.ensureLayer(active);
       active.stepElapsedMs += safeDeltaMs;
 
       while (active.stepIndex < active.steps.length) {
@@ -169,6 +175,14 @@ export class HopParticleRenderer {
         active.sprite.texture = active.steps[active.stepIndex].texture;
       }
     }
+  }
+
+  getDepthSamples(): HopParticleDepthSample[] {
+    return this.activeEffects.map((active) => ({
+      sprite: active.sprite,
+      screenY: active.sprite.y,
+      halfHeightPx: active.sprite.height * 0.5,
+    }));
   }
 
   clear(): void {
@@ -223,34 +237,12 @@ export class HopParticleRenderer {
     };
   }
 
-  private ensureLayerAndOrdering(active: ActiveEffect): void {
-    const nextLayer = this.resolveLayer();
+  private ensureLayer(active: ActiveEffect): void {
+    const nextLayer = this.resolveLayerForTile(active.tileX, active.tileY);
     if (active.layer !== nextLayer) {
       active.layer.removeChild(active.sprite as unknown as ContainerChild);
       nextLayer.addChild(active.sprite as unknown as ContainerChild);
       active.layer = nextLayer;
-    }
-    this.ensureParticleRendersBeforeLinkedSprite(active);
-  }
-
-  private ensureParticleRendersBeforeLinkedSprite(active: ActiveEffect): void {
-    if (!this.resolveLinkedSprite || !active.layer.getChildIndex || !active.layer.setChildIndex) {
-      return;
-    }
-
-    const linkedSprite = this.resolveLinkedSprite();
-    if (!linkedSprite) {
-      return;
-    }
-
-    try {
-      const particleIndex = active.layer.getChildIndex(active.sprite as unknown as ContainerChild);
-      const linkedIndex = active.layer.getChildIndex(linkedSprite);
-      if (particleIndex > linkedIndex) {
-        active.layer.setChildIndex(active.sprite as unknown as ContainerChild, linkedIndex);
-      }
-    } catch {
-      // If linked sprite is not in this layer, ordering reconciliation does not apply.
     }
   }
 }
