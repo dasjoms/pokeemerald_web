@@ -177,6 +177,7 @@ pub struct Session {
     pub next_expected_held_input_seq: u32,
     pub active_walk_transition: Option<ActiveWalkTransition>,
     pub held_dpad: u8,
+    resolved_held_direction: Option<Direction>,
     pub held_buttons: u8,
     authoritative_tick: u64,
     bunny_hop_cadence_open_on_tick: Option<u64>,
@@ -203,6 +204,7 @@ impl Session {
             next_expected_held_input_seq: 0,
             active_walk_transition: None,
             held_dpad: 0,
+            resolved_held_direction: None,
             held_buttons: 0,
             authoritative_tick: 0,
             bunny_hop_cadence_open_on_tick: None,
@@ -242,6 +244,8 @@ impl Session {
 
     pub fn apply_held_input_state(&mut self, input: HeldInputState) {
         self.held_dpad = input.held_dpad;
+        self.resolved_held_direction =
+            crate::protocol::resolve_direction_from_held_dpad(input.held_dpad);
         self.set_held_buttons(input.held_buttons);
     }
 
@@ -254,7 +258,7 @@ impl Session {
     }
 
     pub fn effective_held_direction(&self) -> Option<Direction> {
-        crate::protocol::resolve_direction_from_held_dpad(self.held_dpad)
+        self.resolved_held_direction
     }
 
     pub fn set_held_buttons(&mut self, new_buttons: u8) {
@@ -538,5 +542,86 @@ mod tests {
             session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 1)),
             WalkIntentTimingValidation::HeldDirectionMismatch
         );
+    }
+
+    #[test]
+    fn effective_held_direction_uses_emerald_mask_precedence() {
+        let mut session = test_session();
+
+        session.apply_held_input_state(HeldInputState {
+            held_dpad: (crate::protocol::HeldDpad::Up as u8)
+                | (crate::protocol::HeldDpad::Right as u8),
+            held_buttons: 0,
+            input_seq: 0,
+            client_time: 0,
+        });
+        assert_eq!(session.effective_held_direction(), Some(Direction::Up));
+
+        session.apply_held_input_state(HeldInputState {
+            held_dpad: (crate::protocol::HeldDpad::Left as u8)
+                | (crate::protocol::HeldDpad::Right as u8),
+            held_buttons: 0,
+            input_seq: 1,
+            client_time: 0,
+        });
+        assert_eq!(session.effective_held_direction(), Some(Direction::Left));
+
+        session.apply_held_input_state(HeldInputState {
+            held_dpad: (crate::protocol::HeldDpad::Up as u8)
+                | (crate::protocol::HeldDpad::Down as u8),
+            held_buttons: 0,
+            input_seq: 2,
+            client_time: 0,
+        });
+        assert_eq!(session.effective_held_direction(), Some(Direction::Up));
+
+        session.apply_held_input_state(HeldInputState {
+            held_dpad: (crate::protocol::HeldDpad::Down as u8)
+                | (crate::protocol::HeldDpad::Left as u8),
+            held_buttons: 0,
+            input_seq: 3,
+            client_time: 0,
+        });
+        assert_eq!(session.effective_held_direction(), Some(Direction::Down));
+    }
+
+    #[test]
+    fn effective_held_direction_falls_back_after_release() {
+        let mut session = test_session();
+
+        session.apply_held_input_state(HeldInputState {
+            held_dpad: (crate::protocol::HeldDpad::Up as u8)
+                | (crate::protocol::HeldDpad::Down as u8)
+                | (crate::protocol::HeldDpad::Left as u8),
+            held_buttons: 0,
+            input_seq: 0,
+            client_time: 0,
+        });
+        assert_eq!(session.effective_held_direction(), Some(Direction::Up));
+
+        session.apply_held_input_state(HeldInputState {
+            held_dpad: (crate::protocol::HeldDpad::Down as u8)
+                | (crate::protocol::HeldDpad::Left as u8),
+            held_buttons: 0,
+            input_seq: 1,
+            client_time: 0,
+        });
+        assert_eq!(session.effective_held_direction(), Some(Direction::Down));
+
+        session.apply_held_input_state(HeldInputState {
+            held_dpad: crate::protocol::HeldDpad::Left as u8,
+            held_buttons: 0,
+            input_seq: 2,
+            client_time: 0,
+        });
+        assert_eq!(session.effective_held_direction(), Some(Direction::Left));
+
+        session.apply_held_input_state(HeldInputState {
+            held_dpad: 0,
+            held_buttons: 0,
+            input_seq: 3,
+            client_time: 0,
+        });
+        assert_eq!(session.effective_held_direction(), None);
     }
 }

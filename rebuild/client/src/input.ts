@@ -67,7 +67,6 @@ export function createWalkInputController(config: {
 }): WalkInputController {
   const heldDirections = new Set<Direction>();
   const heldDirectionPressedAtMs = new Map<Direction, number>();
-  const directionOrder: Direction[] = [];
   let hasPendingWalkRequest = false;
   let movementMode: MovementMode = MovementMode.WALK;
   let virtualBHeld = false;
@@ -149,13 +148,6 @@ export function createWalkInputController(config: {
     }
   };
 
-  const removeDirectionFromOrder = (direction: Direction): void => {
-    const index = directionOrder.indexOf(direction);
-    if (index >= 0) {
-      directionOrder.splice(index, 1);
-    }
-  };
-
   const canDispatchNewIntent = (): boolean =>
     !hasPendingWalkRequest && !config.isMovementLocked();
 
@@ -176,19 +168,17 @@ export function createWalkInputController(config: {
   const getDispatchableFirstStepDirection = (
     nowMs: number,
   ): Direction | null => {
-    for (let i = directionOrder.length - 1; i >= 0; i -= 1) {
-      const direction = directionOrder[i];
-      if (!heldDirections.has(direction)) {
-        continue;
-      }
-      const firstStepCommitted =
-        directionHasCommittedFirstStep.get(direction) ?? false;
-      if (!firstStepCommitted) {
-        if (hasSatisfiedFirstStepThreshold(direction, nowMs)) {
-          return direction;
-        }
-      }
+    const direction = getActiveHeldDirection();
+    if (direction === null) {
+      return null;
     }
+
+    const firstStepCommitted =
+      directionHasCommittedFirstStep.get(direction) ?? false;
+    if (!firstStepCommitted && hasSatisfiedFirstStepThreshold(direction, nowMs)) {
+      return direction;
+    }
+
     return null;
   };
 
@@ -251,8 +241,6 @@ export function createWalkInputController(config: {
       heldDirections.add(direction);
       heldDirectionPressedAtMs.set(direction, performance.now());
       directionHasCommittedFirstStep.set(direction, false);
-      removeDirectionFromOrder(direction);
-      directionOrder.push(direction);
 
       if (isFirstPressForDirection) {
         config.onFacingIntent(direction);
@@ -289,7 +277,6 @@ export function createWalkInputController(config: {
       heldDirections.delete(direction);
       heldDirectionPressedAtMs.delete(direction);
       directionHasCommittedFirstStep.delete(direction);
-      removeDirectionFromOrder(direction);
       emitHeldInputState();
     },
     tick(): void {
@@ -331,7 +318,6 @@ export function createWalkInputController(config: {
       heldDirectionPressedAtMs.clear();
       directionHasCommittedFirstStep.clear();
       pendingIntentDirection = null;
-      directionOrder.length = 0;
       config.sendHeldInputState(HeldDpad.NONE, HeldButtons.NONE);
     },
   };
