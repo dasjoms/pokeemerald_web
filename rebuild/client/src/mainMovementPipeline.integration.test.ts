@@ -361,6 +361,52 @@ describe('main movement pipeline integration', () => {
     expect(playerAnimation.getDebugState().frameIndex).toBe(463);
   });
 
+  it('keeps moving bunny-hop animation when authoritative transition clears to NONE mid-hop', () => {
+    const playerAnimation = new PlayerAnimationController(makeMockAssets());
+
+    playerAnimation.setTraversalState({
+      traversalState: TraversalState.ACRO_BIKE,
+      acroSubstate: AcroBikeSubstate.BUNNY_HOP,
+      bikeTransition: BikeTransitionType.NONE,
+    });
+    playerAnimation.startStep(Direction.RIGHT, 'run');
+
+    expect(playerAnimation.getDebugState().animId).toBe('anim_acro_bunny_hop_front_east');
+    expect(playerAnimation.getDebugState().animId).not.toBe('anim_bike_walk_east');
+  });
+
+  it('does not flash neutral bike ride animation while progressing from stationary hop hold into directional hop', () => {
+    const playerAnimation = new PlayerAnimationController(makeMockAssets());
+    const direction = Direction.RIGHT;
+
+    playerAnimation.setTraversalState({
+      traversalState: TraversalState.ACRO_BIKE,
+      acroSubstate: AcroBikeSubstate.BUNNY_HOP,
+      bikeTransition: BikeTransitionType.HOP_STANDING,
+    });
+    playerAnimation.stopMoving(direction);
+    playerAnimation.applyPendingModeChanges();
+    expect(playerAnimation.getDebugState().animId).toBe('anim_acro_bunny_hop_back_east');
+
+    const directionalHopSequence = [
+      BikeTransitionType.WHEELIE_HOPPING_MOVING,
+      BikeTransitionType.NONE,
+      BikeTransitionType.NONE,
+    ] as const;
+
+    for (const bikeTransition of directionalHopSequence) {
+      playerAnimation.setTraversalState({
+        traversalState: TraversalState.ACRO_BIKE,
+        acroSubstate: AcroBikeSubstate.BUNNY_HOP,
+        bikeTransition,
+      });
+      playerAnimation.startStep(direction, 'run');
+      const animId = playerAnimation.getDebugState().animId;
+      expect(animId).toBe('anim_acro_bunny_hop_front_east');
+      expect(animId).not.toBe('anim_bike_walk_east');
+    }
+  });
+
   it.each([
     {
       bikeTransition: BikeTransitionType.NONE,
