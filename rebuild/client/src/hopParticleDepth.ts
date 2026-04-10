@@ -21,16 +21,20 @@ export function resolveHopTypeContext(
 
 export function resolveHopParticleBaseSubpriority(input: {
   facing: Direction;
-  hopType: HopTypeContext;
+  hopType?: HopTypeContext;
   particleClass: HopLandingParticleClass;
+  useFieldEffectPriority?: boolean;
 }): number {
-  const { facing, hopType } = input;
+  const { facing, hopType, useFieldEffectPriority = false } = input;
+  if (!useFieldEffectPriority && hopType !== 'stationary' && hopType !== 'directional') {
+    return 0;
+  }
   const isLateralHop =
     facing === Direction.LEFT &&
-    (hopType === 'stationary' || hopType === 'directional');
+    (hopType === 'stationary' || hopType === 'directional' || useFieldEffectPriority);
   const isRightLateralHop =
     facing === Direction.RIGHT &&
-    (hopType === 'stationary' || hopType === 'directional');
+    (hopType === 'stationary' || hopType === 'directional' || useFieldEffectPriority);
   if (isLateralHop || isRightLateralHop) {
     // ROM-parity intent: left/right hop landings can cover the rider in-front.
     return 2;
