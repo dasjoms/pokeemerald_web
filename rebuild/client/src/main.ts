@@ -56,7 +56,6 @@ import {
   type HopShadowSizeVariant,
 } from './hopShadowRenderer';
 import { HopParticleRenderer } from './hopParticleRenderer';
-import { resolveHopLandingPlacementTile } from './hopLandingPlacement';
 import {
   createWalkInputController,
   encodeHeldInputState,
@@ -2148,16 +2147,16 @@ function consumeHopParticleLandingEvent(input: {
   hopLandingTileX?: number;
   hopLandingTileY?: number;
 }): void {
-  if (input.particleClass === undefined) {
+  if (
+    input.particleClass === undefined ||
+    input.hopLandingTileX === undefined ||
+    input.hopLandingTileY === undefined
+  ) {
     return;
   }
-  const placementTile = resolveHopLandingPlacementTile(state, {
-    hopLandingTileX: input.hopLandingTileX,
-    hopLandingTileY: input.hopLandingTileY,
-  });
   hopParticleRenderer.onLandingEvent({
-    tileX: placementTile.tileX,
-    tileY: placementTile.tileY,
+    tileX: input.hopLandingTileX,
+    tileY: input.hopLandingTileY,
     particleClass: input.particleClass,
     serverFrame: input.serverFrame,
   });
