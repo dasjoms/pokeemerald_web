@@ -459,6 +459,7 @@ impl World {
                 session.held_direction,
                 session.held_buttons,
             );
+            session.update_authoritative_tick(tick);
             let current_acro_substate = bike_acro_substate_for_traversal(&session.player_state);
             let current_bike_transition = session.player_state.bike_runtime.last_transition;
             let (hop_landing_map_id, hop_landing_x, hop_landing_y) =
@@ -2127,6 +2128,22 @@ mod tests {
             )
             .await
             .expect("held input should enqueue");
+        for seq in 0..15_u32 {
+            world
+                .enqueue_held_input_state(
+                    session.connection_id,
+                    HeldInputState {
+                        input_seq: seq + 1,
+                        held_direction: Some(Direction::Right),
+                        held_buttons: crate::protocol::HeldButtons::B as u8,
+                        client_time: (seq + 1) as u64,
+                    },
+                )
+                .await
+                .expect("held input should enqueue");
+            world.tick().await;
+            let _ = drain_server_messages(&mut rx);
+        }
         world
             .enqueue_walk_input(
                 session.connection_id,
@@ -2514,7 +2531,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn bunny_hop_runtime_delta_with_active_transition_uses_landing_tile_b_coordinates() {
+    async fn bunny_hop_runtime_delta_does_not_emit_mid_cycle_landing_while_transition_is_active() {
         let world = test_world_with_initial_map(landing_coordinate_regression_map());
         let (tx, mut rx) = mpsc::unbounded_channel();
         let session = world
@@ -2583,7 +2600,7 @@ mod tests {
             "expected at least one baseline landing pulse while idling in bunny-hop state"
         );
 
-        for _ in 0..14 {
+        for _ in 0..15 {
             world
                 .enqueue_held_input_state(
                     session.connection_id,
@@ -2655,24 +2672,19 @@ mod tests {
             .expect("held input should enqueue");
         world.tick().await;
 
-        let runtime_delta = drain_server_messages(&mut rx)
-            .into_iter()
-            .find_map(|message| match message {
+        let runtime_landing_delta = drain_server_messages(&mut rx).into_iter().find_map(|message| {
+            match message {
                 ServerMessage::BikeRuntimeDelta(delta)
                     if delta.hop_landing_particle_class.is_some() =>
                 {
                     Some(delta)
                 }
                 _ => None,
-            })
-            .expect("expected BikeRuntimeDelta hop landing while active_walk_transition exists");
-
-        assert_eq!(runtime_delta.hop_landing_tile_x, Some(1));
-        assert_eq!(runtime_delta.hop_landing_tile_y, Some(0));
-        assert_eq!(
-            runtime_delta.hop_landing_particle_class,
-            Some(HopLandingParticleClass::TallGrassJump),
-            "particle class must derive from the same emitted landing tile",
+            }
+        });
+        assert!(
+            runtime_landing_delta.is_none(),
+            "cadence-gated directional bunny-hop should not emit a mid-cycle landing pulse while transition is active"
         );
     }
 
