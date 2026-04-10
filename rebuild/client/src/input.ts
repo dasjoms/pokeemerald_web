@@ -65,6 +65,7 @@ export function createWalkInputController(config: {
   let heldInputSampleAccumulatorMs = 0;
   let lastHeldInputTickAtMs: number | null = null;
   let localHeldInputTick = 0;
+  let lastLoggedHeldState: { heldDirection: Direction | null; heldButtons: number } | null = null;
 
   const heldButtons = (): number => (virtualBHeld ? HeldButtons.B : HeldButtons.NONE);
 
@@ -85,12 +86,22 @@ export function createWalkInputController(config: {
     const localTick = localHeldInputTick;
     localHeldInputTick += 1;
     if (DEBUG_ACRO_HOP) {
-      console.info('[acro-hop][input] emit held-state', {
-        heldDirection,
-        heldButtons: buttons,
-        localTick,
-        outboundHeldInputSeq: outboundSeq,
-      });
+      const shouldLogHeldState =
+        lastLoggedHeldState === null ||
+        lastLoggedHeldState.heldDirection !== heldDirection ||
+        lastLoggedHeldState.heldButtons !== buttons;
+      if (shouldLogHeldState) {
+        console.info('[acro-hop][input] emit held-state (state-change)', {
+          heldDirection,
+          heldButtons: buttons,
+          localTick,
+          outboundHeldInputSeq: outboundSeq,
+        });
+        lastLoggedHeldState = {
+          heldDirection,
+          heldButtons: buttons,
+        };
+      }
     }
   };
 
