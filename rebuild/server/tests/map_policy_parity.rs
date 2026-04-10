@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use rebuild_server::{
     movement::{validate_walk, MoveValidation, MovementMap},
-    protocol::{Direction, MovementMode, ServerMessage, WalkInput},
+    protocol::{Direction, HeldInputState, MovementMode, ServerMessage, WalkInput},
     world::World,
 };
 use serde::Deserialize;
@@ -115,6 +115,18 @@ async fn second_accepted_tick_for_run_inputs(initial_map_id: &str) -> u32 {
     let opposite = reverse(direction);
 
     world
+        .enqueue_held_input_state(
+            session.connection_id,
+            HeldInputState {
+                input_seq: 0,
+                held_direction: Some(direction),
+                held_buttons: 0,
+                client_time: 0,
+            },
+        )
+        .await
+        .expect("first held input should queue");
+    world
         .enqueue_walk_input(
             session.connection_id,
             WalkInput {
@@ -128,31 +140,51 @@ async fn second_accepted_tick_for_run_inputs(initial_map_id: &str) -> u32 {
         .await
         .expect("first run input should queue");
 
-    world
-        .enqueue_walk_input(
-            session.connection_id,
-            WalkInput {
-                direction: opposite,
-                movement_mode: MovementMode::Run,
-                held_buttons: 0,
-                input_seq: 1,
-                client_time: 0,
-            },
-        )
-        .await
-        .expect("second run input should queue");
-
+    let mut first_step_accepted = false;
+    let mut second_step_enqueued = false;
     let mut second_tick = None;
     for tick_index in 1..=64 {
         world.tick().await;
 
         while let Ok(message) = rx.try_recv() {
             if let ServerMessage::WalkResult(result) = message {
+                if result.accepted && result.input_seq == 0 {
+                    first_step_accepted = true;
+                }
                 if result.accepted && result.input_seq == 1 {
                     second_tick = Some(tick_index);
                     break;
                 }
             }
+        }
+
+        if first_step_accepted && !second_step_enqueued {
+            world
+                .enqueue_held_input_state(
+                    session.connection_id,
+                    HeldInputState {
+                        input_seq: 1,
+                        held_direction: Some(opposite),
+                        held_buttons: 0,
+                        client_time: tick_index as u64,
+                    },
+                )
+                .await
+                .expect("second held input should queue");
+            world
+                .enqueue_walk_input(
+                    session.connection_id,
+                    WalkInput {
+                        direction: opposite,
+                        movement_mode: MovementMode::Run,
+                        held_buttons: 0,
+                        input_seq: 1,
+                        client_time: tick_index as u64,
+                    },
+                )
+                .await
+                .expect("second run input should queue");
+            second_step_enqueued = true;
         }
 
         if second_tick.is_some() {
