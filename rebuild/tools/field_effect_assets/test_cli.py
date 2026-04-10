@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import json
+import tempfile
 import unittest
+from pathlib import Path
 
 from rebuild.tools.field_effect_assets import cli
 
@@ -25,6 +28,16 @@ class FieldEffectAssetsTest(unittest.TestCase):
         symbol = dust["anim_table"]["anim_cmd_symbols"][0]
         frames = dust["anim_table"]["sequences"][symbol]
         self.assertEqual([frame["duration"] for frame in frames], [8, 8, 8])
+
+    def test_runtime_asset_write_emits_png_and_palette_outputs(self) -> None:
+        payload = cli.resolve_assets()
+        with tempfile.TemporaryDirectory() as td:
+            out = Path(td)
+            index_path = cli.write_runtime_assets(out, payload)
+            index = json.loads(index_path.read_text(encoding="utf-8"))
+            output_paths = [Path(entry["output_path"]) for entry in index["files"]]
+            self.assertTrue(any(path.suffix.lower() == ".png" for path in output_paths))
+            self.assertTrue(any(path.suffix.lower() in {".gbapal", ".pal"} for path in output_paths))
 
 
 if __name__ == "__main__":

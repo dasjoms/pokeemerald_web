@@ -16,6 +16,23 @@ def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def resolve_existing_source_path(source_path: str) -> Path:
+    requested = ROOT / source_path
+    if requested.exists():
+        return requested
+
+    if requested.suffix.lower() == ".4bpp":
+        png_candidate = requested.with_suffix(".png")
+        if png_candidate.exists():
+            return png_candidate
+    if requested.suffix.lower() == ".gbapal":
+        pal_candidate = requested.with_suffix(".pal")
+        if pal_candidate.exists():
+            return pal_candidate
+
+    raise FileNotFoundError(f"Missing source asset for {source_path} (also checked known extension fallbacks)")
+
+
 def parse_graphics_incbin_paths() -> dict[str, str]:
     text = read_text(ROOT / "src/data/object_events/object_event_graphics.h")
     matches = re.findall(
@@ -211,17 +228,16 @@ def resolve_assets() -> dict[str, Any]:
         template = parse_sprite_template(object_templates_text, template_symbol)
         pic_entries = parse_pic_table(object_templates_text, template["images"])
         anim_table = parse_anim_table(object_templates_text, template["anims"])
-        sources = []
+        sources_map: dict[str, str] = {}
         for entry in pic_entries:
             src_symbol = entry["source_symbol"]
             if src_symbol not in graphics_paths:
                 raise ValueError(f"Missing graphics source path for {src_symbol}")
-            sources.append(
-                {
-                    "symbol": src_symbol,
-                    "source_path": graphics_paths[src_symbol],
-                }
-            )
+            sources_map[src_symbol] = graphics_paths[src_symbol]
+        sources = [
+            {"symbol": symbol, "source_path": source_path}
+            for symbol, source_path in sorted(sources_map.items())
+        ]
 
         shadow_template_payload.append(
             {
@@ -297,6 +313,18 @@ def resolve_assets() -> dict[str, Any]:
     }
 
 
+def collect_required_symbols(payload: dict[str, Any]) -> dict[str, str]:
+    required: dict[str, str] = {}
+    for template in payload["effects"]["shadow"]["templates"]:
+        for source in template["sources"]:
+            required[source["symbol"]] = source["source_path"]
+    for source in payload["effects"]["ground_impact_dust"]["template"]["sources"]:
+        required[source["symbol"]] = source["source_path"]
+    for palette in payload["palettes"]:
+        required[palette["symbol"]] = palette["source_path"]
+    return required
+
+
 def validate_assets(payload: dict[str, Any]) -> None:
     shadow_templates = payload["effects"]["shadow"]["templates"]
     if len(shadow_templates) != 4:
@@ -336,6 +364,40 @@ def write_manifest(output_dir: Path, payload: dict[str, Any]) -> Path:
     return manifest_path
 
 
+def write_runtime_assets(output_dir: Path, payload: dict[str, Any]) -> Path:
+    target_dir = output_dir / "field_effects" / "acro_bike"
+    pics_dir = target_dir / "pics"
+    palettes_dir = target_dir / "palettes"
+    pics_dir.mkdir(parents=True, exist_ok=True)
+    palettes_dir.mkdir(parents=True, exist_ok=True)
+
+    symbols = collect_required_symbols(payload)
+    extracted: list[dict[str, str]] = []
+    for symbol, source_path in sorted(symbols.items()):
+        source_abs = resolve_existing_source_path(source_path)
+        is_palette = "palette" in symbol.lower() or source_abs.suffix.lower() in {".gbapal", ".pal"}
+        destination_dir = palettes_dir if is_palette else pics_dir
+        destination_path = destination_dir / source_abs.name
+        shutil.copy2(source_abs, destination_path)
+        extracted.append(
+            {
+                "symbol": symbol,
+                "declared_source_path": source_path,
+                "resolved_source_path": str(source_abs.relative_to(ROOT)),
+                "output_path": str(destination_path.relative_to(output_dir)),
+            }
+        )
+
+    runtime_index = {
+        "version": FIELD_EFFECT_ASSETS_VERSION,
+        "artifact_group": "acro_bike_field_effects",
+        "files": extracted,
+    }
+    index_path = target_dir / "runtime_asset_index.json"
+    index_path.write_text(json.dumps(runtime_index, indent=2) + "\n", encoding="utf-8")
+    return index_path
+
+
 def command_validate() -> int:
     payload = resolve_assets()
     validate_assets(payload)
@@ -345,11 +407,24 @@ def command_validate() -> int:
         for source in template["sources"]
     }
     dust_sources = {source["source_path"] for source in payload["effects"]["ground_impact_dust"]["template"]["sources"]}
+
+    required = collect_required_symbols(payload)
+    unresolved = []
+    for source_path in required.values():
+        try:
+            resolve_existing_source_path(source_path)
+        except FileNotFoundError:
+            unresolved.append(source_path)
+    if unresolved:
+        unresolved_csv = ", ".join(sorted(set(unresolved)))
+        raise ValueError(f"Missing source assets required for extraction: {unresolved_csv}")
+
     print(
         "Validated acro bike field effects extraction inputs: "
         f"shadow_templates={len(payload['effects']['shadow']['templates'])} "
         f"shadow_sources={len(shadow_sources)} "
-        f"dust_sources={len(dust_sources)}"
+        f"dust_sources={len(dust_sources)} "
+        f"extractable_files={len(required)}"
     )
     return 0
 
@@ -363,7 +438,9 @@ def command_extract(output_dir: Path, clean: bool) -> int:
     payload = resolve_assets()
     validate_assets(payload)
     path = write_manifest(output_dir, payload)
+    runtime_index_path = write_runtime_assets(output_dir, payload)
     print(f"Wrote acro bike field effects manifest: {path.relative_to(ROOT)}")
+    print(f"Wrote runtime field-effect assets index: {runtime_index_path.relative_to(ROOT)}")
     return 0
 
 
@@ -379,7 +456,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers.add_parser("validate", help="validate source references and decoded metadata")
 
-    extract = subparsers.add_parser("extract", help="write rebuild-owned effect manifest")
+    extract = subparsers.add_parser("extract", help="write rebuild-owned effect manifest + runtime assets")
     extract.add_argument("--output-dir", type=Path, default=ROOT / "rebuild/assets")
     extract.add_argument("--clean", action="store_true")
 

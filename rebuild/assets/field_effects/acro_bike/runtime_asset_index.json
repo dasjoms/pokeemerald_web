@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "artifact_group": "acro_bike_field_effects",
+  "files": [
+    {
+      "symbol": "gFieldEffectObjectPalette0",
+      "declared_source_path": "graphics/field_effects/palettes/general_0.gbapal",
+      "resolved_source_path": "graphics/field_effects/palettes/general_0.pal",
+      "output_path": "field_effects/acro_bike/palettes/general_0.pal"
+    },
+    {
+      "symbol": "gFieldEffectObjectPalette1",
+      "declared_source_path": "graphics/field_effects/palettes/general_1.gbapal",
+      "resolved_source_path": "graphics/field_effects/palettes/general_1.pal",
+      "output_path": "field_effects/acro_bike/palettes/general_1.pal"
+    },
+    {
+      "symbol": "gFieldEffectObjectPic_GroundImpactDust",
+      "declared_source_path": "graphics/field_effects/pics/ground_impact_dust.4bpp",
+      "resolved_source_path": "graphics/field_effects/pics/ground_impact_dust.png",
+      "output_path": "field_effects/acro_bike/pics/ground_impact_dust.png"
+    },
+    {
+      "symbol": "gFieldEffectObjectPic_ShadowExtraLarge",
+      "declared_source_path": "graphics/field_effects/pics/shadow_extra_large.4bpp",
+      "resolved_source_path": "graphics/field_effects/pics/shadow_extra_large.png",
+      "output_path": "field_effects/acro_bike/pics/shadow_extra_large.png"
+    },
+    {
+      "symbol": "gFieldEffectObjectPic_ShadowLarge",
+      "declared_source_path": "graphics/field_effects/pics/shadow_large.4bpp",
+      "resolved_source_path": "graphics/field_effects/pics/shadow_large.png",
+      "output_path": "field_effects/acro_bike/pics/shadow_large.png"
+    },
+    {
+      "symbol": "gFieldEffectObjectPic_ShadowMedium",
+      "declared_source_path": "graphics/field_effects/pics/shadow_medium.4bpp",
+      "resolved_source_path": "graphics/field_effects/pics/shadow_medium.png",
+      "output_path": "field_effects/acro_bike/pics/shadow_medium.png"
+    },
+    {
+      "symbol": "gFieldEffectObjectPic_ShadowSmall",
+      "declared_source_path": "graphics/field_effects/pics/shadow_small.4bpp",
+      "resolved_source_path": "graphics/field_effects/pics/shadow_small.png",
+      "output_path": "field_effects/acro_bike/pics/shadow_small.png"
+    }
+  ]
+}
