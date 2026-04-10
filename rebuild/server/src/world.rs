@@ -461,11 +461,25 @@ impl World {
             );
             let current_acro_substate = bike_acro_substate_for_traversal(&session.player_state);
             let current_bike_transition = session.player_state.bike_runtime.last_transition;
+            let (hop_landing_map_id, hop_landing_x, hop_landing_y) =
+                if let Some(active_walk) = session.active_walk_transition.as_ref() {
+                    (
+                        active_walk.target_map_id.as_str(),
+                        active_walk.target_x,
+                        active_walk.target_y,
+                    )
+                } else {
+                    (
+                        session.player_state.map_id.as_str(),
+                        session.player_state.tile_x,
+                        session.player_state.tile_y,
+                    )
+                };
             let (hop_landing_particle_class, hop_landing_tile) =
                 hop_landing_signal_for_authoritative_tile(
-                    self.maps.get(&session.player_state.map_id),
-                    session.player_state.tile_x,
-                    session.player_state.tile_y,
+                    self.maps.get(hop_landing_map_id),
+                    hop_landing_x,
+                    hop_landing_y,
                     session
                         .player_state
                         .bike_runtime
@@ -760,11 +774,32 @@ impl World {
                     );
                 }
 
-                let (hop_landing_particle_class, hop_landing_tile) =
-                    hop_landing_signal_for_authoritative_tile(
-                        self.maps.get(&session.player_state.map_id),
+                let (hop_landing_map_id, hop_landing_x, hop_landing_y) = if accepted {
+                    if let Some(active_walk) = session.active_walk_transition.as_ref() {
+                        (
+                            active_walk.target_map_id.as_str(),
+                            authoritative_x,
+                            authoritative_y,
+                        )
+                    } else {
+                        (
+                            session.player_state.map_id.as_str(),
+                            authoritative_x,
+                            authoritative_y,
+                        )
+                    }
+                } else {
+                    (
+                        session.player_state.map_id.as_str(),
                         session.player_state.tile_x,
                         session.player_state.tile_y,
+                    )
+                };
+                let (hop_landing_particle_class, hop_landing_tile) =
+                    hop_landing_signal_for_authoritative_tile(
+                        self.maps.get(hop_landing_map_id),
+                        hop_landing_x,
+                        hop_landing_y,
                         session
                             .player_state
                             .bike_runtime
@@ -1020,7 +1055,7 @@ fn hop_landing_signal_for_authoritative_tile(
     let behavior = map.and_then(|current_map| tile_behavior(current_map, tile_x, tile_y));
     (
         Some(hop_landing_particle_class_for_behavior(
-        behavior.unwrap_or_default(),
+            behavior.unwrap_or_default(),
         )),
         Some((tile_x, tile_y)),
     )
@@ -2331,7 +2366,8 @@ mod tests {
             connections: vec![],
         };
 
-        let runtime_delta_signal = hop_landing_signal_for_authoritative_tile(Some(&map), 0, 0, true);
+        let runtime_delta_signal =
+            hop_landing_signal_for_authoritative_tile(Some(&map), 0, 0, true);
         let walk_result_signal = hop_landing_signal_for_authoritative_tile(Some(&map), 0, 0, true);
 
         assert_eq!(runtime_delta_signal, walk_result_signal);
@@ -2496,7 +2532,10 @@ mod tests {
         let puddle_landing = hop_landing_signal_for_authoritative_tile(Some(&map), 2, 0, true);
         assert_eq!(
             puddle_landing,
-            (Some(HopLandingParticleClass::ShallowWaterSplash), Some((2, 0)))
+            (
+                Some(HopLandingParticleClass::ShallowWaterSplash),
+                Some((2, 0))
+            )
         );
     }
 
