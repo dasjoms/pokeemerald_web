@@ -36,6 +36,7 @@ import {
 import { createTilesetAnimationState, type TileAnimsFile } from './tilesetAnimation';
 import { applyCopyTilesOpsToActiveSwaps, type ActiveTileSwapSource } from './tilesetAnimationRendererState';
 import {
+  buildPlayerSheetRgba,
   loadPlayerAnimationAssets,
   PlayerAnimationController,
 } from './playerAnimation';
@@ -293,6 +294,11 @@ const imageAssetUrls = import.meta.glob('../../assets/**/*.png', {
   import: 'default',
   eager: true,
 }) as Record<string, string>;
+const rawTextAssetContents = import.meta.glob('../../assets/**/*.pal', {
+  query: '?raw',
+  import: 'default',
+  eager: true,
+}) as Record<string, string>;
 
 const state: ClientWorldState = {
   mapId: 0,
@@ -367,6 +373,7 @@ const HOP_SHADOW_ASSET_PATHS: Readonly<Record<HopShadowSizeVariant, string>> = {
   large: 'field_effects/acro_bike/pics/shadow_large.png',
   extra_large: 'field_effects/acro_bike/pics/shadow_extra_large.png',
 };
+const HOP_SHADOW_PALETTE_PATH = 'field_effects/acro_bike/palettes/general_0.pal';
 const hopShadowTextures = new Map<HopShadowSizeVariant, Texture>();
 TextureStyle.defaultOptions.scaleMode = 'nearest';
 TextureSource.defaultOptions.scaleMode = 'nearest';
@@ -2075,15 +2082,87 @@ function createHopShadowSprite(variant: HopShadowSizeVariant): Sprite {
 }
 
 async function preloadHopShadowTextures(): Promise<void> {
+  const paletteColors = loadJascPaletteHexColorsFromAssets(HOP_SHADOW_PALETTE_PATH);
   for (const [variant, repoRelativePath] of Object.entries(HOP_SHADOW_ASSET_PATHS) as [
     HopShadowSizeVariant,
     string,
   ][]) {
-    const textureUrl = await resolveImageUrlFromAssets(repoRelativePath);
-    const loaded = await Assets.load(textureUrl);
-    const texture = loaded instanceof Texture ? loaded : Texture.from(textureUrl);
+    const texture = await loadIndexed4bppTextureFromAssets(repoRelativePath, paletteColors);
     hopShadowTextures.set(variant, texture);
   }
+}
+
+async function loadIndexed4bppTextureFromAssets(
+  repoRelativePath: string,
+  paletteColors: string[],
+): Promise<Texture> {
+  const textureUrl = await resolveImageUrlFromAssets(repoRelativePath);
+  const decoded = await decodeIndexed4bppPngFromUrl(textureUrl, Number.MAX_SAFE_INTEGER);
+  const rgba = buildPlayerSheetRgba(
+    decoded.width,
+    decoded.height,
+    decoded.tileIndices,
+    paletteColors,
+  );
+  return bakeRgbaTexture(decoded.width, decoded.height, rgba);
+}
+
+function bakeRgbaTexture(width: number, height: number, rgba: Uint8ClampedArray<ArrayBufferLike>): Texture {
+  const expectedSize = width * height * 4;
+  if (rgba.length !== expectedSize) {
+    throw new Error(`rgba buffer size mismatch for texture baking: expected=${expectedSize}, actual=${rgba.length}`);
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    throw new Error('failed to acquire 2d context while baking indexed texture');
+  }
+  ctx.putImageData(new ImageData(new Uint8ClampedArray(rgba), width, height), 0, 0);
+  const texture = Texture.from(canvas);
+  texture.source.scaleMode = 'nearest';
+  return texture;
+}
+
+function loadJascPaletteHexColorsFromAssets(repoRelativePath: string): string[] {
+  const normalized = normalizeRepoRelative(repoRelativePath);
+  const modulePath = `../../assets/${normalized}`;
+  const raw = rawTextAssetContents[modulePath];
+  if (!raw) {
+    throw new Error(`missing palette asset at ${modulePath}`);
+  }
+  return parseJascPaletteToHexColors(raw);
+}
+
+function parseJascPaletteToHexColors(raw: string): string[] {
+  const lines = raw
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+  if ((lines[0] ?? '') !== 'JASC-PAL') {
+    throw new Error('unsupported palette header (expected JASC-PAL)');
+  }
+  const expectedColorCount = Number(lines[2] ?? 0);
+  if (!Number.isInteger(expectedColorCount) || expectedColorCount <= 0) {
+    throw new Error(`invalid JASC palette color count: ${lines[2] ?? ''}`);
+  }
+  const colorLines = lines.slice(3, 3 + expectedColorCount);
+  if (colorLines.length !== expectedColorCount) {
+    throw new Error(
+      `JASC palette length mismatch: expected=${expectedColorCount}, actual=${colorLines.length}`,
+    );
+  }
+  return colorLines.map((line, index) => {
+    const [rRaw, gRaw, bRaw] = line.split(/\s+/);
+    const r = Number(rRaw);
+    const g = Number(gRaw);
+    const b = Number(bRaw);
+    if (![r, g, b].every((value) => Number.isInteger(value) && value >= 0 && value <= 255)) {
+      throw new Error(`invalid JASC palette color at index ${index}: '${line}'`);
+    }
+    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+  });
 }
 
 function updatePlayerActorLayer(): void {
