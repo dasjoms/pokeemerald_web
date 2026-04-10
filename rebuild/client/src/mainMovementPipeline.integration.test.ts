@@ -1,14 +1,17 @@
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from "vitest";
 
-import type { PlayerAnimationAssets, PlayerAnimationDebugState } from './playerAnimation';
+import type {
+  PlayerAnimationAssets,
+  PlayerAnimationDebugState,
+} from "./playerAnimation";
 import {
   authoritativeStepDurationMs,
   startAuthoritativeWalkTransition,
   tickWalkTransition,
   type WalkTransition,
   type WalkTransitionMutableState,
-} from './walkTransitionPipeline';
-import { createWalkInputController } from './input';
+} from "./walkTransitionPipeline";
+import { createWalkInputController } from "./input";
 import {
   AcroBikeSubstate,
   BikeTransitionType,
@@ -17,7 +20,7 @@ import {
   RejectionReason,
   TraversalState,
   type WalkResult,
-} from './protocol_generated';
+} from "./protocol_generated";
 
 type PipelineState = WalkTransitionMutableState & {
   facing: Direction;
@@ -25,7 +28,7 @@ type PipelineState = WalkTransitionMutableState & {
 
 type PlayerAnimationControllerCtor = new (assets: PlayerAnimationAssets) => {
   stopMoving: (direction: Direction) => void;
-  startStep: (direction: Direction, mode: 'walk' | 'run') => void;
+  startStep: (direction: Direction, mode: "walk" | "run") => void;
   setTraversalState: (state: {
     traversalState: TraversalState;
     machSpeedStage?: number;
@@ -40,7 +43,7 @@ type PlayerAnimationControllerCtor = new (assets: PlayerAnimationAssets) => {
 let PlayerAnimationController: PlayerAnimationControllerCtor;
 
 beforeAll(async () => {
-  vi.mock('pixi.js', () => ({
+  vi.mock("pixi.js", () => ({
     Rectangle: class Rectangle {},
     Texture: class Texture {
       static from(): unknown {
@@ -49,16 +52,25 @@ beforeAll(async () => {
     },
   }));
 
-  const imported = await import('./playerAnimation');
-  PlayerAnimationController = imported.PlayerAnimationController as PlayerAnimationControllerCtor;
+  const imported = await import("./playerAnimation");
+  PlayerAnimationController =
+    imported.PlayerAnimationController as PlayerAnimationControllerCtor;
 });
 
-describe('main movement pipeline integration', () => {
+describe("main movement pipeline integration", () => {
   it.each([
-    { label: 'walk', movementMode: MovementMode.WALK, expectedAnimId: 'anim_walk_east' },
-    { label: 'run', movementMode: MovementMode.RUN, expectedAnimId: 'anim_run_east' },
+    {
+      label: "walk",
+      movementMode: MovementMode.WALK,
+      expectedAnimId: "anim_walk_east",
+    },
+    {
+      label: "run",
+      movementMode: MovementMode.RUN,
+      expectedAnimId: "anim_run_east",
+    },
   ])(
-    'alternates stride phase and step-start frame for consecutive accepted $label results',
+    "alternates stride phase and step-start frame for consecutive accepted $label results",
     ({ movementMode, expectedAnimId }) => {
       const playerAnimation = new PlayerAnimationController(makeMockAssets());
       const state: PipelineState = {
@@ -100,7 +112,8 @@ describe('main movement pipeline integration', () => {
         };
 
         const acceptedMovementMode =
-          pendingMovementModesByInputSeq.get(result.input_seq) ?? MovementMode.WALK;
+          pendingMovementModesByInputSeq.get(result.input_seq) ??
+          MovementMode.WALK;
         pendingMovementModesByInputSeq.delete(result.input_seq);
 
         state.playerTileX = result.authoritative_pos.x;
@@ -117,7 +130,7 @@ describe('main movement pipeline integration', () => {
         );
         playerAnimation.startStep(
           result.facing,
-          acceptedMovementMode === MovementMode.RUN ? 'run' : 'walk',
+          acceptedMovementMode === MovementMode.RUN ? "run" : "walk",
         );
         stepStartDebugStates.push(playerAnimation.getDebugState());
 
@@ -132,6 +145,7 @@ describe('main movement pipeline integration', () => {
             state,
             deltaMs,
             hasPendingAcceptedOrDispatchableStep: () => seq < totalSteps,
+            noteWalkTransitionProgress: () => {},
             markWalkTransitionCompleted: () => {
               completedTransitionCount += 1;
             },
@@ -157,12 +171,16 @@ describe('main movement pipeline integration', () => {
         );
       }
 
-      expect(stepStartDebugStates[0].frameIndex).toBe(stepStartDebugStates[2].frameIndex);
-      expect(stepStartDebugStates[0].stridePhase).toBe(stepStartDebugStates[2].stridePhase);
+      expect(stepStartDebugStates[0].frameIndex).toBe(
+        stepStartDebugStates[2].frameIndex,
+      );
+      expect(stepStartDebugStates[0].stridePhase).toBe(
+        stepStartDebugStates[2].stridePhase,
+      );
     },
   );
 
-  it('replays authoritative acro runtime states for animation ids without inferring from run mode', () => {
+  it("replays authoritative acro runtime states for animation ids without inferring from run mode", () => {
     const playerAnimation = new PlayerAnimationController(makeMockAssets());
     const direction = Direction.RIGHT;
     const sequence = [
@@ -170,32 +188,32 @@ describe('main movement pipeline integration', () => {
         traversalState: TraversalState.ACRO_BIKE,
         acroSubstate: AcroBikeSubstate.NONE,
         bikeTransition: BikeTransitionType.NONE,
-        expectedAnimId: 'anim_bike_walk_east',
+        expectedAnimId: "anim_bike_walk_east",
       },
       {
         traversalState: TraversalState.ACRO_BIKE,
         acroSubstate: AcroBikeSubstate.MOVING_WHEELIE,
         bikeTransition: BikeTransitionType.NONE,
-        expectedAnimId: 'anim_acro_moving_wheelie_east',
+        expectedAnimId: "anim_acro_moving_wheelie_east",
       },
       {
         traversalState: TraversalState.ACRO_BIKE,
         acroSubstate: AcroBikeSubstate.NONE,
         bikeTransition: BikeTransitionType.HOP_MOVING,
-        expectedAnimId: 'anim_acro_ledge_hop_front_east',
+        expectedAnimId: "anim_acro_ledge_hop_front_east",
       },
       {
         traversalState: TraversalState.ACRO_BIKE,
         acroSubstate: AcroBikeSubstate.BUNNY_HOP,
         bikeTransition: BikeTransitionType.HOP_STANDING,
-        expectedAnimId: 'anim_acro_bunny_hop_back_east',
+        expectedAnimId: "anim_acro_bunny_hop_back_east",
         stationary: true,
       },
       {
         traversalState: TraversalState.ACRO_BIKE,
         acroSubstate: AcroBikeSubstate.STANDING_WHEELIE,
         bikeTransition: BikeTransitionType.WHEELIE_IDLE,
-        expectedAnimId: 'anim_acro_wheelie_face_east',
+        expectedAnimId: "anim_acro_wheelie_face_east",
         stationary: true,
       },
     ] as const;
@@ -207,21 +225,23 @@ describe('main movement pipeline integration', () => {
         acroSubstate: entry.acroSubstate,
         bikeTransition: entry.bikeTransition,
       });
-      if ('stationary' in entry && entry.stationary) {
+      if ("stationary" in entry && entry.stationary) {
         playerAnimation.stopMoving(direction);
         playerAnimation.applyPendingModeChanges();
       } else {
-        playerAnimation.startStep(direction, 'run');
+        playerAnimation.startStep(direction, "run");
       }
       actualAnimIds.push(playerAnimation.getDebugState().animId);
     }
 
-    expect(actualAnimIds).toEqual(sequence.map((entry) => entry.expectedAnimId));
+    expect(actualAnimIds).toEqual(
+      sequence.map((entry) => entry.expectedAnimId),
+    );
   });
 
-  it('renders idle acro held-B transition deltas without relying on accepted walk results', () => {
+  it("renders idle acro held-B transition deltas without relying on accepted walk results", () => {
     const playerAnimation = new PlayerAnimationController(makeMockAssets());
-    const startStepSpy = vi.spyOn(playerAnimation, 'startStep');
+    const startStepSpy = vi.spyOn(playerAnimation, "startStep");
     const direction = Direction.RIGHT;
 
     playerAnimation.stopMoving(direction);
@@ -234,7 +254,9 @@ describe('main movement pipeline integration', () => {
     });
     playerAnimation.stopMoving(direction);
     playerAnimation.applyPendingModeChanges();
-    expect(playerAnimation.getDebugState().animId).toBe('anim_acro_pop_wheelie_stationary_east');
+    expect(playerAnimation.getDebugState().animId).toBe(
+      "anim_acro_pop_wheelie_stationary_east",
+    );
 
     for (let tick = 0; tick < 39; tick += 1) {
       playerAnimation.setTraversalState({
@@ -246,7 +268,9 @@ describe('main movement pipeline integration', () => {
       playerAnimation.applyPendingModeChanges();
       playerAnimation.tick(1000 / 60);
     }
-    expect(playerAnimation.getDebugState().animId).toBe('anim_acro_wheelie_face_east');
+    expect(playerAnimation.getDebugState().animId).toBe(
+      "anim_acro_wheelie_face_east",
+    );
 
     playerAnimation.setTraversalState({
       traversalState: TraversalState.ACRO_BIKE,
@@ -255,11 +279,13 @@ describe('main movement pipeline integration', () => {
     });
     playerAnimation.stopMoving(direction);
     playerAnimation.applyPendingModeChanges();
-    expect(playerAnimation.getDebugState().animId).toBe('anim_acro_bunny_hop_back_east');
+    expect(playerAnimation.getDebugState().animId).toBe(
+      "anim_acro_bunny_hop_back_east",
+    );
     expect(startStepSpy).not.toHaveBeenCalled();
   });
 
-  it('keeps wheelie posture when stopMoving lands before authoritative wheelie-idle transition', () => {
+  it("keeps wheelie posture when stopMoving lands before authoritative wheelie-idle transition", () => {
     const playerAnimation = new PlayerAnimationController(makeMockAssets());
     const direction = Direction.RIGHT;
 
@@ -268,8 +294,10 @@ describe('main movement pipeline integration', () => {
       acroSubstate: AcroBikeSubstate.MOVING_WHEELIE,
       bikeTransition: BikeTransitionType.WHEELIE_MOVING,
     });
-    playerAnimation.startStep(direction, 'run');
-    expect(playerAnimation.getDebugState().animId).toBe('anim_acro_moving_wheelie_east');
+    playerAnimation.startStep(direction, "run");
+    expect(playerAnimation.getDebugState().animId).toBe(
+      "anim_acro_moving_wheelie_east",
+    );
 
     playerAnimation.setTraversalState({
       traversalState: TraversalState.ACRO_BIKE,
@@ -278,7 +306,9 @@ describe('main movement pipeline integration', () => {
     });
     playerAnimation.stopMoving(direction);
     playerAnimation.applyPendingModeChanges();
-    expect(playerAnimation.getDebugState().animId).toBe('anim_acro_wheelie_face_east');
+    expect(playerAnimation.getDebugState().animId).toBe(
+      "anim_acro_wheelie_face_east",
+    );
 
     playerAnimation.setTraversalState({
       traversalState: TraversalState.ACRO_BIKE,
@@ -287,10 +317,12 @@ describe('main movement pipeline integration', () => {
     });
     playerAnimation.stopMoving(direction);
     playerAnimation.applyPendingModeChanges();
-    expect(playerAnimation.getDebugState().animId).toBe('anim_acro_wheelie_face_east');
+    expect(playerAnimation.getDebugState().animId).toBe(
+      "anim_acro_wheelie_face_east",
+    );
   });
 
-  it('holds pop-wheelie action for full one-shot duration before returning to idle wheelie hold', () => {
+  it("holds pop-wheelie action for full one-shot duration before returning to idle wheelie hold", () => {
     const playerAnimation = new PlayerAnimationController(makeMockAssets());
     const direction = Direction.RIGHT;
     const popWheelieDurationTicks = 6;
@@ -302,7 +334,9 @@ describe('main movement pipeline integration', () => {
     });
     playerAnimation.stopMoving(direction);
     playerAnimation.applyPendingModeChanges();
-    expect(playerAnimation.getDebugState().animId).toBe('anim_acro_pop_wheelie_stationary_east');
+    expect(playerAnimation.getDebugState().animId).toBe(
+      "anim_acro_pop_wheelie_stationary_east",
+    );
 
     for (let tick = 0; tick < popWheelieDurationTicks - 1; tick += 1) {
       playerAnimation.setTraversalState({
@@ -313,7 +347,9 @@ describe('main movement pipeline integration', () => {
       playerAnimation.stopMoving(direction);
       playerAnimation.applyPendingModeChanges();
       playerAnimation.tick(1000 / 60);
-      expect(playerAnimation.getDebugState().animId).toBe('anim_acro_pop_wheelie_stationary_east');
+      expect(playerAnimation.getDebugState().animId).toBe(
+        "anim_acro_pop_wheelie_stationary_east",
+      );
     }
 
     playerAnimation.tick(1000 / 60);
@@ -324,10 +360,12 @@ describe('main movement pipeline integration', () => {
     });
     playerAnimation.stopMoving(direction);
     playerAnimation.applyPendingModeChanges();
-    expect(playerAnimation.getDebugState().animId).toBe('anim_acro_wheelie_face_east');
+    expect(playerAnimation.getDebugState().animId).toBe(
+      "anim_acro_wheelie_face_east",
+    );
   });
 
-  it('keeps bunny-hop one-shot playback latched without looping during the 16-tick low-jump arc', () => {
+  it("keeps bunny-hop one-shot playback latched without looping during the 16-tick low-jump arc", () => {
     const playerAnimation = new PlayerAnimationController(makeMockAssets());
     const direction = Direction.RIGHT;
 
@@ -353,7 +391,7 @@ describe('main movement pipeline integration', () => {
     }
 
     const afterArcState = playerAnimation.getDebugState();
-    expect(afterArcState.animId).toBe('anim_acro_bunny_hop_back_east');
+    expect(afterArcState.animId).toBe("anim_acro_bunny_hop_back_east");
     expect(afterArcState.frameIndex).toBe(463);
     expect(afterArcState.frameIndex).not.toBe(firstFrame);
 
@@ -361,7 +399,7 @@ describe('main movement pipeline integration', () => {
     expect(playerAnimation.getDebugState().frameIndex).toBe(463);
   });
 
-  it('keeps moving bunny-hop animation when authoritative transition clears to NONE mid-hop', () => {
+  it("keeps moving bunny-hop animation when authoritative transition clears to NONE mid-hop", () => {
     const playerAnimation = new PlayerAnimationController(makeMockAssets());
 
     playerAnimation.setTraversalState({
@@ -369,13 +407,17 @@ describe('main movement pipeline integration', () => {
       acroSubstate: AcroBikeSubstate.BUNNY_HOP,
       bikeTransition: BikeTransitionType.NONE,
     });
-    playerAnimation.startStep(Direction.RIGHT, 'run');
+    playerAnimation.startStep(Direction.RIGHT, "run");
 
-    expect(playerAnimation.getDebugState().animId).toBe('anim_acro_bunny_hop_back_east');
-    expect(playerAnimation.getDebugState().animId).not.toBe('anim_bike_walk_east');
+    expect(playerAnimation.getDebugState().animId).toBe(
+      "anim_acro_bunny_hop_back_east",
+    );
+    expect(playerAnimation.getDebugState().animId).not.toBe(
+      "anim_bike_walk_east",
+    );
   });
 
-  it('does not flash neutral bike ride animation while progressing from stationary hop hold into directional hop', () => {
+  it("does not flash neutral bike ride animation while progressing from stationary hop hold into directional hop", () => {
     const playerAnimation = new PlayerAnimationController(makeMockAssets());
     const direction = Direction.RIGHT;
 
@@ -386,7 +428,9 @@ describe('main movement pipeline integration', () => {
     });
     playerAnimation.stopMoving(direction);
     playerAnimation.applyPendingModeChanges();
-    expect(playerAnimation.getDebugState().animId).toBe('anim_acro_bunny_hop_back_east');
+    expect(playerAnimation.getDebugState().animId).toBe(
+      "anim_acro_bunny_hop_back_east",
+    );
 
     const directionalHopSequence = [
       BikeTransitionType.WHEELIE_HOPPING_MOVING,
@@ -400,14 +444,14 @@ describe('main movement pipeline integration', () => {
         acroSubstate: AcroBikeSubstate.BUNNY_HOP,
         bikeTransition,
       });
-      playerAnimation.startStep(direction, 'run');
+      playerAnimation.startStep(direction, "run");
       const animId = playerAnimation.getDebugState().animId;
-      expect(animId).toBe('anim_acro_bunny_hop_back_east');
-      expect(animId).not.toBe('anim_bike_walk_east');
+      expect(animId).toBe("anim_acro_bunny_hop_back_east");
+      expect(animId).not.toBe("anim_bike_walk_east");
     }
   });
 
-  it('resolves moving bunny-hop parity action after standing wheelie hop transitions into directional hold', () => {
+  it("resolves moving bunny-hop parity action after standing wheelie hop transitions into directional hold", () => {
     const playerAnimation = new PlayerAnimationController(makeMockAssets());
     const direction = Direction.RIGHT;
 
@@ -418,7 +462,9 @@ describe('main movement pipeline integration', () => {
     });
     playerAnimation.stopMoving(direction);
     playerAnimation.applyPendingModeChanges();
-    expect(playerAnimation.getDebugState().animId).toBe('anim_acro_wheelie_face_east');
+    expect(playerAnimation.getDebugState().animId).toBe(
+      "anim_acro_wheelie_face_east",
+    );
 
     playerAnimation.setTraversalState({
       traversalState: TraversalState.ACRO_BIKE,
@@ -427,7 +473,9 @@ describe('main movement pipeline integration', () => {
     });
     playerAnimation.stopMoving(direction);
     playerAnimation.applyPendingModeChanges();
-    expect(playerAnimation.getDebugState().animId).toBe('anim_acro_bunny_hop_back_east');
+    expect(playerAnimation.getDebugState().animId).toBe(
+      "anim_acro_bunny_hop_back_east",
+    );
 
     const movingHoldSequence = [
       BikeTransitionType.WHEELIE_HOPPING_MOVING,
@@ -441,10 +489,10 @@ describe('main movement pipeline integration', () => {
         acroSubstate: AcroBikeSubstate.BUNNY_HOP,
         bikeTransition,
       });
-      playerAnimation.startStep(direction, 'run');
+      playerAnimation.startStep(direction, "run");
       const animId = playerAnimation.getDebugState().animId;
-      expect(animId).toBe('anim_acro_bunny_hop_back_east');
-      expect(animId).not.toBe('anim_acro_bunny_hop_front_east');
+      expect(animId).toBe("anim_acro_bunny_hop_back_east");
+      expect(animId).not.toBe("anim_acro_bunny_hop_front_east");
     }
   });
 
@@ -453,124 +501,124 @@ describe('main movement pipeline integration', () => {
       bikeTransition: BikeTransitionType.NONE,
       acroSubstate: AcroBikeSubstate.NONE,
       shouldStep: false,
-      expectedAnimId: 'anim_face_east',
+      expectedAnimId: "anim_face_east",
     },
     {
       bikeTransition: BikeTransitionType.WHEELIE_IDLE,
       acroSubstate: AcroBikeSubstate.STANDING_WHEELIE,
       shouldStep: false,
-      expectedAnimId: 'anim_acro_wheelie_face_east',
+      expectedAnimId: "anim_acro_wheelie_face_east",
     },
     {
       bikeTransition: BikeTransitionType.WHEELIE_POP,
       acroSubstate: AcroBikeSubstate.NONE,
       shouldStep: false,
-      expectedAnimId: 'anim_acro_pop_wheelie_stationary_east',
+      expectedAnimId: "anim_acro_pop_wheelie_stationary_east",
     },
     {
       bikeTransition: BikeTransitionType.WHEELIE_END,
       acroSubstate: AcroBikeSubstate.STANDING_WHEELIE,
       shouldStep: false,
-      expectedAnimId: 'anim_acro_end_wheelie_stationary_east',
+      expectedAnimId: "anim_acro_end_wheelie_stationary_east",
     },
     {
       bikeTransition: BikeTransitionType.HOP_STANDING,
       acroSubstate: AcroBikeSubstate.BUNNY_HOP,
       shouldStep: false,
-      expectedAnimId: 'anim_acro_bunny_hop_back_east',
+      expectedAnimId: "anim_acro_bunny_hop_back_east",
     },
     {
       bikeTransition: BikeTransitionType.HOP,
       acroSubstate: AcroBikeSubstate.NONE,
       shouldStep: false,
-      expectedAnimId: 'anim_acro_bunny_hop_back_east',
+      expectedAnimId: "anim_acro_bunny_hop_back_east",
     },
     {
       bikeTransition: BikeTransitionType.WHEELIE_HOPPING_STANDING,
       acroSubstate: AcroBikeSubstate.BUNNY_HOP,
       shouldStep: false,
-      expectedAnimId: 'anim_acro_bunny_hop_back_east',
+      expectedAnimId: "anim_acro_bunny_hop_back_east",
     },
     {
       bikeTransition: BikeTransitionType.HOP_MOVING,
       acroSubstate: AcroBikeSubstate.NONE,
       shouldStep: true,
-      expectedAnimId: 'anim_acro_ledge_hop_front_east',
+      expectedAnimId: "anim_acro_ledge_hop_front_east",
     },
     {
       bikeTransition: BikeTransitionType.SIDE_JUMP,
       acroSubstate: AcroBikeSubstate.NONE,
       shouldStep: true,
-      expectedAnimId: 'anim_acro_side_jump_east',
+      expectedAnimId: "anim_acro_side_jump_east",
     },
     {
       bikeTransition: BikeTransitionType.TURN_JUMP,
       acroSubstate: AcroBikeSubstate.NONE,
       shouldStep: true,
-      expectedAnimId: 'anim_acro_turn_jump_east',
+      expectedAnimId: "anim_acro_turn_jump_east",
     },
     {
       bikeTransition: BikeTransitionType.WHEELIE_HOPPING_MOVING,
       acroSubstate: AcroBikeSubstate.NONE,
       shouldStep: true,
-      expectedAnimId: 'anim_acro_bunny_hop_back_east',
+      expectedAnimId: "anim_acro_bunny_hop_back_east",
     },
     {
       bikeTransition: BikeTransitionType.WHEELIE_MOVING,
       acroSubstate: AcroBikeSubstate.MOVING_WHEELIE,
       shouldStep: true,
-      expectedAnimId: 'anim_acro_moving_wheelie_east',
+      expectedAnimId: "anim_acro_moving_wheelie_east",
     },
     {
       bikeTransition: BikeTransitionType.WHEELIE_RISING_MOVING,
       acroSubstate: AcroBikeSubstate.NONE,
       shouldStep: true,
-      expectedAnimId: 'anim_acro_pop_wheelie_moving_east',
+      expectedAnimId: "anim_acro_pop_wheelie_moving_east",
     },
     {
       bikeTransition: BikeTransitionType.WHEELIE_LOWERING_MOVING,
       acroSubstate: AcroBikeSubstate.NONE,
       shouldStep: true,
-      expectedAnimId: 'anim_acro_end_wheelie_moving_east',
+      expectedAnimId: "anim_acro_end_wheelie_moving_east",
     },
     {
       bikeTransition: BikeTransitionType.NORMAL_TO_WHEELIE,
       acroSubstate: AcroBikeSubstate.NONE,
       shouldStep: true,
-      expectedAnimId: 'anim_acro_pop_wheelie_moving_east',
+      expectedAnimId: "anim_acro_pop_wheelie_moving_east",
     },
     {
       bikeTransition: BikeTransitionType.WHEELIE_TO_NORMAL,
       acroSubstate: AcroBikeSubstate.NONE,
       shouldStep: true,
-      expectedAnimId: 'anim_acro_end_wheelie_moving_east',
+      expectedAnimId: "anim_acro_end_wheelie_moving_east",
     },
     {
       bikeTransition: BikeTransitionType.ENTER_WHEELIE,
       acroSubstate: AcroBikeSubstate.NONE,
       shouldStep: false,
-      expectedAnimId: 'anim_acro_pop_wheelie_stationary_east',
+      expectedAnimId: "anim_acro_pop_wheelie_stationary_east",
     },
     {
       bikeTransition: BikeTransitionType.EXIT_WHEELIE,
       acroSubstate: AcroBikeSubstate.STANDING_WHEELIE,
       shouldStep: false,
-      expectedAnimId: 'anim_acro_end_wheelie_stationary_east',
+      expectedAnimId: "anim_acro_end_wheelie_stationary_east",
     },
     {
       bikeTransition: BikeTransitionType.MOUNT,
       acroSubstate: AcroBikeSubstate.NONE,
       shouldStep: true,
-      expectedAnimId: 'anim_bike_walk_east',
+      expectedAnimId: "anim_bike_walk_east",
     },
     {
       bikeTransition: BikeTransitionType.DISMOUNT,
       acroSubstate: AcroBikeSubstate.NONE,
       shouldStep: false,
-      expectedAnimId: 'anim_face_east',
+      expectedAnimId: "anim_face_east",
     },
   ])(
-    'maps acro bike transition $bikeTransition and substate $acroSubstate to explicit animation ids',
+    "maps acro bike transition $bikeTransition and substate $acroSubstate to explicit animation ids",
     ({ bikeTransition, acroSubstate, shouldStep, expectedAnimId }) => {
       const playerAnimation = new PlayerAnimationController(makeMockAssets());
       playerAnimation.setTraversalState({
@@ -579,7 +627,7 @@ describe('main movement pipeline integration', () => {
         bikeTransition,
       });
       if (shouldStep) {
-        playerAnimation.startStep(Direction.RIGHT, 'run');
+        playerAnimation.startStep(Direction.RIGHT, "run");
       } else {
         playerAnimation.stopMoving(Direction.RIGHT);
         playerAnimation.applyPendingModeChanges();
@@ -590,17 +638,24 @@ describe('main movement pipeline integration', () => {
 
   it.each([
     {
-      label: 'Mach bike',
-      speed: { traversalState: TraversalState.MACH_BIKE, movementMode: MovementMode.WALK, machSpeedStage: 2 },
+      label: "Mach bike",
+      speed: {
+        traversalState: TraversalState.MACH_BIKE,
+        movementMode: MovementMode.WALK,
+        machSpeedStage: 2,
+      },
     },
     {
-      label: 'Acro bike',
-      speed: { traversalState: TraversalState.ACRO_BIKE, movementMode: MovementMode.WALK },
+      label: "Acro bike",
+      speed: {
+        traversalState: TraversalState.ACRO_BIKE,
+        movementMode: MovementMode.WALK,
+      },
     },
   ])(
-    'dispatches follow-up inputs at authoritative $label ack cadence, independent from local interpolation completion',
+    "dispatches follow-up inputs at authoritative $label ack cadence, independent from local interpolation completion",
     ({ speed }) => {
-      const nowSpy = vi.spyOn(performance, 'now');
+      const nowSpy = vi.spyOn(performance, "now");
       const sentDirections: Direction[] = [];
       let nowMs = 10_000;
       nowSpy.mockImplementation(() => nowMs);
@@ -615,7 +670,7 @@ describe('main movement pipeline integration', () => {
       });
 
       controller.handleKeyDown({
-        key: 'ArrowRight',
+        key: "ArrowRight",
         repeat: false,
         preventDefault: () => {},
       } as KeyboardEvent);
@@ -632,6 +687,7 @@ describe('main movement pipeline integration', () => {
       expect(bikeDurationMs).toBeLessThan(footWalkDurationMs);
 
       nowMs += bikeDurationMs;
+      controller.noteWalkTransitionProgress(0.9);
       controller.markWalkResultReceived({
         input_seq: 0,
         accepted: true,
@@ -641,7 +697,8 @@ describe('main movement pipeline integration', () => {
         server_frame: 42,
         traversal_state: speed.traversalState,
         preferred_bike_type: TraversalState.MACH_BIKE,
-        mach_speed_stage: speed.traversalState === TraversalState.MACH_BIKE ? 2 : undefined,
+        mach_speed_stage:
+          speed.traversalState === TraversalState.MACH_BIKE ? 2 : undefined,
         bike_effect_flags: 0,
       });
       expect(sentDirections).toEqual([Direction.RIGHT, Direction.RIGHT]);
@@ -659,14 +716,26 @@ describe('main movement pipeline integration', () => {
 function makeMockAssets(): PlayerAnimationAssets {
   const directionalBindings = {
     face: {
-      south: { anim_cmd_symbol: 'anim_face_south', frames: [{ duration: 16, frame: 100, h_flip: false }] },
-      north: { anim_cmd_symbol: 'anim_face_north', frames: [{ duration: 16, frame: 101, h_flip: false }] },
-      west: { anim_cmd_symbol: 'anim_face_west', frames: [{ duration: 16, frame: 102, h_flip: false }] },
-      east: { anim_cmd_symbol: 'anim_face_east', frames: [{ duration: 16, frame: 103, h_flip: false }] },
+      south: {
+        anim_cmd_symbol: "anim_face_south",
+        frames: [{ duration: 16, frame: 100, h_flip: false }],
+      },
+      north: {
+        anim_cmd_symbol: "anim_face_north",
+        frames: [{ duration: 16, frame: 101, h_flip: false }],
+      },
+      west: {
+        anim_cmd_symbol: "anim_face_west",
+        frames: [{ duration: 16, frame: 102, h_flip: false }],
+      },
+      east: {
+        anim_cmd_symbol: "anim_face_east",
+        frames: [{ duration: 16, frame: 103, h_flip: false }],
+      },
     },
     walk: {
       south: {
-        anim_cmd_symbol: 'anim_walk_south',
+        anim_cmd_symbol: "anim_walk_south",
         frames: [
           { duration: 3, frame: 200, h_flip: false },
           { duration: 3, frame: 201, h_flip: false },
@@ -675,7 +744,7 @@ function makeMockAssets(): PlayerAnimationAssets {
         ],
       },
       north: {
-        anim_cmd_symbol: 'anim_walk_north',
+        anim_cmd_symbol: "anim_walk_north",
         frames: [
           { duration: 3, frame: 210, h_flip: false },
           { duration: 3, frame: 211, h_flip: false },
@@ -684,7 +753,7 @@ function makeMockAssets(): PlayerAnimationAssets {
         ],
       },
       west: {
-        anim_cmd_symbol: 'anim_walk_west',
+        anim_cmd_symbol: "anim_walk_west",
         frames: [
           { duration: 3, frame: 220, h_flip: false },
           { duration: 3, frame: 221, h_flip: false },
@@ -693,7 +762,7 @@ function makeMockAssets(): PlayerAnimationAssets {
         ],
       },
       east: {
-        anim_cmd_symbol: 'anim_walk_east',
+        anim_cmd_symbol: "anim_walk_east",
         frames: [
           { duration: 3, frame: 230, h_flip: false },
           { duration: 3, frame: 231, h_flip: false },
@@ -704,7 +773,7 @@ function makeMockAssets(): PlayerAnimationAssets {
     },
     run: {
       south: {
-        anim_cmd_symbol: 'anim_run_south',
+        anim_cmd_symbol: "anim_run_south",
         frames: [
           { duration: 5, frame: 300, h_flip: false },
           { duration: 5, frame: 301, h_flip: false },
@@ -713,7 +782,7 @@ function makeMockAssets(): PlayerAnimationAssets {
         ],
       },
       north: {
-        anim_cmd_symbol: 'anim_run_north',
+        anim_cmd_symbol: "anim_run_north",
         frames: [
           { duration: 5, frame: 310, h_flip: false },
           { duration: 5, frame: 311, h_flip: false },
@@ -722,7 +791,7 @@ function makeMockAssets(): PlayerAnimationAssets {
         ],
       },
       west: {
-        anim_cmd_symbol: 'anim_run_west',
+        anim_cmd_symbol: "anim_run_west",
         frames: [
           { duration: 5, frame: 320, h_flip: false },
           { duration: 5, frame: 321, h_flip: false },
@@ -731,7 +800,7 @@ function makeMockAssets(): PlayerAnimationAssets {
         ],
       },
       east: {
-        anim_cmd_symbol: 'anim_run_east',
+        anim_cmd_symbol: "anim_run_east",
         frames: [
           { duration: 5, frame: 330, h_flip: false },
           { duration: 5, frame: 331, h_flip: false },
@@ -741,63 +810,171 @@ function makeMockAssets(): PlayerAnimationAssets {
       },
     },
     bike_walk: {
-      south: { anim_cmd_symbol: 'anim_bike_walk_south', frames: [{ duration: 3, frame: 400, h_flip: false }] },
-      north: { anim_cmd_symbol: 'anim_bike_walk_north', frames: [{ duration: 3, frame: 401, h_flip: false }] },
-      west: { anim_cmd_symbol: 'anim_bike_walk_west', frames: [{ duration: 3, frame: 402, h_flip: false }] },
-      east: { anim_cmd_symbol: 'anim_bike_walk_east', frames: [{ duration: 3, frame: 403, h_flip: false }] },
+      south: {
+        anim_cmd_symbol: "anim_bike_walk_south",
+        frames: [{ duration: 3, frame: 400, h_flip: false }],
+      },
+      north: {
+        anim_cmd_symbol: "anim_bike_walk_north",
+        frames: [{ duration: 3, frame: 401, h_flip: false }],
+      },
+      west: {
+        anim_cmd_symbol: "anim_bike_walk_west",
+        frames: [{ duration: 3, frame: 402, h_flip: false }],
+      },
+      east: {
+        anim_cmd_symbol: "anim_bike_walk_east",
+        frames: [{ duration: 3, frame: 403, h_flip: false }],
+      },
     },
     bike_fast: {
-      south: { anim_cmd_symbol: 'anim_bike_fast_south', frames: [{ duration: 2, frame: 410, h_flip: false }] },
-      north: { anim_cmd_symbol: 'anim_bike_fast_north', frames: [{ duration: 2, frame: 411, h_flip: false }] },
-      west: { anim_cmd_symbol: 'anim_bike_fast_west', frames: [{ duration: 2, frame: 412, h_flip: false }] },
-      east: { anim_cmd_symbol: 'anim_bike_fast_east', frames: [{ duration: 2, frame: 413, h_flip: false }] },
+      south: {
+        anim_cmd_symbol: "anim_bike_fast_south",
+        frames: [{ duration: 2, frame: 410, h_flip: false }],
+      },
+      north: {
+        anim_cmd_symbol: "anim_bike_fast_north",
+        frames: [{ duration: 2, frame: 411, h_flip: false }],
+      },
+      west: {
+        anim_cmd_symbol: "anim_bike_fast_west",
+        frames: [{ duration: 2, frame: 412, h_flip: false }],
+      },
+      east: {
+        anim_cmd_symbol: "anim_bike_fast_east",
+        frames: [{ duration: 2, frame: 413, h_flip: false }],
+      },
     },
     bike_faster: {
-      south: { anim_cmd_symbol: 'anim_bike_faster_south', frames: [{ duration: 2, frame: 420, h_flip: false }] },
-      north: { anim_cmd_symbol: 'anim_bike_faster_north', frames: [{ duration: 2, frame: 421, h_flip: false }] },
-      west: { anim_cmd_symbol: 'anim_bike_faster_west', frames: [{ duration: 2, frame: 422, h_flip: false }] },
-      east: { anim_cmd_symbol: 'anim_bike_faster_east', frames: [{ duration: 2, frame: 423, h_flip: false }] },
+      south: {
+        anim_cmd_symbol: "anim_bike_faster_south",
+        frames: [{ duration: 2, frame: 420, h_flip: false }],
+      },
+      north: {
+        anim_cmd_symbol: "anim_bike_faster_north",
+        frames: [{ duration: 2, frame: 421, h_flip: false }],
+      },
+      west: {
+        anim_cmd_symbol: "anim_bike_faster_west",
+        frames: [{ duration: 2, frame: 422, h_flip: false }],
+      },
+      east: {
+        anim_cmd_symbol: "anim_bike_faster_east",
+        frames: [{ duration: 2, frame: 423, h_flip: false }],
+      },
     },
     bike_fastest: {
-      south: { anim_cmd_symbol: 'anim_bike_fastest_south', frames: [{ duration: 1, frame: 430, h_flip: false }] },
-      north: { anim_cmd_symbol: 'anim_bike_fastest_north', frames: [{ duration: 1, frame: 431, h_flip: false }] },
-      west: { anim_cmd_symbol: 'anim_bike_fastest_west', frames: [{ duration: 1, frame: 432, h_flip: false }] },
-      east: { anim_cmd_symbol: 'anim_bike_fastest_east', frames: [{ duration: 1, frame: 433, h_flip: false }] },
+      south: {
+        anim_cmd_symbol: "anim_bike_fastest_south",
+        frames: [{ duration: 1, frame: 430, h_flip: false }],
+      },
+      north: {
+        anim_cmd_symbol: "anim_bike_fastest_north",
+        frames: [{ duration: 1, frame: 431, h_flip: false }],
+      },
+      west: {
+        anim_cmd_symbol: "anim_bike_fastest_west",
+        frames: [{ duration: 1, frame: 432, h_flip: false }],
+      },
+      east: {
+        anim_cmd_symbol: "anim_bike_fastest_east",
+        frames: [{ duration: 1, frame: 433, h_flip: false }],
+      },
     },
     acro_moving_wheelie: {
-      south: { anim_cmd_symbol: 'anim_acro_moving_wheelie_south', frames: [{ duration: 2, frame: 440, h_flip: false }] },
-      north: { anim_cmd_symbol: 'anim_acro_moving_wheelie_north', frames: [{ duration: 2, frame: 441, h_flip: false }] },
-      west: { anim_cmd_symbol: 'anim_acro_moving_wheelie_west', frames: [{ duration: 2, frame: 442, h_flip: false }] },
-      east: { anim_cmd_symbol: 'anim_acro_moving_wheelie_east', frames: [{ duration: 2, frame: 443, h_flip: false }] },
+      south: {
+        anim_cmd_symbol: "anim_acro_moving_wheelie_south",
+        frames: [{ duration: 2, frame: 440, h_flip: false }],
+      },
+      north: {
+        anim_cmd_symbol: "anim_acro_moving_wheelie_north",
+        frames: [{ duration: 2, frame: 441, h_flip: false }],
+      },
+      west: {
+        anim_cmd_symbol: "anim_acro_moving_wheelie_west",
+        frames: [{ duration: 2, frame: 442, h_flip: false }],
+      },
+      east: {
+        anim_cmd_symbol: "anim_acro_moving_wheelie_east",
+        frames: [{ duration: 2, frame: 443, h_flip: false }],
+      },
     },
     acro_bunny_hop_front_wheel: {
-      south: { anim_cmd_symbol: 'anim_acro_bunny_hop_front_south', frames: [{ duration: 2, frame: 450, h_flip: false }] },
-      north: { anim_cmd_symbol: 'anim_acro_bunny_hop_front_north', frames: [{ duration: 2, frame: 451, h_flip: false }] },
-      west: { anim_cmd_symbol: 'anim_acro_bunny_hop_front_west', frames: [{ duration: 2, frame: 452, h_flip: false }] },
-      east: { anim_cmd_symbol: 'anim_acro_bunny_hop_front_east', frames: [{ duration: 2, frame: 453, h_flip: false }] },
+      south: {
+        anim_cmd_symbol: "anim_acro_bunny_hop_front_south",
+        frames: [{ duration: 2, frame: 450, h_flip: false }],
+      },
+      north: {
+        anim_cmd_symbol: "anim_acro_bunny_hop_front_north",
+        frames: [{ duration: 2, frame: 451, h_flip: false }],
+      },
+      west: {
+        anim_cmd_symbol: "anim_acro_bunny_hop_front_west",
+        frames: [{ duration: 2, frame: 452, h_flip: false }],
+      },
+      east: {
+        anim_cmd_symbol: "anim_acro_bunny_hop_front_east",
+        frames: [{ duration: 2, frame: 453, h_flip: false }],
+      },
     },
     acro_side_jump_front_wheel: {
-      south: { anim_cmd_symbol: 'anim_acro_side_jump_south', frames: [{ duration: 2, frame: 454, h_flip: false }] },
-      north: { anim_cmd_symbol: 'anim_acro_side_jump_north', frames: [{ duration: 2, frame: 455, h_flip: false }] },
-      west: { anim_cmd_symbol: 'anim_acro_side_jump_west', frames: [{ duration: 2, frame: 456, h_flip: false }] },
-      east: { anim_cmd_symbol: 'anim_acro_side_jump_east', frames: [{ duration: 2, frame: 457, h_flip: false }] },
+      south: {
+        anim_cmd_symbol: "anim_acro_side_jump_south",
+        frames: [{ duration: 2, frame: 454, h_flip: false }],
+      },
+      north: {
+        anim_cmd_symbol: "anim_acro_side_jump_north",
+        frames: [{ duration: 2, frame: 455, h_flip: false }],
+      },
+      west: {
+        anim_cmd_symbol: "anim_acro_side_jump_west",
+        frames: [{ duration: 2, frame: 456, h_flip: false }],
+      },
+      east: {
+        anim_cmd_symbol: "anim_acro_side_jump_east",
+        frames: [{ duration: 2, frame: 457, h_flip: false }],
+      },
     },
     acro_turn_jump_front_wheel: {
-      south: { anim_cmd_symbol: 'anim_acro_turn_jump_south', frames: [{ duration: 2, frame: 458, h_flip: false }] },
-      north: { anim_cmd_symbol: 'anim_acro_turn_jump_north', frames: [{ duration: 2, frame: 459, h_flip: false }] },
-      west: { anim_cmd_symbol: 'anim_acro_turn_jump_west', frames: [{ duration: 2, frame: 464, h_flip: false }] },
-      east: { anim_cmd_symbol: 'anim_acro_turn_jump_east', frames: [{ duration: 2, frame: 465, h_flip: false }] },
+      south: {
+        anim_cmd_symbol: "anim_acro_turn_jump_south",
+        frames: [{ duration: 2, frame: 458, h_flip: false }],
+      },
+      north: {
+        anim_cmd_symbol: "anim_acro_turn_jump_north",
+        frames: [{ duration: 2, frame: 459, h_flip: false }],
+      },
+      west: {
+        anim_cmd_symbol: "anim_acro_turn_jump_west",
+        frames: [{ duration: 2, frame: 464, h_flip: false }],
+      },
+      east: {
+        anim_cmd_symbol: "anim_acro_turn_jump_east",
+        frames: [{ duration: 2, frame: 465, h_flip: false }],
+      },
     },
     acro_ledge_hop_front_wheel: {
-      south: { anim_cmd_symbol: 'anim_acro_ledge_hop_front_south', frames: [{ duration: 2, frame: 466, h_flip: false }] },
-      north: { anim_cmd_symbol: 'anim_acro_ledge_hop_front_north', frames: [{ duration: 2, frame: 467, h_flip: false }] },
-      west: { anim_cmd_symbol: 'anim_acro_ledge_hop_front_west', frames: [{ duration: 2, frame: 468, h_flip: false }] },
-      east: { anim_cmd_symbol: 'anim_acro_ledge_hop_front_east', frames: [{ duration: 2, frame: 469, h_flip: false }] },
+      south: {
+        anim_cmd_symbol: "anim_acro_ledge_hop_front_south",
+        frames: [{ duration: 2, frame: 466, h_flip: false }],
+      },
+      north: {
+        anim_cmd_symbol: "anim_acro_ledge_hop_front_north",
+        frames: [{ duration: 2, frame: 467, h_flip: false }],
+      },
+      west: {
+        anim_cmd_symbol: "anim_acro_ledge_hop_front_west",
+        frames: [{ duration: 2, frame: 468, h_flip: false }],
+      },
+      east: {
+        anim_cmd_symbol: "anim_acro_ledge_hop_front_east",
+        frames: [{ duration: 2, frame: 469, h_flip: false }],
+      },
     },
     acro_bunny_hop_back_wheel: {
       south: {
-        anim_cmd_symbol: 'anim_acro_bunny_hop_back_south',
-        loop_mode: 'end_hold',
+        anim_cmd_symbol: "anim_acro_bunny_hop_back_south",
+        loop_mode: "end_hold",
         frames: [
           { duration: 4, frame: 460, h_flip: false },
           { duration: 4, frame: 461, h_flip: false },
@@ -806,8 +983,8 @@ function makeMockAssets(): PlayerAnimationAssets {
         ],
       },
       north: {
-        anim_cmd_symbol: 'anim_acro_bunny_hop_back_north',
-        loop_mode: 'end_hold',
+        anim_cmd_symbol: "anim_acro_bunny_hop_back_north",
+        loop_mode: "end_hold",
         frames: [
           { duration: 4, frame: 460, h_flip: false },
           { duration: 4, frame: 461, h_flip: false },
@@ -816,8 +993,8 @@ function makeMockAssets(): PlayerAnimationAssets {
         ],
       },
       west: {
-        anim_cmd_symbol: 'anim_acro_bunny_hop_back_west',
-        loop_mode: 'end_hold',
+        anim_cmd_symbol: "anim_acro_bunny_hop_back_west",
+        loop_mode: "end_hold",
         frames: [
           { duration: 4, frame: 460, h_flip: false },
           { duration: 4, frame: 461, h_flip: false },
@@ -826,8 +1003,8 @@ function makeMockAssets(): PlayerAnimationAssets {
         ],
       },
       east: {
-        anim_cmd_symbol: 'anim_acro_bunny_hop_back_east',
-        loop_mode: 'end_hold',
+        anim_cmd_symbol: "anim_acro_bunny_hop_back_east",
+        loop_mode: "end_hold",
         frames: [
           { duration: 4, frame: 460, h_flip: false },
           { duration: 4, frame: 461, h_flip: false },
@@ -837,39 +1014,99 @@ function makeMockAssets(): PlayerAnimationAssets {
       },
     },
     acro_ledge_hop_back_wheel: {
-      south: { anim_cmd_symbol: 'anim_acro_ledge_hop_back_south', frames: [{ duration: 2, frame: 474, h_flip: false }] },
-      north: { anim_cmd_symbol: 'anim_acro_ledge_hop_back_north', frames: [{ duration: 2, frame: 475, h_flip: false }] },
-      west: { anim_cmd_symbol: 'anim_acro_ledge_hop_back_west', frames: [{ duration: 2, frame: 476, h_flip: false }] },
-      east: { anim_cmd_symbol: 'anim_acro_ledge_hop_back_east', frames: [{ duration: 2, frame: 477, h_flip: false }] },
+      south: {
+        anim_cmd_symbol: "anim_acro_ledge_hop_back_south",
+        frames: [{ duration: 2, frame: 474, h_flip: false }],
+      },
+      north: {
+        anim_cmd_symbol: "anim_acro_ledge_hop_back_north",
+        frames: [{ duration: 2, frame: 475, h_flip: false }],
+      },
+      west: {
+        anim_cmd_symbol: "anim_acro_ledge_hop_back_west",
+        frames: [{ duration: 2, frame: 476, h_flip: false }],
+      },
+      east: {
+        anim_cmd_symbol: "anim_acro_ledge_hop_back_east",
+        frames: [{ duration: 2, frame: 477, h_flip: false }],
+      },
     },
     acro_standing_wheelie_front_wheel: {
-      south: { anim_cmd_symbol: 'anim_acro_standing_wheelie_front_south', frames: [{ duration: 2, frame: 470, h_flip: false }] },
-      north: { anim_cmd_symbol: 'anim_acro_standing_wheelie_front_north', frames: [{ duration: 2, frame: 471, h_flip: false }] },
-      west: { anim_cmd_symbol: 'anim_acro_standing_wheelie_front_west', frames: [{ duration: 2, frame: 472, h_flip: false }] },
-      east: { anim_cmd_symbol: 'anim_acro_standing_wheelie_front_east', frames: [{ duration: 2, frame: 473, h_flip: false }] },
+      south: {
+        anim_cmd_symbol: "anim_acro_standing_wheelie_front_south",
+        frames: [{ duration: 2, frame: 470, h_flip: false }],
+      },
+      north: {
+        anim_cmd_symbol: "anim_acro_standing_wheelie_front_north",
+        frames: [{ duration: 2, frame: 471, h_flip: false }],
+      },
+      west: {
+        anim_cmd_symbol: "anim_acro_standing_wheelie_front_west",
+        frames: [{ duration: 2, frame: 472, h_flip: false }],
+      },
+      east: {
+        anim_cmd_symbol: "anim_acro_standing_wheelie_front_east",
+        frames: [{ duration: 2, frame: 473, h_flip: false }],
+      },
     },
     acro_standing_wheelie_back_wheel: {
-      south: { anim_cmd_symbol: 'anim_acro_standing_wheelie_back_south', frames: [{ duration: 2, frame: 480, h_flip: false }] },
-      north: { anim_cmd_symbol: 'anim_acro_standing_wheelie_back_north', frames: [{ duration: 2, frame: 481, h_flip: false }] },
-      west: { anim_cmd_symbol: 'anim_acro_standing_wheelie_back_west', frames: [{ duration: 2, frame: 482, h_flip: false }] },
-      east: { anim_cmd_symbol: 'anim_acro_standing_wheelie_back_east', frames: [{ duration: 2, frame: 483, h_flip: false }] },
+      south: {
+        anim_cmd_symbol: "anim_acro_standing_wheelie_back_south",
+        frames: [{ duration: 2, frame: 480, h_flip: false }],
+      },
+      north: {
+        anim_cmd_symbol: "anim_acro_standing_wheelie_back_north",
+        frames: [{ duration: 2, frame: 481, h_flip: false }],
+      },
+      west: {
+        anim_cmd_symbol: "anim_acro_standing_wheelie_back_west",
+        frames: [{ duration: 2, frame: 482, h_flip: false }],
+      },
+      east: {
+        anim_cmd_symbol: "anim_acro_standing_wheelie_back_east",
+        frames: [{ duration: 2, frame: 483, h_flip: false }],
+      },
     },
     acro_wheelie_in_place: {
-      south: { anim_cmd_symbol: 'anim_acro_wheelie_in_place_south', frames: [{ duration: 2, frame: 484, h_flip: false }] },
-      north: { anim_cmd_symbol: 'anim_acro_wheelie_in_place_north', frames: [{ duration: 2, frame: 485, h_flip: false }] },
-      west: { anim_cmd_symbol: 'anim_acro_wheelie_in_place_west', frames: [{ duration: 2, frame: 486, h_flip: false }] },
-      east: { anim_cmd_symbol: 'anim_acro_wheelie_in_place_east', frames: [{ duration: 2, frame: 487, h_flip: false }] },
+      south: {
+        anim_cmd_symbol: "anim_acro_wheelie_in_place_south",
+        frames: [{ duration: 2, frame: 484, h_flip: false }],
+      },
+      north: {
+        anim_cmd_symbol: "anim_acro_wheelie_in_place_north",
+        frames: [{ duration: 2, frame: 485, h_flip: false }],
+      },
+      west: {
+        anim_cmd_symbol: "anim_acro_wheelie_in_place_west",
+        frames: [{ duration: 2, frame: 486, h_flip: false }],
+      },
+      east: {
+        anim_cmd_symbol: "anim_acro_wheelie_in_place_east",
+        frames: [{ duration: 2, frame: 487, h_flip: false }],
+      },
     },
     acro_wheelie_face: {
-      south: { anim_cmd_symbol: 'anim_acro_wheelie_face_south', frames: [{ duration: 2, frame: 440, h_flip: false }] },
-      north: { anim_cmd_symbol: 'anim_acro_wheelie_face_north', frames: [{ duration: 2, frame: 441, h_flip: false }] },
-      west: { anim_cmd_symbol: 'anim_acro_wheelie_face_west', frames: [{ duration: 2, frame: 442, h_flip: false }] },
-      east: { anim_cmd_symbol: 'anim_acro_wheelie_face_east', frames: [{ duration: 2, frame: 443, h_flip: false }] },
+      south: {
+        anim_cmd_symbol: "anim_acro_wheelie_face_south",
+        frames: [{ duration: 2, frame: 440, h_flip: false }],
+      },
+      north: {
+        anim_cmd_symbol: "anim_acro_wheelie_face_north",
+        frames: [{ duration: 2, frame: 441, h_flip: false }],
+      },
+      west: {
+        anim_cmd_symbol: "anim_acro_wheelie_face_west",
+        frames: [{ duration: 2, frame: 442, h_flip: false }],
+      },
+      east: {
+        anim_cmd_symbol: "anim_acro_wheelie_face_east",
+        frames: [{ duration: 2, frame: 443, h_flip: false }],
+      },
     },
     acro_pop_wheelie_stationary: {
       south: {
-        anim_cmd_symbol: 'anim_acro_pop_wheelie_stationary_south',
-        loop_mode: 'end_hold',
+        anim_cmd_symbol: "anim_acro_pop_wheelie_stationary_south",
+        loop_mode: "end_hold",
         frames: [
           { duration: 2, frame: 488, h_flip: false },
           { duration: 2, frame: 489, h_flip: false },
@@ -877,8 +1114,8 @@ function makeMockAssets(): PlayerAnimationAssets {
         ],
       },
       north: {
-        anim_cmd_symbol: 'anim_acro_pop_wheelie_stationary_north',
-        loop_mode: 'end_hold',
+        anim_cmd_symbol: "anim_acro_pop_wheelie_stationary_north",
+        loop_mode: "end_hold",
         frames: [
           { duration: 2, frame: 488, h_flip: false },
           { duration: 2, frame: 489, h_flip: false },
@@ -886,8 +1123,8 @@ function makeMockAssets(): PlayerAnimationAssets {
         ],
       },
       west: {
-        anim_cmd_symbol: 'anim_acro_pop_wheelie_stationary_west',
-        loop_mode: 'end_hold',
+        anim_cmd_symbol: "anim_acro_pop_wheelie_stationary_west",
+        loop_mode: "end_hold",
         frames: [
           { duration: 2, frame: 488, h_flip: false },
           { duration: 2, frame: 489, h_flip: false },
@@ -895,8 +1132,8 @@ function makeMockAssets(): PlayerAnimationAssets {
         ],
       },
       east: {
-        anim_cmd_symbol: 'anim_acro_pop_wheelie_stationary_east',
-        loop_mode: 'end_hold',
+        anim_cmd_symbol: "anim_acro_pop_wheelie_stationary_east",
+        loop_mode: "end_hold",
         frames: [
           { duration: 2, frame: 488, h_flip: false },
           { duration: 2, frame: 489, h_flip: false },
@@ -905,74 +1142,91 @@ function makeMockAssets(): PlayerAnimationAssets {
       },
     },
     acro_pop_wheelie_moving: {
-      south: { anim_cmd_symbol: 'anim_acro_pop_wheelie_moving_south', frames: [{ duration: 2, frame: 492, h_flip: false }] },
-      north: { anim_cmd_symbol: 'anim_acro_pop_wheelie_moving_north', frames: [{ duration: 2, frame: 493, h_flip: false }] },
-      west: { anim_cmd_symbol: 'anim_acro_pop_wheelie_moving_west', frames: [{ duration: 2, frame: 494, h_flip: false }] },
-      east: { anim_cmd_symbol: 'anim_acro_pop_wheelie_moving_east', frames: [{ duration: 2, frame: 495, h_flip: false }] },
+      south: {
+        anim_cmd_symbol: "anim_acro_pop_wheelie_moving_south",
+        frames: [{ duration: 2, frame: 492, h_flip: false }],
+      },
+      north: {
+        anim_cmd_symbol: "anim_acro_pop_wheelie_moving_north",
+        frames: [{ duration: 2, frame: 493, h_flip: false }],
+      },
+      west: {
+        anim_cmd_symbol: "anim_acro_pop_wheelie_moving_west",
+        frames: [{ duration: 2, frame: 494, h_flip: false }],
+      },
+      east: {
+        anim_cmd_symbol: "anim_acro_pop_wheelie_moving_east",
+        frames: [{ duration: 2, frame: 495, h_flip: false }],
+      },
     },
     acro_end_wheelie_stationary: {
-      south: { anim_cmd_symbol: 'anim_acro_end_wheelie_stationary_south', frames: [{ duration: 2, frame: 496, h_flip: false }] },
-      north: { anim_cmd_symbol: 'anim_acro_end_wheelie_stationary_north', frames: [{ duration: 2, frame: 497, h_flip: false }] },
-      west: { anim_cmd_symbol: 'anim_acro_end_wheelie_stationary_west', frames: [{ duration: 2, frame: 498, h_flip: false }] },
-      east: { anim_cmd_symbol: 'anim_acro_end_wheelie_stationary_east', frames: [{ duration: 2, frame: 499, h_flip: false }] },
+      south: {
+        anim_cmd_symbol: "anim_acro_end_wheelie_stationary_south",
+        frames: [{ duration: 2, frame: 496, h_flip: false }],
+      },
+      north: {
+        anim_cmd_symbol: "anim_acro_end_wheelie_stationary_north",
+        frames: [{ duration: 2, frame: 497, h_flip: false }],
+      },
+      west: {
+        anim_cmd_symbol: "anim_acro_end_wheelie_stationary_west",
+        frames: [{ duration: 2, frame: 498, h_flip: false }],
+      },
+      east: {
+        anim_cmd_symbol: "anim_acro_end_wheelie_stationary_east",
+        frames: [{ duration: 2, frame: 499, h_flip: false }],
+      },
     },
     acro_end_wheelie_moving: {
-      south: { anim_cmd_symbol: 'anim_acro_end_wheelie_moving_south', frames: [{ duration: 2, frame: 500, h_flip: false }] },
-      north: { anim_cmd_symbol: 'anim_acro_end_wheelie_moving_north', frames: [{ duration: 2, frame: 501, h_flip: false }] },
-      west: { anim_cmd_symbol: 'anim_acro_end_wheelie_moving_west', frames: [{ duration: 2, frame: 502, h_flip: false }] },
-      east: { anim_cmd_symbol: 'anim_acro_end_wheelie_moving_east', frames: [{ duration: 2, frame: 503, h_flip: false }] },
+      south: {
+        anim_cmd_symbol: "anim_acro_end_wheelie_moving_south",
+        frames: [{ duration: 2, frame: 500, h_flip: false }],
+      },
+      north: {
+        anim_cmd_symbol: "anim_acro_end_wheelie_moving_north",
+        frames: [{ duration: 2, frame: 501, h_flip: false }],
+      },
+      west: {
+        anim_cmd_symbol: "anim_acro_end_wheelie_moving_west",
+        frames: [{ duration: 2, frame: 502, h_flip: false }],
+      },
+      east: {
+        anim_cmd_symbol: "anim_acro_end_wheelie_moving_east",
+        frames: [{ duration: 2, frame: 503, h_flip: false }],
+      },
     },
-  } satisfies PlayerAnimationAssets['animationSets']['on_foot']['actions'];
+  } satisfies PlayerAnimationAssets["animationSets"]["on_foot"]["actions"];
 
   const frameTextures = new Map<number, unknown>();
   for (const frame of [
-    100, 101, 102, 103,
-    200, 201, 202, 203,
-    210, 211, 212, 213,
-    220, 221, 222, 223,
-    230, 231, 232, 233,
-    300, 301, 302, 303,
-    310, 311, 312, 313,
-    320, 321, 322, 323,
-    330, 331, 332, 333,
-    400, 401, 402, 403,
-    410, 411, 412, 413,
-    420, 421, 422, 423,
-    430, 431, 432, 433,
-    440, 441, 442, 443,
-    450, 451, 452, 453,
-    460, 461, 462, 463,
-    454, 455, 456, 457,
-    458, 459, 464, 465,
-    466, 467, 468, 469,
-    470, 471, 472, 473,
-    474, 475, 476, 477,
-    480, 481, 482, 483,
-    484, 485, 486, 487,
-    488, 489, 490, 491,
-    492, 493, 494, 495,
-    496, 497, 498, 499,
-    500, 501, 502, 503,
+    100, 101, 102, 103, 200, 201, 202, 203, 210, 211, 212, 213, 220, 221, 222,
+    223, 230, 231, 232, 233, 300, 301, 302, 303, 310, 311, 312, 313, 320, 321,
+    322, 323, 330, 331, 332, 333, 400, 401, 402, 403, 410, 411, 412, 413, 420,
+    421, 422, 423, 430, 431, 432, 433, 440, 441, 442, 443, 450, 451, 452, 453,
+    460, 461, 462, 463, 454, 455, 456, 457, 458, 459, 464, 465, 466, 467, 468,
+    469, 470, 471, 472, 473, 474, 475, 476, 477, 480, 481, 482, 483, 484, 485,
+    486, 487, 488, 489, 490, 491, 492, 493, 494, 495, 496, 497, 498, 499, 500,
+    501, 502, 503,
   ]) {
     frameTextures.set(frame, {});
   }
 
   return {
-    avatarId: 'test-avatar',
+    avatarId: "test-avatar",
     frameWidth: 16,
     frameHeight: 32,
     anchorX: 8,
     anchorY: 30,
-    paletteColors: ['#000000'],
+    paletteColors: ["#000000"],
     reflectionPaletteColors: null,
     reflectionPaletteSourcePath: null,
     animationSets: {
       on_foot: {
-        anim_table_symbol: 'sAnimTable_BrendanMayNormal',
+        anim_table_symbol: "sAnimTable_BrendanMayNormal",
         actions: directionalBindings,
       },
       mach_bike: {
-        anim_table_symbol: 'sAnimTable_Standard',
+        anim_table_symbol: "sAnimTable_Standard",
         actions: {
           bike_walk: directionalBindings.bike_walk,
           bike_fast: directionalBindings.bike_fast,
@@ -982,31 +1236,41 @@ function makeMockAssets(): PlayerAnimationAssets {
         },
       },
       acro_bike: {
-        anim_table_symbol: 'sAnimTable_AcroBike',
+        anim_table_symbol: "sAnimTable_AcroBike",
         actions: {
           bike_walk: directionalBindings.bike_walk,
           bike_fast: directionalBindings.bike_fast,
           bike_faster: directionalBindings.bike_faster,
           bike_fastest: directionalBindings.bike_fastest,
           acro_moving_wheelie: directionalBindings.acro_moving_wheelie,
-          acro_bunny_hop_front_wheel: directionalBindings.acro_bunny_hop_front_wheel,
-          acro_side_jump_front_wheel: directionalBindings.acro_side_jump_front_wheel,
-          acro_turn_jump_front_wheel: directionalBindings.acro_turn_jump_front_wheel,
-          acro_ledge_hop_front_wheel: directionalBindings.acro_ledge_hop_front_wheel,
-          acro_bunny_hop_back_wheel: directionalBindings.acro_bunny_hop_back_wheel,
-          acro_ledge_hop_back_wheel: directionalBindings.acro_ledge_hop_back_wheel,
-          acro_standing_wheelie_front_wheel: directionalBindings.acro_standing_wheelie_front_wheel,
-          acro_standing_wheelie_back_wheel: directionalBindings.acro_standing_wheelie_back_wheel,
+          acro_bunny_hop_front_wheel:
+            directionalBindings.acro_bunny_hop_front_wheel,
+          acro_side_jump_front_wheel:
+            directionalBindings.acro_side_jump_front_wheel,
+          acro_turn_jump_front_wheel:
+            directionalBindings.acro_turn_jump_front_wheel,
+          acro_ledge_hop_front_wheel:
+            directionalBindings.acro_ledge_hop_front_wheel,
+          acro_bunny_hop_back_wheel:
+            directionalBindings.acro_bunny_hop_back_wheel,
+          acro_ledge_hop_back_wheel:
+            directionalBindings.acro_ledge_hop_back_wheel,
+          acro_standing_wheelie_front_wheel:
+            directionalBindings.acro_standing_wheelie_front_wheel,
+          acro_standing_wheelie_back_wheel:
+            directionalBindings.acro_standing_wheelie_back_wheel,
           acro_wheelie_face: directionalBindings.acro_wheelie_face,
           acro_wheelie_in_place: directionalBindings.acro_wheelie_in_place,
-          acro_pop_wheelie_stationary: directionalBindings.acro_pop_wheelie_stationary,
+          acro_pop_wheelie_stationary:
+            directionalBindings.acro_pop_wheelie_stationary,
           acro_pop_wheelie_moving: directionalBindings.acro_pop_wheelie_moving,
-          acro_end_wheelie_stationary: directionalBindings.acro_end_wheelie_stationary,
+          acro_end_wheelie_stationary:
+            directionalBindings.acro_end_wheelie_stationary,
           acro_end_wheelie_moving: directionalBindings.acro_end_wheelie_moving,
           face: directionalBindings.face,
         },
       },
     },
-    frameTextures: frameTextures as PlayerAnimationAssets['frameTextures'],
+    frameTextures: frameTextures as PlayerAnimationAssets["frameTextures"],
   };
 }
