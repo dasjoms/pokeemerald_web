@@ -656,8 +656,6 @@ export class PlayerAnimationController {
         return 'acro_pop_wheelie_moving';
       case BikeTransitionType.WHEELIE_END:
       case BikeTransitionType.WHEELIE_TO_NORMAL:
-      case BikeTransitionType.EXIT_WHEELIE:
-        return 'acro_end_wheelie_stationary';
       case BikeTransitionType.WHEELIE_LOWERING_MOVING:
         return 'acro_end_wheelie_moving';
       case BikeTransitionType.WHEELIE_MOVING:
