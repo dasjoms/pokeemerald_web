@@ -186,6 +186,10 @@ impl AcroRuntime {
         self.pending_action.take()
     }
 
+    pub fn pending_action(&self) -> Option<AcroAnimationAction> {
+        self.pending_action
+    }
+
     pub fn update_history(&mut self, held_direction: Option<Direction>, held_ab_start_select: u8) {
         let direction = encode_direction_nibble(held_direction);
         if direction == (self.direction_history as u8 & 0xF) {

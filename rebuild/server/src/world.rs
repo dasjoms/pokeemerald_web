@@ -1424,31 +1424,29 @@ fn update_bike_runtime_per_tick(
         AcroState::BunnyHop => AcroBikeSubstate::BunnyHop,
         AcroState::WheelieMoving => AcroBikeSubstate::MovingWheelie,
     };
-    if held_direction.is_none() {
-        if let Some(action) = player_state.bike_runtime.acro_runtime.take_pending_action() {
-            player_state.bike_runtime.last_transition = match action {
-                AcroAnimationAction::None
-                | AcroAnimationAction::FaceDirection
-                | AcroAnimationAction::TurnDirection
-                | AcroAnimationAction::Moving => BikeTransitionType::None,
-                AcroAnimationAction::NormalToWheelie => BikeTransitionType::NormalToWheelie,
-                AcroAnimationAction::WheelieToNormal => BikeTransitionType::WheelieToNormal,
-                AcroAnimationAction::WheelieIdle => BikeTransitionType::WheelieIdle,
-                AcroAnimationAction::WheelieHoppingStanding => {
-                    BikeTransitionType::WheelieHoppingStanding
-                }
-                AcroAnimationAction::WheelieHoppingMoving => {
-                    BikeTransitionType::WheelieHoppingMoving
-                }
-                AcroAnimationAction::SideJump => BikeTransitionType::SideJump,
-                AcroAnimationAction::TurnJump => BikeTransitionType::TurnJump,
-                AcroAnimationAction::WheelieMoving => BikeTransitionType::WheelieMoving,
-                AcroAnimationAction::WheelieRisingMoving => BikeTransitionType::WheelieRisingMoving,
-                AcroAnimationAction::WheelieLoweringMoving => {
-                    BikeTransitionType::WheelieLoweringMoving
-                }
-            };
-        }
+    if let Some(action) = player_state.bike_runtime.acro_runtime.pending_action() {
+        player_state.bike_runtime.last_transition = match action {
+            AcroAnimationAction::None
+            | AcroAnimationAction::FaceDirection
+            | AcroAnimationAction::TurnDirection
+            | AcroAnimationAction::Moving => BikeTransitionType::None,
+            AcroAnimationAction::NormalToWheelie => BikeTransitionType::NormalToWheelie,
+            AcroAnimationAction::WheelieToNormal => BikeTransitionType::WheelieToNormal,
+            AcroAnimationAction::WheelieIdle => BikeTransitionType::WheelieIdle,
+            AcroAnimationAction::WheelieHoppingStanding => {
+                BikeTransitionType::WheelieHoppingStanding
+            }
+            AcroAnimationAction::WheelieHoppingMoving => {
+                BikeTransitionType::WheelieHoppingMoving
+            }
+            AcroAnimationAction::SideJump => BikeTransitionType::SideJump,
+            AcroAnimationAction::TurnJump => BikeTransitionType::TurnJump,
+            AcroAnimationAction::WheelieMoving => BikeTransitionType::WheelieMoving,
+            AcroAnimationAction::WheelieRisingMoving => BikeTransitionType::WheelieRisingMoving,
+            AcroAnimationAction::WheelieLoweringMoving => {
+                BikeTransitionType::WheelieLoweringMoving
+            }
+        };
     }
 }
 
@@ -2037,6 +2035,57 @@ mod tests {
         assert_eq!(
             player.bike_runtime.last_transition,
             BikeTransitionType::WheelieHoppingStanding
+        );
+    }
+
+    #[test]
+    fn held_direction_tick_updates_acro_moving_transitions() {
+        let mut player = test_player_state();
+        player.traversal_state = TraversalState::AcroBike;
+        player.facing = Direction::Right;
+
+        player.bike_runtime.acro_runtime.state = AcroState::BunnyHop;
+        player.bike_runtime.acro_runtime.movement_direction = Direction::Right;
+        update_bike_runtime_per_tick(
+            &mut player,
+            Some(Direction::Right),
+            crate::protocol::HeldButtons::B as u8,
+        );
+        assert_eq!(
+            player.bike_runtime.last_transition,
+            BikeTransitionType::WheelieHoppingMoving
+        );
+
+        player.bike_runtime.acro_runtime.state = AcroState::WheelieStanding;
+        player.bike_runtime.acro_runtime.movement_direction = Direction::Right;
+        update_bike_runtime_per_tick(
+            &mut player,
+            Some(Direction::Right),
+            crate::protocol::HeldButtons::B as u8,
+        );
+        assert_eq!(
+            player.bike_runtime.last_transition,
+            BikeTransitionType::WheelieMoving
+        );
+
+        player.bike_runtime.acro_runtime.state = AcroState::Normal;
+        player.bike_runtime.acro_runtime.movement_direction = Direction::Right;
+        update_bike_runtime_per_tick(
+            &mut player,
+            Some(Direction::Right),
+            crate::protocol::HeldButtons::B as u8,
+        );
+        assert_eq!(
+            player.bike_runtime.last_transition,
+            BikeTransitionType::WheelieRisingMoving
+        );
+
+        player.bike_runtime.acro_runtime.state = AcroState::WheelieMoving;
+        player.bike_runtime.acro_runtime.movement_direction = Direction::Right;
+        update_bike_runtime_per_tick(&mut player, Some(Direction::Right), 0);
+        assert_eq!(
+            player.bike_runtime.last_transition,
+            BikeTransitionType::WheelieLoweringMoving
         );
     }
 
