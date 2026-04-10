@@ -401,14 +401,9 @@ describe("main movement pipeline integration", () => {
     expect(playerAnimation.getDebugState().frameIndex).toBe(463);
   });
 
-  it("keeps one hop shadow instance across consecutive hop arcs and despawns only after hop context ends", () => {
+  it("keeps hop shadow active through consecutive stationary hops while held-B hop context remains active", () => {
     const movementRuntime = new PlayerMovementActionRuntime();
-    const fakeLayer = new FakeShadowLayer();
-    const shadowRenderer = new HopShadowRenderer(() => fakeLayer, 16, () => ({
-      x: 0,
-      y: 0,
-      visible: true,
-    }));
+    const { fakeLayer, shadowRenderer } = createShadowHarness();
 
     movementRuntime.setAuthoritativeInput({
       traversalState: TraversalState.ACRO_BIKE,
@@ -430,7 +425,7 @@ describe("main movement pipeline integration", () => {
     expect(fakeLayer.addedCount).toBe(1);
     expect(fakeLayer.removedCount).toBe(0);
 
-    for (let tick = 0; tick < 15; tick += 1) {
+    for (let tick = 0; tick < 48; tick += 1) {
       movementRuntime.tickTicks(1);
       shadowRenderer.presentFrame({
         tileX: 12,
@@ -438,23 +433,14 @@ describe("main movement pipeline integration", () => {
         visualState: movementRuntime.getVisualState(),
       });
       expect(shadowRenderer.hasActiveShadow()).toBe(true);
+      expect(fakeLayer.addedCount).toBe(1);
+      expect(fakeLayer.removedCount).toBe(0);
     }
+  });
 
-    movementRuntime.tickTicks(1);
-    shadowRenderer.setAuthoritativeState({
-      traversalState: TraversalState.ACRO_BIKE,
-      bikeTransition: BikeTransitionType.NONE,
-      acroSubstate: AcroBikeSubstate.BUNNY_HOP,
-    });
-    shadowRenderer.presentFrame({
-      tileX: 12,
-      tileY: 9,
-      visualState: movementRuntime.getVisualState(),
-    });
-
-    expect(shadowRenderer.hasActiveShadow()).toBe(true);
-    expect(fakeLayer.addedCount).toBe(1);
-    expect(fakeLayer.removedCount).toBe(0);
+  it("keeps hop shadow active through directional hop sequences without per-hop despawn churn", () => {
+    const movementRuntime = new PlayerMovementActionRuntime();
+    const { fakeLayer, shadowRenderer } = createShadowHarness();
 
     movementRuntime.setAuthoritativeInput({
       traversalState: TraversalState.ACRO_BIKE,
@@ -464,6 +450,80 @@ describe("main movement pipeline integration", () => {
     shadowRenderer.setAuthoritativeState({
       traversalState: TraversalState.ACRO_BIKE,
       bikeTransition: BikeTransitionType.HOP_STANDING,
+      acroSubstate: AcroBikeSubstate.BUNNY_HOP,
+    });
+    shadowRenderer.presentFrame({
+      tileX: 12,
+      tileY: 9,
+      visualState: movementRuntime.getVisualState(),
+    });
+    expect(shadowRenderer.hasActiveShadow()).toBe(true);
+    expect(fakeLayer.addedCount).toBe(1);
+    expect(fakeLayer.removedCount).toBe(0);
+
+    const directionalHopSequence = [
+      BikeTransitionType.WHEELIE_HOPPING_MOVING,
+      BikeTransitionType.NONE,
+      BikeTransitionType.HOP_MOVING,
+      BikeTransitionType.NONE,
+      BikeTransitionType.WHEELIE_HOPPING_MOVING,
+      BikeTransitionType.NONE,
+    ] as const;
+
+    for (const bikeTransition of directionalHopSequence) {
+      movementRuntime.setAuthoritativeInput({
+        traversalState: TraversalState.ACRO_BIKE,
+        acroSubstate: AcroBikeSubstate.BUNNY_HOP,
+        bikeTransition,
+      });
+      shadowRenderer.setAuthoritativeState({
+        traversalState: TraversalState.ACRO_BIKE,
+        bikeTransition,
+        acroSubstate: AcroBikeSubstate.BUNNY_HOP,
+      });
+      movementRuntime.tickTicks(1);
+      shadowRenderer.presentFrame({
+        tileX: 12,
+        tileY: 9,
+        visualState: movementRuntime.getVisualState(),
+      });
+      expect(shadowRenderer.hasActiveShadow()).toBe(true);
+      expect(fakeLayer.addedCount).toBe(1);
+      expect(fakeLayer.removedCount).toBe(0);
+    }
+  });
+
+  it("despawns hop shadow exactly once when authoritative state exits hop-capable context", () => {
+    const movementRuntime = new PlayerMovementActionRuntime();
+    const { fakeLayer, shadowRenderer } = createShadowHarness();
+
+    movementRuntime.setAuthoritativeInput({
+      traversalState: TraversalState.ACRO_BIKE,
+      acroSubstate: AcroBikeSubstate.BUNNY_HOP,
+      bikeTransition: BikeTransitionType.HOP_STANDING,
+    });
+    shadowRenderer.setAuthoritativeState({
+      traversalState: TraversalState.ACRO_BIKE,
+      bikeTransition: BikeTransitionType.HOP_STANDING,
+      acroSubstate: AcroBikeSubstate.BUNNY_HOP,
+    });
+    shadowRenderer.presentFrame({
+      tileX: 12,
+      tileY: 9,
+      visualState: movementRuntime.getVisualState(),
+    });
+    expect(shadowRenderer.hasActiveShadow()).toBe(true);
+    expect(fakeLayer.addedCount).toBe(1);
+    expect(fakeLayer.removedCount).toBe(0);
+
+    movementRuntime.setAuthoritativeInput({
+      traversalState: TraversalState.ACRO_BIKE,
+      acroSubstate: AcroBikeSubstate.BUNNY_HOP,
+      bikeTransition: BikeTransitionType.NONE,
+    });
+    shadowRenderer.setAuthoritativeState({
+      traversalState: TraversalState.ACRO_BIKE,
+      bikeTransition: BikeTransitionType.NONE,
       acroSubstate: AcroBikeSubstate.BUNNY_HOP,
     });
     shadowRenderer.presentFrame({
@@ -490,14 +550,62 @@ describe("main movement pipeline integration", () => {
     expect(fakeLayer.removedCount).toBe(1);
   });
 
+  it("suppresses hop shadow visibility on water/reflective/tall grass without destroying sprite", () => {
+    const movementRuntime = new PlayerMovementActionRuntime();
+    const { fakeLayer, createdSprites, shadowRenderer } = createShadowHarness();
+
+    movementRuntime.setAuthoritativeInput({
+      traversalState: TraversalState.ACRO_BIKE,
+      acroSubstate: AcroBikeSubstate.BUNNY_HOP,
+      bikeTransition: BikeTransitionType.HOP_STANDING,
+    });
+    shadowRenderer.setAuthoritativeState({
+      traversalState: TraversalState.ACRO_BIKE,
+      bikeTransition: BikeTransitionType.HOP_STANDING,
+      acroSubstate: AcroBikeSubstate.BUNNY_HOP,
+    });
+    shadowRenderer.presentFrame({
+      tileX: 12,
+      tileY: 9,
+      visualState: movementRuntime.getVisualState(),
+    });
+
+    expect(createdSprites).toHaveLength(1);
+    expect(shadowRenderer.hasActiveShadow()).toBe(true);
+    expect(createdSprites[0].visible).toBe(true);
+
+    shadowRenderer.setSuppressionContext({ isWaterSurface: true });
+    expect(shadowRenderer.hasActiveShadow()).toBe(true);
+    expect(createdSprites[0].visible).toBe(false);
+    expect(fakeLayer.addedCount).toBe(1);
+    expect(fakeLayer.removedCount).toBe(0);
+
+    shadowRenderer.setSuppressionContext({
+      isWaterSurface: false,
+      isReflectiveSurface: true,
+    });
+    expect(createdSprites[0].visible).toBe(false);
+    expect(fakeLayer.addedCount).toBe(1);
+    expect(fakeLayer.removedCount).toBe(0);
+
+    shadowRenderer.setSuppressionContext({
+      isReflectiveSurface: false,
+      isTallGrass: true,
+    });
+    expect(createdSprites[0].visible).toBe(false);
+    expect(fakeLayer.addedCount).toBe(1);
+    expect(fakeLayer.removedCount).toBe(0);
+
+    shadowRenderer.setSuppressionContext({ isTallGrass: false });
+    expect(createdSprites[0].visible).toBe(true);
+    expect(shadowRenderer.hasActiveShadow()).toBe(true);
+    expect(fakeLayer.addedCount).toBe(1);
+    expect(fakeLayer.removedCount).toBe(0);
+  });
+
   it("spawns hop shadow from bunny-hop continuity even when transition is NONE", () => {
     const movementRuntime = new PlayerMovementActionRuntime();
-    const fakeLayer = new FakeShadowLayer();
-    const shadowRenderer = new HopShadowRenderer(() => fakeLayer, 16, () => ({
-      x: 0,
-      y: 0,
-      visible: true,
-    }));
+    const { fakeLayer, shadowRenderer } = createShadowHarness();
 
     shadowRenderer.setAuthoritativeState({
       traversalState: TraversalState.ACRO_BIKE,
@@ -840,6 +948,30 @@ class FakeShadowLayer {
   removeChild(): void {
     this.removedCount += 1;
   }
+}
+
+function createShadowHarness(): {
+  fakeLayer: FakeShadowLayer;
+  shadowRenderer: HopShadowRenderer;
+  createdSprites: Array<{ x: number; y: number; visible: boolean }>;
+} {
+  const fakeLayer = new FakeShadowLayer();
+  const createdSprites: Array<{ x: number; y: number; visible: boolean }> = [];
+  const shadowRenderer = new HopShadowRenderer(() => fakeLayer, 16, () => {
+    const sprite = {
+      x: 0,
+      y: 0,
+      visible: true,
+    };
+    createdSprites.push(sprite);
+    return sprite;
+  });
+
+  return {
+    fakeLayer,
+    shadowRenderer,
+    createdSprites,
+  };
 }
 
 function makeMockAssets(): PlayerAnimationAssets {
