@@ -456,31 +456,11 @@ impl World {
                 .acro_runtime
                 .set_on_bumpy_slope(on_bumpy_slope);
             let effective_held_direction = session.effective_held_direction();
-            let lock_acro_input_during_hop = session.active_walk_transition.is_some()
-                && matches!(
-                    session.player_state.bike_runtime.acro_runtime.state,
-                    AcroState::BunnyHop
-                );
-            if lock_acro_input_during_hop {
-                let holding_b = (session.held_buttons & crate::protocol::HeldButtons::B as u8) != 0;
-                session
-                    .player_state
-                    .bike_runtime
-                    .acro_runtime
-                    .set_held_input(effective_held_direction, holding_b);
-                session
-                    .player_state
-                    .bike_runtime
-                    .acro_runtime
-                    .advance_locked_movement_tick();
-                session.player_state.bike_runtime.acro_state = AcroBikeSubstate::BunnyHop;
-            } else {
-                update_bike_runtime_per_tick(
-                    &mut session.player_state,
-                    effective_held_direction,
-                    session.held_buttons,
-                );
-            }
+            update_bike_runtime_per_tick(
+                &mut session.player_state,
+                effective_held_direction,
+                session.held_buttons,
+            );
             session.update_authoritative_tick(tick);
             let current_acro_substate = bike_acro_substate_for_traversal(&session.player_state);
             let current_bike_transition = session.player_state.bike_runtime.last_transition;
@@ -3322,10 +3302,11 @@ mod tests {
 
         let mut held_seq = 1_u32;
         let mut walk_seq = 0_u32;
+        let mut saw_setdown_tick = false;
         let mut saw_resume_tick = false;
-        let mut saw_mid_hop_setdown = false;
+        let mut setdown_progress_delta = None;
 
-        for _ in 0..32 {
+        for _ in 0..24 {
             let progress_before_tick = {
                 let sessions = world.sessions.read().await;
                 sessions.get(&session.connection_id).and_then(|session_state| {
@@ -3385,8 +3366,9 @@ mod tests {
             });
 
             if emitted_setdown {
+                saw_setdown_tick = true;
                 let sessions = world.sessions.read().await;
-                let transition_progress_after_tick = sessions
+                let transition_progress = sessions
                     .get(&session.connection_id)
                     .and_then(|session_state| {
                         session_state
@@ -3394,25 +3376,32 @@ mod tests {
                             .as_ref()
                             .map(|transition| transition.progress_pixels())
                     });
-                if transition_progress_after_tick.is_some() && progress_before_tick.is_some() {
-                    saw_mid_hop_setdown = true;
-                }
+                setdown_progress_delta = Some((
+                    progress_before_tick,
+                    transition_progress,
+                ));
+                assert!(
+                    transition_progress != progress_before_tick,
+                    "set-down tick should continue in-flight interpolation without an artificial pause tick"
+                );
                 continue;
             }
 
-            if accepted_this_tick {
+            if saw_setdown_tick && accepted_this_tick {
                 saw_resume_tick = true;
                 break;
             }
         }
 
         assert!(
-            !saw_mid_hop_setdown,
-            "WheelieToNormal should be deferred until hop interpolation is complete"
+            saw_setdown_tick,
+            "expected WheelieToNormal release set-down transition to emit after landing"
         );
+        let (_progress_before_tick, _progress_after_tick) = setdown_progress_delta
+            .expect("expected set-down tick to observe an in-flight transition");
         assert!(
             saw_resume_tick,
-            "expected directional movement acceptance to resume without synthetic lock requeue"
+            "expected directional movement acceptance to resume after WheelieToNormal without synthetic lock requeue"
         );
     }
 
