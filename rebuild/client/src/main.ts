@@ -42,8 +42,6 @@ import {
   PlayerAnimationController,
 } from './playerAnimation';
 import {
-  isAcroHopCapableState,
-  isAcroHopLandingFrame,
   PlayerMovementActionRuntime,
 } from './playerMovementActionRuntime';
 import {
@@ -709,12 +707,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
       hopLandingTileX: delta.hop_landing_tile_x,
       hopLandingTileY: delta.hop_landing_tile_y,
     });
-    flushPendingHopParticleLandingEvent({
-      traversalState: delta.traversal_state,
-      acroSubstate: delta.acro_substate,
-      bikeTransition: delta.bike_transition,
-      bunnyHopCycleTick: delta.bunny_hop_cycle_tick,
-    });
+    flushPendingHopParticleLandingEvent();
     // BikeRuntimeDelta is change-only by design; consume it as authoritative
     // traversal + hop phase updates.
     state.lastAckServerTick = delta.server_frame;
@@ -779,12 +772,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     hopLandingTileX: result.hop_landing_tile_x,
     hopLandingTileY: result.hop_landing_tile_y,
   });
-  flushPendingHopParticleLandingEvent({
-    traversalState: result.traversal_state,
-    acroSubstate: result.acro_substate,
-    bikeTransition: result.bike_transition,
-    bunnyHopCycleTick: result.bunny_hop_cycle_tick,
-  });
+  flushPendingHopParticleLandingEvent();
   if (result.accepted) {
     // Contract: on accepted input, authoritative_pos is the server tile *after* applying that step.
     // This lets the first interpolation run immediately toward the accepted destination.
@@ -2203,22 +2191,8 @@ function queueHopParticleLandingEvent(input: {
   };
 }
 
-function flushPendingHopParticleLandingEvent(input: {
-  traversalState: TraversalState;
-  acroSubstate?: AcroBikeSubstate;
-  bikeTransition?: BikeTransitionType;
-  bunnyHopCycleTick?: number;
-}): void {
+function flushPendingHopParticleLandingEvent(): void {
   if (!pendingHopLandingParticleEvent) {
-    return;
-  }
-
-  const isHopState = isAcroHopCapableState({
-    traversalState: input.traversalState,
-    acroSubstate: input.acroSubstate,
-    bikeTransition: input.bikeTransition,
-  });
-  if (isHopState && !isAcroHopLandingFrame(input.bunnyHopCycleTick)) {
     return;
   }
 
