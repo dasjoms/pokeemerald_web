@@ -55,10 +55,14 @@ export type HopShadowSprite = {
 type HopShadowLayer = {
   addChild: (...children: ContainerChild[]) => unknown;
   removeChild: (...children: ContainerChild[]) => unknown;
+  addChildAt?: (child: ContainerChild, index: number) => unknown;
+  getChildIndex?: (child: ContainerChild) => number;
+  setChildIndex?: (child: ContainerChild, index: number) => unknown;
 };
 
 export class HopShadowRenderer {
   private sprite: HopShadowSprite | null = null;
+  private spriteLayer: HopShadowLayer | null = null;
   private shadowSizeTemplateId: ShadowTemplateId = ROM_SHADOW_TEMPLATE_ID_MEDIUM;
   private suppressionContext: HopShadowSuppressionContext = DEFAULT_SUPPRESSION_CONTEXT;
   private hopFamilyActive = false;
@@ -66,9 +70,10 @@ export class HopShadowRenderer {
   private arcObserved = false;
 
   constructor(
-    private readonly layer: HopShadowLayer,
+    private readonly resolveLayer: () => HopShadowLayer,
     private readonly tileSize: number,
     private readonly createSprite: (variant: HopShadowSizeVariant) => HopShadowSprite,
+    private readonly resolveLinkedSprite?: () => ContainerChild | null,
   ) {}
 
   setShadowSizeTemplateId(templateId: ShadowTemplateId): void {
@@ -122,6 +127,7 @@ export class HopShadowRenderer {
       return;
     }
 
+    this.ensureLayer();
     this.sprite.x = input.tileX * this.tileSize + this.tileSize / 2;
     this.sprite.y = input.tileY * this.tileSize + this.tileSize;
     this.sprite.visible = !this.shouldSuppressVisibility();
@@ -156,18 +162,56 @@ export class HopShadowRenderer {
   private spawn(): void {
     const sprite = this.createSprite(templateIdToVariant(this.shadowSizeTemplateId));
     sprite.visible = !this.shouldSuppressVisibility();
-    this.layer.addChild(sprite as unknown as ContainerChild);
+    const layer = this.resolveLayer();
+    layer.addChild(sprite as unknown as ContainerChild);
+    this.spriteLayer = layer;
     this.sprite = sprite;
     this.spawnRequested = false;
+    this.ensureShadowRendersBeforeLinkedSprite();
   }
 
   private despawn(): void {
     if (!this.sprite) {
       return;
     }
-    this.layer.removeChild(this.sprite as unknown as ContainerChild);
+    this.spriteLayer?.removeChild(this.sprite as unknown as ContainerChild);
     this.sprite.destroy?.();
     this.sprite = null;
+    this.spriteLayer = null;
+  }
+
+  private ensureLayer(): void {
+    if (!this.sprite) {
+      return;
+    }
+    const nextLayer = this.resolveLayer();
+    if (this.spriteLayer !== nextLayer) {
+      this.spriteLayer?.removeChild(this.sprite as unknown as ContainerChild);
+      nextLayer.addChild(this.sprite as unknown as ContainerChild);
+      this.spriteLayer = nextLayer;
+    }
+    this.ensureShadowRendersBeforeLinkedSprite();
+  }
+
+  private ensureShadowRendersBeforeLinkedSprite(): void {
+    if (!this.sprite || !this.resolveLinkedSprite || !this.spriteLayer) {
+      return;
+    }
+
+    const linkedSprite = this.resolveLinkedSprite();
+    if (!linkedSprite || !this.spriteLayer.getChildIndex || !this.spriteLayer.setChildIndex) {
+      return;
+    }
+
+    try {
+      const shadowIndex = this.spriteLayer.getChildIndex(this.sprite as unknown as ContainerChild);
+      const linkedIndex = this.spriteLayer.getChildIndex(linkedSprite);
+      if (shadowIndex > linkedIndex) {
+        this.spriteLayer.setChildIndex(this.sprite as unknown as ContainerChild, linkedIndex);
+      }
+    } catch {
+      // If the linked sprite is not in the shadow layer, ordering isn't applicable.
+    }
   }
 
   private shouldSuppressVisibility(): boolean {

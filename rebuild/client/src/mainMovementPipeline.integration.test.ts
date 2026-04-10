@@ -404,7 +404,7 @@ describe("main movement pipeline integration", () => {
   it("spawns hop shadow when entering hop transition families and despawns at hop arc completion", () => {
     const movementRuntime = new PlayerMovementActionRuntime();
     const fakeLayer = new FakeShadowLayer();
-    const shadowRenderer = new HopShadowRenderer(fakeLayer, 16, () => ({
+    const shadowRenderer = new HopShadowRenderer(() => fakeLayer, 16, () => ({
       x: 0,
       y: 0,
       visible: true,

@@ -389,15 +389,19 @@ appRoot.appendChild(app.canvas);
 const gameContainer = new Container();
 const worldContainer = new Container();
 const mapBg3Layer = new Container();
+const shadowBelowBg2Layer = new Container();
 const actorBelowBg2Layer = new Container();
 const mapBg2Layer = new Container();
+const shadowBetweenBg2Bg1Layer = new Container();
 const actorBetweenBg2Bg1Layer = new Container();
 const bikeEffectsLayer = new Container();
 const mapBg1Layer = new Container();
 const debugOverlayLayer = new Container();
 worldContainer.addChild(mapBg3Layer);
+worldContainer.addChild(shadowBelowBg2Layer);
 worldContainer.addChild(actorBelowBg2Layer);
 worldContainer.addChild(mapBg2Layer);
+worldContainer.addChild(shadowBetweenBg2Bg1Layer);
 worldContainer.addChild(actorBetweenBg2Bg1Layer);
 worldContainer.addChild(bikeEffectsLayer);
 worldContainer.addChild(mapBg1Layer);
@@ -442,9 +446,13 @@ let activeMapTileRenderPriorityContexts: (MapTileRenderPriorityContext | undefin
 let playerObjectRenderPriorityState: PlayerObjectRenderPriorityState = 'normal';
 const bikeEffectRenderer = new BikeEffectRenderer(bikeEffectsLayer, TILE_SIZE);
 const hopShadowRenderer = new HopShadowRenderer(
-  bikeEffectsLayer,
+  () => {
+    const sampleTile = resolveCurrentPlayerLayerSampleTile();
+    return resolveShadowLayerForPlayer(sampleTile.x, sampleTile.y);
+  },
   TILE_SIZE,
   createHopShadowSprite,
+  () => playerSprite,
 );
 hopShadowRenderer.setShadowSizeTemplateId(ROM_SHADOW_TEMPLATE_ID_MEDIUM);
 const VISUAL_RUNTIME_TICK_MS = 1000 / 60;
@@ -844,6 +852,8 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
   mapBg1Layer.removeChildren();
   debugOverlayLayer.removeChildren();
   actorBelowBg2Layer.removeChildren();
+  shadowBelowBg2Layer.removeChildren();
+  shadowBetweenBg2Bg1Layer.removeChildren();
   actorBetweenBg2Bg1Layer.removeChildren();
   bikeEffectsLayer.removeChildren();
   bikeEffectRenderer.clear();
@@ -2166,11 +2176,7 @@ function parseJascPaletteToHexColors(raw: string): string[] {
 }
 
 function updatePlayerActorLayer(): void {
-  const sampleTile = resolvePlayerLayerSampleTile({
-    playerTileX: state.playerTileX,
-    playerTileY: state.playerTileY,
-    activeWalkTransition,
-  });
+  const sampleTile = resolveCurrentPlayerLayerSampleTile();
   const tileX = sampleTile.x;
   const tileY = sampleTile.y;
   const resolvedLayer = resolveActorLayerForPlayer(tileX, tileY);
@@ -2181,6 +2187,14 @@ function updatePlayerActorLayer(): void {
   playerActiveActorLayer.removeChild(playerSprite);
   resolvedLayer.addChild(playerSprite);
   playerActiveActorLayer = resolvedLayer;
+}
+
+function resolveCurrentPlayerLayerSampleTile(): { x: number; y: number } {
+  return resolvePlayerLayerSampleTile({
+    playerTileX: state.playerTileX,
+    playerTileY: state.playerTileY,
+    activeWalkTransition,
+  });
 }
 
 function resolveActorLayerForPlayer(tileX: number, tileY: number): Container {
@@ -2196,6 +2210,14 @@ function resolveActorLayerForPlayer(tileX: number, tileY: number): Container {
     return actorBelowBg2Layer;
   }
   return actorBetweenBg2Bg1Layer;
+}
+
+function resolveShadowLayerForPlayer(tileX: number, tileY: number): Container {
+  const actorLayer = resolveActorLayerForPlayer(tileX, tileY);
+  if (actorLayer === actorBelowBg2Layer) {
+    return shadowBelowBg2Layer;
+  }
+  return shadowBetweenBg2Bg1Layer;
 }
 
 function presentPlayerAnimationFrame(): void {
