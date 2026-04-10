@@ -50,6 +50,22 @@ class FieldEffectAssetsTest(unittest.TestCase):
             output_paths = [Path(entry["output_path"]) for entry in index["files"]]
             self.assertTrue(any(path.suffix.lower() == ".png" for path in output_paths))
             self.assertTrue(any(path.suffix.lower() in {".gbapal", ".pal"} for path in output_paths))
+            pic_names = {path.name for path in output_paths if "pics" in path.parts}
+            self.assertIn("ground_impact_dust.png", pic_names)
+            self.assertIn("jump_tall_grass.png", pic_names)
+            self.assertIn("jump_long_grass.png", pic_names)
+            self.assertIn("jump_small_splash.png", pic_names)
+            self.assertIn("jump_big_splash.png", pic_names)
+
+    def test_extract_command_supports_external_output_dir(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            out = Path(td)
+            exit_code = cli.command_extract(out, clean=False)
+            self.assertEqual(exit_code, 0)
+            manifest = out / "field_effects" / "acro_bike_effects_manifest.json"
+            runtime_index = out / "field_effects" / "acro_bike" / "runtime_asset_index.json"
+            self.assertTrue(manifest.exists())
+            self.assertTrue(runtime_index.exists())
 
 
 if __name__ == "__main__":

@@ -16,6 +16,13 @@ def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def format_path_for_log(path: Path) -> str:
+    try:
+        return str(path.relative_to(ROOT))
+    except ValueError:
+        return str(path)
+
+
 def resolve_existing_source_path(source_path: str) -> Path:
     requested = ROOT / source_path
     if requested.exists():
@@ -493,8 +500,8 @@ def command_extract(output_dir: Path, clean: bool) -> int:
     path = write_manifest(output_dir, payload)
     runtime_index_path = write_runtime_assets(output_dir, payload)
     runtime_index = json.loads(runtime_index_path.read_text(encoding="utf-8"))
-    print(f"Wrote acro bike field effects manifest: {path.relative_to(ROOT)}")
-    print(f"Wrote runtime field-effect assets index: {runtime_index_path.relative_to(ROOT)}")
+    print(f"Wrote acro bike field effects manifest: {format_path_for_log(path)}")
+    print(f"Wrote runtime field-effect assets index: {format_path_for_log(runtime_index_path)}")
     for missing in runtime_index.get("unresolved_sources", []):
         print(
             "Unresolved field-effect source (missing art/palette): "
