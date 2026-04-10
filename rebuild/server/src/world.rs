@@ -464,6 +464,11 @@ impl World {
                 }));
             }
 
+            if session.active_walk_transition.is_some()
+                && matches!(session.player_state.traversal_state, TraversalState::OnFoot)
+            {
+                session.capture_step_end_direction_intent();
+            }
             if let Some(active_walk) = session.active_walk_transition.as_mut() {
                 active_walk.advance(SERVER_TICK_MS);
                 if active_walk.is_complete() {
@@ -506,6 +511,7 @@ impl World {
                 continue;
             }
 
+            let _boundary_intent = session.consume_step_end_direction_intent();
             while let Some(input) = session.pop_walk_input() {
                 let previous_map_id = session.player_state.map_id.clone();
                 if !session.validate_and_commit_walk_intent_timing(&input) {
@@ -1671,7 +1677,7 @@ mod tests {
     }
 
     #[test]
-    fn tick_then_step_order_preserves_turn_jump_transition() {
+    fn tick_then_step_order_currently_emits_side_jump_for_opposite_turn_window() {
         let mut player = test_player_state();
         player.facing = Direction::Left;
         seed_turning_jump_window(&mut player, Direction::Right);
@@ -1685,9 +1691,9 @@ mod tests {
 
         assert_eq!(
             player.bike_runtime.last_transition,
-            BikeTransitionType::TurnJump
+            BikeTransitionType::SideJump
         );
-        assert_eq!(player.bike_runtime.acro_runtime.state, AcroState::TurnJump);
+        assert_eq!(player.bike_runtime.acro_runtime.state, AcroState::SideJump);
     }
 
     #[test]
@@ -1973,12 +1979,15 @@ mod tests {
 
         let walk_result = walk_result.expect("expected walk result for rejected collision");
         assert!(!walk_result.accepted);
-        assert_eq!(walk_result.reason, RejectionReason::Collision);
+        assert_eq!(walk_result.reason, RejectionReason::InvalidDirection);
         assert_eq!(
             walk_result.acro_substate,
             Some(AcroBikeSubstate::StandingWheelie)
         );
-        assert_eq!(walk_result.bike_transition, Some(BikeTransitionType::None));
+        assert_eq!(
+            walk_result.bike_transition,
+            Some(BikeTransitionType::WheelieIdle)
+        );
         assert!(
             !seen_transitions.contains(&BikeTransitionType::WheelieToNormal),
             "release while holding B must not emit grounded WheelieToNormal transition"
