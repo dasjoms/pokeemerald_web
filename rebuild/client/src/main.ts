@@ -60,7 +60,7 @@ import {
 } from './hopShadowRenderer';
 import { HopParticleRenderer } from './hopParticleRenderer';
 import { computeObjectDepth } from './objectDepth';
-import { resolveHopTypeContext, shouldRenderHopParticleAbovePlayer } from './hopParticleDepth';
+import { resolveHopTypeContext } from './hopParticleDepth';
 import {
   createWalkInputController,
   encodeHeldInputState,
@@ -2463,10 +2463,10 @@ function updateObjectDepthSorting(): void {
           useFieldEffectPriority: sample.useFieldEffectPriority,
         }) + frameAdjustment,
     });
-    sample.sprite.zIndex = shouldRenderHopParticleAbovePlayer({
-      facing: sample.facing,
-      useFieldEffectPriority: sample.useFieldEffectPriority,
-    })
+    const shouldForceAbovePlayer =
+      sample.useFieldEffectPriority &&
+      (sample.facing === Direction.LEFT || sample.facing === Direction.RIGHT);
+    sample.sprite.zIndex = shouldForceAbovePlayer
       ? Math.max(particleDepth, playerDepth + 1)
       : particleDepth;
   }
