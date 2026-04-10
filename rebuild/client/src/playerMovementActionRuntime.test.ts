@@ -23,17 +23,46 @@ describe('PlayerMovementActionRuntime', () => {
     expect(samples).toEqual([0, -2, -3, -4, -5, -6, -6, -6, -5, -5, -4, -3, -2, 0, 0, 0]);
   });
 
-  it('does not autonomously advance hop phase between authoritative updates', () => {
+  it('autonomously advances hop phase each render tick between authoritative updates', () => {
     const runtime = new PlayerMovementActionRuntime();
     runtime.setAuthoritativeInput({
       traversalState: TraversalState.ACRO_BIKE,
       bikeTransition: BikeTransitionType.HOP_STANDING,
       bunnyHopCycleTick: 5,
     });
-    const first = runtime.getVisualState();
 
-    runtime.tickTicks(16);
-    expect(runtime.getVisualState()).toEqual(first);
+    runtime.tickTicks(1);
+    expect(runtime.getVisualState()).toEqual({
+      yOffsetPx: -6,
+      activeAction: 'acro_wheelie_hop_face',
+    });
+
+    runtime.tickTicks(10);
+    expect(runtime.getVisualState()).toEqual({
+      yOffsetPx: 0,
+      activeAction: 'none',
+    });
+  });
+
+  it('uses bunny hop cycle tick as periodic phase correction', () => {
+    const runtime = new PlayerMovementActionRuntime();
+    runtime.setAuthoritativeInput({
+      traversalState: TraversalState.ACRO_BIKE,
+      bikeTransition: BikeTransitionType.HOP_STANDING,
+      bunnyHopCycleTick: 5,
+    });
+    runtime.tickTicks(3);
+    expect(runtime.getVisualState().yOffsetPx).toBe(-5);
+
+    runtime.setAuthoritativeInput({
+      traversalState: TraversalState.ACRO_BIKE,
+      bikeTransition: BikeTransitionType.HOP_STANDING,
+      bunnyHopCycleTick: 2,
+    });
+    expect(runtime.getVisualState()).toEqual({
+      yOffsetPx: -3,
+      activeAction: 'acro_wheelie_hop_face',
+    });
   });
 
   it('clears y offset when leaving stationary hop transitions', () => {

@@ -32,6 +32,13 @@ const ACRO_JUMP_Y_LOW: readonly number[] = [
 const ACRO_STATIONARY_HOP_TICKS = ACRO_JUMP_Y_LOW.length;
 const ACRO_HOP_LANDING_TICK = 13;
 
+function normalizeHopTick(tick: number): number {
+  return (
+    ((tick % ACRO_STATIONARY_HOP_TICKS) + ACRO_STATIONARY_HOP_TICKS) %
+    ACRO_STATIONARY_HOP_TICKS
+  );
+}
+
 export function isAcroHopCapableState(input: {
   traversalState: TraversalState;
   acroSubstate?: AcroBikeSubstate;
@@ -51,12 +58,7 @@ export function isAcroHopLandingFrame(bunnyHopCycleTick: number | undefined): bo
   if (bunnyHopCycleTick === undefined) {
     return false;
   }
-  return (
-    ((bunnyHopCycleTick % ACRO_STATIONARY_HOP_TICKS) +
-      ACRO_STATIONARY_HOP_TICKS) %
-      ACRO_STATIONARY_HOP_TICKS ===
-    ACRO_HOP_LANDING_TICK
-  );
+  return normalizeHopTick(bunnyHopCycleTick) === ACRO_HOP_LANDING_TICK;
 }
 
 export class PlayerMovementActionRuntime {
@@ -93,7 +95,22 @@ export class PlayerMovementActionRuntime {
   }
 
   tickTicks(ticks: number): void {
-    const _ignored = ticks;
+    if (!this.shouldRunAcroHop()) {
+      this.resetActionState();
+      return;
+    }
+    if (!this.hopCycleActive) {
+      this.hopCycleActive = true;
+    }
+
+    const wholeTicks = Math.max(0, Math.floor(ticks));
+    if (wholeTicks === 0) {
+      return;
+    }
+
+    this.jumpTimer = normalizeHopTick(this.jumpTimer + wholeTicks);
+    this.yOffsetPx = ACRO_JUMP_Y_LOW[this.jumpTimer] ?? 0;
+    this.activeAction = this.jumpTimer === 0 ? 'none' : 'acro_wheelie_hop_face';
   }
 
   getVisualState(): PlayerMovementActionVisualState {
@@ -116,7 +133,7 @@ export class PlayerMovementActionRuntime {
     const authoritativeTick =
       this.authoritativeInput.bunnyHopCycleTick === undefined
         ? this.jumpTimer
-        : this.authoritativeInput.bunnyHopCycleTick % ACRO_STATIONARY_HOP_TICKS;
+        : normalizeHopTick(this.authoritativeInput.bunnyHopCycleTick);
     this.jumpTimer = authoritativeTick;
     this.yOffsetPx = ACRO_JUMP_Y_LOW[this.jumpTimer] ?? 0;
     this.activeAction = this.jumpTimer === 0 ? 'none' : 'acro_wheelie_hop_face';
