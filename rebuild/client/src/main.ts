@@ -344,6 +344,58 @@ let socket: WebSocket | null = null;
 let debugOverlayEnabled = ENABLE_DEBUG_OVERLAY_DEFAULT;
 const indexedAtlasPageCache = new Map<string, IndexedAtlasPages>();
 const metatileTextureCaches = new Map<string, MetatileTextureCache>();
+
+
+const MB_TALL_GRASS = 0x02;
+const MB_LONG_GRASS = 0x03;
+const MB_POND_WATER = 0x10;
+const MB_INTERIOR_DEEP_WATER = 0x11;
+const MB_DEEP_WATER = 0x12;
+const MB_WATERFALL = 0x13;
+const MB_SOOTOPOLIS_DEEP_WATER = 0x14;
+const MB_OCEAN_WATER = 0x15;
+const MB_NO_SURFACING = 0x19;
+const MB_SEAWEED = 0x22;
+const MB_SEAWEED_NO_SURFACING = 0x2a;
+const MB_UNUSED_SOOTOPOLIS_DEEP_WATER_2 = 0x1a;
+const MB_PUDDLE = 0x16;
+const MB_ICE = 0x20;
+const MB_REFLECTION_UNDER_BRIDGE = 0x2b;
+const MB_EASTWARD_CURRENT = 0x50;
+const MB_WESTWARD_CURRENT = 0x51;
+const MB_NORTHWARD_CURRENT = 0x52;
+const MB_SOUTHWARD_CURRENT = 0x53;
+const MB_WATER_DOOR = 0x6d;
+const MB_WATER_SOUTH_ARROW_WARP = 0x6e;
+const MB_UNUSED_6F = 0x6f;
+
+const SURFABLE_WATER_BEHAVIOR_IDS = new Set<number>([
+  MB_POND_WATER,
+  MB_INTERIOR_DEEP_WATER,
+  MB_DEEP_WATER,
+  MB_WATERFALL,
+  MB_SOOTOPOLIS_DEEP_WATER,
+  MB_OCEAN_WATER,
+  MB_NO_SURFACING,
+  MB_SEAWEED,
+  MB_SEAWEED_NO_SURFACING,
+  MB_EASTWARD_CURRENT,
+  MB_WESTWARD_CURRENT,
+  MB_NORTHWARD_CURRENT,
+  MB_SOUTHWARD_CURRENT,
+  MB_WATER_DOOR,
+  MB_WATER_SOUTH_ARROW_WARP,
+  MB_UNUSED_6F,
+]);
+
+const REFLECTIVE_BEHAVIOR_IDS = new Set<number>([
+  MB_POND_WATER,
+  MB_PUDDLE,
+  MB_UNUSED_SOOTOPOLIS_DEEP_WATER_2,
+  MB_ICE,
+  MB_SOOTOPOLIS_DEEP_WATER,
+  MB_REFLECTION_UNDER_BRIDGE,
+]);
 const tilesetAnimationStates = new Map<string, TilesetAnimationState>();
 let mapIdToLayoutJsonPathPromise: Promise<Map<number, string>> | null = null;
 let latestHeldDirection: Direction | null = null;
@@ -2258,11 +2310,43 @@ function resolveAuthoritativeWalkTransitionStartTile(input: {
   };
 }
 
+
+function resolveMapBehaviorIdAtTile(tileX: number, tileY: number): number | undefined {
+  if (tileX < 0 || tileY < 0 || tileX >= state.mapWidth || tileY >= state.mapHeight) {
+    return undefined;
+  }
+  const tileContext = activeMapTileRenderPriorityContexts[tileY * state.mapWidth + tileX];
+  return tileContext?.behaviorId;
+}
+
+function updateHopShadowSuppressionContext(): void {
+  const currentBehaviorId = resolveMapBehaviorIdAtTile(state.playerTileX, state.playerTileY);
+  const previousBehaviorId =
+    activeWalkTransition === null
+      ? currentBehaviorId
+      : resolveMapBehaviorIdAtTile(activeWalkTransition.startX, activeWalkTransition.startY);
+
+  const isTallGrass = currentBehaviorId === MB_TALL_GRASS || currentBehaviorId === MB_LONG_GRASS;
+  const isWaterSurface =
+    (currentBehaviorId !== undefined && SURFABLE_WATER_BEHAVIOR_IDS.has(currentBehaviorId)) ||
+    (previousBehaviorId !== undefined && SURFABLE_WATER_BEHAVIOR_IDS.has(previousBehaviorId));
+  const isReflectiveSurface =
+    (currentBehaviorId !== undefined && REFLECTIVE_BEHAVIOR_IDS.has(currentBehaviorId)) ||
+    (previousBehaviorId !== undefined && REFLECTIVE_BEHAVIOR_IDS.has(previousBehaviorId));
+
+  hopShadowRenderer.setSuppressionContext({
+    isTallGrass,
+    isWaterSurface,
+    isReflectiveSurface,
+  });
+}
+
 function positionPlayerSprite(): void {
   updatePlayerActorLayer();
   const movementActionVisual = playerMovementActionRuntime.getVisualState();
   playerSprite.x = state.renderTileX * TILE_SIZE + TILE_SIZE / 2;
   playerSprite.y = state.renderTileY * TILE_SIZE + TILE_SIZE + movementActionVisual.yOffsetPx;
+  updateHopShadowSuppressionContext();
   hopShadowRenderer.presentFrame({
     tileX: state.renderTileX,
     tileY: state.renderTileY,
