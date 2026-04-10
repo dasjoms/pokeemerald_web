@@ -214,6 +214,313 @@
           }
         ]
       }
+    },
+    "jump_tall_grass": {
+      "field_effect_id": "FLDEFF_JUMP_TALL_GRASS",
+      "helper_function": "FldEff_JumpTallGrass",
+      "helper_update_callback": "UpdateJumpImpactEffect",
+      "template": {
+        "template_symbol": "gFieldEffectObjectTemplate_JumpTallGrass",
+        "palette_tag": "FLDEFF_PAL_TAG_GENERAL_1",
+        "oam_symbol": "gObjectEventBaseOam_16x8",
+        "callback": "UpdateJumpImpactEffect",
+        "pic_table_symbol": "sPicTable_JumpTallGrass",
+        "anim_table_symbol": "sAnimTable_JumpTallGrass",
+        "pic_table_entries": [
+          {
+            "source_symbol": "gFieldEffectObjectPic_JumpTallGrass",
+            "layout": "overworld_frame",
+            "tile_width": 2,
+            "tile_height": 1,
+            "frame_index": 0
+          },
+          {
+            "source_symbol": "gFieldEffectObjectPic_JumpTallGrass",
+            "layout": "overworld_frame",
+            "tile_width": 2,
+            "tile_height": 1,
+            "frame_index": 1
+          },
+          {
+            "source_symbol": "gFieldEffectObjectPic_JumpTallGrass",
+            "layout": "overworld_frame",
+            "tile_width": 2,
+            "tile_height": 1,
+            "frame_index": 2
+          },
+          {
+            "source_symbol": "gFieldEffectObjectPic_JumpTallGrass",
+            "layout": "overworld_frame",
+            "tile_width": 2,
+            "tile_height": 1,
+            "frame_index": 3
+          }
+        ],
+        "anim_table": {
+          "anim_cmd_symbols": [
+            "sAnim_JumpTallGrass"
+          ],
+          "sequences": {
+            "sAnim_JumpTallGrass": [
+              {
+                "frame": 0,
+                "duration": 8
+              },
+              {
+                "frame": 1,
+                "duration": 8
+              },
+              {
+                "frame": 2,
+                "duration": 8
+              },
+              {
+                "frame": 3,
+                "duration": 8
+              }
+            ]
+          }
+        },
+        "sources": [
+          {
+            "symbol": "gFieldEffectObjectPic_JumpTallGrass",
+            "source_path": "graphics/field_effects/pics/jump_tall_grass.4bpp"
+          }
+        ]
+      }
+    },
+    "jump_long_grass": {
+      "field_effect_id": "FLDEFF_JUMP_LONG_GRASS",
+      "helper_function": "FldEff_JumpLongGrass",
+      "helper_update_callback": "UpdateJumpImpactEffect",
+      "template": {
+        "template_symbol": "gFieldEffectObjectTemplate_JumpLongGrass",
+        "palette_tag": "FLDEFF_PAL_TAG_GENERAL_1",
+        "oam_symbol": "gObjectEventBaseOam_16x16",
+        "callback": "UpdateJumpImpactEffect",
+        "pic_table_symbol": "sPicTable_JumpLongGrass",
+        "anim_table_symbol": "sAnimTable_JumpLongGrass",
+        "pic_table_entries": [
+          {
+            "source_symbol": "gFieldEffectObjectPic_JumpLongGrass",
+            "layout": "overworld_frame",
+            "tile_width": 2,
+            "tile_height": 2,
+            "frame_index": 0
+          },
+          {
+            "source_symbol": "gFieldEffectObjectPic_JumpLongGrass",
+            "layout": "overworld_frame",
+            "tile_width": 2,
+            "tile_height": 2,
+            "frame_index": 1
+          },
+          {
+            "source_symbol": "gFieldEffectObjectPic_JumpLongGrass",
+            "layout": "overworld_frame",
+            "tile_width": 2,
+            "tile_height": 2,
+            "frame_index": 2
+          },
+          {
+            "source_symbol": "gFieldEffectObjectPic_JumpLongGrass",
+            "layout": "overworld_frame",
+            "tile_width": 2,
+            "tile_height": 2,
+            "frame_index": 3
+          },
+          {
+            "source_symbol": "gFieldEffectObjectPic_JumpLongGrass",
+            "layout": "overworld_frame",
+            "tile_width": 2,
+            "tile_height": 2,
+            "frame_index": 4
+          },
+          {
+            "source_symbol": "gFieldEffectObjectPic_JumpLongGrass",
+            "layout": "overworld_frame",
+            "tile_width": 2,
+            "tile_height": 2,
+            "frame_index": 6
+          }
+        ],
+        "anim_table": {
+          "anim_cmd_symbols": [
+            "sAnim_JumpLongGrass"
+          ],
+          "sequences": {
+            "sAnim_JumpLongGrass": [
+              {
+                "frame": 0,
+                "duration": 4
+              },
+              {
+                "frame": 1,
+                "duration": 4
+              },
+              {
+                "frame": 2,
+                "duration": 8
+              },
+              {
+                "frame": 3,
+                "duration": 8
+              },
+              {
+                "frame": 4,
+                "duration": 8
+              },
+              {
+                "frame": 5,
+                "duration": 8
+              }
+            ]
+          }
+        },
+        "sources": [
+          {
+            "symbol": "gFieldEffectObjectPic_JumpLongGrass",
+            "source_path": "graphics/field_effects/pics/jump_long_grass.4bpp"
+          }
+        ]
+      }
+    },
+    "jump_small_splash": {
+      "field_effect_id": "FLDEFF_JUMP_SMALL_SPLASH",
+      "helper_function": "FldEff_JumpSmallSplash",
+      "helper_update_callback": "UpdateJumpImpactEffect",
+      "template": {
+        "template_symbol": "gFieldEffectObjectTemplate_JumpSmallSplash",
+        "palette_tag": "FLDEFF_PAL_TAG_GENERAL_0",
+        "oam_symbol": "gObjectEventBaseOam_16x8",
+        "callback": "UpdateJumpImpactEffect",
+        "pic_table_symbol": "sPicTable_JumpSmallSplash",
+        "anim_table_symbol": "sAnimTable_JumpSmallSplash",
+        "pic_table_entries": [
+          {
+            "source_symbol": "gFieldEffectObjectPic_JumpSmallSplash",
+            "layout": "overworld_frame",
+            "tile_width": 2,
+            "tile_height": 1,
+            "frame_index": 0
+          },
+          {
+            "source_symbol": "gFieldEffectObjectPic_JumpSmallSplash",
+            "layout": "overworld_frame",
+            "tile_width": 2,
+            "tile_height": 1,
+            "frame_index": 1
+          },
+          {
+            "source_symbol": "gFieldEffectObjectPic_JumpSmallSplash",
+            "layout": "overworld_frame",
+            "tile_width": 2,
+            "tile_height": 1,
+            "frame_index": 2
+          }
+        ],
+        "anim_table": {
+          "anim_cmd_symbols": [
+            "sAnim_JumpSmallSplash"
+          ],
+          "sequences": {
+            "sAnim_JumpSmallSplash": [
+              {
+                "frame": 0,
+                "duration": 4
+              },
+              {
+                "frame": 1,
+                "duration": 4
+              },
+              {
+                "frame": 2,
+                "duration": 4
+              }
+            ]
+          }
+        },
+        "sources": [
+          {
+            "symbol": "gFieldEffectObjectPic_JumpSmallSplash",
+            "source_path": "graphics/field_effects/pics/jump_small_splash.4bpp"
+          }
+        ]
+      }
+    },
+    "jump_big_splash": {
+      "field_effect_id": "FLDEFF_JUMP_BIG_SPLASH",
+      "helper_function": "FldEff_JumpBigSplash",
+      "helper_update_callback": "UpdateJumpImpactEffect",
+      "template": {
+        "template_symbol": "gFieldEffectObjectTemplate_JumpBigSplash",
+        "palette_tag": "FLDEFF_PAL_TAG_GENERAL_0",
+        "oam_symbol": "gObjectEventBaseOam_16x16",
+        "callback": "UpdateJumpImpactEffect",
+        "pic_table_symbol": "sPicTable_JumpBigSplash",
+        "anim_table_symbol": "sAnimTable_JumpBigSplash",
+        "pic_table_entries": [
+          {
+            "source_symbol": "gFieldEffectObjectPic_JumpBigSplash",
+            "layout": "overworld_frame",
+            "tile_width": 2,
+            "tile_height": 2,
+            "frame_index": 0
+          },
+          {
+            "source_symbol": "gFieldEffectObjectPic_JumpBigSplash",
+            "layout": "overworld_frame",
+            "tile_width": 2,
+            "tile_height": 2,
+            "frame_index": 1
+          },
+          {
+            "source_symbol": "gFieldEffectObjectPic_JumpBigSplash",
+            "layout": "overworld_frame",
+            "tile_width": 2,
+            "tile_height": 2,
+            "frame_index": 2
+          },
+          {
+            "source_symbol": "gFieldEffectObjectPic_JumpBigSplash",
+            "layout": "overworld_frame",
+            "tile_width": 2,
+            "tile_height": 2,
+            "frame_index": 3
+          }
+        ],
+        "anim_table": {
+          "anim_cmd_symbols": [
+            "sAnim_JumpBigSplash"
+          ],
+          "sequences": {
+            "sAnim_JumpBigSplash": [
+              {
+                "frame": 0,
+                "duration": 8
+              },
+              {
+                "frame": 1,
+                "duration": 8
+              },
+              {
+                "frame": 2,
+                "duration": 8
+              },
+              {
+                "frame": 3,
+                "duration": 8
+              }
+            ]
+          }
+        },
+        "sources": [
+          {
+            "symbol": "gFieldEffectObjectPic_JumpBigSplash",
+            "source_path": "graphics/field_effects/pics/jump_big_splash.4bpp"
+          }
+        ]
+      }
     }
   },
   "palettes": [
