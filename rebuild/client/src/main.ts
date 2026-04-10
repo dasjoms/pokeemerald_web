@@ -60,7 +60,11 @@ import {
 } from './hopShadowRenderer';
 import { HopParticleRenderer } from './hopParticleRenderer';
 import { computeObjectDepth } from './objectDepth';
-import { resolveHopTypeContext } from './hopParticleDepth';
+import {
+  resolveHopParticleBaseSubpriority,
+  resolveHopTypeContext,
+  shouldRenderHopParticleAbovePlayer,
+} from './hopParticleDepth';
 import {
   createWalkInputController,
   encodeHeldInputState,
@@ -2457,15 +2461,16 @@ function updateObjectDepthSorting(): void {
       halfHeightPx: sample.halfHeightPx,
       elevation: sample.elevation,
       baseSubpriority:
-        resolveRomHopParticleBaseSubpriority({
+        resolveHopParticleBaseSubpriority({
           facing: sample.facing,
           particleClass: sample.particleClass,
           useFieldEffectPriority: sample.useFieldEffectPriority,
         }) + frameAdjustment,
     });
-    const shouldForceAbovePlayer =
-      sample.useFieldEffectPriority &&
-      (sample.facing === Direction.LEFT || sample.facing === Direction.RIGHT);
+    const shouldForceAbovePlayer = shouldRenderHopParticleAbovePlayer({
+      facing: sample.facing,
+      useFieldEffectPriority: sample.useFieldEffectPriority,
+    });
     sample.sprite.zIndex = shouldForceAbovePlayer
       ? Math.max(particleDepth, playerDepth + 1)
       : particleDepth;
@@ -2486,28 +2491,6 @@ function resolveHopEffectPriorityMode(input: {
   const hasTransitionHopHint = resolveHopTypeContext(input.bikeTransition) !== 'unknown';
   const isAuthoritativeBunnyHop = input.acroSubstate === AcroBikeSubstate.BUNNY_HOP;
   return hasTransitionHopHint || isAuthoritativeBunnyHop;
-}
-
-function resolveRomHopParticleBaseSubpriority(input: {
-  facing: Direction;
-  particleClass: HopLandingParticleClass;
-  useFieldEffectPriority: boolean;
-}): number {
-  if (!input.useFieldEffectPriority) {
-    return 0;
-  }
-  const lateralSubpriority =
-    input.particleClass === HopLandingParticleClass.LONG_GRASS_JUMP ||
-    input.particleClass === HopLandingParticleClass.DEEP_WATER_SPLASH
-      ? 1
-      : 2;
-  if (input.facing === Direction.LEFT || input.facing === Direction.RIGHT) {
-    return lateralSubpriority;
-  }
-  if (input.facing === Direction.DOWN) {
-    return 0;
-  }
-  return 0;
 }
 
 function resolveHopParticleFrameSubpriorityAdjustment(_sample: {

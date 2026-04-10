@@ -71,6 +71,25 @@ describe('resolveHopParticleBaseSubpriority', () => {
     ).toBe(0);
   });
 
+  it('uses field-effect priority path for runtime render samples', () => {
+    expect(
+      resolveHopParticleBaseSubpriority({
+        facing: Direction.LEFT,
+        hopType: 'unknown',
+        particleClass,
+        useFieldEffectPriority: true,
+      }),
+    ).toBe(2);
+    expect(
+      resolveHopParticleBaseSubpriority({
+        facing: Direction.LEFT,
+        hopType: 'unknown',
+        particleClass,
+        useFieldEffectPriority: false,
+      }),
+    ).toBe(0);
+  });
+
   it('yields higher object depth than player base for right-facing directional hop effects', () => {
     const sharedInput = {
       screenY: 48,
