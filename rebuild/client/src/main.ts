@@ -361,9 +361,17 @@ const hud = {
 };
 
 const app = new Application();
+const HOP_SHADOW_ASSET_PATHS: Readonly<Record<HopShadowSizeVariant, string>> = {
+  small: 'field_effects/acro_bike/pics/shadow_small.png',
+  medium: 'field_effects/acro_bike/pics/shadow_medium.png',
+  large: 'field_effects/acro_bike/pics/shadow_large.png',
+  extra_large: 'field_effects/acro_bike/pics/shadow_extra_large.png',
+};
+const hopShadowTextures = new Map<HopShadowSizeVariant, Texture>();
 TextureStyle.defaultOptions.scaleMode = 'nearest';
 TextureSource.defaultOptions.scaleMode = 'nearest';
 await preloadPlayerAvatarSheets();
+await preloadHopShadowTextures();
 await app.init({
   background: '#0f172a',
   antialias: false,
@@ -2056,21 +2064,26 @@ function positionPlayerSprite(): void {
   });
 }
 
-const HOP_SHADOW_ASSET_PATHS: Readonly<Record<HopShadowSizeVariant, string>> = {
-  small: 'field_effects/acro_bike/pics/shadow_small.png',
-  medium: 'field_effects/acro_bike/pics/shadow_medium.png',
-  large: 'field_effects/acro_bike/pics/shadow_large.png',
-  extra_large: 'field_effects/acro_bike/pics/shadow_extra_large.png',
-};
-
 function createHopShadowSprite(variant: HopShadowSizeVariant): Sprite {
-  const textureUrl = imageAssetUrls[`../../assets/${HOP_SHADOW_ASSET_PATHS[variant]}`];
-  if (!textureUrl) {
-    throw new Error(`missing hop shadow asset for variant=${variant}`);
+  const texture = hopShadowTextures.get(variant);
+  if (!texture) {
+    throw new Error(`hop shadow texture not preloaded for variant=${variant}`);
   }
-  const sprite = new Sprite(Texture.from(textureUrl));
+  const sprite = new Sprite(texture);
   sprite.anchor.set(0.5, 1);
   return sprite;
+}
+
+async function preloadHopShadowTextures(): Promise<void> {
+  for (const [variant, repoRelativePath] of Object.entries(HOP_SHADOW_ASSET_PATHS) as [
+    HopShadowSizeVariant,
+    string,
+  ][]) {
+    const textureUrl = await resolveImageUrlFromAssets(repoRelativePath);
+    const loaded = await Assets.load(textureUrl);
+    const texture = loaded instanceof Texture ? loaded : Texture.from(textureUrl);
+    hopShadowTextures.set(variant, texture);
+  }
 }
 
 function updatePlayerActorLayer(): void {
