@@ -1,7 +1,12 @@
-import { BikeTransitionType, TraversalState } from './protocol_generated';
+import {
+  AcroBikeSubstate,
+  BikeTransitionType,
+  TraversalState,
+} from './protocol_generated';
 
 export type PlayerMovementActionVisualInput = {
   traversalState: TraversalState;
+  acroSubstate?: AcroBikeSubstate;
   bikeTransition?: BikeTransitionType;
 };
 
@@ -13,6 +18,7 @@ export type PlayerMovementActionVisualState = {
 const ACRO_STATIONARY_HOP_TRANSITIONS = new Set<BikeTransitionType>([
   BikeTransitionType.HOP,
   BikeTransitionType.HOP_STANDING,
+  BikeTransitionType.WHEELIE_HOPPING_MOVING,
   BikeTransitionType.WHEELIE_HOPPING_STANDING,
 ]);
 
@@ -27,6 +33,7 @@ const ACRO_STATIONARY_HOP_TICKS = ACRO_JUMP_Y_LOW.length;
 export class PlayerMovementActionRuntime {
   private authoritativeInput: PlayerMovementActionVisualInput = {
     traversalState: TraversalState.ON_FOOT,
+    acroSubstate: AcroBikeSubstate.NONE,
     bikeTransition: BikeTransitionType.NONE,
   };
 
@@ -36,13 +43,14 @@ export class PlayerMovementActionRuntime {
   private hopCycleActive = false;
 
   setAuthoritativeInput(input: PlayerMovementActionVisualInput): void {
-    const wasHopCapable = this.shouldRunAcroStationaryHop();
+    const wasHopCapable = this.shouldRunAcroHop();
     this.authoritativeInput = {
       traversalState: input.traversalState,
+      acroSubstate: input.acroSubstate ?? AcroBikeSubstate.NONE,
       bikeTransition: input.bikeTransition ?? BikeTransitionType.NONE,
     };
 
-    const isHopCapable = this.shouldRunAcroStationaryHop();
+    const isHopCapable = this.shouldRunAcroHop();
     if (!isHopCapable) {
       this.resetActionState();
       return;
@@ -72,7 +80,7 @@ export class PlayerMovementActionRuntime {
   }
 
   private stepOneTick(): void {
-    if (!this.shouldRunAcroStationaryHop()) {
+    if (!this.shouldRunAcroHop()) {
       this.resetActionState();
       return;
     }
@@ -100,12 +108,15 @@ export class PlayerMovementActionRuntime {
     }
   }
 
-  private shouldRunAcroStationaryHop(): boolean {
+  private shouldRunAcroHop(): boolean {
     if (this.authoritativeInput.traversalState !== TraversalState.ACRO_BIKE) {
       return false;
     }
-    return ACRO_STATIONARY_HOP_TRANSITIONS.has(
-      this.authoritativeInput.bikeTransition ?? BikeTransitionType.NONE,
+    return (
+      ACRO_STATIONARY_HOP_TRANSITIONS.has(
+        this.authoritativeInput.bikeTransition ?? BikeTransitionType.NONE,
+      ) ||
+      this.authoritativeInput.acroSubstate === AcroBikeSubstate.BUNNY_HOP
     );
   }
 

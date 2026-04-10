@@ -580,6 +580,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     state.bikeTransition = snapshot.bike_transition;
     playerMovementActionRuntime.setAuthoritativeInput({
       traversalState: state.traversalState,
+      acroSubstate: state.acroSubstate,
       bikeTransition: state.bikeTransition,
     });
     bikeEffectRenderer.clear();
@@ -628,6 +629,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     });
     playerMovementActionRuntime.setAuthoritativeInput({
       traversalState: state.traversalState,
+      acroSubstate: state.acroSubstate,
       bikeTransition: state.bikeTransition,
     });
     // BikeRuntimeDelta is change-only by design; consume it as authoritative
@@ -679,6 +681,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
   });
   playerMovementActionRuntime.setAuthoritativeInput({
     traversalState: state.traversalState,
+    acroSubstate: state.acroSubstate,
     bikeTransition: state.bikeTransition,
   });
   if (result.accepted) {
