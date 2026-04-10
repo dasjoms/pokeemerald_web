@@ -742,6 +742,9 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     if (delta.server_frame < state.lastAckServerTick) {
       return;
     }
+    previousTraversalStateForWheelieSetdownCheck = state.traversalState;
+    previousAcroSubstateForWheelieSetdownCheck = state.acroSubstate ?? AcroBikeSubstate.NONE;
+    previousBikeTransitionForWheelieSetdownCheck = state.bikeTransition ?? BikeTransitionType.NONE;
     if (DEBUG_ACRO_HOP) {
       console.info('[acro-hop][authoritative] bike_runtime_delta', {
         server_frame: delta.server_frame,
@@ -818,6 +821,9 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
   const previousFacing = state.facing;
   const previousAuthoritativeTileX = state.playerTileX;
   const previousAuthoritativeTileY = state.playerTileY;
+  previousTraversalStateForWheelieSetdownCheck = state.traversalState;
+  previousAcroSubstateForWheelieSetdownCheck = state.acroSubstate ?? AcroBikeSubstate.NONE;
+  previousBikeTransitionForWheelieSetdownCheck = state.bikeTransition ?? BikeTransitionType.NONE;
   state.playerTileX = clampedAuthoritativeTile.x;
   state.playerTileY = clampedAuthoritativeTile.y;
   state.facing = result.facing;
@@ -2586,10 +2592,41 @@ function clearActiveWalkTransitionForWheelieSetdown(facing: Direction): void {
   if (!activeWalkTransition) {
     return;
   }
+  if (
+    shouldPreserveDirectionalHopInterpolationOnWheelieSetdown(
+      previousTraversalStateForWheelieSetdownCheck,
+      previousAcroSubstateForWheelieSetdownCheck,
+      previousBikeTransitionForWheelieSetdownCheck,
+    )
+  ) {
+    return;
+  }
   activeWalkTransition = null;
   state.renderTileX = state.playerTileX;
   state.renderTileY = state.playerTileY;
   playerAnimation.stopMoving(facing);
+}
+
+let previousTraversalStateForWheelieSetdownCheck = TraversalState.ON_FOOT;
+let previousAcroSubstateForWheelieSetdownCheck = AcroBikeSubstate.NONE;
+let previousBikeTransitionForWheelieSetdownCheck = BikeTransitionType.NONE;
+
+function shouldPreserveDirectionalHopInterpolationOnWheelieSetdown(
+  previousTraversalState: TraversalState,
+  previousAcroSubstate: AcroBikeSubstate,
+  previousBikeTransition: BikeTransitionType,
+): boolean {
+  const isInDirectionalBunnyHopContext =
+    previousTraversalState === TraversalState.ACRO_BIKE &&
+    previousAcroSubstate === AcroBikeSubstate.BUNNY_HOP &&
+    previousBikeTransition === BikeTransitionType.WHEELIE_HOPPING_MOVING;
+  if (!isInDirectionalBunnyHopContext) {
+    return false;
+  }
+  if (!activeWalkTransition) {
+    return false;
+  }
+  return activeWalkTransition.elapsedMs < activeWalkTransition.durationMs;
 }
 
 function resolveAuthoritativeStepSpeedInput(
