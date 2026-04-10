@@ -461,6 +461,12 @@ impl World {
             );
             let current_acro_substate = bike_acro_substate_for_traversal(&session.player_state);
             let current_bike_transition = session.player_state.bike_runtime.last_transition;
+            let hop_landing_particle_class = hop_landing_particle_class_for_landing_edge(
+                self.maps.get(&session.player_state.map_id),
+                &session.player_state,
+                previous_acro_substate,
+                current_acro_substate,
+            );
             let traversal_changed =
                 session.player_state.traversal_state != previous_traversal_state;
             let runtime_changed = current_acro_substate != previous_acro_substate
@@ -475,10 +481,7 @@ impl World {
                     mach_speed_stage: bike_mach_speed_for_traversal(&session.player_state),
                     acro_substate: current_acro_substate,
                     bike_transition: Some(current_bike_transition),
-                    hop_landing_particle_class: hop_landing_particle_class_for_state(
-                        self.maps.get(&session.player_state.map_id),
-                        &session.player_state,
-                    ),
+                    hop_landing_particle_class,
                 }));
             }
 
@@ -532,6 +535,7 @@ impl World {
             let _boundary_intent = session.consume_step_end_direction_intent();
             while let Some(input) = session.pop_walk_input() {
                 let previous_map_id = session.player_state.map_id.clone();
+                let previous_acro_substate = bike_acro_substate_for_traversal(&session.player_state);
                 if !session.validate_and_commit_walk_intent_timing(&input) {
                     let _ = session.send(ServerMessage::WalkResult(WalkResult {
                         input_seq: input.input_seq,
@@ -765,9 +769,11 @@ impl World {
                         accepted,
                         reason,
                     ),
-                    hop_landing_particle_class: hop_landing_particle_class_for_state(
+                    hop_landing_particle_class: hop_landing_particle_class_for_landing_edge(
                         self.maps.get(&session.player_state.map_id),
                         &session.player_state,
+                        previous_acro_substate,
+                        bike_acro_substate_for_traversal(&session.player_state),
                     ),
                 });
 
@@ -909,10 +915,7 @@ impl World {
             acro_substate: bike_acro_substate_for_traversal(&session.player_state),
             bike_transition: Some(session.player_state.bike_runtime.last_transition),
             bike_effect_flags: bike_effect_flags_for_step(&session.player_state, false, reason),
-            hop_landing_particle_class: hop_landing_particle_class_for_state(
-                self.maps.get(&session.player_state.map_id),
-                &session.player_state,
-            ),
+            hop_landing_particle_class: None,
         })
     }
 }
@@ -983,28 +986,19 @@ fn bike_effect_flags_from_transition(transition: BikeTransitionType) -> u8 {
     flags
 }
 
-fn hop_landing_particle_class_for_state(
+fn hop_landing_particle_class_for_landing_edge(
     map: Option<&MapData>,
     player_state: &PlayerState,
+    previous_acro_substate: Option<AcroBikeSubstate>,
+    current_acro_substate: Option<AcroBikeSubstate>,
 ) -> Option<HopLandingParticleClass> {
-    if !is_hop_landing_transition(player_state.bike_runtime.last_transition) {
+    let landed_this_tick = previous_acro_substate == Some(AcroBikeSubstate::BunnyHop)
+        && current_acro_substate != Some(AcroBikeSubstate::BunnyHop);
+    if !landed_this_tick {
         return None;
     }
     let behavior = map.and_then(|current_map| source_tile_behavior(current_map, player_state));
     Some(hop_landing_particle_class_for_behavior(behavior.unwrap_or_default()))
-}
-
-fn is_hop_landing_transition(transition: BikeTransitionType) -> bool {
-    matches!(
-        transition,
-        BikeTransitionType::Hop
-            | BikeTransitionType::HopStanding
-            | BikeTransitionType::HopMoving
-            | BikeTransitionType::WheelieHoppingStanding
-            | BikeTransitionType::WheelieHoppingMoving
-            | BikeTransitionType::SideJump
-            | BikeTransitionType::TurnJump
-    )
 }
 
 fn hop_landing_particle_class_for_behavior(behavior: u8) -> HopLandingParticleClass {
@@ -2291,6 +2285,47 @@ mod tests {
         apply_bike_transition_for_collision_outcome(&mut player, CollisionOutcome::LedgeJump);
 
         assert_eq!(player.bike_runtime.last_transition, BikeTransitionType::Hop);
+    }
+
+    #[test]
+    fn hop_landing_particles_emit_only_on_bunny_hop_landing_edge() {
+        let mut player = test_player_state();
+        player.traversal_state = TraversalState::AcroBike;
+        let map = MapData {
+            map_id: "MAP_TEST".to_string(),
+            width: 1,
+            height: 1,
+            metatile_id: vec![0],
+            collision: vec![0],
+            behavior: vec![0],
+            allow_cycling: true,
+            allow_running: true,
+            connections: vec![],
+        };
+
+        let airborne = hop_landing_particle_class_for_landing_edge(
+            Some(&map),
+            &player,
+            Some(AcroBikeSubstate::BunnyHop),
+            Some(AcroBikeSubstate::BunnyHop),
+        );
+        assert!(airborne.is_none());
+
+        let landing = hop_landing_particle_class_for_landing_edge(
+            Some(&map),
+            &player,
+            Some(AcroBikeSubstate::BunnyHop),
+            Some(AcroBikeSubstate::StandingWheelie),
+        );
+        assert_eq!(landing, Some(HopLandingParticleClass::NormalGroundDust));
+
+        let grounded = hop_landing_particle_class_for_landing_edge(
+            Some(&map),
+            &player,
+            Some(AcroBikeSubstate::StandingWheelie),
+            Some(AcroBikeSubstate::StandingWheelie),
+        );
+        assert!(grounded.is_none());
     }
 
     #[test]

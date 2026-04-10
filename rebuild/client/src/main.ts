@@ -55,6 +55,7 @@ import {
   ROM_SHADOW_TEMPLATE_ID_MEDIUM,
   type HopShadowSizeVariant,
 } from './hopShadowRenderer';
+import { HopLandingParticleRenderer } from './hopLandingParticleRenderer';
 import {
   createWalkInputController,
   encodeHeldInputState,
@@ -446,6 +447,7 @@ let playerActiveActorLayer = actorBetweenBg2Bg1Layer;
 let activeMapTileRenderPriorityContexts: (MapTileRenderPriorityContext | undefined)[] = [];
 let playerObjectRenderPriorityState: PlayerObjectRenderPriorityState = 'normal';
 const bikeEffectRenderer = new BikeEffectRenderer(bikeEffectsLayer, TILE_SIZE);
+const hopLandingParticleRenderer = new HopLandingParticleRenderer(bikeEffectsLayer, TILE_SIZE);
 const hopShadowRenderer = new HopShadowRenderer(
   () => {
     const sampleTile = resolveCurrentPlayerLayerSampleTile();
@@ -476,6 +478,7 @@ app.ticker.add(() => {
   tickTilesetAnimationClock(app.ticker.deltaMS);
   presentTilesetAnimation();
   bikeEffectRenderer.tick(app.ticker.deltaMS);
+  hopLandingParticleRenderer.tick(app.ticker.deltaMS);
   positionPlayerSprite();
   updateCamera();
   renderHud();
@@ -621,10 +624,11 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     hopShadowRenderer.setAuthoritativeState({
       traversalState: state.traversalState,
       bikeTransition: state.bikeTransition,
-      acroSubstate: state.acroSubstate,
+      acroSubstate: state.acroSubstate ?? AcroBikeSubstate.NONE,
     });
     hopShadowRenderer.clear();
     bikeEffectRenderer.clear();
+    hopLandingParticleRenderer.clear();
     await applyAuthoritativeAvatar(snapshot.avatar);
     playerAnimation.setTraversalState({
       traversalState: state.traversalState,
@@ -676,7 +680,11 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     hopShadowRenderer.setAuthoritativeState({
       traversalState: state.traversalState,
       bikeTransition: state.bikeTransition,
-      acroSubstate: state.acroSubstate,
+      acroSubstate: state.acroSubstate ?? AcroBikeSubstate.NONE,
+    });
+    consumeHopLandingParticleEvent({
+      particleClass: delta.hop_landing_particle_class,
+      serverFrame: delta.server_frame,
     });
     // BikeRuntimeDelta is change-only by design; consume it as authoritative
     // traversal state updates and keep animation phase locally clocked.
@@ -733,7 +741,11 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
   hopShadowRenderer.setAuthoritativeState({
     traversalState: state.traversalState,
     bikeTransition: state.bikeTransition,
-    acroSubstate: state.acroSubstate,
+    acroSubstate: state.acroSubstate ?? AcroBikeSubstate.NONE,
+  });
+  consumeHopLandingParticleEvent({
+    particleClass: result.hop_landing_particle_class,
+    serverFrame: result.server_frame,
   });
   if (result.accepted) {
     // Contract: on accepted input, authoritative_pos is the server tile *after* applying that step.
@@ -862,6 +874,7 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
   bikeEffectsLayer.removeChildren();
   bikeEffectRenderer.clear();
   hopShadowRenderer.clear();
+  hopLandingParticleRenderer.clear();
   actorBetweenBg2Bg1Layer.addChild(playerSprite);
   playerActiveActorLayer = actorBetweenBg2Bg1Layer;
   renderedSubtileBindings.length = 0;
@@ -2085,6 +2098,21 @@ function resolveAnimationStepMode({
     return 'run';
   }
   return 'walk';
+}
+
+function consumeHopLandingParticleEvent(input: {
+  particleClass: HopLandingParticleClass | undefined;
+  serverFrame: number;
+}): void {
+  if (input.particleClass === undefined) {
+    return;
+  }
+  hopLandingParticleRenderer.onLandingEvent({
+    tileX: state.playerTileX,
+    tileY: state.playerTileY,
+    particleClass: input.particleClass,
+    serverFrame: input.serverFrame,
+  });
 }
 
 function positionPlayerSprite(): void {
