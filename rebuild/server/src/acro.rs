@@ -172,10 +172,6 @@ impl AcroRuntime {
         self.age_pending_jump_intent();
         self.update_history(self.held_direction, if self.holding_b { ABSS_B } else { 0 });
         self.refresh_pending_jump_intent();
-        if matches!(self.state, AcroState::Turning) {
-            self.pending_action = None;
-            return;
-        }
         self.pending_action = Some(self.handle_input(self.held_direction, self.movement_direction));
     }
 
@@ -722,7 +718,7 @@ mod tests {
     }
 
     #[test]
-    fn advance_tick_with_direction_only_updates_jump_intent_without_state_overwrite() {
+    fn advance_tick_in_turning_updates_pending_action_and_keeps_jump_window() {
         let mut runtime = AcroRuntime {
             state: AcroState::Turning,
             new_dir_backup: Some(Direction::Right),
@@ -735,11 +731,88 @@ mod tests {
 
         runtime.advance_tick();
 
-        assert_eq!(runtime.state, AcroState::Turning);
-        assert_eq!(runtime.take_pending_action(), None);
+        assert_eq!(runtime.state, AcroState::SideJump);
+        assert_eq!(runtime.take_pending_action(), Some(AcroAnimationAction::SideJump));
         assert_eq!(
             runtime.apply_step(Direction::Up, Direction::Right),
-            AcroAnimationAction::SideJump
+            AcroAnimationAction::Moving
+        );
+    }
+
+    #[test]
+    fn turning_ticks_progress_to_turn_direction_without_walk_step_input() {
+        let mut runtime = AcroRuntime::default();
+
+        runtime.set_held_input(Some(Direction::Left), false);
+        assert_eq!(
+            runtime.apply_step(Direction::Up, Direction::Left),
+            AcroAnimationAction::FaceDirection
+        );
+        assert_eq!(runtime.state, AcroState::Turning);
+
+        runtime.set_held_input(None, false);
+        for _ in 0..5 {
+            runtime.advance_tick();
+            assert_eq!(runtime.state, AcroState::Turning);
+            assert_eq!(
+                runtime.take_pending_action(),
+                Some(AcroAnimationAction::FaceDirection)
+            );
+        }
+
+        runtime.advance_tick();
+        assert_eq!(runtime.state, AcroState::Normal);
+        assert_eq!(runtime.running_state, RunningState::TurnDirection);
+        assert_eq!(
+            runtime.take_pending_action(),
+            Some(AcroAnimationAction::TurnDirection)
+        );
+    }
+
+    #[test]
+    fn stationary_b_hold_starts_bunny_hop_after_turning_resolves() {
+        let mut runtime = AcroRuntime::default();
+
+        runtime.set_held_input(Some(Direction::Left), false);
+        assert_eq!(
+            runtime.apply_step(Direction::Up, Direction::Left),
+            AcroAnimationAction::FaceDirection
+        );
+        assert_eq!(runtime.state, AcroState::Turning);
+
+        runtime.set_held_input(None, false);
+        for _ in 0..6 {
+            runtime.advance_tick();
+            runtime.take_pending_action();
+        }
+
+        assert_eq!(runtime.state, AcroState::Normal);
+        assert_eq!(runtime.running_state, RunningState::TurnDirection);
+
+        runtime.set_held_input(None, true);
+        runtime.advance_tick();
+        assert_eq!(runtime.state, AcroState::WheelieStanding);
+        assert_eq!(
+            runtime.take_pending_action(),
+            Some(AcroAnimationAction::NormalToWheelie)
+        );
+
+        for _ in 0..39 {
+            runtime.set_held_input(None, true);
+            runtime.advance_tick();
+            assert_eq!(runtime.state, AcroState::WheelieStanding);
+            assert_eq!(
+                runtime.take_pending_action(),
+                Some(AcroAnimationAction::WheelieIdle)
+            );
+        }
+
+        runtime.set_held_input(None, true);
+        runtime.advance_tick();
+        assert_eq!(runtime.state, AcroState::BunnyHop);
+        assert_eq!(
+            runtime.take_pending_action(),
+            Some(AcroAnimationAction::WheelieHoppingStanding)
         );
     }
 
@@ -768,6 +841,7 @@ mod tests {
         let mut runtime = AcroRuntime {
             state: AcroState::Turning,
             new_dir_backup: Some(Direction::Right),
+            movement_direction: Direction::Left,
             ..Default::default()
         };
 
@@ -776,6 +850,11 @@ mod tests {
         runtime.set_held_input(Some(Direction::Right), true);
         runtime.advance_tick();
 
+        assert_eq!(runtime.state, AcroState::TurnJump);
+        assert_eq!(
+            runtime.take_pending_action(),
+            Some(AcroAnimationAction::TurnJump)
+        );
         assert_eq!(
             runtime.apply_step(Direction::Left, Direction::Right),
             AcroAnimationAction::TurnJump
