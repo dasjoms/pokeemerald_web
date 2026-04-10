@@ -588,7 +588,8 @@ export class PlayerAnimationController {
 
   private resolveAcroMovingActionId(transitionOverride?: BikeTransitionType): string {
     const bikeTransition = transitionOverride ?? this.bikeTransition;
-    switch (bikeTransition) {
+    if (bikeTransition !== BikeTransitionType.NONE) {
+      switch (bikeTransition) {
       case BikeTransitionType.WHEELIE_IDLE:
         return 'acro_moving_wheelie';
       case BikeTransitionType.HOP_MOVING:
@@ -611,12 +612,15 @@ export class PlayerAnimationController {
         return 'acro_moving_wheelie';
       default:
         break;
+      }
     }
 
     if (this.acroSubstate === AcroBikeSubstate.MOVING_WHEELIE) {
       return 'acro_moving_wheelie';
     }
     if (this.acroSubstate === AcroBikeSubstate.BUNNY_HOP) {
+      // ROM-parity fallback: preserve moving bunny-hop action family when only
+      // substate is available and transition edge data has already cleared.
       return 'acro_bunny_hop_back_wheel';
     }
     return this.resolveBikeSpeedActionId();

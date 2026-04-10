@@ -407,6 +407,47 @@ describe('main movement pipeline integration', () => {
     }
   });
 
+  it('resolves moving bunny-hop parity action after standing wheelie hop transitions into directional hold', () => {
+    const playerAnimation = new PlayerAnimationController(makeMockAssets());
+    const direction = Direction.RIGHT;
+
+    playerAnimation.setTraversalState({
+      traversalState: TraversalState.ACRO_BIKE,
+      acroSubstate: AcroBikeSubstate.STANDING_WHEELIE,
+      bikeTransition: BikeTransitionType.WHEELIE_IDLE,
+    });
+    playerAnimation.stopMoving(direction);
+    playerAnimation.applyPendingModeChanges();
+    expect(playerAnimation.getDebugState().animId).toBe('anim_acro_wheelie_face_east');
+
+    playerAnimation.setTraversalState({
+      traversalState: TraversalState.ACRO_BIKE,
+      acroSubstate: AcroBikeSubstate.BUNNY_HOP,
+      bikeTransition: BikeTransitionType.HOP_STANDING,
+    });
+    playerAnimation.stopMoving(direction);
+    playerAnimation.applyPendingModeChanges();
+    expect(playerAnimation.getDebugState().animId).toBe('anim_acro_bunny_hop_back_east');
+
+    const movingHoldSequence = [
+      BikeTransitionType.WHEELIE_HOPPING_MOVING,
+      BikeTransitionType.NONE,
+      BikeTransitionType.NONE,
+    ] as const;
+
+    for (const bikeTransition of movingHoldSequence) {
+      playerAnimation.setTraversalState({
+        traversalState: TraversalState.ACRO_BIKE,
+        acroSubstate: AcroBikeSubstate.BUNNY_HOP,
+        bikeTransition,
+      });
+      playerAnimation.startStep(direction, 'run');
+      const animId = playerAnimation.getDebugState().animId;
+      expect(animId).toBe('anim_acro_bunny_hop_back_east');
+      expect(animId).not.toBe('anim_acro_bunny_hop_front_east');
+    }
+  });
+
   it.each([
     {
       bikeTransition: BikeTransitionType.NONE,
