@@ -620,6 +620,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     hopShadowRenderer.setAuthoritativeState({
       traversalState: state.traversalState,
       bikeTransition: state.bikeTransition,
+      acroSubstate: state.acroSubstate,
     });
     hopShadowRenderer.clear();
     bikeEffectRenderer.clear();
@@ -674,6 +675,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     hopShadowRenderer.setAuthoritativeState({
       traversalState: state.traversalState,
       bikeTransition: state.bikeTransition,
+      acroSubstate: state.acroSubstate,
     });
     // BikeRuntimeDelta is change-only by design; consume it as authoritative
     // traversal state updates and keep animation phase locally clocked.
@@ -730,6 +732,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
   hopShadowRenderer.setAuthoritativeState({
     traversalState: state.traversalState,
     bikeTransition: state.bikeTransition,
+    acroSubstate: state.acroSubstate,
   });
   if (result.accepted) {
     // Contract: on accepted input, authoritative_pos is the server tile *after* applying that step.

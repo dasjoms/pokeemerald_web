@@ -1,4 +1,8 @@
-import { BikeTransitionType, TraversalState } from './protocol_generated';
+import {
+  AcroBikeSubstate,
+  BikeTransitionType,
+  TraversalState,
+} from './protocol_generated';
 import type { PlayerMovementActionVisualState } from './playerMovementActionRuntime';
 import type { ContainerChild } from 'pixi.js';
 
@@ -65,9 +69,7 @@ export class HopShadowRenderer {
   private spriteLayer: HopShadowLayer | null = null;
   private shadowSizeTemplateId: ShadowTemplateId = ROM_SHADOW_TEMPLATE_ID_MEDIUM;
   private suppressionContext: HopShadowSuppressionContext = DEFAULT_SUPPRESSION_CONTEXT;
-  private hopFamilyActive = false;
-  private spawnRequested = false;
-  private arcObserved = false;
+  private hopContextActive = false;
 
   constructor(
     private readonly resolveLayer: () => HopShadowLayer,
@@ -84,8 +86,6 @@ export class HopShadowRenderer {
     this.shadowSizeTemplateId = templateId;
     if (this.sprite) {
       this.despawn();
-      this.spawnRequested = this.hopFamilyActive;
-      this.arcObserved = false;
     }
   }
 
@@ -102,16 +102,12 @@ export class HopShadowRenderer {
   setAuthoritativeState(input: {
     traversalState: TraversalState;
     bikeTransition?: BikeTransitionType;
+    acroSubstate?: AcroBikeSubstate;
   }): void {
-    const inHopFamily =
+    this.hopContextActive =
       input.traversalState === TraversalState.ACRO_BIKE &&
-      HOP_SHADOW_FAMILY_TRANSITIONS.has(input.bikeTransition ?? BikeTransitionType.NONE);
-
-    if (!this.hopFamilyActive && inHopFamily) {
-      this.spawnRequested = true;
-      this.arcObserved = false;
-    }
-    this.hopFamilyActive = inHopFamily;
+      (HOP_SHADOW_FAMILY_TRANSITIONS.has(input.bikeTransition ?? BikeTransitionType.NONE) ||
+        input.acroSubstate === AcroBikeSubstate.BUNNY_HOP);
   }
 
   presentFrame(input: {
@@ -119,8 +115,13 @@ export class HopShadowRenderer {
     tileY: number;
     visualState: PlayerMovementActionVisualState;
   }): void {
-    if (this.spawnRequested && !this.sprite) {
+    if (this.hopContextActive && !this.sprite) {
       this.spawn();
+    }
+
+    if (!this.hopContextActive) {
+      this.despawn();
+      return;
     }
 
     if (!this.sprite) {
@@ -131,26 +132,10 @@ export class HopShadowRenderer {
     this.sprite.x = input.tileX * this.tileSize + this.tileSize / 2;
     this.sprite.y = input.tileY * this.tileSize + this.tileSize;
     this.sprite.visible = !this.shouldSuppressVisibility();
-
-    const hopArcActive =
-      input.visualState.activeAction !== 'none' || input.visualState.yOffsetPx < 0;
-
-    if (hopArcActive) {
-      this.arcObserved = true;
-      return;
-    }
-
-    if (this.arcObserved) {
-      this.despawn();
-      this.spawnRequested = false;
-      this.arcObserved = false;
-    }
   }
 
   clear(): void {
-    this.spawnRequested = false;
-    this.arcObserved = false;
-    this.hopFamilyActive = false;
+    this.hopContextActive = false;
     this.despawn();
     this.suppressionContext = DEFAULT_SUPPRESSION_CONTEXT;
   }
@@ -166,7 +151,6 @@ export class HopShadowRenderer {
     layer.addChild(sprite as unknown as ContainerChild);
     this.spriteLayer = layer;
     this.sprite = sprite;
-    this.spawnRequested = false;
     this.ensureShadowRendersBeforeLinkedSprite();
   }
 
