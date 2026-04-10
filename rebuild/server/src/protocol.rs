@@ -4,7 +4,7 @@ mod protocol_generated;
 pub use protocol_generated::{
     AcroBikeSubstate, BikeRuntimeDelta, BikeTransitionType, DebugTraversalAction,
     DebugTraversalInput, Direction, HeldButtons, HeldInputState, JoinSession, MessageType,
-    MovementMode, PlayerAction, PlayerActionInput, PlayerAvatar, Position, RejectionReason,
+    HopLandingParticleClass, MovementMode, PlayerAction, PlayerActionInput, PlayerAvatar, Position, RejectionReason,
     SessionAccepted, StepSpeed, TraversalState, WalkInput, WalkResult, WorldDelta, WorldSnapshot,
     PROTOCOL_VERSION,
 };
@@ -112,6 +112,8 @@ pub fn encode_server_message(message: &ServerMessage) -> Result<Vec<u8>, Protoco
                 msg.bike_transition,
             );
             payload.push(msg.bike_effect_flags);
+            payload.push(u8::from(msg.hop_landing_particle_class.is_some()));
+            payload.push(msg.hop_landing_particle_class.unwrap_or(HopLandingParticleClass::NormalGroundDust) as u8);
             (MessageType::WalkResult, payload)
         }
         ServerMessage::WorldDelta(msg) => {
@@ -132,6 +134,8 @@ pub fn encode_server_message(message: &ServerMessage) -> Result<Vec<u8>, Protoco
                 msg.acro_substate,
                 msg.bike_transition,
             );
+            payload.push(u8::from(msg.hop_landing_particle_class.is_some()));
+            payload.push(msg.hop_landing_particle_class.unwrap_or(HopLandingParticleClass::NormalGroundDust) as u8);
             (MessageType::BikeRuntimeDelta, payload)
         }
     };

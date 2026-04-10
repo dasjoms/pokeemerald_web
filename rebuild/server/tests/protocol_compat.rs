@@ -48,6 +48,7 @@ fn server_walk_result_decodes_in_shared_python_runtime() {
         acro_substate: None,
         bike_transition: Some(BikeTransitionType::None),
         bike_effect_flags: 0,
+        hop_landing_particle_class: None,
     }))
     .expect("encode walk result");
 
@@ -128,15 +129,16 @@ fn walk_result_wire_encoding_with_forced_movement_disabled_is_canonical() {
         acro_substate: None,
         bike_transition: Some(BikeTransitionType::None),
         bike_effect_flags: 0,
+        hop_landing_particle_class: None,
     }))
     .expect("encode walk result");
 
     let mut expected_frame = Vec::new();
     expected_frame.extend_from_slice(&PROTOCOL_VERSION.to_le_bytes());
     expected_frame.push(MessageType::WalkResult as u8);
-    expected_frame.push(0x14);
+    expected_frame.push(0x16);
     expected_frame.extend(
-        hex::decode("00000004030201002211443302060d0c0b0a0000040000")
+        hex::decode("00000004030201002211443302060d0c0b0a00000400000000")
             .expect("valid expected payload"),
     );
     assert_eq!(frame, expected_frame);
