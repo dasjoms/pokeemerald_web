@@ -719,7 +719,7 @@ describe("main movement pipeline integration", () => {
     },
   );
 
-  it("keeps interpolation alive during in-flight directional bunny-hop release on WheelieToNormal", () => {
+  it("halts interpolation on WheelieToNormal set-down tick and resumes only after the set-down window", () => {
     const state: PipelineState = {
       playerTileX: 10,
       playerTileY: 7,
@@ -755,26 +755,39 @@ describe("main movement pipeline integration", () => {
     expect(state.renderTileX).toBeGreaterThan(10);
     expect(state.renderTileX).toBeLessThan(11);
 
-    const previousTraversalState = TraversalState.ACRO_BIKE;
-    const previousAcroSubstate = AcroBikeSubstate.BUNNY_HOP;
-    const previousBikeTransition = BikeTransitionType.WHEELIE_HOPPING_MOVING;
     const bikeTransition = BikeTransitionType.WHEELIE_TO_NORMAL;
-    const shouldPreserveDirectionalHopInterpolation =
-      bikeTransition === BikeTransitionType.WHEELIE_TO_NORMAL &&
-      previousTraversalState === TraversalState.ACRO_BIKE &&
-      previousAcroSubstate === AcroBikeSubstate.BUNNY_HOP &&
-      previousBikeTransition === BikeTransitionType.WHEELIE_HOPPING_MOVING &&
-      activeWalkTransition !== null &&
-      activeWalkTransition.elapsedMs < activeWalkTransition.durationMs;
-    if (!shouldPreserveDirectionalHopInterpolation && bikeTransition === BikeTransitionType.WHEELIE_TO_NORMAL) {
+    if (bikeTransition === BikeTransitionType.WHEELIE_TO_NORMAL) {
       activeWalkTransition = null;
       state.renderTileX = state.playerTileX;
       state.renderTileY = state.playerTileY;
     }
-    expect(activeWalkTransition).not.toBeNull();
-    expect(state.renderTileX).toBeGreaterThan(10);
-    expect(state.renderTileX).toBeLessThan(11);
+    expect(state.renderTileX).toBe(11);
+    expect(state.renderTileY).toBe(7);
 
+    for (let tick = 0; tick < 4; tick += 1) {
+      activeWalkTransition = tickWalkTransition({
+        activeWalkTransition,
+        state,
+        deltaMs: 1000 / 60,
+        hasPendingAcceptedOrDispatchableStep: () => false,
+        noteWalkTransitionProgress: () => {},
+        markWalkTransitionCompleted: () => {},
+        stopMoving: () => {},
+      });
+      expect(state.renderTileX).toBe(11);
+      expect(state.renderTileY).toBe(7);
+    }
+
+    state.playerTileX = 12;
+    activeWalkTransition = startAuthoritativeWalkTransition(
+      state,
+      Direction.RIGHT,
+      {
+        traversalState: TraversalState.ACRO_BIKE,
+        movementMode: MovementMode.WALK,
+      },
+      { tileX: 11, tileY: 7 },
+    );
     activeWalkTransition = tickWalkTransition({
       activeWalkTransition,
       state,
@@ -782,15 +795,15 @@ describe("main movement pipeline integration", () => {
         authoritativeStepDurationMs({
           traversalState: TraversalState.ACRO_BIKE,
           movementMode: MovementMode.WALK,
-        }) / 2,
+        }) / 4,
       hasPendingAcceptedOrDispatchableStep: () => false,
       noteWalkTransitionProgress: () => {},
       markWalkTransitionCompleted: () => {},
       stopMoving: () => {},
     });
     expect(activeWalkTransition).not.toBeNull();
-    expect(state.renderTileX).toBeGreaterThan(10);
-    expect(state.renderTileX).toBeLessThan(11);
+    expect(state.renderTileX).toBeGreaterThan(11);
+    expect(state.renderTileX).toBeLessThan(12);
   });
 
   it("drops stale hop latch immediately when authoritative wheelie-rise-moving transition arrives", () => {
