@@ -594,7 +594,7 @@ export class PlayerAnimationController {
       case BikeTransitionType.HOP_MOVING:
         return 'acro_ledge_hop_front_wheel';
       case BikeTransitionType.WHEELIE_HOPPING_MOVING:
-        return 'acro_bunny_hop_front_wheel';
+        return 'acro_bunny_hop_back_wheel';
       case BikeTransitionType.SIDE_JUMP:
         return 'acro_side_jump_front_wheel';
       case BikeTransitionType.TURN_JUMP:
@@ -617,7 +617,7 @@ export class PlayerAnimationController {
       return 'acro_moving_wheelie';
     }
     if (this.acroSubstate === AcroBikeSubstate.BUNNY_HOP) {
-      return 'acro_bunny_hop_front_wheel';
+      return 'acro_bunny_hop_back_wheel';
     }
     return this.resolveBikeSpeedActionId();
   }

@@ -371,7 +371,7 @@ describe('main movement pipeline integration', () => {
     });
     playerAnimation.startStep(Direction.RIGHT, 'run');
 
-    expect(playerAnimation.getDebugState().animId).toBe('anim_acro_bunny_hop_front_east');
+    expect(playerAnimation.getDebugState().animId).toBe('anim_acro_bunny_hop_back_east');
     expect(playerAnimation.getDebugState().animId).not.toBe('anim_bike_walk_east');
   });
 
@@ -402,7 +402,7 @@ describe('main movement pipeline integration', () => {
       });
       playerAnimation.startStep(direction, 'run');
       const animId = playerAnimation.getDebugState().animId;
-      expect(animId).toBe('anim_acro_bunny_hop_front_east');
+      expect(animId).toBe('anim_acro_bunny_hop_back_east');
       expect(animId).not.toBe('anim_bike_walk_east');
     }
   });
@@ -472,7 +472,7 @@ describe('main movement pipeline integration', () => {
       bikeTransition: BikeTransitionType.WHEELIE_HOPPING_MOVING,
       acroSubstate: AcroBikeSubstate.NONE,
       shouldStep: true,
-      expectedAnimId: 'anim_acro_bunny_hop_front_east',
+      expectedAnimId: 'anim_acro_bunny_hop_back_east',
     },
     {
       bikeTransition: BikeTransitionType.WHEELIE_MOVING,
