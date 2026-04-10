@@ -589,6 +589,8 @@ export class PlayerAnimationController {
   private resolveAcroMovingActionId(transitionOverride?: BikeTransitionType): string {
     const bikeTransition = transitionOverride ?? this.bikeTransition;
     switch (bikeTransition) {
+      case BikeTransitionType.WHEELIE_IDLE:
+        return 'acro_moving_wheelie';
       case BikeTransitionType.HOP_MOVING:
         return 'acro_ledge_hop_front_wheel';
       case BikeTransitionType.WHEELIE_HOPPING_MOVING:
