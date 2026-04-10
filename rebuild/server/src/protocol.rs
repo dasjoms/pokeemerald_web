@@ -3,10 +3,10 @@ mod protocol_generated;
 
 pub use protocol_generated::{
     AcroBikeSubstate, BikeRuntimeDelta, BikeTransitionType, DebugTraversalAction,
-    DebugTraversalInput, Direction, HeldButtons, HeldInputState, JoinSession, MessageType,
-    HopLandingParticleClass, MovementMode, PlayerAction, PlayerActionInput, PlayerAvatar, Position, RejectionReason,
-    SessionAccepted, StepSpeed, TraversalState, WalkInput, WalkResult, WorldDelta, WorldSnapshot,
-    PROTOCOL_VERSION,
+    DebugTraversalInput, Direction, HeldButtons, HeldInputState, HopLandingParticleClass,
+    JoinSession, MessageType, MovementMode, PlayerAction, PlayerActionInput, PlayerAvatar,
+    Position, RejectionReason, SessionAccepted, StepSpeed, TraversalState, WalkInput, WalkResult,
+    WorldDelta, WorldSnapshot, PROTOCOL_VERSION,
 };
 pub type Facing = Direction;
 
@@ -113,7 +113,15 @@ pub fn encode_server_message(message: &ServerMessage) -> Result<Vec<u8>, Protoco
             );
             payload.push(msg.bike_effect_flags);
             payload.push(u8::from(msg.hop_landing_particle_class.is_some()));
-            payload.push(msg.hop_landing_particle_class.unwrap_or(HopLandingParticleClass::NormalGroundDust) as u8);
+            payload.push(
+                msg.hop_landing_particle_class
+                    .unwrap_or(HopLandingParticleClass::NormalGroundDust) as u8,
+            );
+            payload.push(u8::from(
+                msg.hop_landing_tile_x.is_some() && msg.hop_landing_tile_y.is_some(),
+            ));
+            payload.extend_from_slice(&msg.hop_landing_tile_x.unwrap_or(0).to_le_bytes());
+            payload.extend_from_slice(&msg.hop_landing_tile_y.unwrap_or(0).to_le_bytes());
             (MessageType::WalkResult, payload)
         }
         ServerMessage::WorldDelta(msg) => {
@@ -135,7 +143,15 @@ pub fn encode_server_message(message: &ServerMessage) -> Result<Vec<u8>, Protoco
                 msg.bike_transition,
             );
             payload.push(u8::from(msg.hop_landing_particle_class.is_some()));
-            payload.push(msg.hop_landing_particle_class.unwrap_or(HopLandingParticleClass::NormalGroundDust) as u8);
+            payload.push(
+                msg.hop_landing_particle_class
+                    .unwrap_or(HopLandingParticleClass::NormalGroundDust) as u8,
+            );
+            payload.push(u8::from(
+                msg.hop_landing_tile_x.is_some() && msg.hop_landing_tile_y.is_some(),
+            ));
+            payload.extend_from_slice(&msg.hop_landing_tile_x.unwrap_or(0).to_le_bytes());
+            payload.extend_from_slice(&msg.hop_landing_tile_y.unwrap_or(0).to_le_bytes());
             (MessageType::BikeRuntimeDelta, payload)
         }
     };

@@ -23,6 +23,7 @@ import {
 } from "./protocol_generated";
 import { PlayerMovementActionRuntime } from "./playerMovementActionRuntime";
 import { HopShadowRenderer } from "./hopShadowRenderer";
+import { resolveHopLandingPlacementTile } from "./hopLandingPlacement";
 
 type PipelineState = WalkTransitionMutableState & {
   facing: Direction;
@@ -718,6 +719,52 @@ describe("main movement pipeline integration", () => {
       expect(animId).toBe("anim_acro_bunny_hop_back_east");
       expect(animId).not.toBe("anim_acro_bunny_hop_front_east");
     }
+  });
+
+  it("aligns hop landing particle placement to the current rendered tile during directional hop interpolation", () => {
+    const directionalHopVisualState = {
+      renderTileX: 10.625,
+      renderTileY: 7,
+    };
+
+    const fallbackPlacement = resolveHopLandingPlacementTile(
+      directionalHopVisualState,
+      {},
+    );
+    expect(fallbackPlacement).toEqual({
+      tileX: 10.625,
+      tileY: 7,
+    });
+
+    const authoritativeLandingPlacement = resolveHopLandingPlacementTile(
+      directionalHopVisualState,
+      {
+        hopLandingTileX: 11,
+        hopLandingTileY: 7,
+      },
+    );
+    expect(authoritativeLandingPlacement).toEqual({
+      tileX: 11,
+      tileY: 7,
+    });
+  });
+
+  it("does not drift landing particle placement by tiles across consecutive directional hops", () => {
+    const renderedLandingSamples = [
+      { renderTileX: 14.125, renderTileY: 8 },
+      { renderTileX: 14.625, renderTileY: 8 },
+      { renderTileX: 15.125, renderTileY: 8 },
+    ];
+
+    const placements = renderedLandingSamples.map((sample) =>
+      resolveHopLandingPlacementTile(sample, {}),
+    );
+
+    expect(placements).toEqual([
+      { tileX: 14.125, tileY: 8 },
+      { tileX: 14.625, tileY: 8 },
+      { tileX: 15.125, tileY: 8 },
+    ]);
   });
 
   it.each([

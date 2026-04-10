@@ -471,6 +471,8 @@ impl World {
                 &session.player_state,
                 hop_landed_this_tick,
             );
+            let hop_landing_tile = hop_landing_particle_class
+                .map(|_| (session.player_state.tile_x, session.player_state.tile_y));
             let traversal_changed =
                 session.player_state.traversal_state != previous_traversal_state;
             let runtime_changed = current_acro_substate != previous_acro_substate
@@ -488,6 +490,8 @@ impl World {
                     acro_substate: current_acro_substate,
                     bike_transition: Some(current_bike_transition),
                     hop_landing_particle_class,
+                    hop_landing_tile_x: hop_landing_tile.map(|tile| tile.0),
+                    hop_landing_tile_y: hop_landing_tile.map(|tile| tile.1),
                 }));
             }
 
@@ -562,6 +566,8 @@ impl World {
                         bike_transition: Some(session.player_state.bike_runtime.last_transition),
                         bike_effect_flags: 0,
                         hop_landing_particle_class: None,
+                        hop_landing_tile_x: None,
+                        hop_landing_tile_y: None,
                     }));
                     continue;
                 }
@@ -588,6 +594,8 @@ impl World {
                         bike_transition: Some(session.player_state.bike_runtime.last_transition),
                         bike_effect_flags: 0,
                         hop_landing_particle_class: None,
+                        hop_landing_tile_x: None,
+                        hop_landing_tile_y: None,
                     }));
                     continue;
                 };
@@ -753,6 +761,17 @@ impl World {
                     );
                 }
 
+                let hop_landing_particle_class = hop_landing_particle_class_for_landing_signal(
+                    self.maps.get(&session.player_state.map_id),
+                    &session.player_state,
+                    session
+                        .player_state
+                        .bike_runtime
+                        .acro_runtime
+                        .hop_landed_this_tick(),
+                );
+                let hop_landing_tile = hop_landing_particle_class
+                    .map(|_| (session.player_state.tile_x, session.player_state.tile_y));
                 let result = ServerMessage::WalkResult(WalkResult {
                     input_seq: input.input_seq,
                     accepted,
@@ -774,15 +793,9 @@ impl World {
                         accepted,
                         reason,
                     ),
-                    hop_landing_particle_class: hop_landing_particle_class_for_landing_signal(
-                        self.maps.get(&session.player_state.map_id),
-                        &session.player_state,
-                        session
-                            .player_state
-                            .bike_runtime
-                            .acro_runtime
-                            .hop_landed_this_tick(),
-                    ),
+                    hop_landing_particle_class,
+                    hop_landing_tile_x: hop_landing_tile.map(|tile| tile.0),
+                    hop_landing_tile_y: hop_landing_tile.map(|tile| tile.1),
                 });
 
                 let _ = session.send(result);
@@ -924,6 +937,8 @@ impl World {
             bike_transition: Some(session.player_state.bike_runtime.last_transition),
             bike_effect_flags: bike_effect_flags_for_step(&session.player_state, false, reason),
             hop_landing_particle_class: None,
+            hop_landing_tile_x: None,
+            hop_landing_tile_y: None,
         })
     }
 }

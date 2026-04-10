@@ -256,6 +256,8 @@ pub struct WalkResult {{
     pub bike_transition: Option<BikeTransitionType>,
     pub bike_effect_flags: u8,
     pub hop_landing_particle_class: Option<HopLandingParticleClass>,
+    pub hop_landing_tile_x: Option<u16>,
+    pub hop_landing_tile_y: Option<u16>,
 }}
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
@@ -274,6 +276,8 @@ pub struct BikeRuntimeDelta {{
     pub acro_substate: Option<AcroBikeSubstate>,
     pub bike_transition: Option<BikeTransitionType>,
     pub hop_landing_particle_class: Option<HopLandingParticleClass>,
+    pub hop_landing_tile_x: Option<u16>,
+    pub hop_landing_tile_y: Option<u16>,
 }}
 """
     )
@@ -444,6 +448,8 @@ export type WalkResult = {{
   bike_transition?: BikeTransitionType;
   bike_effect_flags: number;
   hop_landing_particle_class?: HopLandingParticleClass;
+  hop_landing_tile_x?: number;
+  hop_landing_tile_y?: number;
 }};
 export type WorldDelta = {{ map_id: number; server_frame: number; delta_blob: Uint8Array }};
 export type BikeRuntimeDelta = {{
@@ -454,6 +460,8 @@ export type BikeRuntimeDelta = {{
   acro_substate?: AcroBikeSubstate;
   bike_transition?: BikeTransitionType;
   hop_landing_particle_class?: HopLandingParticleClass;
+  hop_landing_tile_x?: number;
+  hop_landing_tile_y?: number;
 }};
 """
     )

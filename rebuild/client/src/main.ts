@@ -56,6 +56,7 @@ import {
   type HopShadowSizeVariant,
 } from './hopShadowRenderer';
 import { HopParticleRenderer } from './hopParticleRenderer';
+import { resolveHopLandingPlacementTile } from './hopLandingPlacement';
 import {
   createWalkInputController,
   encodeHeldInputState,
@@ -690,6 +691,8 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     consumeHopParticleLandingEvent({
       particleClass: delta.hop_landing_particle_class,
       serverFrame: delta.server_frame,
+      hopLandingTileX: delta.hop_landing_tile_x,
+      hopLandingTileY: delta.hop_landing_tile_y,
     });
     // BikeRuntimeDelta is change-only by design; consume it as authoritative
     // traversal state updates and keep animation phase locally clocked.
@@ -751,6 +754,8 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
   consumeHopParticleLandingEvent({
     particleClass: result.hop_landing_particle_class,
     serverFrame: result.server_frame,
+    hopLandingTileX: result.hop_landing_tile_x,
+    hopLandingTileY: result.hop_landing_tile_y,
   });
   if (result.accepted) {
     // Contract: on accepted input, authoritative_pos is the server tile *after* applying that step.
@@ -1935,6 +1940,20 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
       ? (readU8(payload, offset) as HopLandingParticleClass)
       : undefined;
     offset += 1;
+    const hasHopLandingTile = offset + 1 <= payload.length && readU8(payload, offset) !== 0;
+    if (offset + 1 <= payload.length) {
+      offset += 1;
+    }
+    const hopLandingTileX =
+      hasHopLandingTile && offset + 2 <= payload.length ? readU16(payload, offset) : undefined;
+    if (hasHopLandingTile && offset + 2 <= payload.length) {
+      offset += 2;
+    }
+    const hopLandingTileY =
+      hasHopLandingTile && offset + 2 <= payload.length ? readU16(payload, offset) : undefined;
+    if (hasHopLandingTile && offset + 2 <= payload.length) {
+      offset += 2;
+    }
 
     return {
       type: MessageType.WALK_RESULT,
@@ -1953,6 +1972,8 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
         bike_transition: bikeTransition,
         bike_effect_flags: bikeEffectFlags,
         hop_landing_particle_class: hopLandingParticleClass,
+        hop_landing_tile_x: hopLandingTileX,
+        hop_landing_tile_y: hopLandingTileY,
       },
     };
   }
@@ -1978,6 +1999,20 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
       ? (readU8(payload, offset) as HopLandingParticleClass)
       : undefined;
     offset += 1;
+    const hasHopLandingTile = offset + 1 <= payload.length && readU8(payload, offset) !== 0;
+    if (offset + 1 <= payload.length) {
+      offset += 1;
+    }
+    const hopLandingTileX =
+      hasHopLandingTile && offset + 2 <= payload.length ? readU16(payload, offset) : undefined;
+    if (hasHopLandingTile && offset + 2 <= payload.length) {
+      offset += 2;
+    }
+    const hopLandingTileY =
+      hasHopLandingTile && offset + 2 <= payload.length ? readU16(payload, offset) : undefined;
+    if (hasHopLandingTile && offset + 2 <= payload.length) {
+      offset += 2;
+    }
     return {
       type: MessageType.BIKE_RUNTIME_DELTA,
       payload: {
@@ -1988,6 +2023,8 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
         acro_substate: acroSubstate,
         bike_transition: bikeTransition,
         hop_landing_particle_class: hopLandingParticleClass,
+        hop_landing_tile_x: hopLandingTileX,
+        hop_landing_tile_y: hopLandingTileY,
       },
     };
   }
@@ -2108,13 +2145,19 @@ function resolveAnimationStepMode({
 function consumeHopParticleLandingEvent(input: {
   particleClass: HopLandingParticleClass | undefined;
   serverFrame: number;
+  hopLandingTileX?: number;
+  hopLandingTileY?: number;
 }): void {
   if (input.particleClass === undefined) {
     return;
   }
+  const placementTile = resolveHopLandingPlacementTile(state, {
+    hopLandingTileX: input.hopLandingTileX,
+    hopLandingTileY: input.hopLandingTileY,
+  });
   hopParticleRenderer.onLandingEvent({
-    tileX: state.playerTileX,
-    tileY: state.playerTileY,
+    tileX: placementTile.tileX,
+    tileY: placementTile.tileY,
     particleClass: input.particleClass,
     serverFrame: input.serverFrame,
   });
