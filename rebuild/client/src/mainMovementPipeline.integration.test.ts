@@ -677,6 +677,32 @@ describe("main movement pipeline integration", () => {
     }
   });
 
+  it("drops stale hop latch immediately when authoritative wheelie-rise-moving transition arrives", () => {
+    const playerAnimation = new PlayerAnimationController(makeMockAssets());
+    const direction = Direction.RIGHT;
+
+    playerAnimation.setTraversalState({
+      traversalState: TraversalState.ACRO_BIKE,
+      acroSubstate: AcroBikeSubstate.BUNNY_HOP,
+      bikeTransition: BikeTransitionType.WHEELIE_HOPPING_MOVING,
+    });
+    playerAnimation.startStep(direction, "run");
+    expect(playerAnimation.getDebugState().animId).toBe(
+      "anim_acro_bunny_hop_back_east",
+    );
+
+    playerAnimation.setTraversalState({
+      traversalState: TraversalState.ACRO_BIKE,
+      acroSubstate: AcroBikeSubstate.MOVING_WHEELIE,
+      bikeTransition: BikeTransitionType.WHEELIE_RISING_MOVING,
+    });
+    playerAnimation.startStep(direction, "run");
+
+    const animId = playerAnimation.getDebugState().animId;
+    expect(animId).toBe("anim_acro_pop_wheelie_moving_east");
+    expect(animId).not.toBe("anim_acro_bunny_hop_back_east");
+  });
+
   it("resolves moving bunny-hop parity action after standing wheelie hop transitions into directional hold", () => {
     const playerAnimation = new PlayerAnimationController(makeMockAssets());
     const direction = Direction.RIGHT;

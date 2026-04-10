@@ -135,6 +135,46 @@ const ACRO_LATCH_INTERRUPT_TRANSITIONS = new Set<BikeTransitionType>([
   BikeTransitionType.WHEELIE_IDLE,
 ]);
 
+type AcroTransitionFamily =
+  | 'none'
+  | 'hop'
+  | 'wheelie_pop'
+  | 'wheelie_end'
+  | 'wheelie_idle'
+  | 'wheelie_move'
+  | 'other';
+
+function classifyAcroTransitionFamily(transition: BikeTransitionType): AcroTransitionFamily {
+  switch (transition) {
+    case BikeTransitionType.NONE:
+      return 'none';
+    case BikeTransitionType.HOP:
+    case BikeTransitionType.HOP_STANDING:
+    case BikeTransitionType.HOP_MOVING:
+    case BikeTransitionType.WHEELIE_HOPPING_STANDING:
+    case BikeTransitionType.WHEELIE_HOPPING_MOVING:
+    case BikeTransitionType.SIDE_JUMP:
+    case BikeTransitionType.TURN_JUMP:
+      return 'hop';
+    case BikeTransitionType.WHEELIE_POP:
+    case BikeTransitionType.NORMAL_TO_WHEELIE:
+    case BikeTransitionType.ENTER_WHEELIE:
+    case BikeTransitionType.WHEELIE_RISING_MOVING:
+      return 'wheelie_pop';
+    case BikeTransitionType.WHEELIE_END:
+    case BikeTransitionType.WHEELIE_TO_NORMAL:
+    case BikeTransitionType.EXIT_WHEELIE:
+    case BikeTransitionType.WHEELIE_LOWERING_MOVING:
+      return 'wheelie_end';
+    case BikeTransitionType.WHEELIE_IDLE:
+      return 'wheelie_idle';
+    case BikeTransitionType.WHEELIE_MOVING:
+      return 'wheelie_move';
+    default:
+      return 'other';
+  }
+}
+
 const WALK_ALTERNATION_REMAP = new Map<number, number>([
   [1, 2],
   [3, 0],
@@ -331,6 +371,16 @@ export class PlayerAnimationController {
     if (
       previousTraversalState !== this.traversalState ||
       ACRO_LATCH_INTERRUPT_TRANSITIONS.has(this.bikeTransition)
+    ) {
+      this.latchedTransition = null;
+    }
+
+    if (
+      this.traversalState === TraversalState.ACRO_BIKE &&
+      this.latchedTransition !== null &&
+      this.bikeTransition !== BikeTransitionType.NONE &&
+      classifyAcroTransitionFamily(this.latchedTransition) !==
+        classifyAcroTransitionFamily(this.bikeTransition)
     ) {
       this.latchedTransition = null;
     }
