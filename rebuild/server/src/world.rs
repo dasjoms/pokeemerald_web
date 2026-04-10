@@ -524,7 +524,31 @@ impl World {
             {
                 session.capture_step_end_direction_intent();
             }
+            let pause_active_walk_for_release_setdown = matches!(
+                session.player_state.traversal_state,
+                TraversalState::AcroBike
+            ) && session
+                .player_state
+                .bike_runtime
+                .acro_runtime
+                .release_setdown_lock_active();
+
             if let Some(active_walk) = session.active_walk_transition.as_mut() {
+                if pause_active_walk_for_release_setdown {
+                    if cfg!(debug_assertions) {
+                        trace!(
+                            connection_id = session.connection_id,
+                            input_seq = active_walk.input_seq,
+                            direction = ?active_walk.direction,
+                            movement_mode = ?active_walk.movement_mode,
+                            progress_pixels = active_walk.progress_pixels(),
+                            bike_transition = ?session.player_state.bike_runtime.last_transition,
+                            "walk transition paused during release set-down lock"
+                        );
+                    }
+                    continue;
+                }
+
                 active_walk.advance(SERVER_TICK_MS);
                 if active_walk.is_complete() {
                     session.player_state.map_id = active_walk.target_map_id.clone();
@@ -3284,6 +3308,18 @@ mod tests {
             session_state.player_state.preferred_bike_type = TraversalState::AcroBike;
             session_state.player_state.bike_runtime.acro_runtime.state = AcroState::BunnyHop;
             session_state.player_state.bike_runtime.acro_state = AcroBikeSubstate::BunnyHop;
+            session_state.active_walk_transition = Some(ActiveWalkTransition::new(
+                777,
+                "MAP_LANDING_COORD_REGRESSION".to_string(),
+                0,
+                0,
+                "MAP_LANDING_COORD_REGRESSION".to_string(),
+                1,
+                0,
+                Direction::Right,
+                MovementMode::Walk,
+                MovementStepSpeed::Step2,
+            ));
         }
 
         world
@@ -3305,8 +3341,18 @@ mod tests {
         let mut walk_seq = 0_u32;
         let mut saw_setdown_tick = false;
         let mut saw_resume_tick = false;
+        let mut setdown_progress_pixels = None;
 
         for _ in 0..24 {
+            let progress_before_tick = {
+                let sessions = world.sessions.read().await;
+                sessions.get(&session.connection_id).and_then(|session_state| {
+                    session_state
+                        .active_walk_transition
+                        .as_ref()
+                        .map(|transition| transition.progress_pixels())
+                })
+            };
             world
                 .enqueue_held_input_state(
                     session.connection_id,
@@ -3358,9 +3404,24 @@ mod tests {
 
             if emitted_setdown {
                 saw_setdown_tick = true;
+                let sessions = world.sessions.read().await;
+                let transition_progress = sessions
+                    .get(&session.connection_id)
+                    .and_then(|session_state| {
+                        session_state
+                            .active_walk_transition
+                            .as_ref()
+                            .map(|transition| transition.progress_pixels())
+                    });
+                setdown_progress_pixels = transition_progress;
                 assert!(
                     !accepted_this_tick,
                     "set-down tick must emit WheelieToNormal without accepting directional movement"
+                );
+                assert_eq!(
+                    transition_progress,
+                    progress_before_tick,
+                    "set-down tick must pause any in-flight movement interpolation"
                 );
                 continue;
             }
@@ -3374,6 +3435,11 @@ mod tests {
         assert!(
             saw_setdown_tick,
             "expected WheelieToNormal release set-down transition to emit after landing"
+        );
+        assert_eq!(
+            setdown_progress_pixels.is_some(),
+            true,
+            "expected set-down tick to observe an in-flight transition for interpolation pause verification"
         );
         assert!(
             saw_resume_tick,
