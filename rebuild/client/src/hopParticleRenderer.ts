@@ -89,6 +89,14 @@ const EFFECT_BY_CLASS: Record<HopLandingParticleClass, EffectKey> = {
   [HopLandingParticleClass.DEEP_WATER_SPLASH]: 'jump_big_splash',
 };
 
+const SPAWN_Y_OFFSET_BY_CLASS: Record<HopLandingParticleClass, number> = {
+  [HopLandingParticleClass.NORMAL_GROUND_DUST]: 12,
+  [HopLandingParticleClass.TALL_GRASS_JUMP]: 12,
+  [HopLandingParticleClass.LONG_GRASS_JUMP]: 8,
+  [HopLandingParticleClass.SHALLOW_WATER_SPLASH]: 12,
+  [HopLandingParticleClass.DEEP_WATER_SPLASH]: 8,
+};
+
 export class HopParticleRenderer {
   private readonly loadedEffectsByKey = new Map<EffectKey, LoadedEffect>();
   private readonly activeEffects: ActiveEffect[] = [];
@@ -133,7 +141,8 @@ export class HopParticleRenderer {
     const sprite = new Sprite(effect.steps[0].texture);
     sprite.anchor.set(0.5, 1);
     sprite.x = input.tileX * this.tileSize + this.tileSize / 2;
-    sprite.y = input.tileY * this.tileSize + this.tileSize;
+    const spawnYOffset = SPAWN_Y_OFFSET_BY_CLASS[input.particleClass] ?? 12;
+    sprite.y = input.tileY * this.tileSize + spawnYOffset;
     const layer = this.resolveLayerForTile(input.tileX, input.tileY);
     layer.addChild(sprite as unknown as ContainerChild);
     const activeEffect: ActiveEffect = {
