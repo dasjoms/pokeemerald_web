@@ -276,11 +276,7 @@ const ENABLE_DEBUG_OVERLAY_DEFAULT =
   new URLSearchParams(window.location.search).get('debug') === '1';
 const ENABLE_DEV_DEBUG_ACTIONS =
   new URLSearchParams(window.location.search).get('devDebugActions') === '1';
-const debugAcroHopSearch =
-  typeof window === 'undefined' ? '' : window.location.search;
-const DEBUG_ACRO_HOP =
-  import.meta.env.DEV &&
-  new URLSearchParams(debugAcroHopSearch).get('debugAcroHop') === '1';
+const DEBUG_ACRO_HOP = true;
 const jsonAssetLoaders = import.meta.glob('../../assets/**/*.json');
 const binaryAssetUrls = import.meta.glob('../../assets/**/*.bin', {
   query: '?url',
@@ -323,6 +319,8 @@ let mapIdToLayoutJsonPathPromise: Promise<Map<number, string>> | null = null;
 let latestHeldDirection: Direction | null = null;
 let latestHeldButtons = HeldButtons.NONE;
 let latestHeldInputSeq: number | null = null;
+let lastLoggedOutboundHeldState: { heldDirection: Direction | null; heldButtons: number } | null = null;
+let lastLoggedPrereqBlockSignature: string | null = null;
 let nextAcroHopAttemptId = 1;
 let activeAcroHopAttempt: AcroHopAttempt | null = null;
 
@@ -1503,11 +1501,21 @@ function sendHeldInputState(heldDirection: Direction | null, heldButtons: number
     encodeHeldInputState(heldDirection, heldButtons, inputSeq, BigInt(Date.now())),
   );
   if (DEBUG_ACRO_HOP) {
-    console.info('[acro-hop][outbound] held_input_state', {
-      inputSeq,
-      heldDirection,
-      heldButtons,
-    });
+    const shouldLogOutboundHeldState =
+      lastLoggedOutboundHeldState === null ||
+      lastLoggedOutboundHeldState.heldDirection !== heldDirection ||
+      lastLoggedOutboundHeldState.heldButtons !== heldButtons;
+    if (shouldLogOutboundHeldState) {
+      console.info('[acro-hop][outbound] held_input_state (state-change)', {
+        inputSeq,
+        heldDirection,
+        heldButtons,
+      });
+      lastLoggedOutboundHeldState = {
+        heldDirection,
+        heldButtons,
+      };
+    }
   }
   return inputSeq;
 }
@@ -1578,6 +1586,7 @@ function trackAcroHopAttemptProgress(details: {
   const bunnyHopReached = isBunnyHopTransition(details.acroSubstate, details.bikeTransition);
 
   if (activeAcroHopAttempt) {
+    lastLoggedPrereqBlockSignature = null;
     const attempt = activeAcroHopAttempt;
     if (bunnyHopReached) {
       console.info(`[acro-hop][attempt ${attempt.id}] SUCCESS`, {
@@ -1630,9 +1639,34 @@ function trackAcroHopAttemptProgress(details: {
   }
 
   if (!standingWheelie || !bHeld || directionHeld) {
+    if (bHeld && !directionHeld) {
+      const prereqBlockSignature = `${details.source}|${details.serverFrame}|${details.traversalState}|${details.acroSubstate ?? 'none'}|${details.bikeTransition ?? 'none'}`;
+      if (prereqBlockSignature !== lastLoggedPrereqBlockSignature) {
+        const blockReason =
+          details.traversalState !== TraversalState.ACRO_BIKE
+            ? 'not_on_acro_bike'
+            : details.acroSubstate !== AcroBikeSubstate.STANDING_WHEELIE
+              ? 'not_in_standing_wheelie'
+              : 'blocked_before_attempt_start';
+        console.info('[acro-hop][attempt] prerequisites-not-met', {
+          source: details.source,
+          serverFrame: details.serverFrame,
+          blockReason,
+          heldDirection: latestHeldDirection,
+          heldButtons: latestHeldButtons,
+          traversal_state: details.traversalState,
+          acro_substate: details.acroSubstate,
+          bike_transition: details.bikeTransition,
+        });
+        lastLoggedPrereqBlockSignature = prereqBlockSignature;
+      }
+    } else {
+      lastLoggedPrereqBlockSignature = null;
+    }
     return;
   }
 
+  lastLoggedPrereqBlockSignature = null;
   const attempt: AcroHopAttempt = {
     id: nextAcroHopAttemptId,
     startedAtServerFrame: details.serverFrame,
