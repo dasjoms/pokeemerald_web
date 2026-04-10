@@ -339,6 +339,7 @@ pub const fn get_player_speed(
     traversal_state: TraversalState,
     movement_mode: MovementMode,
     bike_frame_counter: u8,
+    acro_substate: Option<AcroBikeSubstate>,
 ) -> PlayerSpeed {
     match traversal_state {
         TraversalState::OnFoot => {
@@ -349,7 +350,13 @@ pub const fn get_player_speed(
             }
         }
         TraversalState::MachBike => mach_speed_tier_for_frame_counter(bike_frame_counter),
-        TraversalState::AcroBike => PlayerSpeed::Faster,
+        TraversalState::AcroBike => {
+            if matches!(acro_substate, Some(AcroBikeSubstate::BunnyHop)) {
+                PlayerSpeed::Normal
+            } else {
+                PlayerSpeed::Faster
+            }
+        }
     }
 }
 
@@ -1012,5 +1019,27 @@ mod tests {
             Direction::Up,
             PlayerSpeed::Fastest
         ));
+    }
+
+    #[test]
+    fn acro_bunny_hop_uses_normal_speed_tier() {
+        assert_eq!(
+            get_player_speed(
+                TraversalState::AcroBike,
+                MovementMode::Walk,
+                0,
+                Some(AcroBikeSubstate::BunnyHop)
+            ),
+            PlayerSpeed::Normal
+        );
+        assert_eq!(
+            get_player_speed(
+                TraversalState::AcroBike,
+                MovementMode::Walk,
+                0,
+                Some(AcroBikeSubstate::MovingWheelie)
+            ),
+            PlayerSpeed::Faster
+        );
     }
 }
