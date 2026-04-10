@@ -468,12 +468,45 @@ impl World {
                     .bike_runtime
                     .acro_runtime
                     .set_held_input(effective_held_direction, holding_b);
-                session
+                let action = session
                     .player_state
                     .bike_runtime
                     .acro_runtime
-                    .advance_locked_movement_tick();
-                session.player_state.bike_runtime.acro_state = AcroBikeSubstate::BunnyHop;
+                    .advance_locked_bunny_hop_tick(session.player_state.facing);
+                session.player_state.bike_runtime.acro_state =
+                    match session.player_state.bike_runtime.acro_runtime.state {
+                        AcroState::Normal
+                        | AcroState::Turning
+                        | AcroState::SideJump
+                        | AcroState::TurnJump => AcroBikeSubstate::None,
+                        AcroState::WheelieStanding => AcroBikeSubstate::StandingWheelie,
+                        AcroState::BunnyHop => AcroBikeSubstate::BunnyHop,
+                        AcroState::WheelieMoving => AcroBikeSubstate::MovingWheelie,
+                    };
+                session.player_state.bike_runtime.last_transition = match action {
+                    AcroAnimationAction::None
+                    | AcroAnimationAction::FaceDirection
+                    | AcroAnimationAction::TurnDirection
+                    | AcroAnimationAction::Moving => BikeTransitionType::None,
+                    AcroAnimationAction::NormalToWheelie => BikeTransitionType::NormalToWheelie,
+                    AcroAnimationAction::WheelieToNormal => BikeTransitionType::WheelieToNormal,
+                    AcroAnimationAction::WheelieIdle => BikeTransitionType::WheelieIdle,
+                    AcroAnimationAction::WheelieHoppingStanding => {
+                        BikeTransitionType::WheelieHoppingStanding
+                    }
+                    AcroAnimationAction::WheelieHoppingMoving => {
+                        BikeTransitionType::WheelieHoppingMoving
+                    }
+                    AcroAnimationAction::SideJump => BikeTransitionType::SideJump,
+                    AcroAnimationAction::TurnJump => BikeTransitionType::TurnJump,
+                    AcroAnimationAction::WheelieMoving => BikeTransitionType::WheelieMoving,
+                    AcroAnimationAction::WheelieRisingMoving => {
+                        BikeTransitionType::WheelieRisingMoving
+                    }
+                    AcroAnimationAction::WheelieLoweringMoving => {
+                        BikeTransitionType::WheelieLoweringMoving
+                    }
+                };
             } else {
                 update_bike_runtime_per_tick(
                     &mut session.player_state,
@@ -3457,8 +3490,9 @@ mod tests {
         let mut walk_seq = 0_u32;
         let mut saw_resume_tick = false;
         let mut saw_mid_hop_setdown = false;
+        let mut first_setdown_loop: Option<usize> = None;
 
-        for _ in 0..32 {
+        for loop_index in 0..32 {
             let progress_before_tick = {
                 let sessions = world.sessions.read().await;
                 sessions
@@ -3530,6 +3564,7 @@ mod tests {
                 if transition_progress_after_tick.is_some() && progress_before_tick.is_some() {
                     saw_mid_hop_setdown = true;
                 }
+                first_setdown_loop.get_or_insert(loop_index);
                 continue;
             }
 
@@ -3546,6 +3581,10 @@ mod tests {
         assert!(
             saw_resume_tick,
             "expected directional movement acceptance to resume without synthetic lock requeue"
+        );
+        assert!(
+            first_setdown_loop.map(|index| index < 16).unwrap_or(true),
+            "B-release should resolve on the first landing boundary, not after extra hop cycles"
         );
     }
 

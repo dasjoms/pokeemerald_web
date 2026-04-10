@@ -187,10 +187,13 @@ impl AcroRuntime {
         self.pending_action = Some(self.handle_input(self.held_direction, self.movement_direction));
     }
 
-    pub fn advance_locked_movement_tick(&mut self) {
+    pub fn advance_locked_bunny_hop_tick(
+        &mut self,
+        facing_direction: Direction,
+    ) -> AcroAnimationAction {
         self.hop_landed_this_tick = false;
         self.advance_bunny_hop_phase();
-        self.pending_action = None;
+        self.handle_input_bunny_hop(self.held_direction, facing_direction)
     }
 
     pub fn take_pending_action(&mut self) -> Option<AcroAnimationAction> {
@@ -1025,6 +1028,28 @@ mod tests {
             runtime.take_pending_action(),
             Some(AcroAnimationAction::WheelieToNormal)
         );
+    }
+
+    #[test]
+    fn locked_directional_bunny_hop_release_transitions_on_first_landing_boundary() {
+        let mut runtime = AcroRuntime {
+            state: AcroState::BunnyHop,
+            bunny_hop_cycle_tick: BUNNY_HOP_CYCLE_TICKS - 2,
+            running_state: RunningState::Moving,
+            ..Default::default()
+        };
+
+        runtime.set_held_input(Some(Direction::Right), false);
+        let locked_action = runtime.advance_locked_bunny_hop_tick(Direction::Right);
+        assert_eq!(locked_action, AcroAnimationAction::WheelieHoppingMoving);
+        assert_eq!(runtime.state, AcroState::BunnyHop);
+
+        runtime.set_held_input(Some(Direction::Right), false);
+        let locked_action = runtime.advance_locked_bunny_hop_tick(Direction::Right);
+        assert_eq!(locked_action, AcroAnimationAction::WheelieToNormal);
+        assert_eq!(runtime.state, AcroState::Normal);
+        assert_eq!(runtime.running_state, RunningState::NotMoving);
+        assert_eq!(runtime.bunny_hop_cycle_tick(), 0);
     }
 
     #[test]
