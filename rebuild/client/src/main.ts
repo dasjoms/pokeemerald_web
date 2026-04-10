@@ -60,6 +60,7 @@ import {
 } from './hopShadowRenderer';
 import { HopParticleRenderer } from './hopParticleRenderer';
 import { computeObjectDepth } from './objectDepth';
+import { resolveHopParticleBaseSubpriority, resolveHopTypeContext, type HopTypeContext } from './hopParticleDepth';
 import {
   createWalkInputController,
   encodeHeldInputState,
@@ -284,6 +285,8 @@ type PendingHopLandingParticleEvent = {
   tileX: number;
   tileY: number;
   elevation: number;
+  facing: Direction;
+  hopType: HopTypeContext;
 };
 
 
@@ -722,6 +725,8 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
       hopLandingTileX: delta.hop_landing_tile_x,
       hopLandingTileY: delta.hop_landing_tile_y,
       hopLandingElevation: delta.player_elevation,
+      facing: state.facing,
+      bikeTransition: delta.bike_transition,
     });
     flushPendingHopParticleLandingEvent();
     // BikeRuntimeDelta is change-only by design; consume it as authoritative
@@ -789,6 +794,8 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     hopLandingTileX: result.hop_landing_tile_x,
     hopLandingTileY: result.hop_landing_tile_y,
     hopLandingElevation: result.player_elevation,
+    facing: result.facing,
+    bikeTransition: result.bike_transition,
   });
   flushPendingHopParticleLandingEvent();
   if (result.accepted) {
@@ -2205,6 +2212,8 @@ function queueHopParticleLandingEvent(input: {
   hopLandingTileX?: number;
   hopLandingTileY?: number;
   hopLandingElevation: number;
+  facing: Direction;
+  bikeTransition: BikeTransitionType | undefined;
 }): void {
   if (
     input.particleClass === undefined ||
@@ -2219,6 +2228,8 @@ function queueHopParticleLandingEvent(input: {
     elevation: input.hopLandingElevation,
     particleClass: input.particleClass,
     serverFrame: input.serverFrame,
+    facing: input.facing,
+    hopType: resolveHopTypeContext(input.bikeTransition),
   };
 }
 
@@ -2422,7 +2433,11 @@ function updateObjectDepthSorting(): void {
       screenY: sample.screenY,
       halfHeightPx: sample.halfHeightPx,
       elevation: sample.elevation,
-      baseSubpriority: 0,
+      baseSubpriority: resolveHopParticleBaseSubpriority({
+        facing: sample.facing,
+        hopType: sample.hopType,
+        particleClass: sample.particleClass,
+      }),
     });
   }
 
