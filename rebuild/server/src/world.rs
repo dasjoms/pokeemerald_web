@@ -624,6 +624,18 @@ impl World {
                     session.requeue_walk_input_front(input);
                     break;
                 }
+                if matches!(
+                    session.player_state.traversal_state,
+                    TraversalState::AcroBike
+                ) && session
+                    .player_state
+                    .bike_runtime
+                    .acro_runtime
+                    .release_setdown_lock_active()
+                {
+                    session.requeue_walk_input_front(input);
+                    break;
+                }
 
                 let Some(current_map) = self.maps.get(&session.player_state.map_id) else {
                     session.player_state.facing = input.direction;
@@ -3242,6 +3254,130 @@ mod tests {
         assert_eq!(
             player.bike_runtime.last_transition,
             BikeTransitionType::WheelieToNormal
+        );
+    }
+
+    #[tokio::test]
+    async fn bunny_hop_release_setdown_tick_does_not_accept_directional_walk() {
+        let world = test_world_with_initial_map(landing_coordinate_regression_map());
+        let (tx, mut rx) = mpsc::unbounded_channel();
+        let session = world
+            .create_session(tx)
+            .await
+            .expect("session should create");
+        world
+            .join_session(session.connection_id, "release-setdown-lock")
+            .await
+            .expect("session should join");
+        let _ = drain_server_messages(&mut rx);
+
+        {
+            let mut sessions = world.sessions.write().await;
+            let session_state = sessions
+                .get_mut(&session.connection_id)
+                .expect("session should exist");
+            session_state.player_state.map_id = "MAP_LANDING_COORD_REGRESSION".to_string();
+            session_state.player_state.tile_x = 0;
+            session_state.player_state.tile_y = 0;
+            session_state.player_state.facing = Direction::Right;
+            session_state.player_state.traversal_state = TraversalState::AcroBike;
+            session_state.player_state.preferred_bike_type = TraversalState::AcroBike;
+            session_state.player_state.bike_runtime.acro_runtime.state = AcroState::BunnyHop;
+            session_state.player_state.bike_runtime.acro_state = AcroBikeSubstate::BunnyHop;
+        }
+
+        world
+            .enqueue_held_input_state(
+                session.connection_id,
+                HeldInputState {
+                    input_seq: 0,
+                    held_dpad: crate::protocol::HeldDpad::None as u8,
+                    held_buttons: crate::protocol::HeldButtons::B as u8,
+                    client_time: 0,
+                },
+            )
+            .await
+            .expect("held input should enqueue");
+        world.tick().await;
+        let _ = drain_server_messages(&mut rx);
+
+        let mut held_seq = 1_u32;
+        let mut walk_seq = 0_u32;
+        let mut saw_setdown_tick = false;
+        let mut saw_resume_tick = false;
+
+        for _ in 0..24 {
+            world
+                .enqueue_held_input_state(
+                    session.connection_id,
+                    HeldInputState {
+                        input_seq: held_seq,
+                        held_dpad: crate::protocol::HeldDpad::Right as u8,
+                        held_buttons: 0,
+                        client_time: held_seq as u64,
+                    },
+                )
+                .await
+                .expect("held input should enqueue");
+            held_seq = held_seq.saturating_add(1);
+            world
+                .enqueue_walk_input(
+                    session.connection_id,
+                    WalkInput {
+                        direction: Direction::Right,
+                        movement_mode: MovementMode::Walk,
+                        held_buttons: 0,
+                        input_seq: walk_seq,
+                        client_time: walk_seq as u64,
+                    },
+                )
+                .await
+                .expect("walk input should enqueue");
+            walk_seq = walk_seq.saturating_add(1);
+            world.tick().await;
+
+            let tick_messages = drain_server_messages(&mut rx);
+            let emitted_setdown = tick_messages.iter().any(|message| {
+                matches!(
+                    message,
+                    ServerMessage::BikeRuntimeDelta(BikeRuntimeDelta {
+                        bike_transition: Some(BikeTransitionType::WheelieToNormal),
+                        ..
+                    })
+                )
+            });
+            let accepted_this_tick = tick_messages.iter().any(|message| {
+                matches!(
+                    message,
+                    ServerMessage::WalkResult(WalkResult {
+                        accepted: true,
+                        ..
+                    })
+                )
+            });
+
+            if emitted_setdown {
+                saw_setdown_tick = true;
+                assert!(
+                    !accepted_this_tick,
+                    "set-down tick must emit WheelieToNormal without accepting directional movement"
+                );
+                continue;
+            }
+
+            if saw_setdown_tick && accepted_this_tick {
+                saw_resume_tick = true;
+                break;
+            }
+        }
+
+        assert!(
+            saw_setdown_tick,
+            "expected WheelieToNormal release set-down transition to emit after landing"
+        );
+        assert!(
+            saw_resume_tick,
+            "expected directional movement acceptance to resume on a tick after WheelieToNormal"
         );
     }
 
