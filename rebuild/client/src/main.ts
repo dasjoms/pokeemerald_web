@@ -59,6 +59,7 @@ import {
   type HopShadowSizeVariant,
 } from './hopShadowRenderer';
 import { HopParticleRenderer } from './hopParticleRenderer';
+import { computeObjectDepth } from './objectDepth';
 import {
   createWalkInputController,
   encodeHeldInputState,
@@ -404,22 +405,22 @@ const worldContainer = new Container();
 const mapBg3Layer = new Container();
 const shadowBelowBg2Layer = new Container();
 const bikeEffectsBelowBg2Layer = new Container();
-const actorBelowBg2Layer = new Container();
+const objectDepthBelowBg2Layer = new Container({ sortableChildren: true });
 const mapBg2Layer = new Container();
 const shadowBetweenBg2Bg1Layer = new Container();
 const bikeEffectsBetweenBg2Bg1Layer = new Container();
-const actorBetweenBg2Bg1Layer = new Container();
+const objectDepthBetweenBg2Bg1Layer = new Container({ sortableChildren: true });
 const bikeEffectsLayer = new Container();
 const mapBg1Layer = new Container();
 const debugOverlayLayer = new Container();
 worldContainer.addChild(mapBg3Layer);
 worldContainer.addChild(shadowBelowBg2Layer);
 worldContainer.addChild(bikeEffectsBelowBg2Layer);
-worldContainer.addChild(actorBelowBg2Layer);
+worldContainer.addChild(objectDepthBelowBg2Layer);
 worldContainer.addChild(mapBg2Layer);
 worldContainer.addChild(shadowBetweenBg2Bg1Layer);
 worldContainer.addChild(bikeEffectsBetweenBg2Bg1Layer);
-worldContainer.addChild(actorBetweenBg2Bg1Layer);
+worldContainer.addChild(objectDepthBetweenBg2Bg1Layer);
 worldContainer.addChild(bikeEffectsLayer);
 worldContainer.addChild(mapBg1Layer);
 worldContainer.addChild(debugOverlayLayer);
@@ -457,24 +458,19 @@ playerSprite.anchor.set(
   playerAnimationAssets.anchorX / playerAnimationAssets.frameWidth,
   playerAnimationAssets.anchorY / playerAnimationAssets.frameHeight,
 );
-actorBetweenBg2Bg1Layer.addChild(playerSprite);
-let playerActiveActorLayer = actorBetweenBg2Bg1Layer;
+objectDepthBetweenBg2Bg1Layer.addChild(playerSprite);
+let playerActiveActorLayer = objectDepthBetweenBg2Bg1Layer;
 let activeMapTileRenderPriorityContexts: (MapTileRenderPriorityContext | undefined)[] = [];
 let playerObjectRenderPriorityState: PlayerObjectRenderPriorityState = 'normal';
 const bikeEffectRenderer = new BikeEffectRenderer(bikeEffectsLayer, TILE_SIZE);
-const resolveHopEffectLayerForPlayerSprite = (): Container => {
-  const sampleTile = resolveCurrentPlayerLayerSampleTile();
-  return resolveHopEffectLayerForPlayer(sampleTile.x, sampleTile.y);
-};
 const hopParticleRenderer = new HopParticleRenderer(
-  resolveHopEffectLayerForPlayerSprite,
+  (tileX, tileY) => resolveHopEffectLayerForPlayer(tileX, tileY),
   TILE_SIZE,
   {
     loadJsonFromAssets,
     resolveImageUrlFromAssets,
     loadJascPaletteHexColorsFromAssets,
   },
-  () => playerSprite,
 );
 const hopShadowRenderer = new HopShadowRenderer(
   () => {
@@ -509,6 +505,7 @@ app.ticker.add(() => {
   bikeEffectRenderer.tick(app.ticker.deltaMS);
   hopParticleRenderer.tick(app.ticker.deltaMS);
   positionPlayerSprite();
+  updateObjectDepthSorting();
   updateCamera();
   renderHud();
 });
@@ -912,18 +909,18 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
   mapBg2Layer.removeChildren();
   mapBg1Layer.removeChildren();
   debugOverlayLayer.removeChildren();
-  actorBelowBg2Layer.removeChildren();
+  objectDepthBelowBg2Layer.removeChildren();
   shadowBelowBg2Layer.removeChildren();
   bikeEffectsBelowBg2Layer.removeChildren();
   shadowBetweenBg2Bg1Layer.removeChildren();
   bikeEffectsBetweenBg2Bg1Layer.removeChildren();
-  actorBetweenBg2Bg1Layer.removeChildren();
+  objectDepthBetweenBg2Bg1Layer.removeChildren();
   bikeEffectsLayer.removeChildren();
   bikeEffectRenderer.clear();
   hopShadowRenderer.clear();
   hopParticleRenderer.clear();
-  actorBetweenBg2Bg1Layer.addChild(playerSprite);
-  playerActiveActorLayer = actorBetweenBg2Bg1Layer;
+  objectDepthBetweenBg2Bg1Layer.addChild(playerSprite);
+  playerActiveActorLayer = objectDepthBetweenBg2Bg1Layer;
   renderedSubtileBindings.length = 0;
   subtileBindingsByTile.clear();
   subtileBindingsByPalette.clear();
@@ -2371,14 +2368,14 @@ function resolveActorLayerForPlayer(tileX: number, tileY: number): Container {
     tileContext,
   });
   if (actorStratum === 'below-bg2') {
-    return actorBelowBg2Layer;
+    return objectDepthBelowBg2Layer;
   }
-  return actorBetweenBg2Bg1Layer;
+  return objectDepthBetweenBg2Bg1Layer;
 }
 
 function resolveShadowLayerForPlayer(tileX: number, tileY: number): Container {
   const actorLayer = resolveActorLayerForPlayer(tileX, tileY);
-  if (actorLayer === actorBelowBg2Layer) {
+  if (actorLayer === objectDepthBelowBg2Layer) {
     return shadowBelowBg2Layer;
   }
   return shadowBetweenBg2Bg1Layer;
@@ -2386,10 +2383,32 @@ function resolveShadowLayerForPlayer(tileX: number, tileY: number): Container {
 
 function resolveHopEffectLayerForPlayer(tileX: number, tileY: number): Container {
   const actorLayer = resolveActorLayerForPlayer(tileX, tileY);
-  if (actorLayer === actorBelowBg2Layer) {
-    return bikeEffectsBelowBg2Layer;
+  if (actorLayer === objectDepthBelowBg2Layer) {
+    return objectDepthBelowBg2Layer;
   }
-  return bikeEffectsBetweenBg2Bg1Layer;
+  return objectDepthBetweenBg2Bg1Layer;
+}
+
+function updateObjectDepthSorting(): void {
+  const playerDepth = computeObjectDepth({
+    screenY: playerSprite.y,
+    halfHeightPx: playerAnimationAssets.frameHeight * 0.5,
+    elevation: 0,
+    baseSubpriority: 1,
+  });
+  playerSprite.zIndex = playerDepth;
+
+  for (const sample of hopParticleRenderer.getDepthSamples()) {
+    sample.sprite.zIndex = computeObjectDepth({
+      screenY: sample.screenY,
+      halfHeightPx: sample.halfHeightPx,
+      elevation: 0,
+      baseSubpriority: 0,
+    });
+  }
+
+  objectDepthBelowBg2Layer.sortChildren();
+  objectDepthBetweenBg2Bg1Layer.sortChildren();
 }
 
 function presentPlayerAnimationFrame(): void {
