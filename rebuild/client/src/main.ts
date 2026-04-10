@@ -276,11 +276,7 @@ const ENABLE_DEBUG_OVERLAY_DEFAULT =
   new URLSearchParams(window.location.search).get('debug') === '1';
 const ENABLE_DEV_DEBUG_ACTIONS =
   new URLSearchParams(window.location.search).get('devDebugActions') === '1';
-const debugAcroHopSearch =
-  typeof window === 'undefined' ? '' : window.location.search;
-const DEBUG_ACRO_HOP =
-  import.meta.env.DEV &&
-  new URLSearchParams(debugAcroHopSearch).get('debugAcroHop') === '1';
+const DEBUG_ACRO_HOP = true;
 const jsonAssetLoaders = import.meta.glob('../../assets/**/*.json');
 const binaryAssetUrls = import.meta.glob('../../assets/**/*.bin', {
   query: '?url',
