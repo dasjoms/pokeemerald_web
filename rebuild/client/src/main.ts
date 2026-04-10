@@ -462,17 +462,19 @@ let playerActiveActorLayer = actorBetweenBg2Bg1Layer;
 let activeMapTileRenderPriorityContexts: (MapTileRenderPriorityContext | undefined)[] = [];
 let playerObjectRenderPriorityState: PlayerObjectRenderPriorityState = 'normal';
 const bikeEffectRenderer = new BikeEffectRenderer(bikeEffectsLayer, TILE_SIZE);
+const resolveHopEffectLayerForPlayerSprite = (): Container => {
+  const sampleTile = resolveCurrentPlayerLayerSampleTile();
+  return resolveHopEffectLayerForPlayer(sampleTile.x, sampleTile.y);
+};
 const hopParticleRenderer = new HopParticleRenderer(
-  () => {
-    const sampleTile = resolveCurrentPlayerLayerSampleTile();
-    return resolveHopEffectLayerForPlayer(sampleTile.x, sampleTile.y);
-  },
+  resolveHopEffectLayerForPlayerSprite,
   TILE_SIZE,
   {
     loadJsonFromAssets,
     resolveImageUrlFromAssets,
     loadJascPaletteHexColorsFromAssets,
   },
+  () => playerSprite,
 );
 const hopShadowRenderer = new HopShadowRenderer(
   () => {
