@@ -82,6 +82,38 @@ describe('virtual B parity input mapping', () => {
     nowSpy.mockRestore();
   });
 
+  it('resumes previously held fallback direction after arbitration changes without fresh keydown', () => {
+    const sentWalk: Direction[] = [];
+    const nowSpy = vi.spyOn(performance, 'now');
+    nowSpy.mockReturnValue(32_000);
+
+    const controller = createWalkInputController({
+      sendWalkInput: (direction) => {
+        sentWalk.push(direction);
+      },
+      sendHeldInputState: () => null,
+      isMovementLocked: () => false,
+      onFacingIntent: () => {},
+    });
+
+    controller.handleKeyDown(keyEvent('ArrowRight'));
+    nowSpy.mockReturnValue(32_100);
+    controller.tick();
+    expect(sentWalk).toEqual([Direction.RIGHT]);
+
+    controller.handleKeyDown(keyEvent('ArrowUp'));
+    controller.noteWalkTransitionProgress(0.9);
+    controller.markWalkResultReceived({ accepted: true } as never);
+    expect(sentWalk).toEqual([Direction.RIGHT, Direction.UP]);
+
+    controller.handleKeyUp(keyEvent('ArrowUp'));
+    controller.markWalkTransitionCompleted();
+    controller.markWalkResultReceived({ accepted: true } as never);
+    expect(sentWalk).toEqual([Direction.RIGHT, Direction.UP, Direction.RIGHT]);
+
+    nowSpy.mockRestore();
+  });
+
   it('encodes deterministic held masks for contradictory multi-key combinations', () => {
     const sentHeld: number[] = [];
     const controller = createWalkInputController({
@@ -149,16 +181,16 @@ describe('virtual B parity input mapping', () => {
 
     controller.noteWalkTransitionProgress(0.5);
     controller.markWalkResultReceived({ accepted: true } as never);
-    expect(sentWalk).toHaveLength(1);
+    expect(sentWalk).toHaveLength(2);
 
     controller.noteWalkTransitionProgress(0.9);
     controller.noteWalkTransitionProgress(0.95);
     controller.markWalkResultReceived({ accepted: true } as never);
-    expect(sentWalk).toHaveLength(2);
+    expect(sentWalk).toHaveLength(3);
 
     controller.noteWalkTransitionProgress(0.9);
     controller.markWalkResultReceived({ accepted: true } as never);
-    expect(sentWalk).toHaveLength(3);
+    expect(sentWalk).toHaveLength(4);
 
     nowSpy.mockRestore();
   });
