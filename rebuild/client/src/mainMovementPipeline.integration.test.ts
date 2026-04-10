@@ -21,6 +21,8 @@ import {
   TraversalState,
   type WalkResult,
 } from "./protocol_generated";
+import { PlayerMovementActionRuntime } from "./playerMovementActionRuntime";
+import { HopShadowRenderer } from "./hopShadowRenderer";
 
 type PipelineState = WalkTransitionMutableState & {
   facing: Direction;
@@ -399,6 +401,55 @@ describe("main movement pipeline integration", () => {
     expect(playerAnimation.getDebugState().frameIndex).toBe(463);
   });
 
+  it("spawns hop shadow when entering hop transition families and despawns at hop arc completion", () => {
+    const movementRuntime = new PlayerMovementActionRuntime();
+    const fakeLayer = new FakeShadowLayer();
+    const shadowRenderer = new HopShadowRenderer(fakeLayer, 16, () => ({
+      x: 0,
+      y: 0,
+      visible: true,
+    }));
+
+    movementRuntime.setAuthoritativeInput({
+      traversalState: TraversalState.ACRO_BIKE,
+      acroSubstate: AcroBikeSubstate.BUNNY_HOP,
+      bikeTransition: BikeTransitionType.HOP_STANDING,
+    });
+    shadowRenderer.setAuthoritativeState({
+      traversalState: TraversalState.ACRO_BIKE,
+      bikeTransition: BikeTransitionType.HOP_STANDING,
+    });
+
+    shadowRenderer.presentFrame({
+      tileX: 12,
+      tileY: 9,
+      visualState: movementRuntime.getVisualState(),
+    });
+    expect(shadowRenderer.hasActiveShadow()).toBe(true);
+    expect(fakeLayer.addedCount).toBe(1);
+    expect(fakeLayer.removedCount).toBe(0);
+
+    for (let tick = 0; tick < 15; tick += 1) {
+      movementRuntime.tickTicks(1);
+      shadowRenderer.presentFrame({
+        tileX: 12,
+        tileY: 9,
+        visualState: movementRuntime.getVisualState(),
+      });
+      expect(shadowRenderer.hasActiveShadow()).toBe(true);
+    }
+
+    movementRuntime.tickTicks(1);
+    shadowRenderer.presentFrame({
+      tileX: 12,
+      tileY: 9,
+      visualState: movementRuntime.getVisualState(),
+    });
+
+    expect(shadowRenderer.hasActiveShadow()).toBe(false);
+    expect(fakeLayer.removedCount).toBe(1);
+  });
+
   it("keeps moving bunny-hop animation when authoritative transition clears to NONE mid-hop", () => {
     const playerAnimation = new PlayerAnimationController(makeMockAssets());
 
@@ -712,6 +763,19 @@ describe("main movement pipeline integration", () => {
     },
   );
 });
+
+class FakeShadowLayer {
+  addedCount = 0;
+  removedCount = 0;
+
+  addChild(): void {
+    this.addedCount += 1;
+  }
+
+  removeChild(): void {
+    this.removedCount += 1;
+  }
+}
 
 function makeMockAssets(): PlayerAnimationAssets {
   const directionalBindings = {
