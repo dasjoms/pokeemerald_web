@@ -524,31 +524,7 @@ impl World {
             {
                 session.capture_step_end_direction_intent();
             }
-            let pause_active_walk_for_release_setdown = matches!(
-                session.player_state.traversal_state,
-                TraversalState::AcroBike
-            ) && session
-                .player_state
-                .bike_runtime
-                .acro_runtime
-                .release_setdown_lock_active();
-
             if let Some(active_walk) = session.active_walk_transition.as_mut() {
-                if pause_active_walk_for_release_setdown {
-                    if cfg!(debug_assertions) {
-                        trace!(
-                            connection_id = session.connection_id,
-                            input_seq = active_walk.input_seq,
-                            direction = ?active_walk.direction,
-                            movement_mode = ?active_walk.movement_mode,
-                            progress_pixels = active_walk.progress_pixels(),
-                            bike_transition = ?session.player_state.bike_runtime.last_transition,
-                            "walk transition paused during release set-down lock"
-                        );
-                    }
-                    continue;
-                }
-
                 active_walk.advance(SERVER_TICK_MS);
                 if active_walk.is_complete() {
                     session.player_state.map_id = active_walk.target_map_id.clone();
@@ -648,19 +624,6 @@ impl World {
                     session.requeue_walk_input_front(input);
                     break;
                 }
-                if matches!(
-                    session.player_state.traversal_state,
-                    TraversalState::AcroBike
-                ) && session
-                    .player_state
-                    .bike_runtime
-                    .acro_runtime
-                    .release_setdown_lock_active()
-                {
-                    session.requeue_walk_input_front(input);
-                    break;
-                }
-
                 let Some(current_map) = self.maps.get(&session.player_state.map_id) else {
                     session.player_state.facing = input.direction;
                     let _ = session.send(ServerMessage::WalkResult(WalkResult {
@@ -3282,7 +3245,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn bunny_hop_release_setdown_tick_does_not_accept_directional_walk() {
+    async fn bunny_hop_release_setdown_tick_accepts_directional_walk_without_pause() {
         let world = test_world_with_initial_map(landing_coordinate_regression_map());
         let (tx, mut rx) = mpsc::unbounded_channel();
         let session = world
@@ -3341,7 +3304,7 @@ mod tests {
         let mut walk_seq = 0_u32;
         let mut saw_setdown_tick = false;
         let mut saw_resume_tick = false;
-        let mut setdown_progress_pixels = None;
+        let mut setdown_progress_delta = None;
 
         for _ in 0..24 {
             let progress_before_tick = {
@@ -3413,15 +3376,13 @@ mod tests {
                             .as_ref()
                             .map(|transition| transition.progress_pixels())
                     });
-                setdown_progress_pixels = transition_progress;
-                assert!(
-                    !accepted_this_tick,
-                    "set-down tick must emit WheelieToNormal without accepting directional movement"
-                );
-                assert_eq!(
-                    transition_progress,
+                setdown_progress_delta = Some((
                     progress_before_tick,
-                    "set-down tick must pause any in-flight movement interpolation"
+                    transition_progress,
+                ));
+                assert!(
+                    transition_progress != progress_before_tick,
+                    "set-down tick should continue in-flight interpolation without an artificial pause tick"
                 );
                 continue;
             }
@@ -3436,14 +3397,11 @@ mod tests {
             saw_setdown_tick,
             "expected WheelieToNormal release set-down transition to emit after landing"
         );
-        assert_eq!(
-            setdown_progress_pixels.is_some(),
-            true,
-            "expected set-down tick to observe an in-flight transition for interpolation pause verification"
-        );
+        let (_progress_before_tick, _progress_after_tick) = setdown_progress_delta
+            .expect("expected set-down tick to observe an in-flight transition");
         assert!(
             saw_resume_tick,
-            "expected directional movement acceptance to resume on a tick after WheelieToNormal"
+            "expected directional movement acceptance to resume after WheelieToNormal without synthetic lock requeue"
         );
     }
 

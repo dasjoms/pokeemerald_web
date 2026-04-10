@@ -117,7 +117,6 @@ pub struct AcroRuntime {
     pub on_bumpy_slope: bool,
     bunny_hop_cycle_tick: u8,
     hop_landed_this_tick: bool,
-    release_setdown_lock_ticks: u8,
     pending_action: Option<AcroAnimationAction>,
     pending_jump_intent: Option<PendingJumpIntent>,
 }
@@ -145,7 +144,6 @@ impl Default for AcroRuntime {
             on_bumpy_slope: false,
             bunny_hop_cycle_tick: 0,
             hop_landed_this_tick: false,
-            release_setdown_lock_ticks: 0,
             pending_action: None,
             pending_jump_intent: None,
         }
@@ -177,9 +175,6 @@ impl AcroRuntime {
 
     pub fn advance_tick(&mut self) {
         self.hop_landed_this_tick = false;
-        if self.release_setdown_lock_ticks > 0 {
-            self.release_setdown_lock_ticks -= 1;
-        }
         self.age_pending_jump_intent();
         self.update_history(self.held_direction, if self.holding_b { ABSS_B } else { 0 });
         self.refresh_pending_jump_intent();
@@ -251,13 +246,6 @@ impl AcroRuntime {
         facing_direction: Direction,
         requested_direction: Direction,
     ) -> AcroAnimationAction {
-        if self.release_setdown_lock_ticks > 0 {
-            if let Some(AcroAnimationAction::WheelieToNormal) = self.pending_action {
-                self.pending_action = None;
-                return AcroAnimationAction::WheelieToNormal;
-            }
-        }
-
         if self.held_direction == Some(requested_direction) {
             if let Some(action) = self.pending_action.take() {
                 self.movement_direction = requested_direction;
@@ -280,10 +268,6 @@ impl AcroRuntime {
 
     pub fn bunny_hop_cycle_tick(&self) -> u8 {
         self.bunny_hop_cycle_tick
-    }
-
-    pub fn release_setdown_lock_active(&self) -> bool {
-        self.release_setdown_lock_ticks > 0
     }
 
     pub fn handle_wheelie_collision_response(&mut self) -> Option<AcroAnimationAction> {
@@ -475,7 +459,6 @@ impl AcroRuntime {
             }
 
             self.state = AcroState::Normal;
-            self.release_setdown_lock_ticks = 1;
             return AcroAnimationAction::WheelieToNormal;
         }
 
