@@ -461,18 +461,17 @@ impl World {
             );
             let current_acro_substate = bike_acro_substate_for_traversal(&session.player_state);
             let current_bike_transition = session.player_state.bike_runtime.last_transition;
-            let hop_landed_this_tick = session
-                .player_state
-                .bike_runtime
-                .acro_runtime
-                .hop_landed_this_tick();
-            let hop_landing_particle_class = hop_landing_particle_class_for_landing_signal(
-                self.maps.get(&session.player_state.map_id),
-                &session.player_state,
-                hop_landed_this_tick,
-            );
-            let hop_landing_tile = hop_landing_particle_class
-                .map(|_| (session.player_state.tile_x, session.player_state.tile_y));
+            let (hop_landing_particle_class, hop_landing_tile) =
+                hop_landing_signal_for_authoritative_tile(
+                    self.maps.get(&session.player_state.map_id),
+                    session.player_state.tile_x,
+                    session.player_state.tile_y,
+                    session
+                        .player_state
+                        .bike_runtime
+                        .acro_runtime
+                        .hop_landed_this_tick(),
+                );
             let traversal_changed =
                 session.player_state.traversal_state != previous_traversal_state;
             let runtime_changed = current_acro_substate != previous_acro_substate
@@ -761,17 +760,17 @@ impl World {
                     );
                 }
 
-                let hop_landing_particle_class = hop_landing_particle_class_for_landing_signal(
-                    self.maps.get(&session.player_state.map_id),
-                    &session.player_state,
-                    session
-                        .player_state
-                        .bike_runtime
-                        .acro_runtime
-                        .hop_landed_this_tick(),
-                );
-                let hop_landing_tile = hop_landing_particle_class
-                    .map(|_| (session.player_state.tile_x, session.player_state.tile_y));
+                let (hop_landing_particle_class, hop_landing_tile) =
+                    hop_landing_signal_for_authoritative_tile(
+                        self.maps.get(&session.player_state.map_id),
+                        session.player_state.tile_x,
+                        session.player_state.tile_y,
+                        session
+                            .player_state
+                            .bike_runtime
+                            .acro_runtime
+                            .hop_landed_this_tick(),
+                    );
                 let result = ServerMessage::WalkResult(WalkResult {
                     input_seq: input.input_seq,
                     accepted,
@@ -1009,18 +1008,22 @@ fn bike_effect_flags_from_transition(transition: BikeTransitionType) -> u8 {
     flags
 }
 
-fn hop_landing_particle_class_for_landing_signal(
+fn hop_landing_signal_for_authoritative_tile(
     map: Option<&MapData>,
-    player_state: &PlayerState,
+    tile_x: u16,
+    tile_y: u16,
     hop_landed_this_tick: bool,
-) -> Option<HopLandingParticleClass> {
+) -> (Option<HopLandingParticleClass>, Option<(u16, u16)>) {
     if !hop_landed_this_tick {
-        return None;
+        return (None, None);
     }
-    let behavior = map.and_then(|current_map| source_tile_behavior(current_map, player_state));
-    Some(hop_landing_particle_class_for_behavior(
+    let behavior = map.and_then(|current_map| tile_behavior(current_map, tile_x, tile_y));
+    (
+        Some(hop_landing_particle_class_for_behavior(
         behavior.unwrap_or_default(),
-    ))
+        )),
+        Some((tile_x, tile_y)),
+    )
 }
 
 fn hop_landing_particle_class_for_behavior(behavior: u8) -> HopLandingParticleClass {
@@ -1072,8 +1075,12 @@ fn bike_acro_substate_for_traversal(player_state: &PlayerState) -> Option<AcroBi
 }
 
 fn source_tile_behavior(map: &MapData, player_state: &PlayerState) -> Option<u8> {
+    tile_behavior(map, player_state.tile_x, player_state.tile_y)
+}
+
+fn tile_behavior(map: &MapData, tile_x: u16, tile_y: u16) -> Option<u8> {
     map.behavior
-        .get(player_state.tile_y as usize * map.width as usize + player_state.tile_x as usize)
+        .get(tile_y as usize * map.width as usize + tile_x as usize)
         .copied()
 }
 
@@ -2311,6 +2318,30 @@ mod tests {
     }
 
     #[test]
+    fn hop_landing_particle_coordinates_match_between_runtime_delta_and_walk_result_paths() {
+        let map = MapData {
+            map_id: "MAP_LANDING_COORD_PARITY".to_string(),
+            width: 1,
+            height: 1,
+            metatile_id: vec![0],
+            collision: vec![0],
+            behavior: vec![MB_TALL_GRASS],
+            allow_cycling: true,
+            allow_running: true,
+            connections: vec![],
+        };
+
+        let runtime_delta_signal = hop_landing_signal_for_authoritative_tile(Some(&map), 0, 0, true);
+        let walk_result_signal = hop_landing_signal_for_authoritative_tile(Some(&map), 0, 0, true);
+
+        assert_eq!(runtime_delta_signal, walk_result_signal);
+        assert_eq!(
+            runtime_delta_signal,
+            (Some(HopLandingParticleClass::TallGrassJump), Some((0, 0)))
+        );
+    }
+
+    #[test]
     fn direction_release_while_bike_idle_clears_authoritative_held_direction() {
         let mut player = test_player_state();
         player.traversal_state = TraversalState::AcroBike;
@@ -2414,8 +2445,6 @@ mod tests {
 
     #[test]
     fn hop_landing_particles_emit_from_explicit_landing_signal() {
-        let mut player = test_player_state();
-        player.traversal_state = TraversalState::AcroBike;
         let map = MapData {
             map_id: "MAP_TEST".to_string(),
             width: 1,
@@ -2428,14 +2457,47 @@ mod tests {
             connections: vec![],
         };
 
-        let airborne = hop_landing_particle_class_for_landing_signal(Some(&map), &player, false);
-        assert!(airborne.is_none());
+        let airborne = hop_landing_signal_for_authoritative_tile(Some(&map), 0, 0, false);
+        assert_eq!(airborne, (None, None));
 
-        let landing = hop_landing_particle_class_for_landing_signal(Some(&map), &player, true);
-        assert_eq!(landing, Some(HopLandingParticleClass::NormalGroundDust));
+        let landing = hop_landing_signal_for_authoritative_tile(Some(&map), 0, 0, true);
+        assert_eq!(
+            landing,
+            (
+                Some(HopLandingParticleClass::NormalGroundDust),
+                Some((0, 0))
+            )
+        );
 
-        let grounded = hop_landing_particle_class_for_landing_signal(Some(&map), &player, false);
-        assert!(grounded.is_none());
+        let grounded = hop_landing_signal_for_authoritative_tile(Some(&map), 0, 0, false);
+        assert_eq!(grounded, (None, None));
+    }
+
+    #[test]
+    fn hop_landing_particle_coordinates_are_stable_for_classification_tile() {
+        let map = MapData {
+            map_id: "MAP_TEST".to_string(),
+            width: 3,
+            height: 1,
+            metatile_id: vec![0; 3],
+            collision: vec![0; 3],
+            behavior: vec![0, MB_TALL_GRASS, MB_PUDDLE],
+            allow_cycling: true,
+            allow_running: true,
+            connections: vec![],
+        };
+
+        let tall_grass_landing = hop_landing_signal_for_authoritative_tile(Some(&map), 1, 0, true);
+        assert_eq!(
+            tall_grass_landing,
+            (Some(HopLandingParticleClass::TallGrassJump), Some((1, 0)))
+        );
+
+        let puddle_landing = hop_landing_signal_for_authoritative_tile(Some(&map), 2, 0, true);
+        assert_eq!(
+            puddle_landing,
+            (Some(HopLandingParticleClass::ShallowWaterSplash), Some((2, 0)))
+        );
     }
 
     #[test]

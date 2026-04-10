@@ -767,6 +767,36 @@ describe("main movement pipeline integration", () => {
     ]);
   });
 
+  it("keeps landing particle placement anchored to explicit landing tile across mixed WalkResult and BikeRuntimeDelta ordering", () => {
+    const authoritativeLandingHint = {
+      hopLandingTileX: 19,
+      hopLandingTileY: 11,
+    };
+    const deliveryOrders = [
+      ["walk_result", "bike_runtime_delta"],
+      ["bike_runtime_delta", "walk_result"],
+    ] as const;
+
+    for (const order of deliveryOrders) {
+      const placements = order.map((source, index) =>
+        resolveHopLandingPlacementTile(
+          {
+            // Simulate local render state continuing to interpolate between packet deliveries.
+            renderTileX: 18.25 + index * 0.5,
+            renderTileY: 11,
+          },
+          authoritativeLandingHint,
+        ),
+      );
+      expect(placements).toEqual([
+        { tileX: 19, tileY: 11 },
+        { tileX: 19, tileY: 11 },
+      ]);
+      expect(order).toContain("walk_result");
+      expect(order).toContain("bike_runtime_delta");
+    }
+  });
+
   it.each([
     {
       bikeTransition: BikeTransitionType.NONE,
