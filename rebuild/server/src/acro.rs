@@ -117,7 +117,6 @@ pub struct AcroRuntime {
     pub on_bumpy_slope: bool,
     bunny_hop_cycle_tick: u8,
     hop_landed_this_tick: bool,
-    pending_bunny_hop_release: bool,
     pending_action: Option<AcroAnimationAction>,
     pending_jump_intent: Option<PendingJumpIntent>,
 }
@@ -145,7 +144,6 @@ impl Default for AcroRuntime {
             on_bumpy_slope: false,
             bunny_hop_cycle_tick: 0,
             hop_landed_this_tick: false,
-            pending_bunny_hop_release: false,
             pending_action: None,
             pending_jump_intent: None,
         }
@@ -161,7 +159,6 @@ impl AcroRuntime {
         self.state = AcroState::WheelieStanding;
         self.running_state = RunningState::NotMoving;
         self.bike_frame_counter = 0;
-        self.pending_bunny_hop_release = false;
         self.movement_direction = facing_direction;
         self.pending_action = None;
         AcroAnimationAction::WheelieIdle
@@ -437,7 +434,6 @@ impl AcroRuntime {
 
         if self.bike_frame_counter >= 40 {
             self.state = AcroState::BunnyHop;
-            self.pending_bunny_hop_release = false;
             return AcroAnimationAction::WheelieHoppingStanding;
         }
 
@@ -460,10 +456,7 @@ impl AcroRuntime {
         requested_direction: Option<Direction>,
         facing_direction: Direction,
     ) -> AcroAnimationAction {
-        self.pending_bunny_hop_release = !self.holding_b;
-
-        if self.pending_bunny_hop_release && self.hop_landed_this_tick {
-            self.pending_bunny_hop_release = false;
+        if !self.holding_b {
             self.bike_frame_counter = 0;
             self.running_state = RunningState::NotMoving;
             if self.on_bumpy_slope {
@@ -988,7 +981,6 @@ mod tests {
             AcroAnimationAction::WheelieHoppingStanding
         );
 
-        runtime.bunny_hop_cycle_tick = BUNNY_HOP_CYCLE_TICKS - 1;
         runtime.set_held_input(None, false);
         runtime.advance_tick();
         assert_eq!(runtime.state, AcroState::Normal);
@@ -999,7 +991,7 @@ mod tests {
     }
 
     #[test]
-    fn directional_bunny_hop_release_waits_for_landing_before_transition() {
+    fn directional_bunny_hop_release_exits_immediately_without_waiting_for_landing() {
         let mut runtime = AcroRuntime {
             state: AcroState::BunnyHop,
             bunny_hop_cycle_tick: BUNNY_HOP_CYCLE_TICKS - 2,
@@ -1009,54 +1001,9 @@ mod tests {
 
         runtime.set_held_input(Some(Direction::Right), false);
         runtime.advance_tick();
-        assert_eq!(runtime.state, AcroState::BunnyHop);
-        assert_eq!(runtime.running_state, RunningState::Moving);
+        assert_eq!(runtime.state, AcroState::Normal);
+        assert_eq!(runtime.running_state, RunningState::NotMoving);
         assert_eq!(runtime.bike_frame_counter, 0);
-        assert_eq!(
-            runtime.take_pending_action(),
-            Some(AcroAnimationAction::WheelieHoppingMoving)
-        );
-
-        runtime.set_held_input(Some(Direction::Right), false);
-        runtime.advance_tick();
-        assert_eq!(runtime.state, AcroState::Normal);
-        assert_eq!(runtime.running_state, RunningState::NotMoving);
-        assert_eq!(
-            runtime.take_pending_action(),
-            Some(AcroAnimationAction::WheelieToNormal)
-        );
-    }
-
-    #[test]
-    fn stationary_bunny_hop_release_waits_for_landing_before_transition() {
-        let mut runtime = AcroRuntime {
-            state: AcroState::BunnyHop,
-            bunny_hop_cycle_tick: BUNNY_HOP_CYCLE_TICKS - 3,
-            running_state: RunningState::NotMoving,
-            ..Default::default()
-        };
-
-        runtime.set_held_input(None, false);
-        runtime.advance_tick();
-        assert_eq!(runtime.state, AcroState::BunnyHop);
-        assert_eq!(runtime.running_state, RunningState::NotMoving);
-        assert_eq!(
-            runtime.take_pending_action(),
-            Some(AcroAnimationAction::WheelieHoppingStanding)
-        );
-
-        runtime.set_held_input(None, false);
-        runtime.advance_tick();
-        assert_eq!(runtime.state, AcroState::BunnyHop);
-        assert_eq!(
-            runtime.take_pending_action(),
-            Some(AcroAnimationAction::WheelieHoppingStanding)
-        );
-
-        runtime.set_held_input(None, false);
-        runtime.advance_tick();
-        assert_eq!(runtime.state, AcroState::Normal);
-        assert_eq!(runtime.running_state, RunningState::NotMoving);
         assert_eq!(
             runtime.take_pending_action(),
             Some(AcroAnimationAction::WheelieToNormal)
