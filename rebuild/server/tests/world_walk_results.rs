@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use rebuild_server::{
     movement::{validate_walk, MoveValidation, MovementMap},
-    protocol::{Direction, MovementMode, RejectionReason, ServerMessage, WalkInput},
+    protocol::{Direction, HeldInputState, MovementMode, RejectionReason, ServerMessage, WalkInput},
     world::World,
 };
 use tokio::sync::mpsc;
@@ -68,6 +68,19 @@ async fn accepted_walk_result_reports_destination_coordinates_immediately() {
         }
     })
     .expect("spawn must have at least one walkable adjacent tile");
+
+    world
+        .enqueue_held_input_state(
+            session.connection_id,
+            HeldInputState {
+                input_seq: 0,
+                held_direction: Some(accepted_direction.0),
+                held_buttons: 0,
+                client_time: 0,
+            },
+        )
+        .await
+        .expect("held input should queue");
 
     world
         .enqueue_walk_input(

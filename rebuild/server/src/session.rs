@@ -171,6 +171,7 @@ pub struct Session {
     pub active_walk_transition: Option<ActiveWalkTransition>,
     pub held_direction: Option<Direction>,
     pub held_buttons: u8,
+    step_end_direction_intent: Option<Direction>,
     walk_inputs: VecDeque<WalkInput>,
     outbound: mpsc::UnboundedSender<ServerMessage>,
 }
@@ -192,6 +193,7 @@ impl Session {
             active_walk_transition: None,
             held_direction: None,
             held_buttons: 0,
+            step_end_direction_intent: None,
             walk_inputs: VecDeque::new(),
             outbound,
         }
@@ -235,6 +237,14 @@ impl Session {
         if released != 0 {
             self.release_buttons(released);
         }
+    }
+
+    pub fn capture_step_end_direction_intent(&mut self) {
+        self.step_end_direction_intent = self.held_direction;
+    }
+
+    pub fn consume_step_end_direction_intent(&mut self) -> Option<Direction> {
+        self.step_end_direction_intent.take()
     }
 
     pub fn validate_and_commit_walk_intent_timing(&mut self, input: &WalkInput) -> bool {
@@ -335,9 +345,15 @@ mod tests {
             client_time: 1_000,
         });
 
-        assert!(session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 1_010)));
-        assert!(session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 1_050)));
-        assert!(session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 1_080)));
+        assert!(
+            session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 1_010))
+        );
+        assert!(
+            session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 1_050))
+        );
+        assert!(
+            session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 1_080))
+        );
     }
 
     #[test]
