@@ -1,4 +1,4 @@
-import { Container, Rectangle, Sprite, Texture } from 'pixi.js';
+import { Rectangle, Sprite, Texture } from 'pixi.js';
 import { decodeIndexed4bppPngFromUrl } from './metatileRenderer';
 import { buildPlayerSheetRgba } from './playerAnimation';
 import { HopLandingParticleClass } from './protocol_generated';
@@ -52,10 +52,17 @@ type LoadedEffect = {
 
 type ActiveEffect = {
   sprite: Sprite;
-  layer: Container;
+  layer: HopParticleLayer;
   steps: AnimationStep[];
   stepIndex: number;
   stepElapsedMs: number;
+};
+
+type HopParticleLayer = {
+  addChild: (...children: ContainerChild[]) => unknown;
+  removeChild: (...children: ContainerChild[]) => unknown;
+  getChildIndex?: (child: ContainerChild) => number;
+  setChildIndex?: (child: ContainerChild, index: number) => unknown;
 };
 
 const ROM_TICK_MS = 1000 / 60;
@@ -82,9 +89,10 @@ export class HopParticleRenderer {
   private lastConsumedServerFrame: number | null = null;
 
   constructor(
-    private readonly resolveLayer: () => Container,
+    private readonly resolveLayer: () => HopParticleLayer,
     private readonly tileSize: number,
     private readonly assets: RendererAssetLoaders,
+    private readonly resolveLinkedSprite?: () => ContainerChild | null,
   ) {}
 
   async init(): Promise<void> {
@@ -123,13 +131,15 @@ export class HopParticleRenderer {
     sprite.y = input.tileY * this.tileSize + this.tileSize;
     const layer = this.resolveLayer();
     layer.addChild(sprite as unknown as ContainerChild);
-    this.activeEffects.push({
+    const activeEffect: ActiveEffect = {
       sprite,
       layer,
       steps: effect.steps,
       stepIndex: 0,
       stepElapsedMs: 0,
-    });
+    };
+    this.activeEffects.push(activeEffect);
+    this.ensureParticleRendersBeforeLinkedSprite(activeEffect);
   }
 
   tick(deltaMs: number): void {
@@ -140,6 +150,7 @@ export class HopParticleRenderer {
     const safeDeltaMs = Math.max(0, deltaMs);
     for (let i = this.activeEffects.length - 1; i >= 0; i -= 1) {
       const active = this.activeEffects[i];
+      this.ensureLayerAndOrdering(active);
       active.stepElapsedMs += safeDeltaMs;
 
       while (active.stepIndex < active.steps.length) {
@@ -210,6 +221,37 @@ export class HopParticleRenderer {
         }))
         .filter((step) => step.texture !== undefined),
     };
+  }
+
+  private ensureLayerAndOrdering(active: ActiveEffect): void {
+    const nextLayer = this.resolveLayer();
+    if (active.layer !== nextLayer) {
+      active.layer.removeChild(active.sprite as unknown as ContainerChild);
+      nextLayer.addChild(active.sprite as unknown as ContainerChild);
+      active.layer = nextLayer;
+    }
+    this.ensureParticleRendersBeforeLinkedSprite(active);
+  }
+
+  private ensureParticleRendersBeforeLinkedSprite(active: ActiveEffect): void {
+    if (!this.resolveLinkedSprite || !active.layer.getChildIndex || !active.layer.setChildIndex) {
+      return;
+    }
+
+    const linkedSprite = this.resolveLinkedSprite();
+    if (!linkedSprite) {
+      return;
+    }
+
+    try {
+      const particleIndex = active.layer.getChildIndex(active.sprite as unknown as ContainerChild);
+      const linkedIndex = active.layer.getChildIndex(linkedSprite);
+      if (particleIndex > linkedIndex) {
+        active.layer.setChildIndex(active.sprite as unknown as ContainerChild, linkedIndex);
+      }
+    } catch {
+      // If linked sprite is not in this layer, ordering reconciliation does not apply.
+    }
   }
 }
 
