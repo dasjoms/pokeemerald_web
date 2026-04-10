@@ -176,7 +176,7 @@ pub struct Session {
     pub next_expected_input_seq: u32,
     pub next_expected_held_input_seq: u32,
     pub active_walk_transition: Option<ActiveWalkTransition>,
-    pub held_direction: Option<Direction>,
+    pub held_dpad: u8,
     pub held_buttons: u8,
     authoritative_tick: u64,
     bunny_hop_cadence_open_on_tick: Option<u64>,
@@ -202,7 +202,7 @@ impl Session {
             next_expected_input_seq: 0,
             next_expected_held_input_seq: 0,
             active_walk_transition: None,
-            held_direction: None,
+            held_dpad: 0,
             held_buttons: 0,
             authoritative_tick: 0,
             bunny_hop_cadence_open_on_tick: None,
@@ -241,20 +241,8 @@ impl Session {
     }
 
     pub fn apply_held_input_state(&mut self, input: HeldInputState) {
-        if let Some(direction) = input.held_direction {
-            self.press_direction(direction);
-        } else {
-            self.release_direction();
-        }
+        self.held_dpad = input.held_dpad;
         self.set_held_buttons(input.held_buttons);
-    }
-
-    pub fn press_direction(&mut self, direction: Direction) {
-        self.held_direction = Some(direction);
-    }
-
-    pub fn release_direction(&mut self) {
-        self.held_direction = None;
     }
 
     pub fn press_buttons(&mut self, buttons: u8) {
@@ -263,6 +251,10 @@ impl Session {
 
     pub fn release_buttons(&mut self, buttons: u8) {
         self.held_buttons &= !buttons;
+    }
+
+    pub fn effective_held_direction(&self) -> Option<Direction> {
+        crate::protocol::resolve_direction_from_held_dpad(self.held_dpad)
     }
 
     pub fn set_held_buttons(&mut self, new_buttons: u8) {
@@ -277,7 +269,7 @@ impl Session {
     }
 
     pub fn capture_step_end_direction_intent(&mut self) {
-        self.step_end_direction_intent = self.held_direction;
+        self.step_end_direction_intent = self.effective_held_direction();
     }
 
     pub fn consume_step_end_direction_intent(&mut self) -> Option<Direction> {
@@ -292,7 +284,7 @@ impl Session {
             self.player_state.bike_runtime.acro_state,
             AcroBikeSubstate::BunnyHop
         );
-        if !is_bunny_hop && self.held_direction != Some(input.direction) {
+        if !is_bunny_hop && self.effective_held_direction() != Some(input.direction) {
             return WalkIntentTimingValidation::HeldDirectionMismatch;
         }
 
@@ -300,7 +292,7 @@ impl Session {
             return WalkIntentTimingValidation::Accepted;
         }
 
-        if let Some(held_direction) = self.held_direction {
+        if let Some(held_direction) = self.effective_held_direction() {
             if held_direction != input.direction {
                 return WalkIntentTimingValidation::HeldDirectionMismatch;
             }
@@ -429,7 +421,7 @@ mod tests {
         session.player_state.bike_runtime.acro_state = AcroBikeSubstate::BunnyHop;
         session.player_state.bike_runtime.acro_runtime.state = crate::acro::AcroState::BunnyHop;
         session.apply_held_input_state(HeldInputState {
-            held_direction: Some(Direction::Right),
+            held_dpad: crate::protocol::HeldDpad::Right as u8,
             held_buttons: 0,
             input_seq: 0,
             client_time: 1_000,
@@ -493,7 +485,7 @@ mod tests {
     fn walk_intent_timing_requires_matching_held_direction() {
         let mut session = test_session();
         session.apply_held_input_state(HeldInputState {
-            held_direction: Some(Direction::Up),
+            held_dpad: crate::protocol::HeldDpad::Up as u8,
             held_buttons: 0,
             input_seq: 0,
             client_time: 5_000,
@@ -505,7 +497,7 @@ mod tests {
         );
 
         session.apply_held_input_state(HeldInputState {
-            held_direction: None,
+            held_dpad: 0,
             held_buttons: 0,
             input_seq: 1,
             client_time: 5_250,
@@ -536,7 +528,7 @@ mod tests {
         session.player_state.bike_runtime.acro_state = AcroBikeSubstate::BunnyHop;
         session.player_state.bike_runtime.acro_runtime.state = crate::acro::AcroState::BunnyHop;
         session.apply_held_input_state(HeldInputState {
-            held_direction: Some(Direction::Down),
+            held_dpad: crate::protocol::HeldDpad::Down as u8,
             held_buttons: crate::protocol::HeldButtons::B as u8,
             input_seq: 0,
             client_time: 0,

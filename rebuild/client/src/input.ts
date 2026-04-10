@@ -1,9 +1,11 @@
 import {
   Direction,
+  HeldDpad,
   HeldButtons,
   MessageType,
   MovementMode,
   PROTOCOL_VERSION,
+  resolveDirectionFromHeldDpad,
   type WalkResult,
 } from "./protocol_generated";
 
@@ -57,7 +59,7 @@ export function createWalkInputController(config: {
     heldButtons: number,
   ) => void;
   sendHeldInputState: (
-    heldDirection: Direction | null,
+    heldDpad: number,
     heldButtons: number,
   ) => number | null;
   isMovementLocked: () => boolean;
@@ -73,43 +75,54 @@ export function createWalkInputController(config: {
   let lastHeldInputTickAtMs: number | null = null;
   let localHeldInputTick = 0;
   let lastLoggedHeldState: {
-    heldDirection: Direction | null;
+    heldDpad: number;
     heldButtons: number;
   } | null = null;
 
   const heldButtons = (): number =>
     virtualBHeld ? HeldButtons.B : HeldButtons.NONE;
 
-  const getActiveHeldDirection = (): Direction | null => {
-    for (let i = directionOrder.length - 1; i >= 0; i -= 1) {
-      const direction = directionOrder[i];
-      if (heldDirections.has(direction)) {
-        return direction;
-      }
+  const getHeldDpadMask = (): number => {
+    let mask = HeldDpad.NONE;
+    if (heldDirections.has(Direction.UP)) {
+      mask |= HeldDpad.UP;
     }
-    return null;
+    if (heldDirections.has(Direction.DOWN)) {
+      mask |= HeldDpad.DOWN;
+    }
+    if (heldDirections.has(Direction.LEFT)) {
+      mask |= HeldDpad.LEFT;
+    }
+    if (heldDirections.has(Direction.RIGHT)) {
+      mask |= HeldDpad.RIGHT;
+    }
+    return mask;
+  };
+
+  const getActiveHeldDirection = (): Direction | null => {
+    return resolveDirectionFromHeldDpad(getHeldDpadMask()) ?? null;
   };
 
   const emitHeldInputState = (): void => {
-    const heldDirection = getActiveHeldDirection();
+    const heldDpad = getHeldDpadMask();
     const buttons = heldButtons();
-    const outboundSeq = config.sendHeldInputState(heldDirection, buttons);
+    const outboundSeq = config.sendHeldInputState(heldDpad, buttons);
     const localTick = localHeldInputTick;
     localHeldInputTick += 1;
     if (DEBUG_ACRO_HOP) {
       const shouldLogHeldState =
         lastLoggedHeldState === null ||
-        lastLoggedHeldState.heldDirection !== heldDirection ||
+        lastLoggedHeldState.heldDpad !== heldDpad ||
         lastLoggedHeldState.heldButtons !== buttons;
       if (shouldLogHeldState) {
         console.info("[acro-hop][input] emit held-state (state-change)", {
-          heldDirection,
+          heldDpad,
           heldButtons: buttons,
           localTick,
           outboundHeldInputSeq: outboundSeq,
         });
         lastLoggedHeldState = {
-          heldDirection,
+          heldDpad,
           heldButtons: buttons,
         };
       }
@@ -319,7 +332,7 @@ export function createWalkInputController(config: {
       directionHasCommittedFirstStep.clear();
       pendingIntentDirection = null;
       directionOrder.length = 0;
-      config.sendHeldInputState(null, HeldButtons.NONE);
+      config.sendHeldInputState(HeldDpad.NONE, HeldButtons.NONE);
     },
   };
 }
@@ -349,18 +362,17 @@ export function encodeWalkInput(
 }
 
 export function encodeHeldInputState(
-  heldDirection: Direction | null,
+  heldDpad: number,
   heldButtons: number,
   inputSeq: number,
   clientTime: bigint,
 ): Uint8Array {
-  const payload = new Uint8Array(15);
+  const payload = new Uint8Array(14);
   const payloadView = new DataView(payload.buffer);
-  payloadView.setUint8(0, heldDirection === null ? 0 : 1);
-  payloadView.setUint8(1, heldDirection ?? Direction.UP);
-  payloadView.setUint8(2, heldButtons);
-  payloadView.setUint32(3, inputSeq, true);
-  payloadView.setBigUint64(7, clientTime, true);
+  payloadView.setUint8(0, heldDpad);
+  payloadView.setUint8(1, heldButtons);
+  payloadView.setUint32(2, inputSeq, true);
+  payloadView.setBigUint64(6, clientTime, true);
 
   const frame = new Uint8Array(7 + payload.length);
   const view = new DataView(frame.buffer);

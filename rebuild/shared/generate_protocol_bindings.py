@@ -86,6 +86,41 @@ pub enum HeldButtons {{
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+pub enum HeldDpad {{
+    None = 0,
+    Up = 1 << 0,
+    Down = 1 << 1,
+    Left = 1 << 2,
+    Right = 1 << 3,
+}}
+
+pub fn resolve_direction_from_held_dpad(mask: u8) -> Option<Direction> {{
+    if (mask & HeldDpad::Up as u8) != 0 {{
+        return Some(Direction::Up);
+    }}
+    if (mask & HeldDpad::Down as u8) != 0 {{
+        return Some(Direction::Down);
+    }}
+    if (mask & HeldDpad::Left as u8) != 0 {{
+        return Some(Direction::Left);
+    }}
+    if (mask & HeldDpad::Right as u8) != 0 {{
+        return Some(Direction::Right);
+    }}
+    None
+}}
+
+pub fn direction_to_held_dpad_mask(direction: Direction) -> u8 {{
+    match direction {{
+        Direction::Up => HeldDpad::Up as u8,
+        Direction::Down => HeldDpad::Down as u8,
+        Direction::Left => HeldDpad::Left as u8,
+        Direction::Right => HeldDpad::Right as u8,
+    }}
+}}
+
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum DebugTraversalAction {{
     ToggleMount = {int(DebugTraversalAction.TOGGLE_MOUNT)},
@@ -199,7 +234,7 @@ pub struct WalkInput {{
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 pub struct HeldInputState {{
-    pub held_direction: Option<Direction>,
+    pub held_dpad: u8,
     pub held_buttons: u8,
     pub input_seq: u32,
     pub client_time: u64,
@@ -333,6 +368,45 @@ export enum HeldButtons {{
   B = {int(HeldButtons.B)},
 }}
 
+export enum HeldDpad {{
+  NONE = 0,
+  UP = 1 << 0,
+  DOWN = 1 << 1,
+  LEFT = 1 << 2,
+  RIGHT = 1 << 3,
+}}
+
+export function resolveDirectionFromHeldDpad(mask: number): Direction | undefined {{
+  if ((mask & HeldDpad.UP) !== 0) {{
+    return Direction.UP;
+  }}
+  if ((mask & HeldDpad.DOWN) !== 0) {{
+    return Direction.DOWN;
+  }}
+  if ((mask & HeldDpad.LEFT) !== 0) {{
+    return Direction.LEFT;
+  }}
+  if ((mask & HeldDpad.RIGHT) !== 0) {{
+    return Direction.RIGHT;
+  }}
+  return undefined;
+}}
+
+export function directionToHeldDpadMask(direction: Direction): number {{
+  switch (direction) {{
+    case Direction.UP:
+      return HeldDpad.UP;
+    case Direction.DOWN:
+      return HeldDpad.DOWN;
+    case Direction.LEFT:
+      return HeldDpad.LEFT;
+    case Direction.RIGHT:
+      return HeldDpad.RIGHT;
+    default:
+      return HeldDpad.NONE;
+  }}
+}}
+
 export enum DebugTraversalAction {{
   TOGGLE_MOUNT = {int(DebugTraversalAction.TOGGLE_MOUNT)},
   SWAP_BIKE_TYPE = {int(DebugTraversalAction.SWAP_BIKE_TYPE)},
@@ -412,7 +486,7 @@ export type WalkInput = {{
   client_time: bigint;
 }};
 export type HeldInputState = {{
-  held_direction?: Direction;
+  held_dpad: number;
   held_buttons: number;
   input_seq: number;
   client_time: bigint;

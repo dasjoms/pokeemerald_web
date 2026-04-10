@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { createWalkInputController } from './input';
-import { Direction, HeldButtons, MovementMode } from './protocol_generated';
+import { Direction, HeldButtons, HeldDpad, MovementMode } from './protocol_generated';
 
 function keyEvent(key: string): KeyboardEvent {
   return {
@@ -164,7 +164,7 @@ describe('virtual B parity input mapping', () => {
   });
 
   it('samples held C+direction every tick before turn-tap threshold for authoritative side jumps', () => {
-    const sentHeld: Array<{ heldDirection: Direction | null; heldButtons: number }> = [];
+    const sentHeld: Array<{ heldDpad: number; heldButtons: number }> = [];
     const sentWalk: Array<{ direction: Direction }> = [];
     const nowSpy = vi.spyOn(performance, 'now');
     nowSpy.mockReturnValue(3_000);
@@ -173,8 +173,8 @@ describe('virtual B parity input mapping', () => {
       sendWalkInput: (direction) => {
         sentWalk.push({ direction });
       },
-      sendHeldInputState: (heldDirection, heldButtons) => {
-        sentHeld.push({ heldDirection, heldButtons });
+      sendHeldInputState: (heldDpad, heldButtons) => {
+        sentHeld.push({ heldDpad, heldButtons });
         return sentHeld.length - 1;
       },
       isMovementLocked: () => false,
@@ -190,7 +190,7 @@ describe('virtual B parity input mapping', () => {
     }
 
     expect(sentHeld).toContainEqual({
-      heldDirection: Direction.RIGHT,
+      heldDpad: HeldDpad.RIGHT,
       heldButtons: HeldButtons.B,
     });
     expect(sentWalk).toHaveLength(0);
@@ -199,7 +199,7 @@ describe('virtual B parity input mapping', () => {
   });
 
   it('samples held C+opposite-direction every tick before turn-tap threshold for authoritative turn jumps', () => {
-    const sentHeld: Array<{ heldDirection: Direction | null; heldButtons: number }> = [];
+    const sentHeld: Array<{ heldDpad: number; heldButtons: number }> = [];
     const sentWalk: Array<{ direction: Direction }> = [];
     const nowSpy = vi.spyOn(performance, 'now');
     nowSpy.mockReturnValue(4_000);
@@ -208,8 +208,8 @@ describe('virtual B parity input mapping', () => {
       sendWalkInput: (direction) => {
         sentWalk.push({ direction });
       },
-      sendHeldInputState: (heldDirection, heldButtons) => {
-        sentHeld.push({ heldDirection, heldButtons });
+      sendHeldInputState: (heldDpad, heldButtons) => {
+        sentHeld.push({ heldDpad, heldButtons });
         return sentHeld.length - 1;
       },
       isMovementLocked: () => false,
@@ -225,7 +225,7 @@ describe('virtual B parity input mapping', () => {
     }
 
     expect(sentHeld).toContainEqual({
-      heldDirection: Direction.LEFT,
+      heldDpad: HeldDpad.LEFT,
       heldButtons: HeldButtons.B,
     });
     expect(sentWalk).toHaveLength(0);

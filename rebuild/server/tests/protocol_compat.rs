@@ -94,7 +94,7 @@ fn shared_held_input_state_decodes_in_server_runtime() {
     let output = Command::new("python3")
         .args([
             "-c",
-            r#"import pathlib, sys; sys.path.insert(0, str(pathlib.Path('../shared').resolve())); import protocol; frame=protocol.encode_message(protocol.HeldInputState(held_direction=None,held_buttons=protocol.HeldButtons.B,input_seq=17,client_time=1337)); print(frame.hex())"#,
+            r#"import pathlib, sys; sys.path.insert(0, str(pathlib.Path('../shared').resolve())); import protocol; frame=protocol.encode_message(protocol.HeldInputState(held_dpad=0,held_buttons=protocol.HeldButtons.B,input_seq=17,client_time=1337)); print(frame.hex())"#,
         ])
         .output()
         .expect("python must run");
@@ -106,7 +106,7 @@ fn shared_held_input_state_decodes_in_server_runtime() {
     assert_eq!(
         decoded,
         ClientMessage::HeldInputState(HeldInputState {
-            held_direction: None,
+            held_dpad: 0,
             held_buttons: 1,
             input_seq: 17,
             client_time: 1337,

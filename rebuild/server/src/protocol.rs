@@ -3,10 +3,10 @@ mod protocol_generated;
 
 pub use protocol_generated::{
     AcroBikeSubstate, BikeRuntimeDelta, BikeTransitionType, DebugTraversalAction,
-    DebugTraversalInput, Direction, HeldButtons, HeldInputState, HopLandingParticleClass,
-    JoinSession, MessageType, MovementMode, PlayerAction, PlayerActionInput, PlayerAvatar,
-    Position, RejectionReason, SessionAccepted, StepSpeed, TraversalState, WalkInput, WalkResult,
-    WorldDelta, WorldSnapshot, PROTOCOL_VERSION,
+    DebugTraversalInput, Direction, HeldButtons, HeldDpad, HeldInputState, HopLandingParticleClass,
+    JoinSession, MessageType, MovementMode, PlayerAction, PlayerActionInput, PlayerAvatar, Position,
+    RejectionReason, SessionAccepted, StepSpeed, TraversalState, WalkInput, WalkResult, WorldDelta,
+    WorldSnapshot, PROTOCOL_VERSION, direction_to_held_dpad_mask, resolve_direction_from_held_dpad,
 };
 pub type Facing = Direction;
 
@@ -225,19 +225,13 @@ pub fn decode_client_message(frame: &[u8]) -> Result<ClientMessage, ProtocolErro
             }
         }
         x if x == MessageType::HeldInputState as u8 => {
-            let (has_direction, offset) = unpack_u8(payload, 0)?;
-            let (raw_direction, offset) = unpack_u8(payload, offset)?;
+            let (held_dpad, offset) = unpack_u8(payload, 0)?;
             let (held_buttons, offset) = unpack_u8(payload, offset)?;
             let (input_seq, offset) = unpack_u32(payload, offset)?;
             let (client_time, offset) = unpack_u64(payload, offset)?;
             ensure_done(payload, offset)?;
-            let held_direction = if has_direction == 0 {
-                None
-            } else {
-                Some(decode_direction(raw_direction)?)
-            };
             Ok(ClientMessage::HeldInputState(HeldInputState {
-                held_direction,
+                held_dpad,
                 held_buttons,
                 input_seq,
                 client_time,

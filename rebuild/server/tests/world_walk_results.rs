@@ -76,7 +76,7 @@ async fn accepted_walk_result_reports_destination_coordinates_immediately() {
             session.connection_id,
             HeldInputState {
                 input_seq: 0,
-                held_direction: Some(accepted_direction.0),
+                held_dpad: rebuild_server::protocol::direction_to_held_dpad_mask(accepted_direction.0),
                 held_buttons: 0,
                 client_time: 0,
             },
