@@ -171,6 +171,9 @@ pub struct Session {
     pub active_walk_transition: Option<ActiveWalkTransition>,
     pub held_direction: Option<Direction>,
     pub held_buttons: u8,
+    authoritative_tick: u64,
+    bunny_hop_cadence_open_on_tick: Option<u64>,
+    bunny_hop_cadence_initialized: bool,
     step_end_direction_intent: Option<Direction>,
     walk_inputs: VecDeque<WalkInput>,
     outbound: mpsc::UnboundedSender<ServerMessage>,
@@ -193,9 +196,25 @@ impl Session {
             active_walk_transition: None,
             held_direction: None,
             held_buttons: 0,
+            authoritative_tick: 0,
+            bunny_hop_cadence_open_on_tick: None,
+            bunny_hop_cadence_initialized: false,
             step_end_direction_intent: None,
             walk_inputs: VecDeque::new(),
             outbound,
+        }
+    }
+
+    pub fn update_authoritative_tick(&mut self, tick: u64) {
+        self.authoritative_tick = tick;
+        if matches!(self.player_state.bike_runtime.acro_state, AcroBikeSubstate::BunnyHop) {
+            if self.player_state.bike_runtime.acro_runtime.hop_landed_this_tick() {
+                self.bunny_hop_cadence_open_on_tick = Some(tick);
+                self.bunny_hop_cadence_initialized = true;
+            }
+        } else {
+            self.bunny_hop_cadence_open_on_tick = None;
+            self.bunny_hop_cadence_initialized = false;
         }
     }
 
@@ -248,7 +267,27 @@ impl Session {
     }
 
     pub fn validate_and_commit_walk_intent_timing(&mut self, input: &WalkInput) -> bool {
-        self.held_direction == Some(input.direction)
+        let held_direction_matches = self.held_direction == Some(input.direction);
+        if !held_direction_matches {
+            return false;
+        }
+
+        if !matches!(self.player_state.bike_runtime.acro_state, AcroBikeSubstate::BunnyHop) {
+            return true;
+        }
+
+        if self.bunny_hop_cadence_open_on_tick == Some(self.authoritative_tick) {
+            self.bunny_hop_cadence_open_on_tick = None;
+            self.bunny_hop_cadence_initialized = true;
+            return true;
+        }
+
+        if !self.bunny_hop_cadence_initialized {
+            self.bunny_hop_cadence_initialized = true;
+            return true;
+        }
+
+        false
     }
 
     pub fn walk_inputs_len(&self) -> usize {
@@ -336,8 +375,15 @@ mod tests {
     }
 
     #[test]
-    fn walk_intent_timing_accepts_matching_held_direction_without_repeat_cadence_gate() {
+    fn walk_intent_timing_bunny_hop_accepts_only_on_cadence_boundaries() {
         let mut session = test_session();
+        session.player_state.traversal_state = TraversalState::AcroBike;
+        session.player_state.bike_runtime.acro_state = AcroBikeSubstate::BunnyHop;
+        session
+            .player_state
+            .bike_runtime
+            .acro_runtime
+            .state = crate::acro::AcroState::BunnyHop;
         session.apply_held_input_state(HeldInputState {
             held_direction: Some(Direction::Right),
             held_buttons: 0,
@@ -345,12 +391,51 @@ mod tests {
             client_time: 1_000,
         });
 
+        for tick in 1..=16 {
+            session
+                .player_state
+                .bike_runtime
+                .acro_runtime
+                .set_held_input(Some(Direction::Right), true);
+            session
+                .player_state
+                .bike_runtime
+                .acro_runtime
+                .advance_tick();
+            session.update_authoritative_tick(tick);
+        }
         assert!(
             session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 1_010))
         );
+
+        session
+            .player_state
+            .bike_runtime
+            .acro_runtime
+            .set_held_input(Some(Direction::Right), true);
+        session
+            .player_state
+            .bike_runtime
+            .acro_runtime
+            .advance_tick();
+        session.update_authoritative_tick(17);
         assert!(
-            session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 1_050))
+            !session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 1_050))
         );
+
+        for tick in 18..=32 {
+            session
+                .player_state
+                .bike_runtime
+                .acro_runtime
+                .set_held_input(Some(Direction::Right), true);
+            session
+                .player_state
+                .bike_runtime
+                .acro_runtime
+                .advance_tick();
+            session.update_authoritative_tick(tick);
+        }
         assert!(
             session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 1_080))
         );
