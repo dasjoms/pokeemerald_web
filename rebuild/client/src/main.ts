@@ -2113,6 +2113,9 @@ function tickWalkTransition(deltaMs: number): void {
     deltaMs,
     hasPendingAcceptedOrDispatchableStep: () =>
       walkInputController.hasPendingAcceptedOrDispatchableStep(),
+    noteWalkTransitionProgress: (normalizedProgress) => {
+      walkInputController.noteWalkTransitionProgress(normalizedProgress);
+    },
     markWalkTransitionCompleted: () => {
       walkInputController.markWalkTransitionCompleted();
     },

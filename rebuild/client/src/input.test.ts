@@ -12,7 +12,7 @@ function keyEvent(key: string): KeyboardEvent {
 }
 
 describe('virtual B parity input mapping', () => {
-  it('uses immediate facing intent, a fixed first-step threshold, then repeat cadence', () => {
+  it('queues at most one lookahead step from deterministic sampling near completion', () => {
     const sentWalk: Array<{ direction: Direction }> = [];
     const sentFacing: Direction[] = [];
     const nowSpy = vi.spyOn(performance, 'now');
@@ -41,23 +41,45 @@ describe('virtual B parity input mapping', () => {
     controller.tick();
     expect(sentWalk).toHaveLength(1);
 
-    controller.markWalkResultReceived({} as never);
-    nowSpy.mockReturnValue(10_300);
+    controller.noteWalkTransitionProgress(0.5);
+    controller.markWalkResultReceived({ accepted: true } as never);
+    expect(sentWalk).toHaveLength(1);
+
+    controller.noteWalkTransitionProgress(0.9);
+    controller.noteWalkTransitionProgress(0.95);
+    controller.markWalkResultReceived({ accepted: true } as never);
+    expect(sentWalk).toHaveLength(2);
+
+    controller.noteWalkTransitionProgress(0.9);
+    controller.markWalkResultReceived({ accepted: true } as never);
+    expect(sentWalk).toHaveLength(3);
+
+    nowSpy.mockRestore();
+  });
+
+  it('does not queue a second step when released before lookahead sampling point', () => {
+    const sentWalk: Array<{ direction: Direction }> = [];
+    const nowSpy = vi.spyOn(performance, 'now');
+    nowSpy.mockReturnValue(11_000);
+
+    const controller = createWalkInputController({
+      sendWalkInput: (direction) => {
+        sentWalk.push({ direction });
+      },
+      sendHeldInputState: () => null,
+      isMovementLocked: () => false,
+      onFacingIntent: () => {},
+    });
+
+    controller.handleKeyDown(keyEvent('ArrowRight'));
+    nowSpy.mockReturnValue(11_090);
     controller.tick();
     expect(sentWalk).toHaveLength(1);
 
-    nowSpy.mockReturnValue(10_310);
-    controller.tick();
-    expect(sentWalk).toHaveLength(2);
-
-    controller.markWalkResultReceived({} as never);
-    nowSpy.mockReturnValue(10_390);
-    controller.tick();
-    expect(sentWalk).toHaveLength(2);
-
-    nowSpy.mockReturnValue(10_400);
-    controller.tick();
-    expect(sentWalk).toHaveLength(3);
+    controller.handleKeyUp(keyEvent('ArrowRight'));
+    controller.noteWalkTransitionProgress(0.9);
+    controller.markWalkResultReceived({ accepted: true } as never);
+    expect(sentWalk).toHaveLength(1);
 
     nowSpy.mockRestore();
   });

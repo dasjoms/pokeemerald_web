@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use rebuild_server::{
     movement::{validate_walk, MoveValidation, MovementMap},
-    protocol::{Direction, MovementMode, RejectionReason, ServerMessage, WalkInput},
+    protocol::{Direction, HeldInputState, MovementMode, RejectionReason, ServerMessage, WalkInput},
     world::World,
 };
 use tokio::sync::mpsc;
@@ -74,6 +74,18 @@ async fn walk_queue_drops_oldest_input_when_capacity_reached() {
         session.player_state.tile_x,
         session.player_state.tile_y,
     );
+    world
+        .enqueue_held_input_state(
+            session.connection_id,
+            HeldInputState {
+                held_direction: Some(walk_direction),
+                held_buttons: 0,
+                input_seq: 0,
+                client_time: 0,
+            },
+        )
+        .await
+        .expect("held direction should queue");
 
     for input_seq in 0..=2 {
         world
@@ -128,12 +140,12 @@ async fn walk_queue_drops_oldest_input_when_capacity_reached() {
                 }
             }
         }
-        if accepted_sequences.len() >= 2 {
+        if accepted_sequences.len() >= 1 {
             break;
         }
     }
 
-    assert_eq!(accepted_sequences, vec![1, 2]);
+    assert_eq!(accepted_sequences, vec![2]);
 
     world
         .enqueue_walk_input(

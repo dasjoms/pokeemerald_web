@@ -13,6 +13,7 @@ export type WalkInputController = {
   setVirtualBHeld: (held: boolean) => void;
   toggleMovementMode: () => void;
   tick: () => void;
+  noteWalkTransitionProgress: (normalizedProgress: number) => void;
   markWalkResultReceived: (result: WalkResult) => void;
   markWalkTransitionCompleted: () => void;
   hasPendingAcceptedOrDispatchableStep: () => boolean;
@@ -22,10 +23,8 @@ export type WalkInputController = {
 
 // Phase B: short fixed threshold that commits the first step after an initial press.
 const FIRST_STEP_COMMIT_MS = 90;
-// Phase C: held repeat cadence after the first committed step.
-const REPEAT_INITIAL_DELAY_MS = 220;
-const REPEAT_INTERVAL_MS = 90;
 const HELD_INPUT_SAMPLE_MS = 1000 / 60;
+const LOOKAHEAD_SAMPLE_PROGRESS = 0.85;
 const DEBUG_ACRO_HOP = true;
 
 export function keyToDirection(key: string): Direction | null {
@@ -137,7 +136,8 @@ export function createWalkInputController(config: {
     !hasPendingWalkRequest && !config.isMovementLocked();
 
   const directionHasCommittedFirstStep = new Map<Direction, boolean>();
-  const directionNextRepeatAtMs = new Map<Direction, number>();
+  let pendingIntentDirection: Direction | null = null;
+  let hasSampledCurrentTransition = false;
 
   const hasSatisfiedFirstStepThreshold = (direction: Direction, nowMs: number): boolean => {
     const pressedAtMs = heldDirectionPressedAtMs.get(direction);
@@ -147,7 +147,7 @@ export function createWalkInputController(config: {
     return nowMs - pressedAtMs >= FIRST_STEP_COMMIT_MS;
   };
 
-  const getDispatchableHeldDirection = (nowMs: number): Direction | null => {
+  const getDispatchableFirstStepDirection = (nowMs: number): Direction | null => {
     for (let i = directionOrder.length - 1; i >= 0; i -= 1) {
       const direction = directionOrder[i];
       if (!heldDirections.has(direction)) {
@@ -158,36 +158,26 @@ export function createWalkInputController(config: {
         if (hasSatisfiedFirstStepThreshold(direction, nowMs)) {
           return direction;
         }
-        continue;
-      }
-
-      const nextRepeatAtMs = directionNextRepeatAtMs.get(direction);
-      if (nextRepeatAtMs !== undefined && nowMs >= nextRepeatAtMs) {
-        return direction;
       }
     }
     return null;
   };
 
-  const markIntentDispatched = (direction: Direction, nowMs: number): void => {
+  const markIntentDispatched = (direction: Direction): void => {
     const firstStepCommitted = directionHasCommittedFirstStep.get(direction) ?? false;
     if (!firstStepCommitted) {
       directionHasCommittedFirstStep.set(direction, true);
-      directionNextRepeatAtMs.set(direction, nowMs + REPEAT_INITIAL_DELAY_MS);
-      return;
     }
-
-    directionNextRepeatAtMs.set(direction, nowMs + REPEAT_INTERVAL_MS);
   };
 
-  const sendIntent = (direction: Direction, nowMs: number): void => {
+  const sendIntent = (direction: Direction): void => {
     config.onFacingIntent(direction);
     config.sendWalkInput(
       direction,
       movementMode,
       heldButtons(),
     );
-    markIntentDispatched(direction, nowMs);
+    markIntentDispatched(direction);
     hasPendingWalkRequest = true;
   };
 
@@ -196,9 +186,16 @@ export function createWalkInputController(config: {
       return;
     }
 
-    const heldDirection = getDispatchableHeldDirection(nowMs);
-    if (heldDirection !== null) {
-      sendIntent(heldDirection, nowMs);
+    if (pendingIntentDirection !== null) {
+      const queuedDirection = pendingIntentDirection;
+      pendingIntentDirection = null;
+      sendIntent(queuedDirection);
+      return;
+    }
+
+    const firstStepDirection = getDispatchableFirstStepDirection(nowMs);
+    if (firstStepDirection !== null) {
+      sendIntent(firstStepDirection);
     }
   };
 
@@ -206,7 +203,10 @@ export function createWalkInputController(config: {
     if (hasPendingWalkRequest) {
       return true;
     }
-    return getDispatchableHeldDirection(nowMs) !== null;
+    if (pendingIntentDirection !== null) {
+      return true;
+    }
+    return getDispatchableFirstStepDirection(nowMs) !== null;
   };
 
   return {
@@ -225,7 +225,6 @@ export function createWalkInputController(config: {
       heldDirections.add(direction);
       heldDirectionPressedAtMs.set(direction, performance.now());
       directionHasCommittedFirstStep.set(direction, false);
-      directionNextRepeatAtMs.delete(direction);
       removeDirectionFromOrder(direction);
       directionOrder.push(direction);
 
@@ -260,7 +259,6 @@ export function createWalkInputController(config: {
       heldDirections.delete(direction);
       heldDirectionPressedAtMs.delete(direction);
       directionHasCommittedFirstStep.delete(direction);
-      directionNextRepeatAtMs.delete(direction);
       removeDirectionFromOrder(direction);
       emitHeldInputState();
     },
@@ -269,11 +267,24 @@ export function createWalkInputController(config: {
       sampleHeldInputForTick(nowMs);
       maybeDispatchIntent(nowMs);
     },
-    markWalkResultReceived(_result: WalkResult): void {
+    noteWalkTransitionProgress(normalizedProgress: number): void {
+      if (hasSampledCurrentTransition || normalizedProgress < LOOKAHEAD_SAMPLE_PROGRESS) {
+        return;
+      }
+      hasSampledCurrentTransition = true;
+      pendingIntentDirection = getActiveHeldDirection();
+    },
+    markWalkResultReceived(result: WalkResult): void {
       hasPendingWalkRequest = false;
+      if (!result.accepted) {
+        pendingIntentDirection = null;
+      } else {
+        hasSampledCurrentTransition = false;
+      }
       maybeDispatchIntent(performance.now());
     },
     markWalkTransitionCompleted(): void {
+      hasSampledCurrentTransition = false;
       maybeDispatchIntent(performance.now());
     },
     hasPendingAcceptedOrDispatchableStep(): boolean {
@@ -292,7 +303,8 @@ export function createWalkInputController(config: {
       heldDirections.clear();
       heldDirectionPressedAtMs.clear();
       directionHasCommittedFirstStep.clear();
-      directionNextRepeatAtMs.clear();
+      pendingIntentDirection = null;
+      hasSampledCurrentTransition = false;
       directionOrder.length = 0;
       config.sendHeldInputState(null, HeldButtons.NONE);
     },
