@@ -41,3 +41,13 @@ export function resolveHopParticleBaseSubpriority(input: {
   }
   return 0;
 }
+
+export function shouldRenderHopParticleAbovePlayer(input: {
+  facing: Direction;
+  useFieldEffectPriority: boolean;
+}): boolean {
+  return (
+    input.useFieldEffectPriority &&
+    (input.facing === Direction.LEFT || input.facing === Direction.RIGHT)
+  );
+}
