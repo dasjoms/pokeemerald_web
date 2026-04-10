@@ -1,0 +1,235 @@
+{
+  "version": 1,
+  "effects": {
+    "shadow": {
+      "field_effect_id": "FLDEFF_SHADOW",
+      "helper_function": "FldEff_Shadow",
+      "helper_update_callback": "UpdateShadowFieldEffect",
+      "shadow_template_ids": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "shadow_vertical_offsets": [
+        4,
+        4,
+        4,
+        16
+      ],
+      "templates": [
+        {
+          "template_symbol": "gFieldEffectObjectTemplate_ShadowSmall",
+          "palette_tag": "TAG_NONE",
+          "oam_symbol": "gObjectEventBaseOam_8x8",
+          "callback": "UpdateShadowFieldEffect",
+          "pic_table_symbol": "sPicTable_ShadowSmall",
+          "anim_table_symbol": "sAnimTable_Shadow",
+          "pic_table_entries": [
+            {
+              "source_symbol": "gFieldEffectObjectPic_ShadowSmall",
+              "layout": "obj_frame_tiles"
+            }
+          ],
+          "anim_table": {
+            "anim_cmd_symbols": [
+              "sAnim_Shadow"
+            ],
+            "sequences": {
+              "sAnim_Shadow": [
+                {
+                  "frame": 0,
+                  "duration": 1
+                }
+              ]
+            }
+          },
+          "sources": [
+            {
+              "symbol": "gFieldEffectObjectPic_ShadowSmall",
+              "source_path": "graphics/field_effects/pics/shadow_small.4bpp"
+            }
+          ]
+        },
+        {
+          "template_symbol": "gFieldEffectObjectTemplate_ShadowMedium",
+          "palette_tag": "TAG_NONE",
+          "oam_symbol": "gObjectEventBaseOam_16x8",
+          "callback": "UpdateShadowFieldEffect",
+          "pic_table_symbol": "sPicTable_ShadowMedium",
+          "anim_table_symbol": "sAnimTable_Shadow",
+          "pic_table_entries": [
+            {
+              "source_symbol": "gFieldEffectObjectPic_ShadowMedium",
+              "layout": "obj_frame_tiles"
+            }
+          ],
+          "anim_table": {
+            "anim_cmd_symbols": [
+              "sAnim_Shadow"
+            ],
+            "sequences": {
+              "sAnim_Shadow": [
+                {
+                  "frame": 0,
+                  "duration": 1
+                }
+              ]
+            }
+          },
+          "sources": [
+            {
+              "symbol": "gFieldEffectObjectPic_ShadowMedium",
+              "source_path": "graphics/field_effects/pics/shadow_medium.4bpp"
+            }
+          ]
+        },
+        {
+          "template_symbol": "gFieldEffectObjectTemplate_ShadowLarge",
+          "palette_tag": "TAG_NONE",
+          "oam_symbol": "gObjectEventBaseOam_32x8",
+          "callback": "UpdateShadowFieldEffect",
+          "pic_table_symbol": "sPicTable_ShadowLarge",
+          "anim_table_symbol": "sAnimTable_Shadow",
+          "pic_table_entries": [
+            {
+              "source_symbol": "gFieldEffectObjectPic_ShadowLarge",
+              "layout": "obj_frame_tiles"
+            }
+          ],
+          "anim_table": {
+            "anim_cmd_symbols": [
+              "sAnim_Shadow"
+            ],
+            "sequences": {
+              "sAnim_Shadow": [
+                {
+                  "frame": 0,
+                  "duration": 1
+                }
+              ]
+            }
+          },
+          "sources": [
+            {
+              "symbol": "gFieldEffectObjectPic_ShadowLarge",
+              "source_path": "graphics/field_effects/pics/shadow_large.4bpp"
+            }
+          ]
+        },
+        {
+          "template_symbol": "gFieldEffectObjectTemplate_ShadowExtraLarge",
+          "palette_tag": "TAG_NONE",
+          "oam_symbol": "gObjectEventBaseOam_64x32",
+          "callback": "UpdateShadowFieldEffect",
+          "pic_table_symbol": "sPicTable_ShadowExtraLarge",
+          "anim_table_symbol": "sAnimTable_Shadow",
+          "pic_table_entries": [
+            {
+              "source_symbol": "gFieldEffectObjectPic_ShadowExtraLarge",
+              "layout": "obj_frame_tiles"
+            }
+          ],
+          "anim_table": {
+            "anim_cmd_symbols": [
+              "sAnim_Shadow"
+            ],
+            "sequences": {
+              "sAnim_Shadow": [
+                {
+                  "frame": 0,
+                  "duration": 1
+                }
+              ]
+            }
+          },
+          "sources": [
+            {
+              "symbol": "gFieldEffectObjectPic_ShadowExtraLarge",
+              "source_path": "graphics/field_effects/pics/shadow_extra_large.4bpp"
+            }
+          ]
+        }
+      ]
+    },
+    "ground_impact_dust": {
+      "field_effect_id": "FLDEFF_DUST",
+      "helper_function": "FldEff_Dust",
+      "helper_update_callback": "UpdateJumpImpactEffect",
+      "template": {
+        "template_symbol": "gFieldEffectObjectTemplate_GroundImpactDust",
+        "palette_tag": "FLDEFF_PAL_TAG_GENERAL_0",
+        "oam_symbol": "gObjectEventBaseOam_16x8",
+        "callback": "UpdateJumpImpactEffect",
+        "pic_table_symbol": "sPicTable_GroundImpactDust",
+        "anim_table_symbol": "sAnimTable_GroundImpactDust",
+        "pic_table_entries": [
+          {
+            "source_symbol": "gFieldEffectObjectPic_GroundImpactDust",
+            "layout": "overworld_frame",
+            "tile_width": 2,
+            "tile_height": 1,
+            "frame_index": 0
+          },
+          {
+            "source_symbol": "gFieldEffectObjectPic_GroundImpactDust",
+            "layout": "overworld_frame",
+            "tile_width": 2,
+            "tile_height": 1,
+            "frame_index": 1
+          },
+          {
+            "source_symbol": "gFieldEffectObjectPic_GroundImpactDust",
+            "layout": "overworld_frame",
+            "tile_width": 2,
+            "tile_height": 1,
+            "frame_index": 2
+          }
+        ],
+        "anim_table": {
+          "anim_cmd_symbols": [
+            "sAnim_GroundImpactDust"
+          ],
+          "sequences": {
+            "sAnim_GroundImpactDust": [
+              {
+                "frame": 0,
+                "duration": 8
+              },
+              {
+                "frame": 1,
+                "duration": 8
+              },
+              {
+                "frame": 2,
+                "duration": 8
+              }
+            ]
+          }
+        },
+        "sources": [
+          {
+            "symbol": "gFieldEffectObjectPic_GroundImpactDust",
+            "source_path": "graphics/field_effects/pics/ground_impact_dust.4bpp"
+          }
+        ]
+      }
+    }
+  },
+  "palettes": [
+    {
+      "symbol": "gFieldEffectObjectPalette0",
+      "source_path": "graphics/field_effects/palettes/general_0.gbapal"
+    },
+    {
+      "symbol": "gFieldEffectObjectPalette1",
+      "source_path": "graphics/field_effects/palettes/general_1.gbapal"
+    }
+  ],
+  "source_files": [
+    "include/constants/field_effects.h",
+    "src/field_effect_helpers.c",
+    "src/data/object_events/object_event_graphics.h",
+    "src/data/field_effects/field_effect_objects.h"
+  ]
+}
