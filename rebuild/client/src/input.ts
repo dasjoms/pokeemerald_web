@@ -5,7 +5,7 @@ import {
   MovementMode,
   PROTOCOL_VERSION,
   type WalkResult,
-} from './protocol_generated';
+} from "./protocol_generated";
 
 export type WalkInputController = {
   handleKeyDown: (event: KeyboardEvent) => void;
@@ -29,21 +29,21 @@ const DEBUG_ACRO_HOP = true;
 
 export function keyToDirection(key: string): Direction | null {
   switch (key) {
-    case 'ArrowUp':
-    case 'w':
-    case 'W':
+    case "ArrowUp":
+    case "w":
+    case "W":
       return Direction.UP;
-    case 'ArrowDown':
-    case 's':
-    case 'S':
+    case "ArrowDown":
+    case "s":
+    case "S":
       return Direction.DOWN;
-    case 'ArrowLeft':
-    case 'a':
-    case 'A':
+    case "ArrowLeft":
+    case "a":
+    case "A":
       return Direction.LEFT;
-    case 'ArrowRight':
-    case 'd':
-    case 'D':
+    case "ArrowRight":
+    case "d":
+    case "D":
       return Direction.RIGHT;
     default:
       return null;
@@ -51,8 +51,15 @@ export function keyToDirection(key: string): Direction | null {
 }
 
 export function createWalkInputController(config: {
-  sendWalkInput: (direction: Direction, movementMode: MovementMode, heldButtons: number) => void;
-  sendHeldInputState: (heldDirection: Direction | null, heldButtons: number) => number | null;
+  sendWalkInput: (
+    direction: Direction,
+    movementMode: MovementMode,
+    heldButtons: number,
+  ) => void;
+  sendHeldInputState: (
+    heldDirection: Direction | null,
+    heldButtons: number,
+  ) => number | null;
   isMovementLocked: () => boolean;
   onFacingIntent: (direction: Direction) => void;
 }): WalkInputController {
@@ -65,9 +72,13 @@ export function createWalkInputController(config: {
   let heldInputSampleAccumulatorMs = 0;
   let lastHeldInputTickAtMs: number | null = null;
   let localHeldInputTick = 0;
-  let lastLoggedHeldState: { heldDirection: Direction | null; heldButtons: number } | null = null;
+  let lastLoggedHeldState: {
+    heldDirection: Direction | null;
+    heldButtons: number;
+  } | null = null;
 
-  const heldButtons = (): number => (virtualBHeld ? HeldButtons.B : HeldButtons.NONE);
+  const heldButtons = (): number =>
+    virtualBHeld ? HeldButtons.B : HeldButtons.NONE;
 
   const getActiveHeldDirection = (): Direction | null => {
     for (let i = directionOrder.length - 1; i >= 0; i -= 1) {
@@ -91,7 +102,7 @@ export function createWalkInputController(config: {
         lastLoggedHeldState.heldDirection !== heldDirection ||
         lastLoggedHeldState.heldButtons !== buttons;
       if (shouldLogHeldState) {
-        console.info('[acro-hop][input] emit held-state (state-change)', {
+        console.info("[acro-hop][input] emit held-state (state-change)", {
           heldDirection,
           heldButtons: buttons,
           localTick,
@@ -137,9 +148,11 @@ export function createWalkInputController(config: {
 
   const directionHasCommittedFirstStep = new Map<Direction, boolean>();
   let pendingIntentDirection: Direction | null = null;
-  let hasSampledCurrentTransition = false;
 
-  const hasSatisfiedFirstStepThreshold = (direction: Direction, nowMs: number): boolean => {
+  const hasSatisfiedFirstStepThreshold = (
+    direction: Direction,
+    nowMs: number,
+  ): boolean => {
     const pressedAtMs = heldDirectionPressedAtMs.get(direction);
     if (pressedAtMs === undefined) {
       return false;
@@ -147,13 +160,16 @@ export function createWalkInputController(config: {
     return nowMs - pressedAtMs >= FIRST_STEP_COMMIT_MS;
   };
 
-  const getDispatchableFirstStepDirection = (nowMs: number): Direction | null => {
+  const getDispatchableFirstStepDirection = (
+    nowMs: number,
+  ): Direction | null => {
     for (let i = directionOrder.length - 1; i >= 0; i -= 1) {
       const direction = directionOrder[i];
       if (!heldDirections.has(direction)) {
         continue;
       }
-      const firstStepCommitted = directionHasCommittedFirstStep.get(direction) ?? false;
+      const firstStepCommitted =
+        directionHasCommittedFirstStep.get(direction) ?? false;
       if (!firstStepCommitted) {
         if (hasSatisfiedFirstStepThreshold(direction, nowMs)) {
           return direction;
@@ -164,7 +180,8 @@ export function createWalkInputController(config: {
   };
 
   const markIntentDispatched = (direction: Direction): void => {
-    const firstStepCommitted = directionHasCommittedFirstStep.get(direction) ?? false;
+    const firstStepCommitted =
+      directionHasCommittedFirstStep.get(direction) ?? false;
     if (!firstStepCommitted) {
       directionHasCommittedFirstStep.set(direction, true);
     }
@@ -172,11 +189,7 @@ export function createWalkInputController(config: {
 
   const sendIntent = (direction: Direction): void => {
     config.onFacingIntent(direction);
-    config.sendWalkInput(
-      direction,
-      movementMode,
-      heldButtons(),
-    );
+    config.sendWalkInput(direction, movementMode, heldButtons());
     markIntentDispatched(direction);
     hasPendingWalkRequest = true;
   };
@@ -241,13 +254,17 @@ export function createWalkInputController(config: {
       }
       virtualBHeld = held;
       if (DEBUG_ACRO_HOP) {
-        console.info(`[acro-hop][input] virtual B ${held ? 'pressed' : 'released'}`);
+        console.info(
+          `[acro-hop][input] virtual B ${held ? "pressed" : "released"}`,
+        );
       }
       emitHeldInputState();
     },
     toggleMovementMode(): void {
       movementMode =
-        movementMode === MovementMode.WALK ? MovementMode.RUN : MovementMode.WALK;
+        movementMode === MovementMode.WALK
+          ? MovementMode.RUN
+          : MovementMode.WALK;
     },
     handleKeyUp(event: KeyboardEvent): void {
       const direction = keyToDirection(event.key);
@@ -268,23 +285,20 @@ export function createWalkInputController(config: {
       maybeDispatchIntent(nowMs);
     },
     noteWalkTransitionProgress(normalizedProgress: number): void {
-      if (hasSampledCurrentTransition || normalizedProgress < LOOKAHEAD_SAMPLE_PROGRESS) {
+      if (normalizedProgress < LOOKAHEAD_SAMPLE_PROGRESS) {
         return;
       }
-      hasSampledCurrentTransition = true;
       pendingIntentDirection = getActiveHeldDirection();
     },
     markWalkResultReceived(result: WalkResult): void {
       hasPendingWalkRequest = false;
       if (!result.accepted) {
         pendingIntentDirection = null;
-      } else {
-        hasSampledCurrentTransition = false;
       }
       maybeDispatchIntent(performance.now());
     },
     markWalkTransitionCompleted(): void {
-      hasSampledCurrentTransition = false;
+      pendingIntentDirection = getActiveHeldDirection();
       maybeDispatchIntent(performance.now());
     },
     hasPendingAcceptedOrDispatchableStep(): boolean {
@@ -304,7 +318,6 @@ export function createWalkInputController(config: {
       heldDirectionPressedAtMs.clear();
       directionHasCommittedFirstStep.clear();
       pendingIntentDirection = null;
-      hasSampledCurrentTransition = false;
       directionOrder.length = 0;
       config.sendHeldInputState(null, HeldButtons.NONE);
     },

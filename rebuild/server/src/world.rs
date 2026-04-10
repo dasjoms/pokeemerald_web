@@ -464,6 +464,11 @@ impl World {
                 }));
             }
 
+            if session.active_walk_transition.is_some()
+                && matches!(session.player_state.traversal_state, TraversalState::OnFoot)
+            {
+                session.capture_step_end_direction_intent();
+            }
             if let Some(active_walk) = session.active_walk_transition.as_mut() {
                 active_walk.advance(SERVER_TICK_MS);
                 if active_walk.is_complete() {
@@ -506,6 +511,7 @@ impl World {
                 continue;
             }
 
+            let _boundary_intent = session.consume_step_end_direction_intent();
             while let Some(input) = session.pop_walk_input() {
                 let previous_map_id = session.player_state.map_id.clone();
                 if !session.validate_and_commit_walk_intent_timing(&input) {
