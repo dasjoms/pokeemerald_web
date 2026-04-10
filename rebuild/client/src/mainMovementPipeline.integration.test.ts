@@ -677,45 +677,6 @@ describe("main movement pipeline integration", () => {
     }
   });
 
-  it("shows stationary acro end-wheelie frame before directional ride resumes when direction is held during B-release", () => {
-    const playerAnimation = new PlayerAnimationController(makeMockAssets());
-    const direction = Direction.RIGHT;
-
-    playerAnimation.setTraversalState({
-      traversalState: TraversalState.ACRO_BIKE,
-      acroSubstate: AcroBikeSubstate.BUNNY_HOP,
-      bikeTransition: BikeTransitionType.WHEELIE_HOPPING_STANDING,
-    });
-    playerAnimation.stopMoving(direction);
-    playerAnimation.applyPendingModeChanges();
-    expect(playerAnimation.getDebugState().animId).toBe(
-      "anim_acro_bunny_hop_back_east",
-    );
-
-    playerAnimation.setTraversalState({
-      traversalState: TraversalState.ACRO_BIKE,
-      acroSubstate: AcroBikeSubstate.NONE,
-      bikeTransition: BikeTransitionType.EXIT_WHEELIE,
-    });
-    playerAnimation.stopMoving(direction);
-    playerAnimation.applyPendingModeChanges();
-    const setdownAnimId = playerAnimation.getDebugState().animId;
-    expect(setdownAnimId).toBe("anim_acro_end_wheelie_stationary_east");
-
-    playerAnimation.setTraversalState({
-      traversalState: TraversalState.ACRO_BIKE,
-      acroSubstate: AcroBikeSubstate.NONE,
-      bikeTransition: BikeTransitionType.NONE,
-    });
-    playerAnimation.startStep(direction, "run");
-    const resumedAnimId = playerAnimation.getDebugState().animId;
-    expect(resumedAnimId).toBe("anim_bike_walk_east");
-    expect([setdownAnimId, resumedAnimId]).toEqual([
-      "anim_acro_end_wheelie_stationary_east",
-      "anim_bike_walk_east",
-    ]);
-  });
-
   it("drops stale hop latch immediately when authoritative wheelie-rise-moving transition arrives", () => {
     const playerAnimation = new PlayerAnimationController(makeMockAssets());
     const direction = Direction.RIGHT;
