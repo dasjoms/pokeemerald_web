@@ -22,7 +22,7 @@ use crate::{
     },
     protocol::{
         AcroBikeSubstate, BikeRuntimeDelta, BikeTransitionType, DebugTraversalAction,
-        DebugTraversalInput, Direction, HeldInputState, MovementMode, PlayerAction,
+        DebugTraversalInput, Direction, HeldInputState, HopLandingParticleClass, MovementMode, PlayerAction,
         PlayerActionInput, PlayerAvatar, RejectionReason, ServerMessage, SessionAccepted,
         StepSpeed, TraversalState, WalkInput, WalkResult, WorldSnapshot,
     },
@@ -38,6 +38,20 @@ const BIKE_EFFECT_COLLISION_SFX: u8 = 1 << 2;
 const BIKE_EFFECT_CYCLING_BGM_MOUNT: u8 = 1 << 3;
 const BIKE_EFFECT_CYCLING_BGM_DISMOUNT: u8 = 1 << 4;
 const MB_BUMPY_SLOPE: u8 = 0xD1;
+const MB_TALL_GRASS: u8 = 0x02;
+const MB_LONG_GRASS: u8 = 0x03;
+const MB_POND_WATER: u8 = 0x10;
+const MB_INTERIOR_DEEP_WATER: u8 = 0x11;
+const MB_DEEP_WATER: u8 = 0x12;
+const MB_WATERFALL: u8 = 0x13;
+const MB_SOOTOPOLIS_DEEP_WATER: u8 = 0x14;
+const MB_OCEAN_WATER: u8 = 0x15;
+const MB_PUDDLE: u8 = 0x16;
+const MB_SHALLOW_WATER: u8 = 0x17;
+const MB_UNUSED_SOOTOPOLIS_DEEP_WATER: u8 = 0x18;
+const MB_NO_SURFACING: u8 = 0x19;
+const MB_UNUSED_SOOTOPOLIS_DEEP_WATER_2: u8 = 0x1A;
+const MB_SEAWEED_NO_SURFACING: u8 = 0x2A;
 
 #[derive(Debug, Clone)]
 pub struct MapConnection {
@@ -461,6 +475,10 @@ impl World {
                     mach_speed_stage: bike_mach_speed_for_traversal(&session.player_state),
                     acro_substate: current_acro_substate,
                     bike_transition: Some(current_bike_transition),
+                    hop_landing_particle_class: hop_landing_particle_class_for_state(
+                        self.maps.get(&session.player_state.map_id),
+                        &session.player_state,
+                    ),
                 }));
             }
 
@@ -534,6 +552,7 @@ impl World {
                         acro_substate: bike_acro_substate_for_traversal(&session.player_state),
                         bike_transition: Some(session.player_state.bike_runtime.last_transition),
                         bike_effect_flags: 0,
+                        hop_landing_particle_class: None,
                     }));
                     continue;
                 }
@@ -559,6 +578,7 @@ impl World {
                         acro_substate: bike_acro_substate_for_traversal(&session.player_state),
                         bike_transition: Some(session.player_state.bike_runtime.last_transition),
                         bike_effect_flags: 0,
+                        hop_landing_particle_class: None,
                     }));
                     continue;
                 };
@@ -745,6 +765,10 @@ impl World {
                         accepted,
                         reason,
                     ),
+                    hop_landing_particle_class: hop_landing_particle_class_for_state(
+                        self.maps.get(&session.player_state.map_id),
+                        &session.player_state,
+                    ),
                 });
 
                 let _ = session.send(result);
@@ -885,6 +909,10 @@ impl World {
             acro_substate: bike_acro_substate_for_traversal(&session.player_state),
             bike_transition: Some(session.player_state.bike_runtime.last_transition),
             bike_effect_flags: bike_effect_flags_for_step(&session.player_state, false, reason),
+            hop_landing_particle_class: hop_landing_particle_class_for_state(
+                self.maps.get(&session.player_state.map_id),
+                &session.player_state,
+            ),
         })
     }
 }
@@ -953,6 +981,62 @@ fn bike_effect_flags_from_transition(transition: BikeTransitionType) -> u8 {
         flags |= BIKE_EFFECT_CYCLING_BGM_DISMOUNT;
     }
     flags
+}
+
+fn hop_landing_particle_class_for_state(
+    map: Option<&MapData>,
+    player_state: &PlayerState,
+) -> Option<HopLandingParticleClass> {
+    if !is_hop_landing_transition(player_state.bike_runtime.last_transition) {
+        return None;
+    }
+    let behavior = map.and_then(|current_map| source_tile_behavior(current_map, player_state));
+    Some(hop_landing_particle_class_for_behavior(behavior.unwrap_or_default()))
+}
+
+fn is_hop_landing_transition(transition: BikeTransitionType) -> bool {
+    matches!(
+        transition,
+        BikeTransitionType::Hop
+            | BikeTransitionType::HopStanding
+            | BikeTransitionType::HopMoving
+            | BikeTransitionType::WheelieHoppingStanding
+            | BikeTransitionType::WheelieHoppingMoving
+            | BikeTransitionType::SideJump
+            | BikeTransitionType::TurnJump
+    )
+}
+
+fn hop_landing_particle_class_for_behavior(behavior: u8) -> HopLandingParticleClass {
+    if behavior == MB_TALL_GRASS {
+        return HopLandingParticleClass::TallGrassJump;
+    }
+    if matches!(behavior, MB_LONG_GRASS) {
+        return HopLandingParticleClass::LongGrassJump;
+    }
+    if matches!(behavior, MB_PUDDLE | MB_SHALLOW_WATER) {
+        return HopLandingParticleClass::ShallowWaterSplash;
+    }
+    if is_surfable_deep_water_behavior(behavior) {
+        return HopLandingParticleClass::DeepWaterSplash;
+    }
+    HopLandingParticleClass::NormalGroundDust
+}
+
+fn is_surfable_deep_water_behavior(behavior: u8) -> bool {
+    matches!(
+        behavior,
+        MB_POND_WATER
+            | MB_INTERIOR_DEEP_WATER
+            | MB_DEEP_WATER
+            | MB_WATERFALL
+            | MB_SOOTOPOLIS_DEEP_WATER
+            | MB_OCEAN_WATER
+            | MB_UNUSED_SOOTOPOLIS_DEEP_WATER
+            | MB_NO_SURFACING
+            | MB_UNUSED_SOOTOPOLIS_DEEP_WATER_2
+            | MB_SEAWEED_NO_SURFACING
+    )
 }
 
 fn bike_mach_speed_for_traversal(player_state: &PlayerState) -> Option<u8> {

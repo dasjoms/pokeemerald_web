@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from enum import IntEnum
 import struct
 
-PROTOCOL_VERSION = 10
+PROTOCOL_VERSION = 11
 
 _HEADER = struct.Struct("<HBI")  # protocol_version, message_type, payload_len
 _U8 = struct.Struct("<B")
@@ -125,6 +125,13 @@ class PlayerAvatar(IntEnum):
     BRENDAN = 0
     MAY = 1
 
+class HopLandingParticleClass(IntEnum):
+    NORMAL_GROUND_DUST = 0
+    TALL_GRASS_JUMP = 1
+    LONG_GRASS_JUMP = 2
+    SHALLOW_WATER_SPLASH = 3
+    DEEP_WATER_SPLASH = 4
+
 
 @dataclass(frozen=True)
 class Position:
@@ -204,6 +211,7 @@ class WalkResult:
     acro_substate: AcroBikeSubstate | None = None
     bike_transition: BikeTransitionType | None = None
     bike_effect_flags: int = 0
+    hop_landing_particle_class: HopLandingParticleClass | None = None
 
 
 @dataclass(frozen=True)
@@ -221,6 +229,7 @@ class BikeRuntimeDelta:
     mach_speed_stage: int | None = None
     acro_substate: AcroBikeSubstate | None = None
     bike_transition: BikeTransitionType | None = None
+    hop_landing_particle_class: HopLandingParticleClass | None = None
 
 
 WireMessage = (
@@ -356,6 +365,8 @@ def _encode_payload(message: WireMessage) -> tuple[MessageType, bytes]:
                 _U8.pack(runtime_flags),
                 runtime_payload,
                 _U8.pack(message.bike_effect_flags),
+                _U8.pack(1 if message.hop_landing_particle_class is not None else 0),
+                _U8.pack(int(message.hop_landing_particle_class or 0)),
             ]
         )
 
@@ -377,6 +388,8 @@ def _encode_payload(message: WireMessage) -> tuple[MessageType, bytes]:
                 _U8.pack(int(message.traversal_state)),
                 _U8.pack(runtime_flags),
                 runtime_payload,
+                _U8.pack(1 if message.hop_landing_particle_class is not None else 0),
+                _U8.pack(int(message.hop_landing_particle_class or 0)),
             ]
         )
 
@@ -484,6 +497,8 @@ def _decode_payload(message_type: MessageType, payload: bytes) -> WireMessage:
         preferred_bike_type, offset = _unpack_u8(payload, offset)
         runtime, offset = _decode_bike_runtime(payload, offset)
         bike_effect_flags, offset = _unpack_u8(payload, offset)
+        has_hop_landing_particle_class, offset = _unpack_u8(payload, offset)
+        hop_landing_particle_class_raw, offset = _unpack_u8(payload, offset)
         _ensure_done(payload, offset)
         return WalkResult(
             input_seq=input_seq,
@@ -499,6 +514,11 @@ def _decode_payload(message_type: MessageType, payload: bytes) -> WireMessage:
             acro_substate=runtime.acro_substate,
             bike_transition=runtime.bike_transition,
             bike_effect_flags=bike_effect_flags,
+            hop_landing_particle_class=(
+                HopLandingParticleClass(hop_landing_particle_class_raw)
+                if has_hop_landing_particle_class != 0
+                else None
+            ),
         )
 
     if message_type is MessageType.WORLD_DELTA:
@@ -512,6 +532,8 @@ def _decode_payload(message_type: MessageType, payload: bytes) -> WireMessage:
         server_frame, offset = _unpack_u32(payload, offset)
         traversal_state, offset = _unpack_u8(payload, offset)
         runtime, offset = _decode_bike_runtime(payload, offset)
+        has_hop_landing_particle_class, offset = _unpack_u8(payload, offset)
+        hop_landing_particle_class_raw, offset = _unpack_u8(payload, offset)
         _ensure_done(payload, offset)
         return BikeRuntimeDelta(
             server_frame=server_frame,
@@ -520,6 +542,11 @@ def _decode_payload(message_type: MessageType, payload: bytes) -> WireMessage:
             mach_speed_stage=runtime.mach_speed_stage,
             acro_substate=runtime.acro_substate,
             bike_transition=runtime.bike_transition,
+            hop_landing_particle_class=(
+                HopLandingParticleClass(hop_landing_particle_class_raw)
+                if has_hop_landing_particle_class != 0
+                else None
+            ),
         )
 
     raise ProtocolError(f"unsupported message type: {message_type}")

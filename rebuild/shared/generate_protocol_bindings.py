@@ -6,6 +6,7 @@ from textwrap import dedent
 
 from protocol import (
     AcroBikeSubstate,
+    HopLandingParticleClass,
     BikeTransitionType,
     DebugTraversalAction,
     HeldButtons,
@@ -147,6 +148,17 @@ pub enum BikeTransitionType {{
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum HopLandingParticleClass {{
+    NormalGroundDust = {int(HopLandingParticleClass.NORMAL_GROUND_DUST)},
+    TallGrassJump = {int(HopLandingParticleClass.TALL_GRASS_JUMP)},
+    LongGrassJump = {int(HopLandingParticleClass.LONG_GRASS_JUMP)},
+    ShallowWaterSplash = {int(HopLandingParticleClass.SHALLOW_WATER_SPLASH)},
+    DeepWaterSplash = {int(HopLandingParticleClass.DEEP_WATER_SPLASH)},
+}}
+
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum RejectionReason {{
     None = {int(RejectionReason.NONE)},
     Collision = {int(RejectionReason.COLLISION)},
@@ -243,6 +255,7 @@ pub struct WalkResult {{
     pub acro_substate: Option<AcroBikeSubstate>,
     pub bike_transition: Option<BikeTransitionType>,
     pub bike_effect_flags: u8,
+    pub hop_landing_particle_class: Option<HopLandingParticleClass>,
 }}
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
@@ -260,6 +273,7 @@ pub struct BikeRuntimeDelta {{
     pub mach_speed_stage: Option<u8>,
     pub acro_substate: Option<AcroBikeSubstate>,
     pub bike_transition: Option<BikeTransitionType>,
+    pub hop_landing_particle_class: Option<HopLandingParticleClass>,
 }}
 """
     )
@@ -354,6 +368,14 @@ export enum BikeTransitionType {{
   WHEELIE_LOWERING_MOVING = {int(BikeTransitionType.WHEELIE_LOWERING_MOVING)},
 }}
 
+export enum HopLandingParticleClass {{
+  NORMAL_GROUND_DUST = {int(HopLandingParticleClass.NORMAL_GROUND_DUST)},
+  TALL_GRASS_JUMP = {int(HopLandingParticleClass.TALL_GRASS_JUMP)},
+  LONG_GRASS_JUMP = {int(HopLandingParticleClass.LONG_GRASS_JUMP)},
+  SHALLOW_WATER_SPLASH = {int(HopLandingParticleClass.SHALLOW_WATER_SPLASH)},
+  DEEP_WATER_SPLASH = {int(HopLandingParticleClass.DEEP_WATER_SPLASH)},
+}}
+
 export enum RejectionReason {{
   NONE = {int(RejectionReason.NONE)},
   COLLISION = {int(RejectionReason.COLLISION)},
@@ -421,6 +443,7 @@ export type WalkResult = {{
   acro_substate?: AcroBikeSubstate;
   bike_transition?: BikeTransitionType;
   bike_effect_flags: number;
+  hop_landing_particle_class?: HopLandingParticleClass;
 }};
 export type WorldDelta = {{ map_id: number; server_frame: number; delta_blob: Uint8Array }};
 export type BikeRuntimeDelta = {{
@@ -430,6 +453,7 @@ export type BikeRuntimeDelta = {{
   mach_speed_stage?: number;
   acro_substate?: AcroBikeSubstate;
   bike_transition?: BikeTransitionType;
+  hop_landing_particle_class?: HopLandingParticleClass;
 }};
 """
     )

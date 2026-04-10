@@ -6,6 +6,7 @@ import {
   DebugTraversalAction,
   Direction,
   HeldButtons,
+  HopLandingParticleClass,
   MessageType,
   MovementMode,
   PlayerAction,
@@ -1910,6 +1911,12 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
       bikeRuntimeFlags & 0b100 ? (readU8(payload, offset++) as BikeTransitionType) : undefined;
     const bikeEffectFlags = readU8(payload, offset);
     offset += 1;
+    const hasHopLandingParticleClass = readU8(payload, offset) !== 0;
+    offset += 1;
+    const hopLandingParticleClass = hasHopLandingParticleClass
+      ? (readU8(payload, offset) as HopLandingParticleClass)
+      : undefined;
+    offset += 1;
 
     return {
       type: MessageType.WALK_RESULT,
@@ -1927,6 +1934,7 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
         acro_substate: acroSubstate,
         bike_transition: bikeTransition,
         bike_effect_flags: bikeEffectFlags,
+        hop_landing_particle_class: hopLandingParticleClass,
       },
     };
   }
@@ -1946,6 +1954,12 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
       bikeRuntimeFlags & 0b010 ? (readU8(payload, offset++) as AcroBikeSubstate) : undefined;
     const bikeTransition =
       bikeRuntimeFlags & 0b100 ? (readU8(payload, offset++) as BikeTransitionType) : undefined;
+    const hasHopLandingParticleClass = readU8(payload, offset) !== 0;
+    offset += 1;
+    const hopLandingParticleClass = hasHopLandingParticleClass
+      ? (readU8(payload, offset) as HopLandingParticleClass)
+      : undefined;
+    offset += 1;
     return {
       type: MessageType.BIKE_RUNTIME_DELTA,
       payload: {
@@ -1955,6 +1969,7 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
         mach_speed_stage: machSpeedStage,
         acro_substate: acroSubstate,
         bike_transition: bikeTransition,
+        hop_landing_particle_class: hopLandingParticleClass,
       },
     };
   }
