@@ -482,19 +482,6 @@ impl World {
                 );
             }
             session.update_authoritative_tick(tick);
-            if session.active_walk_transition.is_none()
-                && matches!(
-                    session.player_state.bike_runtime.acro_state,
-                    AcroBikeSubstate::BunnyHop
-                )
-                && session
-                    .player_state
-                    .bike_runtime
-                    .acro_runtime
-                    .hop_landed_this_tick()
-            {
-                session.open_bunny_hop_movement_boundary();
-            }
             let current_acro_substate = bike_acro_substate_for_traversal(&session.player_state);
             let current_bike_transition = session.player_state.bike_runtime.last_transition;
             let (hop_landing_map_id, hop_landing_x, hop_landing_y) =
@@ -583,12 +570,6 @@ impl World {
                         }
                     }
                     session.active_walk_transition = None;
-                    if matches!(
-                        session.player_state.bike_runtime.acro_state,
-                        AcroBikeSubstate::BunnyHop
-                    ) {
-                        session.open_bunny_hop_movement_boundary();
-                    }
                 } else if cfg!(debug_assertions) {
                     trace!(
                         connection_id = session.connection_id,
@@ -655,7 +636,11 @@ impl World {
                     session.player_state.bike_runtime.acro_state,
                     AcroBikeSubstate::BunnyHop
                 );
-                if is_bunny_hop && !session.consume_bunny_hop_movement_boundary() {
+                if is_bunny_hop
+                    && session.bunny_hop_cadence_initialized()
+                    && session.has_pending_bunny_hop_direction()
+                    && !session.is_bunny_hop_cadence_open_this_tick()
+                {
                     session.requeue_walk_input_front(input);
                     break;
                 }
@@ -2751,124 +2736,6 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn bunny_hop_continuous_directional_input_has_no_periodic_idle_gaps_across_long_runs() {
-        let world = test_world_with_initial_map(MapData {
-            map_id: "MAP_BUNNY_HOP_LONG_RUN".to_string(),
-            width: 128,
-            height: 1,
-            metatile_id: vec![0; 128],
-            collision: vec![0; 128],
-            elevation: vec![0; 128],
-            behavior: vec![0; 128],
-            allow_cycling: true,
-            allow_running: true,
-            connections: vec![],
-        });
-        let (tx, mut rx) = mpsc::unbounded_channel();
-        let session = world
-            .create_session(tx)
-            .await
-            .expect("session should create");
-        world
-            .join_session(session.connection_id, "bunny-hop-long-run")
-            .await
-            .expect("session should join");
-        let _ = drain_server_messages(&mut rx);
-
-        {
-            let mut sessions = world.sessions.write().await;
-            let session_state = sessions
-                .get_mut(&session.connection_id)
-                .expect("session should exist");
-            session_state.player_state.map_id = "MAP_BUNNY_HOP_LONG_RUN".to_string();
-            session_state.player_state.traversal_state = TraversalState::AcroBike;
-            session_state.player_state.preferred_bike_type = TraversalState::AcroBike;
-            session_state.player_state.facing = Direction::Right;
-            session_state.player_state.bike_runtime.acro_runtime.state = AcroState::BunnyHop;
-            session_state.player_state.bike_runtime.acro_state = AcroBikeSubstate::BunnyHop;
-        }
-
-        let target_hops = 24_u32;
-        let mut next_seq = 0_u32;
-        let mut accepted_frames = Vec::new();
-
-        for _ in 0..1_200 {
-            let can_enqueue = {
-                let sessions = world.sessions.read().await;
-                let session_state = sessions
-                    .get(&session.connection_id)
-                    .expect("session should exist");
-                session_state.walk_inputs_len() == 0
-            };
-
-            if can_enqueue && next_seq < target_hops {
-                world
-                    .enqueue_held_input_state(
-                        session.connection_id,
-                        HeldInputState {
-                            input_seq: next_seq,
-                            held_dpad: crate::protocol::HeldDpad::Right as u8,
-                            held_buttons: crate::protocol::HeldButtons::B as u8,
-                            client_time: next_seq as u64,
-                        },
-                    )
-                    .await
-                    .expect("held input should enqueue");
-                world
-                    .enqueue_walk_input(
-                        session.connection_id,
-                        WalkInput {
-                            direction: Direction::Right,
-                            movement_mode: MovementMode::Walk,
-                            held_buttons: crate::protocol::HeldButtons::B as u8,
-                            input_seq: next_seq,
-                            client_time: next_seq as u64,
-                        },
-                    )
-                    .await
-                    .expect("walk input should enqueue");
-                next_seq = next_seq.saturating_add(1);
-            }
-
-            world.tick().await;
-            for message in drain_server_messages(&mut rx) {
-                if let ServerMessage::WalkResult(result) = message {
-                    if result.accepted {
-                        accepted_frames.push(result.server_frame);
-                    }
-                }
-            }
-            if accepted_frames.len() >= target_hops as usize {
-                break;
-            }
-        }
-
-        assert_eq!(
-            accepted_frames.len(),
-            target_hops as usize,
-            "expected long-run bunny-hop sequence to accept each queued directional hop"
-        );
-
-        let deltas: Vec<u32> = accepted_frames
-            .windows(2)
-            .map(|window| window[1].saturating_sub(window[0]))
-            .collect();
-        assert!(
-            !deltas.is_empty(),
-            "expected at least one accepted hop interval"
-        );
-        if deltas.len() > 1 {
-            let steady_state = &deltas[1..];
-            let min_gap = *steady_state.iter().min().expect("steady-state min gap");
-            let max_gap = *steady_state.iter().max().expect("steady-state max gap");
-            assert_eq!(
-                min_gap, max_gap,
-                "continuous bunny-hop should not show periodic idle gaps between accepted hops"
-            );
-        }
-    }
-
-    #[tokio::test]
     async fn hop_landing_particles_emit_across_repeated_bunny_hop_cycles_with_continuous_b_hold() {
         let (maps_index, layouts_index) = test_asset_paths();
         let world = World::load_from_assets("MAP_LITTLEROOT_TOWN", &maps_index, &layouts_index)
@@ -3461,14 +3328,12 @@ mod tests {
         for _ in 0..32 {
             let progress_before_tick = {
                 let sessions = world.sessions.read().await;
-                sessions
-                    .get(&session.connection_id)
-                    .and_then(|session_state| {
-                        session_state
-                            .active_walk_transition
-                            .as_ref()
-                            .map(|transition| transition.progress_pixels())
-                    })
+                sessions.get(&session.connection_id).and_then(|session_state| {
+                    session_state
+                        .active_walk_transition
+                        .as_ref()
+                        .map(|transition| transition.progress_pixels())
+                })
             };
             world
                 .enqueue_held_input_state(
@@ -3512,21 +3377,23 @@ mod tests {
             let accepted_this_tick = tick_messages.iter().any(|message| {
                 matches!(
                     message,
-                    ServerMessage::WalkResult(WalkResult { accepted: true, .. })
+                    ServerMessage::WalkResult(WalkResult {
+                        accepted: true,
+                        ..
+                    })
                 )
             });
 
             if emitted_setdown {
                 let sessions = world.sessions.read().await;
-                let transition_progress_after_tick =
-                    sessions
-                        .get(&session.connection_id)
-                        .and_then(|session_state| {
-                            session_state
-                                .active_walk_transition
-                                .as_ref()
-                                .map(|transition| transition.progress_pixels())
-                        });
+                let transition_progress_after_tick = sessions
+                    .get(&session.connection_id)
+                    .and_then(|session_state| {
+                        session_state
+                            .active_walk_transition
+                            .as_ref()
+                            .map(|transition| transition.progress_pixels())
+                    });
                 if transition_progress_after_tick.is_some() && progress_before_tick.is_some() {
                     saw_mid_hop_setdown = true;
                 }

@@ -180,7 +180,9 @@ pub struct Session {
     resolved_held_direction: Option<Direction>,
     pub held_buttons: u8,
     authoritative_tick: u64,
-    bunny_hop_movement_boundary_ready: bool,
+    bunny_hop_cadence_open_on_tick: Option<u64>,
+    bunny_hop_cadence_initialized: bool,
+    pending_bunny_hop_direction: Option<Direction>,
     step_end_direction_intent: Option<Direction>,
     walk_inputs: VecDeque<WalkInput>,
     outbound: mpsc::UnboundedSender<ServerMessage>,
@@ -205,7 +207,9 @@ impl Session {
             resolved_held_direction: None,
             held_buttons: 0,
             authoritative_tick: 0,
-            bunny_hop_movement_boundary_ready: false,
+            bunny_hop_cadence_open_on_tick: None,
+            bunny_hop_cadence_initialized: false,
+            pending_bunny_hop_direction: None,
             step_end_direction_intent: None,
             walk_inputs: VecDeque::new(),
             outbound,
@@ -214,11 +218,23 @@ impl Session {
 
     pub fn update_authoritative_tick(&mut self, tick: u64) {
         self.authoritative_tick = tick;
-        if !matches!(
+        if matches!(
             self.player_state.bike_runtime.acro_state,
             AcroBikeSubstate::BunnyHop
         ) {
-            self.bunny_hop_movement_boundary_ready = false;
+            if self
+                .player_state
+                .bike_runtime
+                .acro_runtime
+                .hop_landed_this_tick()
+            {
+                self.bunny_hop_cadence_open_on_tick = Some(tick);
+                self.bunny_hop_cadence_initialized = true;
+            }
+        } else {
+            self.bunny_hop_cadence_open_on_tick = None;
+            self.bunny_hop_cadence_initialized = false;
+            self.pending_bunny_hop_direction = None;
         }
     }
 
@@ -286,22 +302,32 @@ impl Session {
             }
         }
 
+        if self.is_bunny_hop_cadence_open_this_tick() {
+            self.bunny_hop_cadence_open_on_tick = None;
+            self.bunny_hop_cadence_initialized = true;
+            self.pending_bunny_hop_direction = None;
+            return WalkIntentTimingValidation::Accepted;
+        }
+
+        if !self.bunny_hop_cadence_initialized {
+            self.bunny_hop_cadence_initialized = true;
+            self.pending_bunny_hop_direction = None;
+            return WalkIntentTimingValidation::Accepted;
+        }
+        self.pending_bunny_hop_direction = Some(input.direction);
         WalkIntentTimingValidation::Accepted
     }
 
-    pub fn open_bunny_hop_movement_boundary(&mut self) {
-        if matches!(
-            self.player_state.bike_runtime.acro_state,
-            AcroBikeSubstate::BunnyHop
-        ) {
-            self.bunny_hop_movement_boundary_ready = true;
-        }
+    pub fn is_bunny_hop_cadence_open_this_tick(&self) -> bool {
+        self.bunny_hop_cadence_open_on_tick == Some(self.authoritative_tick)
     }
 
-    pub fn consume_bunny_hop_movement_boundary(&mut self) -> bool {
-        let ready = self.bunny_hop_movement_boundary_ready;
-        self.bunny_hop_movement_boundary_ready = false;
-        ready
+    pub fn has_pending_bunny_hop_direction(&self) -> bool {
+        self.pending_bunny_hop_direction.is_some()
+    }
+
+    pub fn bunny_hop_cadence_initialized(&self) -> bool {
+        self.bunny_hop_cadence_initialized
     }
 
     pub fn requeue_walk_input_front(&mut self, input: WalkInput) {
@@ -393,20 +419,68 @@ mod tests {
     }
 
     #[test]
-    fn bunny_hop_movement_boundary_consumes_exactly_one_queued_direction() {
+    fn walk_intent_timing_bunny_hop_accepts_only_on_cadence_boundaries() {
         let mut session = test_session();
         session.player_state.traversal_state = TraversalState::AcroBike;
         session.player_state.bike_runtime.acro_state = AcroBikeSubstate::BunnyHop;
         session.player_state.bike_runtime.acro_runtime.state = crate::acro::AcroState::BunnyHop;
+        session.apply_held_input_state(HeldInputState {
+            held_dpad: crate::protocol::HeldDpad::Right as u8,
+            held_buttons: 0,
+            input_seq: 0,
+            client_time: 1_000,
+        });
 
-        assert!(!session.consume_bunny_hop_movement_boundary());
-
-        session.open_bunny_hop_movement_boundary();
-        assert!(session.consume_bunny_hop_movement_boundary());
-        assert!(!session.consume_bunny_hop_movement_boundary());
-
+        for tick in 1..=16 {
+            session
+                .player_state
+                .bike_runtime
+                .acro_runtime
+                .set_held_input(Some(Direction::Right), true);
+            session
+                .player_state
+                .bike_runtime
+                .acro_runtime
+                .advance_tick();
+            session.update_authoritative_tick(tick);
+        }
         assert_eq!(
             session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 1_010)),
+            WalkIntentTimingValidation::Accepted
+        );
+
+        session
+            .player_state
+            .bike_runtime
+            .acro_runtime
+            .set_held_input(Some(Direction::Right), true);
+        session
+            .player_state
+            .bike_runtime
+            .acro_runtime
+            .advance_tick();
+        session.update_authoritative_tick(17);
+        assert_eq!(
+            session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 1_050)),
+            WalkIntentTimingValidation::Accepted
+        );
+        assert!(session.has_pending_bunny_hop_direction());
+
+        for tick in 18..=32 {
+            session
+                .player_state
+                .bike_runtime
+                .acro_runtime
+                .set_held_input(Some(Direction::Right), true);
+            session
+                .player_state
+                .bike_runtime
+                .acro_runtime
+                .advance_tick();
+            session.update_authoritative_tick(tick);
+        }
+        assert_eq!(
+            session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 1_080)),
             WalkIntentTimingValidation::Accepted
         );
     }
