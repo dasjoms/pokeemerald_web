@@ -727,6 +727,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
       hopLandingElevation: delta.player_elevation,
       facing: state.facing,
       traversalState: delta.traversal_state,
+      acroSubstate: delta.acro_substate,
       bikeTransition: delta.bike_transition,
     });
     flushPendingHopParticleLandingEvent();
@@ -797,6 +798,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     hopLandingElevation: result.player_elevation,
     facing: result.facing,
     traversalState: result.traversal_state,
+    acroSubstate: result.acro_substate,
     bikeTransition: result.bike_transition,
   });
   flushPendingHopParticleLandingEvent();
@@ -2216,6 +2218,7 @@ function queueHopParticleLandingEvent(input: {
   hopLandingElevation: number;
   facing: Direction;
   traversalState: TraversalState;
+  acroSubstate: AcroBikeSubstate | undefined;
   bikeTransition: BikeTransitionType | undefined;
 }): void {
   if (
@@ -2225,6 +2228,11 @@ function queueHopParticleLandingEvent(input: {
   ) {
     return;
   }
+  const useFieldEffectPriority = resolveHopEffectPriorityMode({
+    traversalState: input.traversalState,
+    acroSubstate: input.acroSubstate,
+    bikeTransition: input.bikeTransition,
+  });
   pendingHopLandingParticleEvent = {
     tileX: input.hopLandingTileX,
     tileY: input.hopLandingTileY,
@@ -2232,11 +2240,19 @@ function queueHopParticleLandingEvent(input: {
     particleClass: input.particleClass,
     serverFrame: input.serverFrame,
     facing: input.facing,
-    useFieldEffectPriority: resolveHopEffectPriorityMode({
-      traversalState: input.traversalState,
-      bikeTransition: input.bikeTransition,
-    }),
+    useFieldEffectPriority,
   };
+  if (DEBUG_ACRO_HOP) {
+    console.info('[acro-hop][landing-particle]', {
+      server_frame: input.serverFrame,
+      particle_class: input.particleClass,
+      traversal_state: input.traversalState,
+      acro_substate: input.acroSubstate,
+      bike_transition: input.bikeTransition,
+      hop_type_hint: resolveHopTypeContext(input.bikeTransition),
+      useFieldEffectPriority,
+    });
+  }
 }
 
 function flushPendingHopParticleLandingEvent(): void {
@@ -2455,12 +2471,15 @@ function updateObjectDepthSorting(): void {
 
 function resolveHopEffectPriorityMode(input: {
   traversalState: TraversalState;
+  acroSubstate: AcroBikeSubstate | undefined;
   bikeTransition: BikeTransitionType | undefined;
 }): boolean {
   if (input.traversalState !== TraversalState.ACRO_BIKE) {
     return false;
   }
-  return resolveHopTypeContext(input.bikeTransition) !== 'unknown';
+  const hasTransitionHopHint = resolveHopTypeContext(input.bikeTransition) !== 'unknown';
+  const isAuthoritativeBunnyHop = input.acroSubstate === AcroBikeSubstate.BUNNY_HOP;
+  return hasTransitionHopHint || isAuthoritativeBunnyHop;
 }
 
 function resolveRomHopParticleBaseSubpriority(input: {
