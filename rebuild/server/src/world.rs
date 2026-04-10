@@ -1782,6 +1782,32 @@ mod tests {
     }
 
     #[test]
+    fn directional_bunny_hop_landing_pulses_once_per_tick_when_tick_then_step_both_run() {
+        let mut player = test_player_state();
+        player.traversal_state = TraversalState::AcroBike;
+        player.preferred_bike_type = TraversalState::AcroBike;
+        player.facing = Direction::Right;
+        player.bike_runtime.acro_runtime.state = AcroState::BunnyHop;
+        player.bike_runtime.acro_state = AcroBikeSubstate::BunnyHop;
+
+        let mut landing_ticks = Vec::new();
+        for tick in 0..48_u32 {
+            update_bike_runtime_per_tick(
+                &mut player,
+                Some(Direction::Right),
+                crate::protocol::HeldButtons::B as u8,
+            );
+            update_bike_runtime_after_step(&mut player, Direction::Right);
+
+            if player.bike_runtime.acro_runtime.hop_landed_this_tick() {
+                landing_ticks.push(tick);
+            }
+        }
+
+        assert_eq!(landing_ticks, vec![15, 31, 47]);
+    }
+
+    #[test]
     fn mounting_acro_on_bumpy_slope_auto_enters_idle_wheelie() {
         let mut player = test_player_state();
         player.traversal_state = TraversalState::OnFoot;
