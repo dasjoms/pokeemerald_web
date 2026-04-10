@@ -570,6 +570,7 @@ impl World {
                     session.player_state.traversal_state,
                     resolved_movement_mode,
                     session.player_state.bike_runtime.bike_frame_counter,
+                    bike_acro_substate_for_traversal(&session.player_state),
                 );
                 let step_speed = player_speed_step_speed(attempted_player_speed);
                 let source_idx = session.player_state.tile_y as usize * current_map.width as usize
@@ -868,6 +869,7 @@ fn player_step_speed_for_snapshot(player_state: &PlayerState) -> StepSpeed {
         player_state.traversal_state,
         MovementMode::Walk,
         player_state.bike_runtime.bike_frame_counter,
+        bike_acro_substate_for_traversal(player_state),
     );
     step_speed_to_protocol(player_speed_step_speed(player_speed))
 }
@@ -1991,6 +1993,86 @@ mod tests {
             !seen_transitions.contains(&BikeTransitionType::WheelieToNormal),
             "no intermediate grounded transition should occur before standing hop flow"
         );
+    }
+
+    #[tokio::test]
+    async fn accepted_directional_bunny_hop_uses_step1_authoritative_speed() {
+        let world = test_world_with_initial_map(MapData {
+            map_id: "MAP_BUNNY_HOP_SPEED_TEST".to_string(),
+            width: 2,
+            height: 1,
+            metatile_id: vec![0; 2],
+            collision: vec![0; 2],
+            behavior: vec![0; 2],
+            allow_cycling: true,
+            allow_running: true,
+            connections: vec![],
+        });
+        let (tx, mut rx) = mpsc::unbounded_channel();
+        let session = world
+            .create_session(tx)
+            .await
+            .expect("session should create");
+        world
+            .join_session(session.connection_id, "bunny-hop-speed")
+            .await
+            .expect("session should join");
+        let _ = drain_server_messages(&mut rx);
+
+        {
+            let mut sessions = world.sessions.write().await;
+            let session_state = sessions
+                .get_mut(&session.connection_id)
+                .expect("session should exist");
+            session_state.player_state.map_id = "MAP_BUNNY_HOP_SPEED_TEST".to_string();
+            session_state.player_state.tile_x = 0;
+            session_state.player_state.tile_y = 0;
+            session_state.player_state.traversal_state = TraversalState::AcroBike;
+            session_state.player_state.preferred_bike_type = TraversalState::AcroBike;
+            session_state.player_state.facing = Direction::Right;
+            session_state.player_state.bike_runtime.acro_runtime.state = AcroState::BunnyHop;
+            session_state.player_state.bike_runtime.acro_state = AcroBikeSubstate::BunnyHop;
+        }
+
+        world
+            .enqueue_held_input_state(
+                session.connection_id,
+                HeldInputState {
+                    input_seq: 0,
+                    held_direction: Some(Direction::Right),
+                    held_buttons: crate::protocol::HeldButtons::B as u8,
+                    client_time: 0,
+                },
+            )
+            .await
+            .expect("held input should enqueue");
+        world
+            .enqueue_walk_input(
+                session.connection_id,
+                WalkInput {
+                    direction: Direction::Right,
+                    movement_mode: MovementMode::Walk,
+                    held_buttons: crate::protocol::HeldButtons::B as u8,
+                    input_seq: 0,
+                    client_time: 0,
+                },
+            )
+            .await
+            .expect("walk input should enqueue");
+        world.tick().await;
+
+        let walk_result = drain_server_messages(&mut rx)
+            .into_iter()
+            .find_map(|message| match message {
+                ServerMessage::WalkResult(result) if result.input_seq == 0 => Some(result),
+                _ => None,
+            })
+            .expect("expected accepted directional bunny-hop walk result");
+
+        assert!(walk_result.accepted);
+        assert_eq!(walk_result.authoritative_pos.x, 1);
+        assert_eq!(walk_result.authoritative_pos.y, 0);
+        assert_eq!(walk_result.authoritative_step_speed, Some(StepSpeed::Step1));
     }
 
     #[test]
