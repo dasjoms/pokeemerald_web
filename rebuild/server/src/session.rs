@@ -243,9 +243,9 @@ impl Session {
     }
 
     pub fn apply_held_input_state(&mut self, input: HeldInputState) {
-        self.held_dpad = input.held_dpad;
+        self.held_dpad = crate::protocol::sanitize_held_dpad_mask(input.held_dpad);
         self.resolved_held_direction =
-            crate::protocol::resolve_direction_from_held_dpad(input.held_dpad);
+            crate::protocol::resolve_direction_from_held_dpad(self.held_dpad);
         self.set_held_buttons(input.held_buttons);
     }
 
@@ -545,7 +545,7 @@ mod tests {
     }
 
     #[test]
-    fn effective_held_direction_uses_emerald_mask_precedence() {
+    fn effective_held_direction_cancels_conflicting_opposites() {
         let mut session = test_session();
 
         session.apply_held_input_state(HeldInputState {
@@ -564,7 +564,7 @@ mod tests {
             input_seq: 1,
             client_time: 0,
         });
-        assert_eq!(session.effective_held_direction(), Some(Direction::Left));
+        assert_eq!(session.effective_held_direction(), None);
 
         session.apply_held_input_state(HeldInputState {
             held_dpad: (crate::protocol::HeldDpad::Up as u8)
@@ -573,7 +573,7 @@ mod tests {
             input_seq: 2,
             client_time: 0,
         });
-        assert_eq!(session.effective_held_direction(), Some(Direction::Up));
+        assert_eq!(session.effective_held_direction(), None);
 
         session.apply_held_input_state(HeldInputState {
             held_dpad: (crate::protocol::HeldDpad::Down as u8)
@@ -597,7 +597,7 @@ mod tests {
             input_seq: 0,
             client_time: 0,
         });
-        assert_eq!(session.effective_held_direction(), Some(Direction::Up));
+        assert_eq!(session.effective_held_direction(), Some(Direction::Left));
 
         session.apply_held_input_state(HeldInputState {
             held_dpad: (crate::protocol::HeldDpad::Down as u8)

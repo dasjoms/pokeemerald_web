@@ -94,17 +94,31 @@ pub enum HeldDpad {{
     Right = 1 << 3,
 }}
 
+pub fn sanitize_held_dpad_mask(mask: u8) -> u8 {{
+    let mut sanitized = mask;
+    let up_down = (HeldDpad::Up as u8) | (HeldDpad::Down as u8);
+    let left_right = (HeldDpad::Left as u8) | (HeldDpad::Right as u8);
+    if (sanitized & up_down) == up_down {{
+        sanitized &= !up_down;
+    }}
+    if (sanitized & left_right) == left_right {{
+        sanitized &= !left_right;
+    }}
+    sanitized
+}}
+
 pub fn resolve_direction_from_held_dpad(mask: u8) -> Option<Direction> {{
-    if (mask & HeldDpad::Up as u8) != 0 {{
+    let sanitized = sanitize_held_dpad_mask(mask);
+    if (sanitized & HeldDpad::Up as u8) != 0 {{
         return Some(Direction::Up);
     }}
-    if (mask & HeldDpad::Down as u8) != 0 {{
+    if (sanitized & HeldDpad::Down as u8) != 0 {{
         return Some(Direction::Down);
     }}
-    if (mask & HeldDpad::Left as u8) != 0 {{
+    if (sanitized & HeldDpad::Left as u8) != 0 {{
         return Some(Direction::Left);
     }}
-    if (mask & HeldDpad::Right as u8) != 0 {{
+    if (sanitized & HeldDpad::Right as u8) != 0 {{
         return Some(Direction::Right);
     }}
     None
@@ -376,17 +390,31 @@ export enum HeldDpad {{
   RIGHT = 1 << 3,
 }}
 
+export function sanitizeHeldDpadMask(mask: number): number {{
+  let sanitized = mask;
+  const upDown = HeldDpad.UP | HeldDpad.DOWN;
+  const leftRight = HeldDpad.LEFT | HeldDpad.RIGHT;
+  if ((sanitized & upDown) === upDown) {{
+    sanitized &= ~upDown;
+  }}
+  if ((sanitized & leftRight) === leftRight) {{
+    sanitized &= ~leftRight;
+  }}
+  return sanitized;
+}}
+
 export function resolveDirectionFromHeldDpad(mask: number): Direction | undefined {{
-  if ((mask & HeldDpad.UP) !== 0) {{
+  const sanitized = sanitizeHeldDpadMask(mask);
+  if ((sanitized & HeldDpad.UP) !== 0) {{
     return Direction.UP;
   }}
-  if ((mask & HeldDpad.DOWN) !== 0) {{
+  if ((sanitized & HeldDpad.DOWN) !== 0) {{
     return Direction.DOWN;
   }}
-  if ((mask & HeldDpad.LEFT) !== 0) {{
+  if ((sanitized & HeldDpad.LEFT) !== 0) {{
     return Direction.LEFT;
   }}
-  if ((mask & HeldDpad.RIGHT) !== 0) {{
+  if ((sanitized & HeldDpad.RIGHT) !== 0) {{
     return Direction.RIGHT;
   }}
   return undefined;
