@@ -62,9 +62,13 @@ import { HopParticleRenderer } from './hopParticleRenderer';
 import { computeObjectDepth } from './objectDepth';
 import {
   resolveHopParticleBaseSubpriority,
-  resolveHopTypeContext,
   shouldRenderHopParticleAbovePlayer,
 } from './hopParticleDepth';
+import {
+  buildHopParticleLandingEvent,
+  type HopParticleLandingQueueInput,
+  type QueuedHopLandingParticleEvent,
+} from './hopParticlePriority';
 import {
   createWalkInputController,
   encodeHeldInputState,
@@ -283,15 +287,7 @@ type AcroHopAttempt = {
   startedAtHeldInputSeq: number | null;
 };
 
-type PendingHopLandingParticleEvent = {
-  particleClass: HopLandingParticleClass;
-  serverFrame: number;
-  tileX: number;
-  tileY: number;
-  elevation: number;
-  facing: Direction;
-  useFieldEffectPriority: boolean;
-};
+type PendingHopLandingParticleEvent = QueuedHopLandingParticleEvent;
 
 
 const TILE_SIZE = 16;
@@ -2217,38 +2213,12 @@ function resolveAnimationStepMode({
   return 'walk';
 }
 
-function queueHopParticleLandingEvent(input: {
-  particleClass: HopLandingParticleClass | undefined;
-  serverFrame: number;
-  hopLandingTileX?: number;
-  hopLandingTileY?: number;
-  hopLandingElevation: number;
-  facing: Direction;
-  traversalState: TraversalState;
-  acroSubstate: AcroBikeSubstate | undefined;
-  bikeTransition: BikeTransitionType | undefined;
-}): void {
-  if (
-    input.particleClass === undefined ||
-    input.hopLandingTileX === undefined ||
-    input.hopLandingTileY === undefined
-  ) {
+function queueHopParticleLandingEvent(input: HopParticleLandingQueueInput): void {
+  const queuedLandingEvent = buildHopParticleLandingEvent(input);
+  if (!queuedLandingEvent) {
     return;
   }
-  const useFieldEffectPriority = resolveHopEffectPriorityMode({
-    traversalState: input.traversalState,
-    acroSubstate: input.acroSubstate,
-    bikeTransition: input.bikeTransition,
-  });
-  pendingHopLandingParticleEvent = {
-    tileX: input.hopLandingTileX,
-    tileY: input.hopLandingTileY,
-    elevation: input.hopLandingElevation,
-    particleClass: input.particleClass,
-    serverFrame: input.serverFrame,
-    facing: input.facing,
-    useFieldEffectPriority,
-  };
+  pendingHopLandingParticleEvent = queuedLandingEvent;
   if (DEBUG_ACRO_HOP) {
     console.info('[acro-hop][landing-particle]', {
       server_frame: input.serverFrame,
@@ -2256,8 +2226,7 @@ function queueHopParticleLandingEvent(input: {
       traversal_state: input.traversalState,
       acro_substate: input.acroSubstate,
       bike_transition: input.bikeTransition,
-      hop_type_hint: resolveHopTypeContext(input.bikeTransition),
-      useFieldEffectPriority,
+      useFieldEffectPriority: queuedLandingEvent.useFieldEffectPriority,
     });
   }
 }
@@ -2481,19 +2450,6 @@ function updateObjectDepthSorting(): void {
 
   objectDepthBelowBg2Layer.sortChildren();
   objectDepthBetweenBg2Bg1Layer.sortChildren();
-}
-
-function resolveHopEffectPriorityMode(input: {
-  traversalState: TraversalState;
-  acroSubstate: AcroBikeSubstate | undefined;
-  bikeTransition: BikeTransitionType | undefined;
-}): boolean {
-  if (input.traversalState !== TraversalState.ACRO_BIKE) {
-    return false;
-  }
-  const hasTransitionHopHint = resolveHopTypeContext(input.bikeTransition) !== 'unknown';
-  const isAuthoritativeBunnyHop = input.acroSubstate === AcroBikeSubstate.BUNNY_HOP;
-  return hasTransitionHopHint || isAuthoritativeBunnyHop;
 }
 
 function resolveHopParticleFrameSubpriorityAdjustment(_sample: {
