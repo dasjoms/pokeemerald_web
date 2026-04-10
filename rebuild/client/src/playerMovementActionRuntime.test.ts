@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  AcroBikeSubstate,
   BikeTransitionType,
   TraversalState,
 } from './protocol_generated';
@@ -54,6 +55,50 @@ describe('PlayerMovementActionRuntime', () => {
       traversalState: TraversalState.ACRO_BIKE,
       bikeTransition: BikeTransitionType.WHEELIE_IDLE,
     });
+    expect(runtime.getVisualState()).toEqual({
+      yOffsetPx: 0,
+      activeAction: 'none',
+    });
+  });
+
+  it('runs the same 16-tick low-jump arc for directional acro hop transition', () => {
+    const runtime = new PlayerMovementActionRuntime();
+    runtime.setAuthoritativeInput({
+      traversalState: TraversalState.ACRO_BIKE,
+      bikeTransition: BikeTransitionType.WHEELIE_HOPPING_MOVING,
+    });
+
+    const samples: number[] = [];
+    for (let tick = 0; tick < 16; tick += 1) {
+      runtime.tickTicks(1);
+      samples.push(runtime.getVisualState().yOffsetPx);
+    }
+
+    expect(samples).toEqual([0, -2, -3, -4, -5, -6, -6, -6, -5, -5, -4, -3, -2, 0, 0, 0]);
+    expect(runtime.getVisualState().activeAction).toBe('none');
+  });
+
+  it('maintains hop arc continuity when transition clears but acro substate remains bunny hop', () => {
+    const runtime = new PlayerMovementActionRuntime();
+    runtime.setAuthoritativeInput({
+      traversalState: TraversalState.ACRO_BIKE,
+      acroSubstate: AcroBikeSubstate.BUNNY_HOP,
+      bikeTransition: BikeTransitionType.WHEELIE_HOPPING_MOVING,
+    });
+
+    runtime.tickTicks(6);
+    expect(runtime.getVisualState().yOffsetPx).toBe(-6);
+
+    runtime.setAuthoritativeInput({
+      traversalState: TraversalState.ACRO_BIKE,
+      acroSubstate: AcroBikeSubstate.BUNNY_HOP,
+      bikeTransition: BikeTransitionType.NONE,
+    });
+
+    runtime.tickTicks(1);
+    expect(runtime.getVisualState().yOffsetPx).toBe(-6);
+
+    runtime.tickTicks(9);
     expect(runtime.getVisualState()).toEqual({
       yOffsetPx: 0,
       activeAction: 'none',
