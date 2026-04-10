@@ -178,6 +178,7 @@ type ClientWorldState = {
   facing: Direction;
   traversalState: TraversalState;
   preferredBikeType: TraversalState;
+  playerElevation: number;
   authoritativeStepSpeed?: StepSpeed;
   machSpeedStage?: number;
   acroSubstate?: AcroBikeSubstate;
@@ -282,6 +283,7 @@ type PendingHopLandingParticleEvent = {
   serverFrame: number;
   tileX: number;
   tileY: number;
+  elevation: number;
 };
 
 
@@ -322,6 +324,7 @@ const state: ClientWorldState = {
   facing: Direction.DOWN,
   traversalState: TraversalState.ON_FOOT,
   preferredBikeType: TraversalState.MACH_BIKE,
+  playerElevation: 0,
   lastInputSeq: 0,
   lastHeldInputSeq: 0,
   lastAckServerTick: 0,
@@ -638,6 +641,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     state.facing = snapshot.facing;
     state.traversalState = snapshot.traversal_state;
     state.preferredBikeType = snapshot.preferred_bike_type;
+    state.playerElevation = snapshot.player_elevation;
     state.authoritativeStepSpeed = snapshot.authoritative_step_speed;
     state.machSpeedStage = snapshot.mach_speed_stage;
     state.acroSubstate = snapshot.acro_substate;
@@ -690,6 +694,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
       });
     }
     state.traversalState = delta.traversal_state;
+    state.playerElevation = delta.player_elevation;
     state.authoritativeStepSpeed = delta.authoritative_step_speed;
     state.machSpeedStage = delta.mach_speed_stage;
     state.acroSubstate = delta.acro_substate;
@@ -716,6 +721,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
       serverFrame: delta.server_frame,
       hopLandingTileX: delta.hop_landing_tile_x,
       hopLandingTileY: delta.hop_landing_tile_y,
+      hopLandingElevation: delta.player_elevation,
     });
     flushPendingHopParticleLandingEvent();
     // BikeRuntimeDelta is change-only by design; consume it as authoritative
@@ -755,6 +761,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
   state.facing = result.facing;
   state.traversalState = result.traversal_state;
   state.preferredBikeType = result.preferred_bike_type;
+  state.playerElevation = result.player_elevation;
   state.authoritativeStepSpeed = result.authoritative_step_speed;
   state.machSpeedStage = result.mach_speed_stage;
   state.acroSubstate = result.acro_substate;
@@ -781,6 +788,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     serverFrame: result.server_frame,
     hopLandingTileX: result.hop_landing_tile_x,
     hopLandingTileY: result.hop_landing_tile_y,
+    hopLandingElevation: result.player_elevation,
   });
   flushPendingHopParticleLandingEvent();
   if (result.accepted) {
@@ -1893,6 +1901,8 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
     offset += 1;
     const preferredBikeType = readU8(payload, offset) as TraversalState;
     offset += 1;
+    const playerElevation = readU8(payload, offset);
+    offset += 1;
     const bikeRuntimeFlags = readU8(payload, offset);
     offset += 1;
     // Optional for compatibility with older servers that don't include step speed.
@@ -1928,6 +1938,7 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
         server_frame: serverFrame,
         traversal_state: traversalState,
         preferred_bike_type: preferredBikeType,
+        player_elevation: playerElevation,
         authoritative_step_speed: authoritativeStepSpeed,
         mach_speed_stage: machSpeedStage,
         acro_substate: acroSubstate,
@@ -1957,6 +1968,8 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
     const traversalState = readU8(payload, offset) as TraversalState;
     offset += 1;
     const preferredBikeType = readU8(payload, offset) as TraversalState;
+    offset += 1;
+    const playerElevation = readU8(payload, offset);
     offset += 1;
     const bikeRuntimeFlags = readU8(payload, offset);
     offset += 1;
@@ -2003,6 +2016,7 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
         server_frame: serverFrame,
         traversal_state: traversalState,
         preferred_bike_type: preferredBikeType,
+        player_elevation: playerElevation,
         authoritative_step_speed: authoritativeStepSpeed,
         mach_speed_stage: machSpeedStage,
         acro_substate: acroSubstate,
@@ -2021,6 +2035,8 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
     const serverFrame = readU32(payload, offset);
     offset += 4;
     const traversalState = readU8(payload, offset) as TraversalState;
+    offset += 1;
+    const playerElevation = readU8(payload, offset);
     offset += 1;
     const bikeRuntimeFlags = readU8(payload, offset);
     offset += 1;
@@ -2057,6 +2073,7 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
       payload: {
         server_frame: serverFrame,
         traversal_state: traversalState,
+        player_elevation: playerElevation,
         authoritative_step_speed: authoritativeStepSpeed,
         mach_speed_stage: machSpeedStage,
         acro_substate: acroSubstate,
@@ -2187,6 +2204,7 @@ function queueHopParticleLandingEvent(input: {
   serverFrame: number;
   hopLandingTileX?: number;
   hopLandingTileY?: number;
+  hopLandingElevation: number;
 }): void {
   if (
     input.particleClass === undefined ||
@@ -2198,6 +2216,7 @@ function queueHopParticleLandingEvent(input: {
   pendingHopLandingParticleEvent = {
     tileX: input.hopLandingTileX,
     tileY: input.hopLandingTileY,
+    elevation: input.hopLandingElevation,
     particleClass: input.particleClass,
     serverFrame: input.serverFrame,
   };
@@ -2393,7 +2412,7 @@ function updateObjectDepthSorting(): void {
   const playerDepth = computeObjectDepth({
     screenY: playerSprite.y,
     halfHeightPx: playerAnimationAssets.frameHeight * 0.5,
-    elevation: 0,
+    elevation: state.playerElevation,
     baseSubpriority: 1,
   });
   playerSprite.zIndex = playerDepth;
@@ -2402,7 +2421,7 @@ function updateObjectDepthSorting(): void {
     sample.sprite.zIndex = computeObjectDepth({
       screenY: sample.screenY,
       halfHeightPx: sample.halfHeightPx,
-      elevation: 0,
+      elevation: sample.elevation,
       baseSubpriority: 0,
     });
   }

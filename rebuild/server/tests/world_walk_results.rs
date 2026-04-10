@@ -2,7 +2,9 @@ use std::path::PathBuf;
 
 use rebuild_server::{
     movement::{validate_walk, MoveValidation, MovementMap},
-    protocol::{Direction, HeldInputState, MovementMode, RejectionReason, ServerMessage, WalkInput},
+    protocol::{
+        Direction, HeldInputState, MovementMode, RejectionReason, ServerMessage, WalkInput,
+    },
     world::World,
 };
 use tokio::sync::mpsc;

@@ -46,6 +46,7 @@ mod tests {
             height: 2,
             metatile_id: vec![11, 12, 13, 14],
             collision: vec![1, 2, 3, 4],
+            elevation: vec![1, 2, 3, 4],
             behavior: vec![21, 22, 23, 24],
             allow_cycling: true,
             allow_running: true,
