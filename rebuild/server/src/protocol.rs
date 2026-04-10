@@ -2,11 +2,12 @@
 mod protocol_generated;
 
 pub use protocol_generated::{
-    AcroBikeSubstate, BikeRuntimeDelta, BikeTransitionType, DebugTraversalAction,
-    DebugTraversalInput, Direction, HeldButtons, HeldDpad, HeldInputState, HopLandingParticleClass,
-    JoinSession, MessageType, MovementMode, PlayerAction, PlayerActionInput, PlayerAvatar, Position,
-    RejectionReason, SessionAccepted, StepSpeed, TraversalState, WalkInput, WalkResult, WorldDelta,
-    WorldSnapshot, PROTOCOL_VERSION, direction_to_held_dpad_mask, resolve_direction_from_held_dpad,
+    direction_to_held_dpad_mask, resolve_direction_from_held_dpad, AcroBikeSubstate,
+    BikeRuntimeDelta, BikeTransitionType, DebugTraversalAction, DebugTraversalInput, Direction,
+    HeldButtons, HeldDpad, HeldInputState, HopLandingParticleClass, JoinSession, MessageType,
+    MovementMode, PlayerAction, PlayerActionInput, PlayerAvatar, Position, RejectionReason,
+    SessionAccepted, StepSpeed, TraversalState, WalkInput, WalkResult, WorldDelta, WorldSnapshot,
+    PROTOCOL_VERSION,
 };
 pub type Facing = Direction;
 

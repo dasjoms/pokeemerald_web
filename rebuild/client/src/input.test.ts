@@ -12,6 +12,112 @@ function keyEvent(key: string): KeyboardEvent {
 }
 
 describe('virtual B parity input mapping', () => {
+  it('uses Emerald D-pad precedence for simultaneous held directions', () => {
+    const sentWalk: Direction[] = [];
+    const nowSpy = vi.spyOn(performance, 'now');
+    nowSpy.mockReturnValue(30_000);
+
+    const controller = createWalkInputController({
+      sendWalkInput: (direction) => {
+        sentWalk.push(direction);
+      },
+      sendHeldInputState: () => null,
+      isMovementLocked: () => false,
+      onFacingIntent: () => {},
+    });
+
+    controller.handleKeyDown(keyEvent('ArrowRight'));
+    controller.handleKeyDown(keyEvent('ArrowUp'));
+    nowSpy.mockReturnValue(30_100);
+    controller.tick();
+
+    expect(sentWalk[0]).toBe(Direction.UP);
+
+    nowSpy.mockRestore();
+  });
+
+  it('falls back by Emerald precedence after releasing higher-priority directions', () => {
+    const sentWalk: Direction[] = [];
+    const nowSpy = vi.spyOn(performance, 'now');
+    nowSpy.mockReturnValue(31_000);
+
+    const controller = createWalkInputController({
+      sendWalkInput: (direction) => {
+        sentWalk.push(direction);
+      },
+      sendHeldInputState: () => null,
+      isMovementLocked: () => false,
+      onFacingIntent: () => {},
+    });
+
+    controller.handleKeyDown(keyEvent('ArrowDown'));
+    controller.handleKeyDown(keyEvent('ArrowLeft'));
+    nowSpy.mockReturnValue(31_100);
+    controller.tick();
+    expect(sentWalk).toEqual([Direction.DOWN]);
+
+    controller.handleKeyDown(keyEvent('ArrowUp'));
+    nowSpy.mockReturnValue(31_190);
+    controller.noteWalkTransitionProgress(0.9);
+    controller.markWalkResultReceived({ accepted: true } as never);
+    expect(sentWalk).toEqual([Direction.DOWN, Direction.UP]);
+
+    controller.handleKeyUp(keyEvent('ArrowUp'));
+    nowSpy.mockReturnValue(31_280);
+    controller.noteWalkTransitionProgress(0.9);
+    controller.markWalkResultReceived({ accepted: true } as never);
+    expect(sentWalk).toEqual([Direction.DOWN, Direction.UP, Direction.DOWN]);
+
+    controller.handleKeyUp(keyEvent('ArrowDown'));
+    nowSpy.mockReturnValue(31_370);
+    controller.noteWalkTransitionProgress(0.9);
+    controller.markWalkResultReceived({ accepted: true } as never);
+    expect(sentWalk).toEqual([
+      Direction.DOWN,
+      Direction.UP,
+      Direction.DOWN,
+      Direction.LEFT,
+    ]);
+
+    nowSpy.mockRestore();
+  });
+
+  it('encodes deterministic held masks for contradictory multi-key combinations', () => {
+    const sentHeld: number[] = [];
+    const controller = createWalkInputController({
+      sendWalkInput: () => {},
+      sendHeldInputState: (heldDpad) => {
+        sentHeld.push(heldDpad);
+        return null;
+      },
+      isMovementLocked: () => false,
+      onFacingIntent: () => {},
+    });
+
+    controller.handleKeyDown(keyEvent('ArrowUp'));
+    controller.handleKeyDown(keyEvent('ArrowRight'));
+    controller.handleKeyUp(keyEvent('ArrowUp'));
+    controller.handleKeyUp(keyEvent('ArrowRight'));
+
+    controller.handleKeyDown(keyEvent('ArrowLeft'));
+    controller.handleKeyDown(keyEvent('ArrowRight'));
+    controller.handleKeyUp(keyEvent('ArrowLeft'));
+    controller.handleKeyUp(keyEvent('ArrowRight'));
+
+    controller.handleKeyDown(keyEvent('ArrowUp'));
+    controller.handleKeyDown(keyEvent('ArrowDown'));
+    controller.handleKeyUp(keyEvent('ArrowUp'));
+    controller.handleKeyUp(keyEvent('ArrowDown'));
+
+    controller.handleKeyDown(keyEvent('ArrowDown'));
+    controller.handleKeyDown(keyEvent('ArrowLeft'));
+
+    expect(sentHeld).toContain(HeldDpad.UP | HeldDpad.RIGHT);
+    expect(sentHeld).toContain(HeldDpad.LEFT | HeldDpad.RIGHT);
+    expect(sentHeld).toContain(HeldDpad.UP | HeldDpad.DOWN);
+    expect(sentHeld).toContain(HeldDpad.DOWN | HeldDpad.LEFT);
+  });
+
   it('queues at most one lookahead step from deterministic sampling near completion', () => {
     const sentWalk: Array<{ direction: Direction }> = [];
     const sentFacing: Direction[] = [];
