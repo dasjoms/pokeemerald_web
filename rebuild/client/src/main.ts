@@ -768,7 +768,6 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
       bikeTransition: state.bikeTransition,
       bunnyHopCycleTick: delta.bunny_hop_cycle_tick,
     });
-    clearActiveWalkTransitionForWheelieSetdown(delta.facing);
     hopShadowRenderer.setAuthoritativeState({
       traversalState: state.traversalState,
       bikeTransition: state.bikeTransition,
@@ -834,13 +833,12 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     acroSubstate: state.acroSubstate,
     bikeTransition: state.bikeTransition,
   });
-  playerMovementActionRuntime.setAuthoritativeInput({
-    traversalState: state.traversalState,
-    acroSubstate: state.acroSubstate,
-    bikeTransition: state.bikeTransition,
-    bunnyHopCycleTick: result.bunny_hop_cycle_tick,
-  });
-  clearActiveWalkTransitionForWheelieSetdown(result.facing);
+    playerMovementActionRuntime.setAuthoritativeInput({
+      traversalState: state.traversalState,
+      acroSubstate: state.acroSubstate,
+      bikeTransition: state.bikeTransition,
+      bunnyHopCycleTick: result.bunny_hop_cycle_tick,
+    });
   hopShadowRenderer.setAuthoritativeState({
     traversalState: state.traversalState,
     bikeTransition: state.bikeTransition,
@@ -2577,19 +2575,6 @@ function startAuthoritativeWalkTransition(
     stepSpeedInput,
     startTile,
   );
-}
-
-function clearActiveWalkTransitionForWheelieSetdown(facing: Direction): void {
-  if (state.bikeTransition !== BikeTransitionType.WHEELIE_TO_NORMAL) {
-    return;
-  }
-  if (!activeWalkTransition) {
-    return;
-  }
-  activeWalkTransition = null;
-  state.renderTileX = state.playerTileX;
-  state.renderTileY = state.playerTileY;
-  playerAnimation.stopMoving(facing);
 }
 
 function resolveAuthoritativeStepSpeedInput(
