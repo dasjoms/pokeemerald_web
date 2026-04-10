@@ -184,6 +184,12 @@ impl AcroRuntime {
         self.pending_action = Some(self.handle_input(self.held_direction, self.movement_direction));
     }
 
+    pub fn advance_locked_movement_tick(&mut self) {
+        self.hop_landed_this_tick = false;
+        self.advance_bunny_hop_phase();
+        self.pending_action = None;
+    }
+
     pub fn take_pending_action(&mut self) -> Option<AcroAnimationAction> {
         self.pending_action.take()
     }
