@@ -19,6 +19,11 @@ export type WalkTransitionMutableState = {
   playerTileY: number;
 };
 
+export type WalkTransitionStart = {
+  tileX: number;
+  tileY: number;
+};
+
 type TickWalkTransitionArgs = {
   activeWalkTransition: WalkTransition | null;
   state: WalkTransitionMutableState;
@@ -91,10 +96,11 @@ export function startAuthoritativeWalkTransition(
   state: WalkTransitionMutableState,
   facing: Direction,
   stepSpeedInput: AuthoritativeStepSpeedInput,
+  startTile?: WalkTransitionStart,
 ): WalkTransition {
   return {
-    startX: state.renderTileX,
-    startY: state.renderTileY,
+    startX: startTile?.tileX ?? state.renderTileX,
+    startY: startTile?.tileY ?? state.renderTileY,
     targetX: state.playerTileX,
     targetY: state.playerTileY,
     elapsedMs: 0,

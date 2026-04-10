@@ -797,6 +797,61 @@ describe("main movement pipeline integration", () => {
     }
   });
 
+  it("locks directional bunny-hop landing frame to authoritative tile center, zero Y offset, and authoritative landing tile", () => {
+    const state: WalkTransitionMutableState = {
+      playerTileX: 12,
+      playerTileY: 9,
+      renderTileX: 11.625,
+      renderTileY: 9,
+    };
+    const authoritativePreviousTile = { tileX: 11, tileY: 9 };
+    const transition = startAuthoritativeWalkTransition(
+      state,
+      Direction.RIGHT,
+      {
+        traversalState: TraversalState.ACRO_BIKE,
+        movementMode: MovementMode.WALK,
+      },
+      authoritativePreviousTile,
+    );
+    expect(transition.startX).toBe(authoritativePreviousTile.tileX);
+    expect(transition.startY).toBe(authoritativePreviousTile.tileY);
+
+    tickWalkTransition({
+      activeWalkTransition: transition,
+      state,
+      deltaMs: transition.durationMs,
+      hasPendingAcceptedOrDispatchableStep: () => false,
+      noteWalkTransitionProgress: () => {},
+      markWalkTransitionCompleted: () => {},
+      stopMoving: () => {},
+    });
+
+    const movementActionRuntime = new PlayerMovementActionRuntime();
+    movementActionRuntime.setAuthoritativeInput({
+      traversalState: TraversalState.ACRO_BIKE,
+      acroSubstate: AcroBikeSubstate.BUNNY_HOP,
+      bikeTransition: BikeTransitionType.WHEELIE_HOPPING_MOVING,
+      bunnyHopCycleTick: 13,
+    });
+
+    const landingPlacement = resolveHopLandingPlacementTile(
+      {
+        renderTileX: state.renderTileX,
+        renderTileY: state.renderTileY,
+      },
+      {
+        hopLandingTileX: 12,
+        hopLandingTileY: 9,
+      },
+    );
+
+    expect(state.renderTileX).toBe(12);
+    expect(state.renderTileY).toBe(9);
+    expect(movementActionRuntime.getVisualState().yOffsetPx).toBe(0);
+    expect(landingPlacement).toEqual({ tileX: 12, tileY: 9 });
+  });
+
   it.each([
     {
       bikeTransition: BikeTransitionType.NONE,

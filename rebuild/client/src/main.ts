@@ -41,12 +41,17 @@ import {
   loadPlayerAnimationAssets,
   PlayerAnimationController,
 } from './playerAnimation';
-import { PlayerMovementActionRuntime } from './playerMovementActionRuntime';
+import {
+  isAcroHopCapableState,
+  isAcroHopLandingFrame,
+  PlayerMovementActionRuntime,
+} from './playerMovementActionRuntime';
 import {
   startAuthoritativeWalkTransition as createAuthoritativeWalkTransition,
   tickWalkTransition as tickWalkTransitionState,
   type AuthoritativeStepSpeedInput,
   type WalkTransition,
+  type WalkTransitionStart,
   type WalkTransitionMutableState,
 } from './walkTransitionPipeline';
 import { BikeEffectRenderer } from './bikeEffectRenderer';
@@ -273,6 +278,13 @@ type AcroHopAttempt = {
   startedAtHeldInputSeq: number | null;
 };
 
+type PendingHopLandingParticleEvent = {
+  particleClass: HopLandingParticleClass;
+  serverFrame: number;
+  tileX: number;
+  tileY: number;
+};
+
 
 const TILE_SIZE = 16;
 const SUBTILE_SIZE = 8;
@@ -336,6 +348,7 @@ let lastLoggedOutboundHeldState: { heldDirection: Direction | null; heldButtons:
 let lastLoggedPrereqBlockSignature: string | null = null;
 let nextAcroHopAttemptId = 1;
 let activeAcroHopAttempt: AcroHopAttempt | null = null;
+let pendingHopLandingParticleEvent: PendingHopLandingParticleEvent | null = null;
 
 let activeTilesetAnimationPairId: string | null = null;
 let activeTilesetAnimationState: TilesetAnimationState | null = null;
@@ -635,6 +648,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     hopShadowRenderer.clear();
     bikeEffectRenderer.clear();
     hopParticleRenderer.clear();
+    pendingHopLandingParticleEvent = null;
     await applyAuthoritativeAvatar(snapshot.avatar);
     playerAnimation.setTraversalState({
       traversalState: state.traversalState,
@@ -689,11 +703,17 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
       bikeTransition: state.bikeTransition,
       acroSubstate: state.acroSubstate ?? AcroBikeSubstate.NONE,
     });
-    consumeHopParticleLandingEvent({
+    queueHopParticleLandingEvent({
       particleClass: delta.hop_landing_particle_class,
       serverFrame: delta.server_frame,
       hopLandingTileX: delta.hop_landing_tile_x,
       hopLandingTileY: delta.hop_landing_tile_y,
+    });
+    flushPendingHopParticleLandingEvent({
+      traversalState: delta.traversal_state,
+      acroSubstate: delta.acro_substate,
+      bikeTransition: delta.bike_transition,
+      bunnyHopCycleTick: delta.bunny_hop_cycle_tick,
     });
     // BikeRuntimeDelta is change-only by design; consume it as authoritative
     // traversal + hop phase updates.
@@ -753,11 +773,17 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     bikeTransition: state.bikeTransition,
     acroSubstate: state.acroSubstate ?? AcroBikeSubstate.NONE,
   });
-  consumeHopParticleLandingEvent({
+  queueHopParticleLandingEvent({
     particleClass: result.hop_landing_particle_class,
     serverFrame: result.server_frame,
     hopLandingTileX: result.hop_landing_tile_x,
     hopLandingTileY: result.hop_landing_tile_y,
+  });
+  flushPendingHopParticleLandingEvent({
+    traversalState: result.traversal_state,
+    acroSubstate: result.acro_substate,
+    bikeTransition: result.bike_transition,
+    bunnyHopCycleTick: result.bunny_hop_cycle_tick,
   });
   if (result.accepted) {
     // Contract: on accepted input, authoritative_pos is the server tile *after* applying that step.
@@ -770,6 +796,12 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
         result.mach_speed_stage,
         acceptedMovementMode,
       ),
+      resolveAuthoritativeWalkTransitionStartTile({
+        traversalState: result.traversal_state,
+        acroSubstate: result.acro_substate,
+        previousAuthoritativeTileX,
+        previousAuthoritativeTileY,
+      }),
     );
     playerAnimation.startStep(
       result.facing,
@@ -2150,7 +2182,7 @@ function resolveAnimationStepMode({
   return 'walk';
 }
 
-function consumeHopParticleLandingEvent(input: {
+function queueHopParticleLandingEvent(input: {
   particleClass: HopLandingParticleClass | undefined;
   serverFrame: number;
   hopLandingTileX?: number;
@@ -2163,12 +2195,53 @@ function consumeHopParticleLandingEvent(input: {
   ) {
     return;
   }
-  hopParticleRenderer.onLandingEvent({
+  pendingHopLandingParticleEvent = {
     tileX: input.hopLandingTileX,
     tileY: input.hopLandingTileY,
     particleClass: input.particleClass,
     serverFrame: input.serverFrame,
+  };
+}
+
+function flushPendingHopParticleLandingEvent(input: {
+  traversalState: TraversalState;
+  acroSubstate?: AcroBikeSubstate;
+  bikeTransition?: BikeTransitionType;
+  bunnyHopCycleTick?: number;
+}): void {
+  if (!pendingHopLandingParticleEvent) {
+    return;
+  }
+
+  const isHopState = isAcroHopCapableState({
+    traversalState: input.traversalState,
+    acroSubstate: input.acroSubstate,
+    bikeTransition: input.bikeTransition,
   });
+  if (isHopState && !isAcroHopLandingFrame(input.bunnyHopCycleTick)) {
+    return;
+  }
+
+  hopParticleRenderer.onLandingEvent(pendingHopLandingParticleEvent);
+  pendingHopLandingParticleEvent = null;
+}
+
+function resolveAuthoritativeWalkTransitionStartTile(input: {
+  traversalState: TraversalState;
+  acroSubstate?: AcroBikeSubstate;
+  previousAuthoritativeTileX: number;
+  previousAuthoritativeTileY: number;
+}): WalkTransitionStart | undefined {
+  if (
+    input.traversalState !== TraversalState.ACRO_BIKE ||
+    input.acroSubstate !== AcroBikeSubstate.BUNNY_HOP
+  ) {
+    return undefined;
+  }
+  return {
+    tileX: input.previousAuthoritativeTileX,
+    tileY: input.previousAuthoritativeTileY,
+  };
 }
 
 function positionPlayerSprite(): void {
@@ -2338,11 +2411,13 @@ function updateCamera(): void {
 function startAuthoritativeWalkTransition(
   facing: Direction,
   stepSpeedInput: AuthoritativeStepSpeedInput,
+  startTile?: WalkTransitionStart,
 ): void {
   activeWalkTransition = createAuthoritativeWalkTransition(
     state,
     facing,
     stepSpeedInput,
+    startTile,
   );
 }
 

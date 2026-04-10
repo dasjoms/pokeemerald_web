@@ -30,6 +30,34 @@ const ACRO_JUMP_Y_LOW: readonly number[] = [
 ];
 
 const ACRO_STATIONARY_HOP_TICKS = ACRO_JUMP_Y_LOW.length;
+const ACRO_HOP_LANDING_TICK = 13;
+
+export function isAcroHopCapableState(input: {
+  traversalState: TraversalState;
+  acroSubstate?: AcroBikeSubstate;
+  bikeTransition?: BikeTransitionType;
+}): boolean {
+  if (input.traversalState !== TraversalState.ACRO_BIKE) {
+    return false;
+  }
+  return (
+    ACRO_STATIONARY_HOP_TRANSITIONS.has(
+      input.bikeTransition ?? BikeTransitionType.NONE,
+    ) || input.acroSubstate === AcroBikeSubstate.BUNNY_HOP
+  );
+}
+
+export function isAcroHopLandingFrame(bunnyHopCycleTick: number | undefined): boolean {
+  if (bunnyHopCycleTick === undefined) {
+    return false;
+  }
+  return (
+    ((bunnyHopCycleTick % ACRO_STATIONARY_HOP_TICKS) +
+      ACRO_STATIONARY_HOP_TICKS) %
+      ACRO_STATIONARY_HOP_TICKS ===
+    ACRO_HOP_LANDING_TICK
+  );
+}
 
 export class PlayerMovementActionRuntime {
   private authoritativeInput: PlayerMovementActionVisualInput = {
@@ -95,15 +123,7 @@ export class PlayerMovementActionRuntime {
   }
 
   private shouldRunAcroHop(): boolean {
-    if (this.authoritativeInput.traversalState !== TraversalState.ACRO_BIKE) {
-      return false;
-    }
-    return (
-      ACRO_STATIONARY_HOP_TRANSITIONS.has(
-        this.authoritativeInput.bikeTransition ?? BikeTransitionType.NONE,
-      ) ||
-      this.authoritativeInput.acroSubstate === AcroBikeSubstate.BUNNY_HOP
-    );
+    return isAcroHopCapableState(this.authoritativeInput);
   }
 
   private resetActionState(): void {
