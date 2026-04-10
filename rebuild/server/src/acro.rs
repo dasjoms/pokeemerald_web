@@ -240,15 +240,14 @@ impl AcroRuntime {
         facing_direction: Direction,
         requested_direction: Direction,
     ) -> AcroAnimationAction {
-        self.hop_landed_this_tick = false;
         if self.held_direction == Some(requested_direction) {
             if let Some(action) = self.pending_action.take() {
                 self.movement_direction = requested_direction;
-                self.advance_bunny_hop_phase();
                 return action;
             }
         }
 
+        self.hop_landed_this_tick = false;
         let action = self.handle_input(Some(requested_direction), facing_direction);
         self.movement_direction = requested_direction;
         self.advance_bunny_hop_phase();
