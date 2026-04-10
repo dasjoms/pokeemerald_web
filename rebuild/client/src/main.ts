@@ -2326,18 +2326,19 @@ function updateHopShadowSuppressionContext(): void {
       ? currentBehaviorId
       : resolveMapBehaviorIdAtTile(activeWalkTransition.startX, activeWalkTransition.startY);
 
-  const isTallGrass = currentBehaviorId === MB_TALL_GRASS || currentBehaviorId === MB_LONG_GRASS;
-  const isWaterSurface =
+  const isPokeGrassCurrent =
+    currentBehaviorId === MB_TALL_GRASS || currentBehaviorId === MB_LONG_GRASS;
+  const isWaterCurrentOrPrevious =
     (currentBehaviorId !== undefined && SURFABLE_WATER_BEHAVIOR_IDS.has(currentBehaviorId)) ||
     (previousBehaviorId !== undefined && SURFABLE_WATER_BEHAVIOR_IDS.has(previousBehaviorId));
-  const isReflectiveSurface =
+  const isReflectiveCurrentOrPrevious =
     (currentBehaviorId !== undefined && REFLECTIVE_BEHAVIOR_IDS.has(currentBehaviorId)) ||
     (previousBehaviorId !== undefined && REFLECTIVE_BEHAVIOR_IDS.has(previousBehaviorId));
 
   hopShadowRenderer.setSuppressionContext({
-    isTallGrass,
-    isWaterSurface,
-    isReflectiveSurface,
+    isPokeGrass: isPokeGrassCurrent,
+    isWaterSurface: isWaterCurrentOrPrevious,
+    isReflectiveSurface: isReflectiveCurrentOrPrevious,
   });
 }
 

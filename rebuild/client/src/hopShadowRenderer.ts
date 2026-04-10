@@ -30,13 +30,13 @@ export const ROM_SHADOW_VERTICAL_OFFSETS_PX: Readonly<Record<ShadowTemplateId, n
 export type HopShadowSuppressionContext = {
   isReflectiveSurface: boolean;
   isWaterSurface: boolean;
-  isTallGrass: boolean;
+  isPokeGrass: boolean;
 };
 
 const DEFAULT_SUPPRESSION_CONTEXT: HopShadowSuppressionContext = {
   isReflectiveSurface: false,
   isWaterSurface: false,
-  isTallGrass: false,
+  isPokeGrass: false,
 };
 
 const HOP_SHADOW_FAMILY_TRANSITIONS = new Set<BikeTransitionType>([
@@ -202,7 +202,7 @@ export class HopShadowRenderer {
     return (
       this.suppressionContext.isReflectiveSurface ||
       this.suppressionContext.isWaterSurface ||
-      this.suppressionContext.isTallGrass
+      this.suppressionContext.isPokeGrass
     );
   }
 }

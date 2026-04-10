@@ -592,13 +592,13 @@ describe("main movement pipeline integration", () => {
 
     shadowRenderer.setSuppressionContext({
       isReflectiveSurface: false,
-      isTallGrass: true,
+      isPokeGrass: true,
     });
     expect(createdSprites[0].visible).toBe(false);
     expect(fakeLayer.addedCount).toBe(1);
     expect(fakeLayer.removedCount).toBe(0);
 
-    shadowRenderer.setSuppressionContext({ isTallGrass: false });
+    shadowRenderer.setSuppressionContext({ isPokeGrass: false });
     expect(createdSprites[0].visible).toBe(true);
     expect(shadowRenderer.hasActiveShadow()).toBe(true);
     expect(fakeLayer.addedCount).toBe(1);
