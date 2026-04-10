@@ -13,6 +13,13 @@ use crate::{
 
 pub const MAX_PENDING_WALK_INPUTS: usize = 1;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WalkIntentTimingValidation {
+    Accepted,
+    HeldDirectionMismatch,
+    CadenceMiss,
+}
+
 #[derive(Debug, Clone)]
 pub struct PlayerState {
     pub map_id: String,
@@ -207,8 +214,16 @@ impl Session {
 
     pub fn update_authoritative_tick(&mut self, tick: u64) {
         self.authoritative_tick = tick;
-        if matches!(self.player_state.bike_runtime.acro_state, AcroBikeSubstate::BunnyHop) {
-            if self.player_state.bike_runtime.acro_runtime.hop_landed_this_tick() {
+        if matches!(
+            self.player_state.bike_runtime.acro_state,
+            AcroBikeSubstate::BunnyHop
+        ) {
+            if self
+                .player_state
+                .bike_runtime
+                .acro_runtime
+                .hop_landed_this_tick()
+            {
                 self.bunny_hop_cadence_open_on_tick = Some(tick);
                 self.bunny_hop_cadence_initialized = true;
             }
@@ -266,28 +281,37 @@ impl Session {
         self.step_end_direction_intent.take()
     }
 
-    pub fn validate_and_commit_walk_intent_timing(&mut self, input: &WalkInput) -> bool {
-        let held_direction_matches = self.held_direction == Some(input.direction);
-        if !held_direction_matches {
-            return false;
+    pub fn validate_and_commit_walk_intent_timing(
+        &mut self,
+        input: &WalkInput,
+    ) -> WalkIntentTimingValidation {
+        if !matches!(
+            self.player_state.bike_runtime.acro_state,
+            AcroBikeSubstate::BunnyHop
+        ) && self.held_direction != Some(input.direction)
+        {
+            return WalkIntentTimingValidation::HeldDirectionMismatch;
         }
 
-        if !matches!(self.player_state.bike_runtime.acro_state, AcroBikeSubstate::BunnyHop) {
-            return true;
+        if !matches!(
+            self.player_state.bike_runtime.acro_state,
+            AcroBikeSubstate::BunnyHop
+        ) {
+            return WalkIntentTimingValidation::Accepted;
         }
 
         if self.bunny_hop_cadence_open_on_tick == Some(self.authoritative_tick) {
             self.bunny_hop_cadence_open_on_tick = None;
             self.bunny_hop_cadence_initialized = true;
-            return true;
+            return WalkIntentTimingValidation::Accepted;
         }
 
         if !self.bunny_hop_cadence_initialized {
             self.bunny_hop_cadence_initialized = true;
-            return true;
+            return WalkIntentTimingValidation::Accepted;
         }
 
-        false
+        WalkIntentTimingValidation::CadenceMiss
     }
 
     pub fn walk_inputs_len(&self) -> usize {
@@ -379,11 +403,7 @@ mod tests {
         let mut session = test_session();
         session.player_state.traversal_state = TraversalState::AcroBike;
         session.player_state.bike_runtime.acro_state = AcroBikeSubstate::BunnyHop;
-        session
-            .player_state
-            .bike_runtime
-            .acro_runtime
-            .state = crate::acro::AcroState::BunnyHop;
+        session.player_state.bike_runtime.acro_runtime.state = crate::acro::AcroState::BunnyHop;
         session.apply_held_input_state(HeldInputState {
             held_direction: Some(Direction::Right),
             held_buttons: 0,
@@ -404,8 +424,9 @@ mod tests {
                 .advance_tick();
             session.update_authoritative_tick(tick);
         }
-        assert!(
-            session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 1_010))
+        assert_eq!(
+            session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 1_010)),
+            WalkIntentTimingValidation::Accepted
         );
 
         session
@@ -419,8 +440,9 @@ mod tests {
             .acro_runtime
             .advance_tick();
         session.update_authoritative_tick(17);
-        assert!(
-            !session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 1_050))
+        assert_eq!(
+            session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 1_050)),
+            WalkIntentTimingValidation::CadenceMiss
         );
 
         for tick in 18..=32 {
@@ -436,8 +458,9 @@ mod tests {
                 .advance_tick();
             session.update_authoritative_tick(tick);
         }
-        assert!(
-            session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 1_080))
+        assert_eq!(
+            session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 1_080)),
+            WalkIntentTimingValidation::Accepted
         );
     }
 
@@ -451,8 +474,9 @@ mod tests {
             client_time: 5_000,
         });
 
-        assert!(
-            !session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Left, 5_200))
+        assert_eq!(
+            session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Left, 5_200)),
+            WalkIntentTimingValidation::HeldDirectionMismatch
         );
 
         session.apply_held_input_state(HeldInputState {
@@ -461,6 +485,41 @@ mod tests {
             input_seq: 1,
             client_time: 5_250,
         });
-        assert!(!session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Up, 5_400)));
+        assert_eq!(
+            session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Up, 5_400)),
+            WalkIntentTimingValidation::HeldDirectionMismatch
+        );
+    }
+
+    #[test]
+    fn walk_intent_timing_bunny_hop_accepts_before_held_direction_arrives() {
+        let mut session = test_session();
+        session.player_state.traversal_state = TraversalState::AcroBike;
+        session.player_state.bike_runtime.acro_state = AcroBikeSubstate::BunnyHop;
+        session.player_state.bike_runtime.acro_runtime.state = crate::acro::AcroState::BunnyHop;
+
+        assert_eq!(
+            session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 0)),
+            WalkIntentTimingValidation::Accepted
+        );
+    }
+
+    #[test]
+    fn walk_intent_timing_bunny_hop_accepts_after_held_direction_changes_same_tick() {
+        let mut session = test_session();
+        session.player_state.traversal_state = TraversalState::AcroBike;
+        session.player_state.bike_runtime.acro_state = AcroBikeSubstate::BunnyHop;
+        session.player_state.bike_runtime.acro_runtime.state = crate::acro::AcroState::BunnyHop;
+        session.apply_held_input_state(HeldInputState {
+            held_direction: Some(Direction::Down),
+            held_buttons: crate::protocol::HeldButtons::B as u8,
+            input_seq: 0,
+            client_time: 0,
+        });
+
+        assert_eq!(
+            session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 1)),
+            WalkIntentTimingValidation::Accepted
+        );
     }
 }

@@ -28,7 +28,7 @@ use crate::{
     },
     session::{
         ActiveWalkTransition, BikeRuntimeState, CrackedFloorRuntimeState, PlayerState, Session,
-        SessionInit, MAX_PENDING_WALK_INPUTS,
+        SessionInit, WalkIntentTimingValidation, MAX_PENDING_WALK_INPUTS,
     },
 };
 
@@ -562,7 +562,17 @@ impl World {
             let _boundary_intent = session.consume_step_end_direction_intent();
             while let Some(input) = session.pop_walk_input() {
                 let previous_map_id = session.player_state.map_id.clone();
-                if !session.validate_and_commit_walk_intent_timing(&input) {
+                let timing_validation = session.validate_and_commit_walk_intent_timing(&input);
+                if timing_validation != WalkIntentTimingValidation::Accepted {
+                    let reason = match timing_validation {
+                        WalkIntentTimingValidation::Accepted => RejectionReason::None,
+                        WalkIntentTimingValidation::HeldDirectionMismatch => {
+                            RejectionReason::InvalidDirection
+                        }
+                        WalkIntentTimingValidation::CadenceMiss => {
+                            RejectionReason::ForcedMovementDisabled
+                        }
+                    };
                     let _ = session.send(ServerMessage::WalkResult(WalkResult {
                         input_seq: input.input_seq,
                         accepted: false,
@@ -571,7 +581,7 @@ impl World {
                             y: session.player_state.tile_y,
                         },
                         facing: session.player_state.facing,
-                        reason: RejectionReason::InvalidDirection,
+                        reason,
                         server_frame: tick as u32,
                         traversal_state: session.player_state.traversal_state,
                         preferred_bike_type: session.player_state.preferred_bike_type,
@@ -1010,11 +1020,18 @@ fn bike_bunny_hop_cycle_tick_for_traversal(player_state: &PlayerState) -> Option
     if !matches!(player_state.traversal_state, TraversalState::AcroBike) {
         return None;
     }
-    if !matches!(bike_acro_substate_for_traversal(player_state), Some(AcroBikeSubstate::BunnyHop))
-    {
+    if !matches!(
+        bike_acro_substate_for_traversal(player_state),
+        Some(AcroBikeSubstate::BunnyHop)
+    ) {
         return None;
     }
-    Some(player_state.bike_runtime.acro_runtime.bunny_hop_cycle_tick())
+    Some(
+        player_state
+            .bike_runtime
+            .acro_runtime
+            .bunny_hop_cycle_tick(),
+    )
 }
 
 fn step_speed_to_protocol(step_speed: MovementStepSpeed) -> StepSpeed {
@@ -2207,7 +2224,7 @@ mod tests {
 
         let walk_result = walk_result.expect("expected walk result for rejected collision");
         assert!(!walk_result.accepted);
-        assert_eq!(walk_result.reason, RejectionReason::InvalidDirection);
+        assert_eq!(walk_result.reason, RejectionReason::Collision);
         assert_eq!(
             walk_result.acro_substate,
             Some(AcroBikeSubstate::StandingWheelie)
@@ -2333,6 +2350,259 @@ mod tests {
         assert_eq!(walk_result.authoritative_pos.x, 1);
         assert_eq!(walk_result.authoritative_pos.y, 0);
         assert_eq!(walk_result.authoritative_step_speed, Some(StepSpeed::Step1));
+    }
+
+    #[tokio::test]
+    async fn bunny_hop_allows_first_directional_walk_before_held_direction_update() {
+        let world = test_world_with_initial_map(MapData {
+            map_id: "MAP_BUNNY_HOP_ORDERING".to_string(),
+            width: 2,
+            height: 1,
+            metatile_id: vec![0; 2],
+            collision: vec![0, 1],
+            behavior: vec![0; 2],
+            allow_cycling: true,
+            allow_running: true,
+            connections: vec![],
+        });
+        let (tx, mut rx) = mpsc::unbounded_channel();
+        let session = world
+            .create_session(tx)
+            .await
+            .expect("session should create");
+        world
+            .join_session(session.connection_id, "bunny-hop-ordering")
+            .await
+            .expect("session should join");
+        let _ = drain_server_messages(&mut rx);
+
+        {
+            let mut sessions = world.sessions.write().await;
+            let session_state = sessions
+                .get_mut(&session.connection_id)
+                .expect("session should exist");
+            session_state.player_state.map_id = "MAP_BUNNY_HOP_ORDERING".to_string();
+            session_state.player_state.tile_x = 0;
+            session_state.player_state.tile_y = 0;
+            session_state.player_state.traversal_state = TraversalState::AcroBike;
+            session_state.player_state.preferred_bike_type = TraversalState::AcroBike;
+            session_state.player_state.facing = Direction::Right;
+            session_state.player_state.bike_runtime.acro_runtime.state = AcroState::BunnyHop;
+            session_state.player_state.bike_runtime.acro_state = AcroBikeSubstate::BunnyHop;
+        }
+
+        world
+            .enqueue_held_input_state(
+                session.connection_id,
+                HeldInputState {
+                    input_seq: 0,
+                    held_direction: None,
+                    held_buttons: crate::protocol::HeldButtons::B as u8,
+                    client_time: 0,
+                },
+            )
+            .await
+            .expect("held input should enqueue");
+        world
+            .enqueue_walk_input(
+                session.connection_id,
+                WalkInput {
+                    direction: Direction::Right,
+                    movement_mode: MovementMode::Walk,
+                    held_buttons: crate::protocol::HeldButtons::B as u8,
+                    input_seq: 0,
+                    client_time: 0,
+                },
+            )
+            .await
+            .expect("walk input should enqueue");
+        world.tick().await;
+
+        let walk_result = drain_server_messages(&mut rx)
+            .into_iter()
+            .find_map(|message| match message {
+                ServerMessage::WalkResult(result) if result.input_seq == 0 => Some(result),
+                _ => None,
+            })
+            .expect("expected walk result");
+        assert!(!walk_result.accepted);
+        assert_eq!(walk_result.reason, RejectionReason::Collision);
+    }
+
+    #[tokio::test]
+    async fn bunny_hop_cadence_miss_is_not_reported_as_invalid_direction() {
+        let world = test_world_with_initial_map(MapData {
+            map_id: "MAP_BUNNY_HOP_CADENCE_REASON".to_string(),
+            width: 8,
+            height: 1,
+            metatile_id: vec![0; 8],
+            collision: vec![0; 8],
+            behavior: vec![0; 8],
+            allow_cycling: true,
+            allow_running: true,
+            connections: vec![],
+        });
+        let (tx, mut rx) = mpsc::unbounded_channel();
+        let session = world
+            .create_session(tx)
+            .await
+            .expect("session should create");
+        world
+            .join_session(session.connection_id, "bunny-hop-cadence-reason")
+            .await
+            .expect("session should join");
+        let _ = drain_server_messages(&mut rx);
+
+        {
+            let mut sessions = world.sessions.write().await;
+            let session_state = sessions
+                .get_mut(&session.connection_id)
+                .expect("session should exist");
+            session_state.player_state.map_id = "MAP_BUNNY_HOP_CADENCE_REASON".to_string();
+            session_state.player_state.traversal_state = TraversalState::AcroBike;
+            session_state.player_state.preferred_bike_type = TraversalState::AcroBike;
+            session_state.player_state.facing = Direction::Right;
+            session_state.player_state.bike_runtime.acro_runtime.state = AcroState::BunnyHop;
+            session_state.player_state.bike_runtime.acro_state = AcroBikeSubstate::BunnyHop;
+        }
+
+        for seq in 0..24_u32 {
+            world
+                .enqueue_held_input_state(
+                    session.connection_id,
+                    HeldInputState {
+                        input_seq: seq,
+                        held_direction: Some(Direction::Right),
+                        held_buttons: crate::protocol::HeldButtons::B as u8,
+                        client_time: seq as u64,
+                    },
+                )
+                .await
+                .expect("held input should enqueue");
+            world
+                .enqueue_walk_input(
+                    session.connection_id,
+                    WalkInput {
+                        direction: Direction::Right,
+                        movement_mode: MovementMode::Walk,
+                        held_buttons: crate::protocol::HeldButtons::B as u8,
+                        input_seq: seq,
+                        client_time: seq as u64,
+                    },
+                )
+                .await
+                .expect("walk input should enqueue");
+            world.tick().await;
+        }
+
+        let walk_results: Vec<WalkResult> = drain_server_messages(&mut rx)
+            .into_iter()
+            .filter_map(|message| match message {
+                ServerMessage::WalkResult(result) => Some(result),
+                _ => None,
+            })
+            .collect();
+
+        assert!(
+            walk_results
+                .iter()
+                .any(|result| result.reason == RejectionReason::ForcedMovementDisabled),
+            "expected at least one cadence miss while repeatedly sampling inputs"
+        );
+        assert!(
+            walk_results
+                .iter()
+                .filter(|result| !result.accepted)
+                .all(|result| result.reason != RejectionReason::InvalidDirection),
+            "cadence misses during bunny hop must not be surfaced as INVALID_DIRECTION"
+        );
+    }
+
+    #[tokio::test]
+    async fn bunny_hop_repeated_directional_attempts_crossing_cadence_boundaries_mix_accepts_and_cadence_misses(
+    ) {
+        let world = test_world_with_initial_map(MapData {
+            map_id: "MAP_BUNNY_HOP_CONTINUOUS_INPUT".to_string(),
+            width: 64,
+            height: 1,
+            metatile_id: vec![0; 64],
+            collision: vec![0; 64],
+            behavior: vec![0; 64],
+            allow_cycling: true,
+            allow_running: true,
+            connections: vec![],
+        });
+        let (tx, mut rx) = mpsc::unbounded_channel();
+        let session = world
+            .create_session(tx)
+            .await
+            .expect("session should create");
+        world
+            .join_session(session.connection_id, "bunny-hop-continuous-input")
+            .await
+            .expect("session should join");
+        let _ = drain_server_messages(&mut rx);
+
+        {
+            let mut sessions = world.sessions.write().await;
+            let session_state = sessions
+                .get_mut(&session.connection_id)
+                .expect("session should exist");
+            session_state.player_state.map_id = "MAP_BUNNY_HOP_CONTINUOUS_INPUT".to_string();
+            session_state.player_state.traversal_state = TraversalState::AcroBike;
+            session_state.player_state.preferred_bike_type = TraversalState::AcroBike;
+            session_state.player_state.facing = Direction::Right;
+            session_state.player_state.bike_runtime.acro_runtime.state = AcroState::BunnyHop;
+            session_state.player_state.bike_runtime.acro_state = AcroBikeSubstate::BunnyHop;
+        }
+
+        for seq in 0..40_u32 {
+            world
+                .enqueue_held_input_state(
+                    session.connection_id,
+                    HeldInputState {
+                        input_seq: seq,
+                        held_direction: Some(Direction::Right),
+                        held_buttons: crate::protocol::HeldButtons::B as u8,
+                        client_time: seq as u64,
+                    },
+                )
+                .await
+                .expect("held input should enqueue");
+            world
+                .enqueue_walk_input(
+                    session.connection_id,
+                    WalkInput {
+                        direction: Direction::Right,
+                        movement_mode: MovementMode::Walk,
+                        held_buttons: crate::protocol::HeldButtons::B as u8,
+                        input_seq: seq,
+                        client_time: seq as u64,
+                    },
+                )
+                .await
+                .expect("walk input should enqueue");
+            world.tick().await;
+        }
+
+        let walk_results: Vec<WalkResult> = drain_server_messages(&mut rx)
+            .into_iter()
+            .filter_map(|message| match message {
+                ServerMessage::WalkResult(result) => Some(result),
+                _ => None,
+            })
+            .collect();
+
+        assert!(
+            walk_results.iter().any(|result| result.accepted),
+            "expected at least one accepted directional attempt while continuously holding B"
+        );
+        assert!(
+            walk_results
+                .iter()
+                .any(|result| result.reason == RejectionReason::ForcedMovementDisabled),
+            "expected at least one cadence miss rejection while repeatedly attempting movement"
+        );
     }
 
     #[tokio::test]
@@ -2697,16 +2967,17 @@ mod tests {
             .expect("held input should enqueue");
         world.tick().await;
 
-        let runtime_landing_delta = drain_server_messages(&mut rx).into_iter().find_map(|message| {
-            match message {
-                ServerMessage::BikeRuntimeDelta(delta)
-                    if delta.hop_landing_particle_class.is_some() =>
-                {
-                    Some(delta)
-                }
-                _ => None,
-            }
-        });
+        let runtime_landing_delta =
+            drain_server_messages(&mut rx)
+                .into_iter()
+                .find_map(|message| match message {
+                    ServerMessage::BikeRuntimeDelta(delta)
+                        if delta.hop_landing_particle_class.is_some() =>
+                    {
+                        Some(delta)
+                    }
+                    _ => None,
+                });
         assert!(
             runtime_landing_delta.is_none(),
             "cadence-gated directional bunny-hop should not emit a mid-cycle landing pulse while transition is active"
