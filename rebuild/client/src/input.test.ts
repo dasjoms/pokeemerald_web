@@ -12,6 +12,80 @@ function keyEvent(key: string): KeyboardEvent {
 }
 
 describe('virtual B parity input mapping', () => {
+  it('uses immediate facing intent, a fixed first-step threshold, then repeat cadence', () => {
+    const sentWalk: Array<{ direction: Direction }> = [];
+    const sentFacing: Direction[] = [];
+    const nowSpy = vi.spyOn(performance, 'now');
+    nowSpy.mockReturnValue(10_000);
+
+    const controller = createWalkInputController({
+      sendWalkInput: (direction) => {
+        sentWalk.push({ direction });
+      },
+      sendHeldInputState: () => null,
+      isMovementLocked: () => false,
+      onFacingIntent: (direction) => {
+        sentFacing.push(direction);
+      },
+    });
+
+    controller.handleKeyDown(keyEvent('ArrowRight'));
+    expect(sentFacing).toEqual([Direction.RIGHT]);
+    expect(sentWalk).toHaveLength(0);
+
+    nowSpy.mockReturnValue(10_050);
+    controller.tick();
+    expect(sentWalk).toHaveLength(0);
+
+    nowSpy.mockReturnValue(10_090);
+    controller.tick();
+    expect(sentWalk).toHaveLength(1);
+
+    controller.markWalkResultReceived({} as never);
+    nowSpy.mockReturnValue(10_300);
+    controller.tick();
+    expect(sentWalk).toHaveLength(1);
+
+    nowSpy.mockReturnValue(10_310);
+    controller.tick();
+    expect(sentWalk).toHaveLength(2);
+
+    controller.markWalkResultReceived({} as never);
+    nowSpy.mockReturnValue(10_390);
+    controller.tick();
+    expect(sentWalk).toHaveLength(2);
+
+    nowSpy.mockReturnValue(10_400);
+    controller.tick();
+    expect(sentWalk).toHaveLength(3);
+
+    nowSpy.mockRestore();
+  });
+
+  it('does not emit a walk intent when direction is released before first-step threshold', () => {
+    const sentWalk: Array<{ direction: Direction }> = [];
+    const nowSpy = vi.spyOn(performance, 'now');
+    nowSpy.mockReturnValue(20_000);
+
+    const controller = createWalkInputController({
+      sendWalkInput: (direction) => {
+        sentWalk.push({ direction });
+      },
+      sendHeldInputState: () => null,
+      isMovementLocked: () => false,
+      onFacingIntent: () => {},
+    });
+
+    controller.handleKeyDown(keyEvent('ArrowUp'));
+    nowSpy.mockReturnValue(20_060);
+    controller.handleKeyUp(keyEvent('ArrowUp'));
+    nowSpy.mockReturnValue(20_120);
+    controller.tick();
+
+    expect(sentWalk).toHaveLength(0);
+    nowSpy.mockRestore();
+  });
+
   it('maps C-key virtual hold to HeldButtons.B in outbound walk input', () => {
     const sent: Array<{ direction: Direction; movementMode: MovementMode; heldButtons: number }> =
       [];

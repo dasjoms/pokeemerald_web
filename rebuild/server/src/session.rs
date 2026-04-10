@@ -12,6 +12,9 @@ use crate::{
 };
 
 pub const MAX_PENDING_WALK_INPUTS: usize = 2;
+pub const FIRST_STEP_COMMIT_MS: u64 = 90;
+pub const REPEAT_INITIAL_DELAY_MS: u64 = 220;
+pub const REPEAT_INTERVAL_MS: u64 = 90;
 
 #[derive(Debug, Clone)]
 pub struct PlayerState {
@@ -171,6 +174,10 @@ pub struct Session {
     pub active_walk_transition: Option<ActiveWalkTransition>,
     pub held_direction: Option<Direction>,
     pub held_buttons: u8,
+    held_direction_changed_client_time: Option<u64>,
+    held_direction_has_committed_first_step: bool,
+    held_direction_repeat_started: bool,
+    last_committed_walk_intent_client_time: Option<u64>,
     walk_inputs: VecDeque<WalkInput>,
     outbound: mpsc::UnboundedSender<ServerMessage>,
 }
@@ -192,6 +199,10 @@ impl Session {
             active_walk_transition: None,
             held_direction: None,
             held_buttons: 0,
+            held_direction_changed_client_time: None,
+            held_direction_has_committed_first_step: false,
+            held_direction_repeat_started: false,
+            last_committed_walk_intent_client_time: None,
             walk_inputs: VecDeque::new(),
             outbound,
         }
@@ -203,7 +214,11 @@ impl Session {
 
     pub fn apply_held_input_state(&mut self, input: HeldInputState) {
         if let Some(direction) = input.held_direction {
+            let changed = self.held_direction != Some(direction);
             self.press_direction(direction);
+            if changed {
+                self.set_held_direction_changed_client_time(input.client_time);
+            }
         } else {
             self.release_direction();
         }
@@ -211,11 +226,20 @@ impl Session {
     }
 
     pub fn press_direction(&mut self, direction: Direction) {
+        if self.held_direction != Some(direction) {
+            self.held_direction_has_committed_first_step = false;
+            self.held_direction_repeat_started = false;
+            self.last_committed_walk_intent_client_time = None;
+        }
         self.held_direction = Some(direction);
     }
 
     pub fn release_direction(&mut self) {
         self.held_direction = None;
+        self.held_direction_changed_client_time = None;
+        self.held_direction_has_committed_first_step = false;
+        self.held_direction_repeat_started = false;
+        self.last_committed_walk_intent_client_time = None;
     }
 
     pub fn press_buttons(&mut self, buttons: u8) {
@@ -237,6 +261,49 @@ impl Session {
         }
     }
 
+    pub fn validate_and_commit_walk_intent_timing(&mut self, input: &WalkInput) -> bool {
+        if self.held_direction != Some(input.direction) {
+            return false;
+        }
+
+        let held_direction_changed_client_time = self
+            .held_direction_changed_client_time
+            .unwrap_or(input.client_time);
+
+        if !self.held_direction_has_committed_first_step {
+            let first_step_allowed_at =
+                held_direction_changed_client_time.saturating_add(FIRST_STEP_COMMIT_MS);
+            if input.client_time < first_step_allowed_at {
+                return false;
+            }
+
+            self.held_direction_has_committed_first_step = true;
+            self.held_direction_repeat_started = false;
+            self.last_committed_walk_intent_client_time = Some(input.client_time);
+            return true;
+        }
+
+        let last_committed = self
+            .last_committed_walk_intent_client_time
+            .unwrap_or(held_direction_changed_client_time);
+        if input.client_time < last_committed {
+            return false;
+        }
+
+        let required_gap_ms = if self.held_direction_repeat_started {
+            REPEAT_INTERVAL_MS
+        } else {
+            REPEAT_INITIAL_DELAY_MS
+        };
+        if input.client_time < last_committed.saturating_add(required_gap_ms) {
+            return false;
+        }
+
+        self.held_direction_repeat_started = true;
+        self.last_committed_walk_intent_client_time = Some(input.client_time);
+        true
+    }
+
     pub fn walk_inputs_len(&self) -> usize {
         self.walk_inputs.len()
     }
@@ -247,6 +314,10 @@ impl Session {
 
     pub fn pop_walk_input(&mut self) -> Option<WalkInput> {
         self.walk_inputs.pop_front()
+    }
+
+    pub fn set_held_direction_changed_client_time(&mut self, client_time: u64) {
+        self.held_direction_changed_client_time = Some(client_time);
     }
 
     pub fn send(
@@ -282,5 +353,95 @@ impl From<&Session> for SessionInit {
             player_state: value.player_state.clone(),
             outbound: value.outbound.clone(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use tokio::sync::mpsc;
+
+    use super::*;
+
+    fn test_session() -> Session {
+        let (tx, _rx) = mpsc::unbounded_channel();
+        Session::new(
+            1,
+            "player-1".to_string(),
+            PlayerState {
+                map_id: "MAP_LITTLEROOT_TOWN".to_string(),
+                tile_x: 1,
+                tile_y: 1,
+                facing: Direction::Down,
+                avatar: PlayerAvatar::Brendan,
+                traversal_state: TraversalState::OnFoot,
+                preferred_bike_type: TraversalState::MachBike,
+                bike_runtime: BikeRuntimeState::default(),
+                cracked_floor: CrackedFloorRuntimeState::default(),
+            },
+            tx,
+        )
+    }
+
+    fn walk_input(direction: Direction, client_time: u64) -> WalkInput {
+        WalkInput {
+            direction,
+            movement_mode: MovementMode::Walk,
+            held_buttons: 0,
+            input_seq: 0,
+            client_time,
+        }
+    }
+
+    #[test]
+    fn walk_intent_timing_enforces_first_commit_and_repeat_cadence() {
+        let mut session = test_session();
+        session.apply_held_input_state(HeldInputState {
+            held_direction: Some(Direction::Right),
+            held_buttons: 0,
+            input_seq: 0,
+            client_time: 1_000,
+        });
+
+        assert!(
+            !session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 1_050))
+        );
+        assert!(
+            session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 1_090))
+        );
+        assert!(
+            !session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 1_300))
+        );
+        assert!(
+            session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 1_310))
+        );
+        assert!(
+            !session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 1_395))
+        );
+        assert!(
+            session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 1_400))
+        );
+    }
+
+    #[test]
+    fn walk_intent_timing_requires_matching_held_direction() {
+        let mut session = test_session();
+        session.apply_held_input_state(HeldInputState {
+            held_direction: Some(Direction::Up),
+            held_buttons: 0,
+            input_seq: 0,
+            client_time: 5_000,
+        });
+
+        assert!(
+            !session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Left, 5_200))
+        );
+
+        session.apply_held_input_state(HeldInputState {
+            held_direction: None,
+            held_buttons: 0,
+            input_seq: 1,
+            client_time: 5_250,
+        });
+        assert!(!session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Up, 5_400)));
     }
 }

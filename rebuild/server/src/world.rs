@@ -508,6 +508,29 @@ impl World {
 
             while let Some(input) = session.pop_walk_input() {
                 let previous_map_id = session.player_state.map_id.clone();
+                if !session.validate_and_commit_walk_intent_timing(&input) {
+                    let _ = session.send(ServerMessage::WalkResult(WalkResult {
+                        input_seq: input.input_seq,
+                        accepted: false,
+                        authoritative_pos: crate::protocol::Position {
+                            x: session.player_state.tile_x,
+                            y: session.player_state.tile_y,
+                        },
+                        facing: session.player_state.facing,
+                        reason: RejectionReason::InvalidDirection,
+                        server_frame: tick as u32,
+                        traversal_state: session.player_state.traversal_state,
+                        preferred_bike_type: session.player_state.preferred_bike_type,
+                        authoritative_step_speed: Some(player_step_speed_for_snapshot(
+                            &session.player_state,
+                        )),
+                        mach_speed_stage: bike_mach_speed_for_traversal(&session.player_state),
+                        acro_substate: bike_acro_substate_for_traversal(&session.player_state),
+                        bike_transition: Some(session.player_state.bike_runtime.last_transition),
+                        bike_effect_flags: 0,
+                    }));
+                    continue;
+                }
 
                 let Some(current_map) = self.maps.get(&session.player_state.map_id) else {
                     session.player_state.facing = input.direction;
