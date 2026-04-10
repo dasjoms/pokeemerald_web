@@ -1757,6 +1757,24 @@ mod tests {
         }
     }
 
+    fn landing_coordinate_regression_map() -> MapData {
+        let width = 64;
+        let mut behavior = vec![0; width];
+        behavior[1] = MB_TALL_GRASS;
+        behavior[2] = MB_PUDDLE;
+        MapData {
+            map_id: "MAP_LANDING_COORD_REGRESSION".to_string(),
+            width: width as u16,
+            height: 1,
+            metatile_id: vec![0; width],
+            collision: vec![0; width],
+            behavior,
+            allow_cycling: true,
+            allow_running: true,
+            connections: vec![],
+        }
+    }
+
     fn test_asset_paths() -> (String, String) {
         let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
         (
@@ -2352,6 +2370,312 @@ mod tests {
         );
     }
 
+    #[tokio::test]
+    async fn accepted_directional_bunny_hop_walk_result_emits_landing_coordinates_from_tile_b() {
+        let world = test_world_with_initial_map(landing_coordinate_regression_map());
+        let (tx, mut rx) = mpsc::unbounded_channel();
+        let session = world
+            .create_session(tx)
+            .await
+            .expect("session should create");
+        world
+            .join_session(session.connection_id, "walk-result-landing-coordinates")
+            .await
+            .expect("session should join");
+        let _ = drain_server_messages(&mut rx);
+
+        {
+            let mut sessions = world.sessions.write().await;
+            let session_state = sessions
+                .get_mut(&session.connection_id)
+                .expect("session should exist");
+            session_state.player_state.map_id = "MAP_LANDING_COORD_REGRESSION".to_string();
+            session_state.player_state.tile_x = 0;
+            session_state.player_state.tile_y = 0;
+            session_state.player_state.traversal_state = TraversalState::AcroBike;
+            session_state.player_state.preferred_bike_type = TraversalState::AcroBike;
+            session_state.player_state.facing = Direction::Right;
+            session_state.player_state.bike_runtime.acro_runtime.state = AcroState::BunnyHop;
+            session_state.player_state.bike_runtime.acro_state = AcroBikeSubstate::BunnyHop;
+        }
+
+        let mut held_seq = 0_u32;
+        let mut observed_landing_pulse = false;
+        for _ in 0..48 {
+            world
+                .enqueue_held_input_state(
+                    session.connection_id,
+                    HeldInputState {
+                        input_seq: held_seq,
+                        held_direction: Some(Direction::Right),
+                        held_buttons: crate::protocol::HeldButtons::B as u8,
+                        client_time: held_seq as u64,
+                    },
+                )
+                .await
+                .expect("held input should enqueue");
+            held_seq = held_seq.saturating_add(1);
+            world.tick().await;
+            observed_landing_pulse = drain_server_messages(&mut rx).into_iter().any(|message| {
+                matches!(
+                    message,
+                    ServerMessage::BikeRuntimeDelta(BikeRuntimeDelta {
+                        hop_landing_particle_class: Some(_),
+                        ..
+                    })
+                )
+            });
+            if observed_landing_pulse {
+                break;
+            }
+        }
+        assert!(
+            observed_landing_pulse,
+            "expected baseline bunny-hop landing pulse before alignment"
+        );
+
+        for _ in 0..15 {
+            world
+                .enqueue_held_input_state(
+                    session.connection_id,
+                    HeldInputState {
+                        input_seq: held_seq,
+                        held_direction: Some(Direction::Right),
+                        held_buttons: crate::protocol::HeldButtons::B as u8,
+                        client_time: held_seq as u64,
+                    },
+                )
+                .await
+                .expect("held input should enqueue");
+            held_seq = held_seq.saturating_add(1);
+            world.tick().await;
+            let _ = drain_server_messages(&mut rx);
+        }
+
+        world
+            .enqueue_held_input_state(
+                session.connection_id,
+                HeldInputState {
+                    input_seq: held_seq,
+                    held_direction: Some(Direction::Right),
+                    held_buttons: crate::protocol::HeldButtons::B as u8,
+                    client_time: held_seq as u64,
+                },
+            )
+            .await
+            .expect("held input should enqueue");
+        world
+            .enqueue_walk_input(
+                session.connection_id,
+                WalkInput {
+                    direction: Direction::Right,
+                    movement_mode: MovementMode::Walk,
+                    held_buttons: crate::protocol::HeldButtons::B as u8,
+                    input_seq: 0,
+                    client_time: 0,
+                },
+            )
+            .await
+            .expect("walk input should enqueue");
+        world.tick().await;
+
+        let landed_walk_result = drain_server_messages(&mut rx)
+            .into_iter()
+            .find_map(|message| match message {
+                ServerMessage::WalkResult(result)
+                    if result.accepted && result.hop_landing_particle_class.is_some() =>
+                {
+                    Some(result)
+                }
+                _ => None,
+            });
+
+        let landed_walk_result =
+            landed_walk_result.expect("expected accepted walk result with hop landing emission");
+        assert_eq!(
+            landed_walk_result.hop_landing_tile_x,
+            Some(landed_walk_result.authoritative_pos.x),
+        );
+        assert_eq!(
+            landed_walk_result.hop_landing_tile_y,
+            Some(landed_walk_result.authoritative_pos.y),
+        );
+        assert_eq!(
+            landed_walk_result.hop_landing_particle_class,
+            Some(HopLandingParticleClass::TallGrassJump),
+            "particle class must be computed from the same landing tile emitted in coordinates",
+        );
+        assert_eq!(
+            landed_walk_result.hop_landing_tile_x,
+            Some(1),
+            "accepted movement from tile A=(0,0) to tile B=(1,0) must emit tile B coordinates",
+        );
+        assert_eq!(landed_walk_result.hop_landing_tile_y, Some(0));
+    }
+
+    #[tokio::test]
+    async fn bunny_hop_runtime_delta_with_active_transition_uses_landing_tile_b_coordinates() {
+        let world = test_world_with_initial_map(landing_coordinate_regression_map());
+        let (tx, mut rx) = mpsc::unbounded_channel();
+        let session = world
+            .create_session(tx)
+            .await
+            .expect("session should create");
+        world
+            .join_session(
+                session.connection_id,
+                "runtime-delta-active-transition-landing",
+            )
+            .await
+            .expect("session should join");
+        let _ = drain_server_messages(&mut rx);
+
+        {
+            let mut sessions = world.sessions.write().await;
+            let session_state = sessions
+                .get_mut(&session.connection_id)
+                .expect("session should exist");
+            session_state.player_state.map_id = "MAP_LANDING_COORD_REGRESSION".to_string();
+            session_state.player_state.tile_x = 0;
+            session_state.player_state.tile_y = 0;
+            session_state.player_state.traversal_state = TraversalState::AcroBike;
+            session_state.player_state.preferred_bike_type = TraversalState::AcroBike;
+            session_state.player_state.facing = Direction::Right;
+            session_state.player_state.bike_runtime.acro_runtime.state = AcroState::BunnyHop;
+            session_state.player_state.bike_runtime.acro_state = AcroBikeSubstate::BunnyHop;
+        }
+
+        let mut held_seq = 0_u32;
+
+        // Find a landing tick to align the next accepted walk to one tick before
+        // the subsequent landing pulse.
+        let mut observed_landing_pulse = false;
+        for _ in 0..48 {
+            world
+                .enqueue_held_input_state(
+                    session.connection_id,
+                    HeldInputState {
+                        input_seq: held_seq,
+                        held_direction: Some(Direction::Right),
+                        held_buttons: crate::protocol::HeldButtons::B as u8,
+                        client_time: held_seq as u64,
+                    },
+                )
+                .await
+                .expect("held input should enqueue");
+            held_seq = held_seq.saturating_add(1);
+            world.tick().await;
+            observed_landing_pulse = drain_server_messages(&mut rx).into_iter().any(|message| {
+                matches!(
+                    message,
+                    ServerMessage::BikeRuntimeDelta(BikeRuntimeDelta {
+                        hop_landing_particle_class: Some(_),
+                        ..
+                    })
+                )
+            });
+            if observed_landing_pulse {
+                break;
+            }
+        }
+        assert!(
+            observed_landing_pulse,
+            "expected at least one baseline landing pulse while idling in bunny-hop state"
+        );
+
+        for _ in 0..14 {
+            world
+                .enqueue_held_input_state(
+                    session.connection_id,
+                    HeldInputState {
+                        input_seq: held_seq,
+                        held_direction: Some(Direction::Right),
+                        held_buttons: crate::protocol::HeldButtons::B as u8,
+                        client_time: held_seq as u64,
+                    },
+                )
+                .await
+                .expect("held input should enqueue");
+            held_seq = held_seq.saturating_add(1);
+            world.tick().await;
+            let _ = drain_server_messages(&mut rx);
+        }
+
+        world
+            .enqueue_held_input_state(
+                session.connection_id,
+                HeldInputState {
+                    input_seq: held_seq,
+                    held_direction: Some(Direction::Right),
+                    held_buttons: crate::protocol::HeldButtons::B as u8,
+                    client_time: held_seq as u64,
+                },
+            )
+            .await
+            .expect("held input should enqueue");
+        held_seq = held_seq.saturating_add(1);
+        world
+            .enqueue_walk_input(
+                session.connection_id,
+                WalkInput {
+                    direction: Direction::Right,
+                    movement_mode: MovementMode::Walk,
+                    held_buttons: crate::protocol::HeldButtons::B as u8,
+                    input_seq: 0,
+                    client_time: 0,
+                },
+            )
+            .await
+            .expect("walk input should enqueue");
+        world.tick().await;
+        let _ = drain_server_messages(&mut rx);
+
+        {
+            let sessions = world.sessions.read().await;
+            let session_state = sessions
+                .get(&session.connection_id)
+                .expect("session should exist");
+            assert!(
+                session_state.active_walk_transition.is_some(),
+                "accepted directional walk should create active walk transition before completion"
+            );
+        }
+
+        world
+            .enqueue_held_input_state(
+                session.connection_id,
+                HeldInputState {
+                    input_seq: held_seq,
+                    held_direction: Some(Direction::Right),
+                    held_buttons: crate::protocol::HeldButtons::B as u8,
+                    client_time: held_seq as u64,
+                },
+            )
+            .await
+            .expect("held input should enqueue");
+        world.tick().await;
+
+        let runtime_delta = drain_server_messages(&mut rx)
+            .into_iter()
+            .find_map(|message| match message {
+                ServerMessage::BikeRuntimeDelta(delta)
+                    if delta.hop_landing_particle_class.is_some() =>
+                {
+                    Some(delta)
+                }
+                _ => None,
+            })
+            .expect("expected BikeRuntimeDelta hop landing while active_walk_transition exists");
+
+        assert_eq!(runtime_delta.hop_landing_tile_x, Some(1));
+        assert_eq!(runtime_delta.hop_landing_tile_y, Some(0));
+        assert_eq!(
+            runtime_delta.hop_landing_particle_class,
+            Some(HopLandingParticleClass::TallGrassJump),
+            "particle class must derive from the same emitted landing tile",
+        );
+    }
+
     #[test]
     fn hop_landing_particle_coordinates_match_between_runtime_delta_and_walk_result_paths() {
         let map = MapData {
@@ -2536,6 +2860,27 @@ mod tests {
                 Some(HopLandingParticleClass::ShallowWaterSplash),
                 Some((2, 0))
             )
+        );
+    }
+
+    #[test]
+    fn stationary_vs_directional_hop_landing_coordinates_use_the_same_authoritative_tile_for_classification(
+    ) {
+        let map = landing_coordinate_regression_map();
+
+        let stationary_landing = hop_landing_signal_for_authoritative_tile(Some(&map), 0, 0, true);
+        let directional_landing = hop_landing_signal_for_authoritative_tile(Some(&map), 1, 0, true);
+
+        assert_eq!(
+            stationary_landing,
+            (
+                Some(HopLandingParticleClass::NormalGroundDust),
+                Some((0, 0))
+            )
+        );
+        assert_eq!(
+            directional_landing,
+            (Some(HopLandingParticleClass::TallGrassJump), Some((1, 0)))
         );
     }
 
