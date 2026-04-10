@@ -102,7 +102,7 @@ export class HopShadowRenderer {
   setAuthoritativeState(input: {
     traversalState: TraversalState;
     bikeTransition?: BikeTransitionType;
-    acroSubstate?: AcroBikeSubstate;
+    acroSubstate: AcroBikeSubstate;
   }): void {
     this.hopContextActive =
       input.traversalState === TraversalState.ACRO_BIKE &&
