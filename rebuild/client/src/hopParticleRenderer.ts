@@ -1,7 +1,8 @@
 import { Rectangle, Sprite, Texture } from 'pixi.js';
 import { decodeIndexed4bppPngFromUrl } from './metatileRenderer';
 import { buildPlayerSheetRgba } from './playerAnimation';
-import { HopLandingParticleClass } from './protocol_generated';
+import { Direction, HopLandingParticleClass } from './protocol_generated';
+import type { HopTypeContext } from './hopParticleDepth';
 import type { ContainerChild } from 'pixi.js';
 
 type EffectKey =
@@ -40,6 +41,8 @@ type SpawnEvent = {
   elevation: number;
   particleClass: HopLandingParticleClass;
   serverFrame: number;
+  facing: Direction;
+  hopType: HopTypeContext;
 };
 
 type AnimationStep = {
@@ -57,6 +60,9 @@ type ActiveEffect = {
   tileX: number;
   tileY: number;
   elevation: number;
+  facing: Direction;
+  hopType: HopTypeContext;
+  particleClass: HopLandingParticleClass;
   steps: AnimationStep[];
   stepIndex: number;
   stepElapsedMs: number;
@@ -72,6 +78,9 @@ export type HopParticleDepthSample = {
   screenY: number;
   halfHeightPx: number;
   elevation: number;
+  facing: Direction;
+  hopType: HopTypeContext;
+  particleClass: HopLandingParticleClass;
 };
 
 const ROM_TICK_MS = 1000 / 60;
@@ -155,6 +164,9 @@ export class HopParticleRenderer {
       tileX: input.tileX,
       tileY: input.tileY,
       elevation: input.elevation,
+      facing: input.facing,
+      hopType: input.hopType,
+      particleClass: input.particleClass,
       steps: effect.steps,
       stepIndex: 0,
       stepElapsedMs: 0,
@@ -197,6 +209,9 @@ export class HopParticleRenderer {
       screenY: active.sprite.y,
       halfHeightPx: active.sprite.height * 0.5,
       elevation: active.elevation,
+      facing: active.facing,
+      hopType: active.hopType,
+      particleClass: active.particleClass,
     }));
   }
 
