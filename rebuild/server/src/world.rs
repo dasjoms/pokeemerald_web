@@ -475,7 +475,9 @@ impl World {
                 session.player_state.traversal_state != previous_traversal_state;
             let runtime_changed = current_acro_substate != previous_acro_substate
                 || current_bike_transition != previous_bike_transition;
-            if session.joined && (traversal_changed || runtime_changed) {
+            let emitted_landing_particle = hop_landing_particle_class.is_some();
+            if session.joined && (traversal_changed || runtime_changed || emitted_landing_particle)
+            {
                 let _ = session.send(ServerMessage::BikeRuntimeDelta(BikeRuntimeDelta {
                     server_frame: tick as u32,
                     traversal_state: session.player_state.traversal_state,
@@ -2188,6 +2190,83 @@ mod tests {
         assert_eq!(walk_result.authoritative_pos.x, 1);
         assert_eq!(walk_result.authoritative_pos.y, 0);
         assert_eq!(walk_result.authoritative_step_speed, Some(StepSpeed::Step1));
+    }
+
+    #[tokio::test]
+    async fn hop_landing_particles_emit_across_repeated_bunny_hop_cycles_with_continuous_b_hold() {
+        let (maps_index, layouts_index) = test_asset_paths();
+        let world = World::load_from_assets("MAP_LITTLEROOT_TOWN", &maps_index, &layouts_index)
+            .expect("world should load");
+
+        let (tx, mut rx) = mpsc::unbounded_channel();
+        let session = world
+            .create_session(tx)
+            .await
+            .expect("session should create");
+        world
+            .join_session(session.connection_id, "repeated-hop-landing-particles")
+            .await
+            .expect("session should join");
+        let _ = drain_server_messages(&mut rx);
+
+        world
+            .handle_debug_traversal_input(
+                session.connection_id,
+                DebugTraversalInput {
+                    action: DebugTraversalAction::ToggleMount,
+                },
+            )
+            .await
+            .expect("mount should succeed");
+        world
+            .handle_debug_traversal_input(
+                session.connection_id,
+                DebugTraversalInput {
+                    action: DebugTraversalAction::SwapBikeType,
+                },
+            )
+            .await
+            .expect("bike swap should succeed");
+        let _ = drain_server_messages(&mut rx);
+
+        let mut landing_deltas = Vec::new();
+        for input_seq in 0..140_u32 {
+            world
+                .enqueue_held_input_state(
+                    session.connection_id,
+                    HeldInputState {
+                        input_seq,
+                        held_direction: None,
+                        held_buttons: crate::protocol::HeldButtons::B as u8,
+                        client_time: input_seq as u64,
+                    },
+                )
+                .await
+                .expect("held input should enqueue");
+            world.tick().await;
+
+            for message in drain_server_messages(&mut rx) {
+                if let ServerMessage::BikeRuntimeDelta(delta) = message {
+                    if delta.hop_landing_particle_class.is_some() {
+                        landing_deltas.push(delta);
+                    }
+                }
+            }
+        }
+
+        assert!(
+            landing_deltas.len() >= 2,
+            "expected repeated bunny-hop landing particle deltas while B is held continuously"
+        );
+
+        let has_repeated_runtime_state = landing_deltas.windows(2).any(|pair| {
+            pair[0].acro_substate == pair[1].acro_substate
+                && pair[0].bike_transition == pair[1].bike_transition
+        });
+        assert!(
+            has_repeated_runtime_state,
+            "expected at least one pair of consecutive landing particle deltas with unchanged runtime state"
+        );
     }
 
     #[test]
