@@ -60,7 +60,7 @@ import {
 } from './hopShadowRenderer';
 import { HopParticleRenderer } from './hopParticleRenderer';
 import { computeObjectDepth } from './objectDepth';
-import { resolveHopParticleBaseSubpriority, resolveHopTypeContext, type HopTypeContext } from './hopParticleDepth';
+import { resolveHopTypeContext } from './hopParticleDepth';
 import {
   createWalkInputController,
   encodeHeldInputState,
@@ -286,7 +286,7 @@ type PendingHopLandingParticleEvent = {
   tileY: number;
   elevation: number;
   facing: Direction;
-  hopType: HopTypeContext;
+  useFieldEffectPriority: boolean;
 };
 
 
@@ -726,6 +726,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
       hopLandingTileY: delta.hop_landing_tile_y,
       hopLandingElevation: delta.player_elevation,
       facing: state.facing,
+      traversalState: delta.traversal_state,
       bikeTransition: delta.bike_transition,
     });
     flushPendingHopParticleLandingEvent();
@@ -795,6 +796,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     hopLandingTileY: result.hop_landing_tile_y,
     hopLandingElevation: result.player_elevation,
     facing: result.facing,
+    traversalState: result.traversal_state,
     bikeTransition: result.bike_transition,
   });
   flushPendingHopParticleLandingEvent();
@@ -2213,6 +2215,7 @@ function queueHopParticleLandingEvent(input: {
   hopLandingTileY?: number;
   hopLandingElevation: number;
   facing: Direction;
+  traversalState: TraversalState;
   bikeTransition: BikeTransitionType | undefined;
 }): void {
   if (
@@ -2229,7 +2232,10 @@ function queueHopParticleLandingEvent(input: {
     particleClass: input.particleClass,
     serverFrame: input.serverFrame,
     facing: input.facing,
-    hopType: resolveHopTypeContext(input.bikeTransition),
+    useFieldEffectPriority: resolveHopEffectPriorityMode({
+      traversalState: input.traversalState,
+      bikeTransition: input.bikeTransition,
+    }),
   };
 }
 
@@ -2429,20 +2435,62 @@ function updateObjectDepthSorting(): void {
   playerSprite.zIndex = playerDepth;
 
   for (const sample of hopParticleRenderer.getDepthSamples()) {
+    const frameAdjustment = resolveHopParticleFrameSubpriorityAdjustment(sample);
     sample.sprite.zIndex = computeObjectDepth({
       screenY: sample.screenY,
       halfHeightPx: sample.halfHeightPx,
       elevation: sample.elevation,
-      baseSubpriority: resolveHopParticleBaseSubpriority({
-        facing: sample.facing,
-        hopType: sample.hopType,
-        particleClass: sample.particleClass,
-      }),
+      baseSubpriority:
+        resolveRomHopParticleBaseSubpriority({
+          facing: sample.facing,
+          particleClass: sample.particleClass,
+          useFieldEffectPriority: sample.useFieldEffectPriority,
+        }) + frameAdjustment,
     });
   }
 
   objectDepthBelowBg2Layer.sortChildren();
   objectDepthBetweenBg2Bg1Layer.sortChildren();
+}
+
+function resolveHopEffectPriorityMode(input: {
+  traversalState: TraversalState;
+  bikeTransition: BikeTransitionType | undefined;
+}): boolean {
+  if (input.traversalState !== TraversalState.ACRO_BIKE) {
+    return false;
+  }
+  return resolveHopTypeContext(input.bikeTransition) !== 'unknown';
+}
+
+function resolveRomHopParticleBaseSubpriority(input: {
+  facing: Direction;
+  particleClass: HopLandingParticleClass;
+  useFieldEffectPriority: boolean;
+}): number {
+  if (!input.useFieldEffectPriority) {
+    return 0;
+  }
+  const lateralSubpriority =
+    input.particleClass === HopLandingParticleClass.LONG_GRASS_JUMP ||
+    input.particleClass === HopLandingParticleClass.DEEP_WATER_SPLASH
+      ? 1
+      : 2;
+  if (input.facing === Direction.LEFT || input.facing === Direction.RIGHT) {
+    return lateralSubpriority;
+  }
+  if (input.facing === Direction.DOWN) {
+    return 0;
+  }
+  return 0;
+}
+
+function resolveHopParticleFrameSubpriorityAdjustment(_sample: {
+  facing: Direction;
+  particleClass: HopLandingParticleClass;
+  useFieldEffectPriority: boolean;
+}): number {
+  return 0;
 }
 
 function presentPlayerAnimationFrame(): void {
