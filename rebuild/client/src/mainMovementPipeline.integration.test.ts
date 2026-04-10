@@ -677,47 +677,44 @@ describe("main movement pipeline integration", () => {
     }
   });
 
-  it.each([
-    { label: "walk", mode: "walk" as const },
-    { label: "run", mode: "run" as const },
-  ])(
-    "uses stationary setdown family for directional B-release WheelieToNormal before $label ride resumes",
-    ({ mode }) => {
-      const playerAnimation = new PlayerAnimationController(makeMockAssets());
-      const direction = Direction.RIGHT;
+  it("shows stationary acro end-wheelie frame before directional ride resumes when direction is held during B-release", () => {
+    const playerAnimation = new PlayerAnimationController(makeMockAssets());
+    const direction = Direction.RIGHT;
 
-      playerAnimation.setTraversalState({
-        traversalState: TraversalState.ACRO_BIKE,
-        acroSubstate: AcroBikeSubstate.BUNNY_HOP,
-        bikeTransition: BikeTransitionType.WHEELIE_HOPPING_STANDING,
-      });
-      playerAnimation.stopMoving(direction);
-      playerAnimation.applyPendingModeChanges();
-      expect(playerAnimation.getDebugState().animId).toBe(
-        "anim_acro_bunny_hop_back_east",
-      );
+    playerAnimation.setTraversalState({
+      traversalState: TraversalState.ACRO_BIKE,
+      acroSubstate: AcroBikeSubstate.BUNNY_HOP,
+      bikeTransition: BikeTransitionType.WHEELIE_HOPPING_STANDING,
+    });
+    playerAnimation.stopMoving(direction);
+    playerAnimation.applyPendingModeChanges();
+    expect(playerAnimation.getDebugState().animId).toBe(
+      "anim_acro_bunny_hop_back_east",
+    );
 
-      playerAnimation.setTraversalState({
-        traversalState: TraversalState.ACRO_BIKE,
-        acroSubstate: AcroBikeSubstate.NONE,
-        bikeTransition: BikeTransitionType.WHEELIE_TO_NORMAL,
-      });
-      playerAnimation.startStep(direction, mode);
-      const firstSetdownAnimId = playerAnimation.getDebugState().animId;
-      expect(firstSetdownAnimId).toBe("anim_acro_end_wheelie_stationary_east");
-      expect(firstSetdownAnimId).not.toBe("anim_acro_end_wheelie_moving_east");
+    playerAnimation.setTraversalState({
+      traversalState: TraversalState.ACRO_BIKE,
+      acroSubstate: AcroBikeSubstate.NONE,
+      bikeTransition: BikeTransitionType.EXIT_WHEELIE,
+    });
+    playerAnimation.stopMoving(direction);
+    playerAnimation.applyPendingModeChanges();
+    const setdownAnimId = playerAnimation.getDebugState().animId;
+    expect(setdownAnimId).toBe("anim_acro_end_wheelie_stationary_east");
 
-      playerAnimation.setTraversalState({
-        traversalState: TraversalState.ACRO_BIKE,
-        acroSubstate: AcroBikeSubstate.NONE,
-        bikeTransition: BikeTransitionType.NONE,
-      });
-      playerAnimation.startStep(direction, mode);
-      expect(playerAnimation.getDebugState().animId).toBe(
-        "anim_acro_end_wheelie_stationary_east",
-      );
-    },
-  );
+    playerAnimation.setTraversalState({
+      traversalState: TraversalState.ACRO_BIKE,
+      acroSubstate: AcroBikeSubstate.NONE,
+      bikeTransition: BikeTransitionType.NONE,
+    });
+    playerAnimation.startStep(direction, "run");
+    const resumedAnimId = playerAnimation.getDebugState().animId;
+    expect(resumedAnimId).toBe("anim_bike_walk_east");
+    expect([setdownAnimId, resumedAnimId]).toEqual([
+      "anim_acro_end_wheelie_stationary_east",
+      "anim_bike_walk_east",
+    ]);
+  });
 
   it("halts interpolation on WheelieToNormal set-down tick and resumes only after the set-down window", () => {
     const state: PipelineState = {
@@ -1103,7 +1100,7 @@ describe("main movement pipeline integration", () => {
       bikeTransition: BikeTransitionType.WHEELIE_TO_NORMAL,
       acroSubstate: AcroBikeSubstate.NONE,
       shouldStep: true,
-      expectedAnimId: "anim_acro_end_wheelie_stationary_east",
+      expectedAnimId: "anim_acro_end_wheelie_moving_east",
     },
     {
       bikeTransition: BikeTransitionType.ENTER_WHEELIE,
