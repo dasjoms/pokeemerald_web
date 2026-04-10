@@ -2452,7 +2452,7 @@ function updateObjectDepthSorting(): void {
 
   for (const sample of hopParticleRenderer.getDepthSamples()) {
     const frameAdjustment = resolveHopParticleFrameSubpriorityAdjustment(sample);
-    sample.sprite.zIndex = computeObjectDepth({
+    const particleDepth = computeObjectDepth({
       screenY: sample.screenY,
       halfHeightPx: sample.halfHeightPx,
       elevation: sample.elevation,
@@ -2463,6 +2463,12 @@ function updateObjectDepthSorting(): void {
           useFieldEffectPriority: sample.useFieldEffectPriority,
         }) + frameAdjustment,
     });
+    const isLateralHopWithFieldEffectPriority =
+      sample.useFieldEffectPriority &&
+      (sample.facing === Direction.LEFT || sample.facing === Direction.RIGHT);
+    sample.sprite.zIndex = isLateralHopWithFieldEffectPriority
+      ? Math.max(particleDepth, playerDepth + 1)
+      : particleDepth;
   }
 
   objectDepthBelowBg2Layer.sortChildren();
