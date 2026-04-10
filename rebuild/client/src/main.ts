@@ -625,6 +625,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
       traversalState: state.traversalState,
       acroSubstate: state.acroSubstate,
       bikeTransition: state.bikeTransition,
+      bunnyHopCycleTick: snapshot.bunny_hop_cycle_tick,
     });
     hopShadowRenderer.setAuthoritativeState({
       traversalState: state.traversalState,
@@ -681,6 +682,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
       traversalState: state.traversalState,
       acroSubstate: state.acroSubstate,
       bikeTransition: state.bikeTransition,
+      bunnyHopCycleTick: delta.bunny_hop_cycle_tick,
     });
     hopShadowRenderer.setAuthoritativeState({
       traversalState: state.traversalState,
@@ -694,7 +696,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
       hopLandingTileY: delta.hop_landing_tile_y,
     });
     // BikeRuntimeDelta is change-only by design; consume it as authoritative
-    // traversal state updates and keep animation phase locally clocked.
+    // traversal + hop phase updates.
     state.lastAckServerTick = delta.server_frame;
     trackAcroHopAttemptProgress({
       source: 'bike_runtime_delta',
@@ -740,11 +742,12 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     acroSubstate: state.acroSubstate,
     bikeTransition: state.bikeTransition,
   });
-  playerMovementActionRuntime.setAuthoritativeInput({
-    traversalState: state.traversalState,
-    acroSubstate: state.acroSubstate,
-    bikeTransition: state.bikeTransition,
-  });
+    playerMovementActionRuntime.setAuthoritativeInput({
+      traversalState: state.traversalState,
+      acroSubstate: state.acroSubstate,
+      bikeTransition: state.bikeTransition,
+      bunnyHopCycleTick: result.bunny_hop_cycle_tick,
+    });
   hopShadowRenderer.setAuthoritativeState({
     traversalState: state.traversalState,
     bikeTransition: state.bikeTransition,
@@ -1868,6 +1871,7 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
       bikeRuntimeFlags & 0b010 ? (readU8(payload, offset++) as AcroBikeSubstate) : undefined;
     const bikeTransition =
       bikeRuntimeFlags & 0b100 ? (readU8(payload, offset++) as BikeTransitionType) : undefined;
+    const bunnyHopCycleTick = bikeRuntimeFlags & 0b1_0000 ? readU8(payload, offset++) : undefined;
     const bikeEffectFlags = readU8(payload, offset);
     offset += 1;
 
@@ -1896,6 +1900,7 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
         mach_speed_stage: machSpeedStage,
         acro_substate: acroSubstate,
         bike_transition: bikeTransition,
+        bunny_hop_cycle_tick: bunnyHopCycleTick,
         bike_effect_flags: bikeEffectFlags,
       },
     };
@@ -1931,6 +1936,7 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
       bikeRuntimeFlags & 0b010 ? (readU8(payload, offset++) as AcroBikeSubstate) : undefined;
     const bikeTransition =
       bikeRuntimeFlags & 0b100 ? (readU8(payload, offset++) as BikeTransitionType) : undefined;
+    const bunnyHopCycleTick = bikeRuntimeFlags & 0b1_0000 ? readU8(payload, offset++) : undefined;
     const bikeEffectFlags = readU8(payload, offset);
     offset += 1;
     const hasHopLandingParticleClass = readU8(payload, offset) !== 0;
@@ -1969,6 +1975,7 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
         mach_speed_stage: machSpeedStage,
         acro_substate: acroSubstate,
         bike_transition: bikeTransition,
+        bunny_hop_cycle_tick: bunnyHopCycleTick,
         bike_effect_flags: bikeEffectFlags,
         hop_landing_particle_class: hopLandingParticleClass,
         hop_landing_tile_x: hopLandingTileX,
@@ -1992,6 +1999,7 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
       bikeRuntimeFlags & 0b010 ? (readU8(payload, offset++) as AcroBikeSubstate) : undefined;
     const bikeTransition =
       bikeRuntimeFlags & 0b100 ? (readU8(payload, offset++) as BikeTransitionType) : undefined;
+    const bunnyHopCycleTick = bikeRuntimeFlags & 0b1_0000 ? readU8(payload, offset++) : undefined;
     const hasHopLandingParticleClass = readU8(payload, offset) !== 0;
     offset += 1;
     const hopLandingParticleClass = hasHopLandingParticleClass
@@ -2021,6 +2029,7 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
         mach_speed_stage: machSpeedStage,
         acro_substate: acroSubstate,
         bike_transition: bikeTransition,
+        bunny_hop_cycle_tick: bunnyHopCycleTick,
         hop_landing_particle_class: hopLandingParticleClass,
         hop_landing_tile_x: hopLandingTileX,
         hop_landing_tile_y: hopLandingTileY,

@@ -8,6 +8,7 @@ export type PlayerMovementActionVisualInput = {
   traversalState: TraversalState;
   acroSubstate?: AcroBikeSubstate;
   bikeTransition?: BikeTransitionType;
+  bunnyHopCycleTick?: number;
 };
 
 export type PlayerMovementActionVisualState = {
@@ -48,6 +49,7 @@ export class PlayerMovementActionRuntime {
       traversalState: input.traversalState,
       acroSubstate: input.acroSubstate ?? AcroBikeSubstate.NONE,
       bikeTransition: input.bikeTransition ?? BikeTransitionType.NONE,
+      bunnyHopCycleTick: input.bunnyHopCycleTick,
     };
 
     const isHopCapable = this.shouldRunAcroHop();
@@ -56,20 +58,14 @@ export class PlayerMovementActionRuntime {
       return;
     }
 
-    // Treat authoritative bike runtime updates as state corrections only.
-    // Once we are in a stationary hop-capable transition, hop phase progression
-    // is locally clocked by the client tick loop and must not depend on
-    // receiving repeated BikeRuntimeDelta packets.
     if (!wasHopCapable && isHopCapable) {
       this.hopCycleActive = true;
     }
+    this.applyAuthoritativeHopPhase();
   }
 
   tickTicks(ticks: number): void {
-    const clampedTicks = Math.max(0, Math.min(256, Math.floor(ticks)));
-    for (let index = 0; index < clampedTicks; index += 1) {
-      this.stepOneTick();
-    }
+    const _ignored = ticks;
   }
 
   getVisualState(): PlayerMovementActionVisualState {
@@ -79,7 +75,7 @@ export class PlayerMovementActionRuntime {
     };
   }
 
-  private stepOneTick(): void {
+  private applyAuthoritativeHopPhase(): void {
     if (!this.shouldRunAcroHop()) {
       this.resetActionState();
       return;
@@ -87,25 +83,15 @@ export class PlayerMovementActionRuntime {
 
     if (!this.hopCycleActive) {
       this.hopCycleActive = true;
-      this.activeAction = 'none';
-      this.jumpTimer = 0;
-      this.yOffsetPx = 0;
     }
 
-    if (this.activeAction === 'none') {
-      this.activeAction = 'acro_wheelie_hop_face';
-      this.jumpTimer = 0;
-    }
-
+    const authoritativeTick =
+      this.authoritativeInput.bunnyHopCycleTick === undefined
+        ? this.jumpTimer
+        : this.authoritativeInput.bunnyHopCycleTick % ACRO_STATIONARY_HOP_TICKS;
+    this.jumpTimer = authoritativeTick;
     this.yOffsetPx = ACRO_JUMP_Y_LOW[this.jumpTimer] ?? 0;
-    this.jumpTimer += 1;
-
-    if (this.jumpTimer >= ACRO_STATIONARY_HOP_TICKS) {
-      // Match ROM completion semantics: action reports finished, then can restart.
-      this.activeAction = 'none';
-      this.jumpTimer = 0;
-      this.yOffsetPx = 0;
-    }
+    this.activeAction = this.jumpTimer === 0 ? 'none' : 'acro_wheelie_hop_face';
   }
 
   private shouldRunAcroHop(): boolean {

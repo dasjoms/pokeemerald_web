@@ -258,6 +258,10 @@ impl AcroRuntime {
         self.hop_landed_this_tick
     }
 
+    pub fn bunny_hop_cycle_tick(&self) -> u8 {
+        self.bunny_hop_cycle_tick
+    }
+
     pub fn handle_wheelie_collision_response(&mut self) -> Option<AcroAnimationAction> {
         if !self.on_bumpy_slope {
             return None;
