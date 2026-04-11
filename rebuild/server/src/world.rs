@@ -54,6 +54,8 @@ const MB_UNUSED_SOOTOPOLIS_DEEP_WATER_2: u8 = 0x1A;
 const MB_SEAWEED_NO_SURFACING: u8 = 0x2A;
 const ACRO_WHEELIE_TO_NORMAL_LOCK_TICKS: u8 = 8;
 const ACRO_WHEELIE_POP_LOCK_TICKS: u8 = 8;
+const ACRO_WHEELIE_RISING_MOVING_HOLD_TICKS: u8 = 8;
+const ACRO_WHEELIE_LOWERING_MOVING_HOLD_TICKS: u8 = 8;
 
 #[derive(Debug, Clone)]
 pub struct MapConnection {
@@ -449,6 +451,11 @@ impl World {
                 .player_state
                 .bike_runtime
                 .preserve_transition_until_walk_result
+                && session
+                    .player_state
+                    .bike_runtime
+                    .transition_hold_ticks_remaining
+                    == 0
             {
                 session.player_state.bike_runtime.last_transition = BikeTransitionType::None;
             }
@@ -647,6 +654,7 @@ impl World {
                     hop_landing_tile_y: hop_landing_tile.map(|tile| tile.1),
                 }));
             }
+            tick_down_bike_transition_hold(&mut session.player_state);
 
             if session.active_walk_transition.is_some()
                 && matches!(session.player_state.traversal_state, TraversalState::OnFoot)
@@ -895,7 +903,8 @@ impl World {
                     };
 
                 if accepted {
-                    let previous_step_transition = session.player_state.bike_runtime.last_transition;
+                    let previous_step_transition =
+                        session.player_state.bike_runtime.last_transition;
                     update_bike_runtime_after_step(&mut session.player_state, movement_direction);
                     preserve_rising_moving_transition_for_walk_result(
                         &mut session.player_state,
@@ -1601,6 +1610,60 @@ fn avatar_action_lock_ticks_for_bike_transition(transition: BikeTransitionType) 
     }
 }
 
+fn transition_hold_ticks_for_bike_transition(transition: BikeTransitionType) -> Option<u8> {
+    match transition {
+        BikeTransitionType::WheelieRisingMoving => Some(ACRO_WHEELIE_RISING_MOVING_HOLD_TICKS),
+        BikeTransitionType::WheelieLoweringMoving => Some(ACRO_WHEELIE_LOWERING_MOVING_HOLD_TICKS),
+        BikeTransitionType::NormalToWheelie => Some(ACRO_WHEELIE_POP_LOCK_TICKS),
+        BikeTransitionType::WheelieToNormal => Some(ACRO_WHEELIE_TO_NORMAL_LOCK_TICKS),
+        _ => None,
+    }
+}
+
+fn transition_is_steady_wheelie_state(transition: BikeTransitionType) -> bool {
+    matches!(
+        transition,
+        BikeTransitionType::None
+            | BikeTransitionType::WheelieMoving
+            | BikeTransitionType::WheelieIdle
+    )
+}
+
+fn apply_bike_transition_with_hold(
+    player_state: &mut PlayerState,
+    next_transition: BikeTransitionType,
+) {
+    if let Some(hold_ticks) = transition_hold_ticks_for_bike_transition(next_transition) {
+        player_state.bike_runtime.last_transition = next_transition;
+        player_state.bike_runtime.held_transition = Some(next_transition);
+        player_state.bike_runtime.transition_hold_ticks_remaining = hold_ticks;
+        return;
+    }
+
+    if player_state.bike_runtime.transition_hold_ticks_remaining > 0
+        && transition_is_steady_wheelie_state(next_transition)
+    {
+        return;
+    }
+
+    player_state.bike_runtime.last_transition = next_transition;
+}
+
+fn tick_down_bike_transition_hold(player_state: &mut PlayerState) {
+    if player_state.bike_runtime.transition_hold_ticks_remaining == 0 {
+        player_state.bike_runtime.held_transition = None;
+        return;
+    }
+
+    player_state.bike_runtime.transition_hold_ticks_remaining = player_state
+        .bike_runtime
+        .transition_hold_ticks_remaining
+        .saturating_sub(1);
+    if player_state.bike_runtime.transition_hold_ticks_remaining == 0 {
+        player_state.bike_runtime.held_transition = None;
+    }
+}
+
 fn apply_acro_runtime_outcome(player_state: &mut PlayerState, action: Option<AcroAnimationAction>) {
     let logical_substate = acro_substate_from_runtime(player_state.bike_runtime.acro_runtime.state);
     let logical_transition = action.map(bike_transition_from_action);
@@ -1617,9 +1680,9 @@ fn apply_acro_runtime_outcome(player_state: &mut PlayerState, action: Option<Acr
         player_state.bike_runtime.acro_state = queued_state;
     }
     if let Some(queued_transition) = player_state.bike_runtime.queued_transition.take() {
-        player_state.bike_runtime.last_transition = queued_transition;
+        apply_bike_transition_with_hold(player_state, queued_transition);
     } else if let Some(transition) = logical_transition {
-        player_state.bike_runtime.last_transition = transition;
+        apply_bike_transition_with_hold(player_state, transition);
     }
 }
 
@@ -2289,6 +2352,10 @@ mod tests {
             player.bike_runtime.last_transition,
             BikeTransitionType::WheelieRisingMoving
         );
+        assert_eq!(
+            player.bike_runtime.transition_hold_ticks_remaining,
+            ACRO_WHEELIE_RISING_MOVING_HOLD_TICKS
+        );
 
         player.bike_runtime.acro_runtime.state = AcroState::WheelieMoving;
         player.bike_runtime.acro_runtime.movement_direction = Direction::Right;
@@ -2296,6 +2363,10 @@ mod tests {
         assert_eq!(
             player.bike_runtime.last_transition,
             BikeTransitionType::WheelieLoweringMoving
+        );
+        assert_eq!(
+            player.bike_runtime.transition_hold_ticks_remaining,
+            ACRO_WHEELIE_LOWERING_MOVING_HOLD_TICKS
         );
     }
 
@@ -2789,7 +2860,10 @@ mod tests {
             );
         }
 
-        assert_eq!(landing_particle_count, 1, "no delayed second landing particle should appear");
+        assert_eq!(
+            landing_particle_count, 1,
+            "no delayed second landing particle should appear"
+        );
     }
 
     #[tokio::test]
@@ -4050,6 +4124,37 @@ mod tests {
         assert_eq!(
             avatar_action_lock_ticks_for_bike_transition(BikeTransitionType::WheelieToNormal),
             Some(ACRO_WHEELIE_TO_NORMAL_LOCK_TICKS)
+        );
+    }
+
+    #[test]
+    fn transition_hold_blocks_steady_wheelie_overwrite_until_expiry() {
+        let mut player = test_player_state();
+        player.traversal_state = TraversalState::AcroBike;
+        player.bike_runtime.last_transition = BikeTransitionType::WheelieRisingMoving;
+        player.bike_runtime.transition_hold_ticks_remaining = 2;
+        player.bike_runtime.held_transition = Some(BikeTransitionType::WheelieRisingMoving);
+
+        apply_bike_transition_with_hold(&mut player, BikeTransitionType::WheelieMoving);
+        assert_eq!(
+            player.bike_runtime.last_transition,
+            BikeTransitionType::WheelieRisingMoving
+        );
+
+        tick_down_bike_transition_hold(&mut player);
+        assert_eq!(player.bike_runtime.transition_hold_ticks_remaining, 1);
+        apply_bike_transition_with_hold(&mut player, BikeTransitionType::None);
+        assert_eq!(
+            player.bike_runtime.last_transition,
+            BikeTransitionType::WheelieRisingMoving
+        );
+
+        tick_down_bike_transition_hold(&mut player);
+        assert_eq!(player.bike_runtime.transition_hold_ticks_remaining, 0);
+        apply_bike_transition_with_hold(&mut player, BikeTransitionType::WheelieMoving);
+        assert_eq!(
+            player.bike_runtime.last_transition,
+            BikeTransitionType::WheelieMoving
         );
     }
 
