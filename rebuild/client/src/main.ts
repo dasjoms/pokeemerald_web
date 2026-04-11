@@ -554,7 +554,7 @@ app.ticker.add(() => {
   while (visualRuntimeTickAccumulatorMs >= VISUAL_RUNTIME_TICK_MS) {
     playerAnimation.tickTicks(1);
     playerMovementActionRuntime.tickTicks(1);
-    syncPlayerAnimationAcroHopArcAirborne();
+    playerAnimation.setAcroHopArcAirborne(playerMovementActionRuntime.isHopArcAirborne());
     visualRuntimeTickAccumulatorMs -= VISUAL_RUNTIME_TICK_MS;
   }
   walkInputController.tick();
@@ -573,12 +573,6 @@ app.ticker.add(() => {
 
 connectWebSocket();
 bindWalkInput();
-
-function syncPlayerAnimationAcroHopArcAirborne(): boolean {
-  const airborne = playerMovementActionRuntime.isHopArcAirborne();
-  playerAnimation.setAcroHopArcAirborne(airborne);
-  return airborne;
-}
 
 function normalizeRepoRelative(path: string): string {
   const posixPath = path.replace(/\\/g, '/');
@@ -716,7 +710,6 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
       bikeTransition: state.bikeTransition,
       bunnyHopCycleTick: snapshot.bunny_hop_cycle_tick,
     });
-    const acroHopArcAirborne = syncPlayerAnimationAcroHopArcAirborne();
     hopShadowRenderer.setAuthoritativeState({
       traversalState: state.traversalState,
       bikeTransition: state.bikeTransition,
@@ -732,7 +725,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
       machSpeedStage: state.machSpeedStage,
       acroSubstate: state.acroSubstate,
       bikeTransition: state.bikeTransition,
-      acroHopArcAirborne,
+      acroHopArcAirborne: playerMovementActionRuntime.isHopArcAirborne(),
     });
     playerAnimation.stopMoving(snapshot.facing);
     syncVisualRuntimesToServerFrame(snapshot.server_frame);
@@ -771,13 +764,12 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
       bikeTransition: state.bikeTransition,
       bunnyHopCycleTick: delta.bunny_hop_cycle_tick,
     });
-    const acroHopArcAirborne = syncPlayerAnimationAcroHopArcAirborne();
     playerAnimation.setTraversalState({
       traversalState: state.traversalState,
       machSpeedStage: state.machSpeedStage,
       acroSubstate: state.acroSubstate,
       bikeTransition: state.bikeTransition,
-      acroHopArcAirborne,
+      acroHopArcAirborne: playerMovementActionRuntime.isHopArcAirborne(),
     });
     hopShadowRenderer.setAuthoritativeState({
       traversalState: state.traversalState,
@@ -844,13 +836,12 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     bikeTransition: state.bikeTransition,
     bunnyHopCycleTick: result.bunny_hop_cycle_tick,
   });
-  const acroHopArcAirborne = syncPlayerAnimationAcroHopArcAirborne();
   playerAnimation.setTraversalState({
     traversalState: state.traversalState,
     machSpeedStage: state.machSpeedStage,
     acroSubstate: state.acroSubstate,
     bikeTransition: state.bikeTransition,
-    acroHopArcAirborne,
+    acroHopArcAirborne: playerMovementActionRuntime.isHopArcAirborne(),
   });
   hopShadowRenderer.setAuthoritativeState({
     traversalState: state.traversalState,
