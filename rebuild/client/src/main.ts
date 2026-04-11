@@ -552,8 +552,9 @@ app.ticker.add(() => {
     VISUAL_RUNTIME_TICK_MS * 120,
   );
   while (visualRuntimeTickAccumulatorMs >= VISUAL_RUNTIME_TICK_MS) {
-    playerAnimation.tickTicks(1);
     playerMovementActionRuntime.tickTicks(1);
+    playerAnimation.setHopArcAirborne(playerMovementActionRuntime.isHopArcAirborne());
+    playerAnimation.tickTicks(1);
     visualRuntimeTickAccumulatorMs -= VISUAL_RUNTIME_TICK_MS;
   }
   walkInputController.tick();
@@ -709,6 +710,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
       bikeTransition: state.bikeTransition,
       bunnyHopCycleTick: snapshot.bunny_hop_cycle_tick,
     });
+    playerAnimation.setHopArcAirborne(playerMovementActionRuntime.isHopArcAirborne());
     hopShadowRenderer.setAuthoritativeState({
       traversalState: state.traversalState,
       bikeTransition: state.bikeTransition,
@@ -756,17 +758,18 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     state.machSpeedStage = delta.mach_speed_stage;
     state.acroSubstate = delta.acro_substate;
     state.bikeTransition = delta.bike_transition;
-    playerAnimation.setTraversalState({
-      traversalState: state.traversalState,
-      machSpeedStage: state.machSpeedStage,
-      acroSubstate: state.acroSubstate,
-      bikeTransition: state.bikeTransition,
-    });
     playerMovementActionRuntime.setAuthoritativeInput({
       traversalState: state.traversalState,
       acroSubstate: state.acroSubstate,
       bikeTransition: state.bikeTransition,
       bunnyHopCycleTick: delta.bunny_hop_cycle_tick,
+    });
+    playerAnimation.setHopArcAirborne(playerMovementActionRuntime.isHopArcAirborne());
+    playerAnimation.setTraversalState({
+      traversalState: state.traversalState,
+      machSpeedStage: state.machSpeedStage,
+      acroSubstate: state.acroSubstate,
+      bikeTransition: state.bikeTransition,
     });
     hopShadowRenderer.setAuthoritativeState({
       traversalState: state.traversalState,
@@ -827,18 +830,19 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
   state.machSpeedStage = result.mach_speed_stage;
   state.acroSubstate = result.acro_substate;
   state.bikeTransition = result.bike_transition;
+  playerMovementActionRuntime.setAuthoritativeInput({
+    traversalState: state.traversalState,
+    acroSubstate: state.acroSubstate,
+    bikeTransition: state.bikeTransition,
+    bunnyHopCycleTick: result.bunny_hop_cycle_tick,
+  });
+  playerAnimation.setHopArcAirborne(playerMovementActionRuntime.isHopArcAirborne());
   playerAnimation.setTraversalState({
     traversalState: state.traversalState,
     machSpeedStage: state.machSpeedStage,
     acroSubstate: state.acroSubstate,
     bikeTransition: state.bikeTransition,
   });
-    playerMovementActionRuntime.setAuthoritativeInput({
-      traversalState: state.traversalState,
-      acroSubstate: state.acroSubstate,
-      bikeTransition: state.bikeTransition,
-      bunnyHopCycleTick: result.bunny_hop_cycle_tick,
-    });
   hopShadowRenderer.setAuthoritativeState({
     traversalState: state.traversalState,
     bikeTransition: state.bikeTransition,
