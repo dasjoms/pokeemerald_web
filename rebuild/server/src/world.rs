@@ -53,6 +53,8 @@ const MB_NO_SURFACING: u8 = 0x19;
 const MB_UNUSED_SOOTOPOLIS_DEEP_WATER_2: u8 = 0x1A;
 const MB_SEAWEED_NO_SURFACING: u8 = 0x2A;
 const ACRO_WHEELIE_TO_NORMAL_LOCK_TICKS: u8 = 8;
+// Must stay aligned with rebuild/client/src/playerMovementActionRuntime.ts.
+const ACRO_STATIONARY_LOW_HOP_LANDING_TICK: u8 = 13;
 
 #[derive(Debug, Clone)]
 pub struct MapConnection {
@@ -1559,9 +1561,12 @@ fn apply_acro_runtime_outcome(
         player_state.bike_runtime.acro_state = queued_state;
     }
     if should_defer_stationary_bunny_hop_setdown {
+        let bunny_hop_cycle_tick_before_eval = bunny_hop_cycle_tick_before_eval.unwrap_or_default();
+        let delay = (ACRO_STATIONARY_LOW_HOP_LANDING_TICK + BUNNY_HOP_CYCLE_TICKS
+            - bunny_hop_cycle_tick_before_eval)
+            % BUNNY_HOP_CYCLE_TICKS;
         player_state.bike_runtime.queued_transition = Some(BikeTransitionType::WheelieToNormal);
-        player_state.bike_runtime.queued_transition_delay_ticks = BUNNY_HOP_CYCLE_TICKS
-            - bunny_hop_cycle_tick_before_eval.unwrap_or_default();
+        player_state.bike_runtime.queued_transition_delay_ticks = delay;
     } else if let Some(transition) = logical_transition {
         player_state.bike_runtime.last_transition = transition;
     }
@@ -1916,6 +1921,61 @@ mod tests {
             .bike_runtime
             .acro_runtime
             .update_history(Some(direction), crate::protocol::HeldButtons::B as u8);
+    }
+
+    fn stationary_bunny_hop_player_at_cycle_tick(cycle_tick: u8) -> PlayerState {
+        let mut player = test_player_state();
+        player.traversal_state = TraversalState::AcroBike;
+        player.bike_runtime.acro_runtime.state = AcroState::BunnyHop;
+        player.bike_runtime.acro_runtime.bike_frame_counter = 40;
+        player.bike_runtime.acro_runtime.running_state = RunningState::NotMoving;
+        player.bike_runtime.acro_runtime.set_held_input(None, true);
+        for _ in 0..cycle_tick {
+            player.bike_runtime.acro_runtime.advance_tick();
+        }
+        player.bike_runtime.acro_state = AcroBikeSubstate::BunnyHop;
+        player
+    }
+
+    fn assert_stationary_release_emits_setdown_at_landing_tick(
+        player: &mut PlayerState,
+        tick_before_release: u8,
+    ) {
+        update_bike_runtime_per_tick(player, None, 0);
+        let expected_delay = (ACRO_STATIONARY_LOW_HOP_LANDING_TICK + BUNNY_HOP_CYCLE_TICKS
+            - tick_before_release)
+            % BUNNY_HOP_CYCLE_TICKS;
+        assert_eq!(player.bike_runtime.queued_transition_delay_ticks, expected_delay);
+
+        if expected_delay == 0 {
+            assert_eq!(
+                player.bike_runtime.last_transition,
+                BikeTransitionType::WheelieToNormal
+            );
+            assert_eq!(player.bike_runtime.queued_transition, None);
+            return;
+        }
+
+        for _ in 0..expected_delay.saturating_sub(1) {
+            update_bike_runtime_per_tick(player, None, 0);
+            assert_ne!(
+                player.bike_runtime.last_transition,
+                BikeTransitionType::WheelieToNormal
+            );
+            assert_eq!(
+                player.bike_runtime.queued_transition,
+                Some(BikeTransitionType::WheelieToNormal)
+            );
+            assert_eq!(player.bike_runtime.acro_state, AcroBikeSubstate::None);
+        }
+
+        update_bike_runtime_per_tick(player, None, 0);
+        assert_eq!(
+            player.bike_runtime.last_transition,
+            BikeTransitionType::WheelieToNormal
+        );
+        assert_eq!(player.bike_runtime.queued_transition, None);
+        assert_eq!(player.bike_runtime.queued_transition_delay_ticks, 0);
     }
 
     fn bumpy_slope_map() -> MapData {
@@ -3784,42 +3844,29 @@ mod tests {
 
     #[test]
     fn releasing_b_while_in_stationary_bunny_hop_publishes_setdown_only_at_landing_boundary() {
-        let mut player = test_player_state();
-        player.traversal_state = TraversalState::AcroBike;
-        player.bike_runtime.acro_runtime.state = AcroState::BunnyHop;
-        player.bike_runtime.acro_runtime.bike_frame_counter = 40;
-        player.bike_runtime.acro_runtime.running_state = RunningState::NotMoving;
-        player.bike_runtime.acro_runtime.set_held_input(None, true);
-        player.bike_runtime.acro_runtime.advance_tick();
-        player.bike_runtime.acro_runtime.advance_tick();
-        player.bike_runtime.acro_runtime.advance_tick();
-        player.bike_runtime.acro_state = AcroBikeSubstate::BunnyHop;
+        let mut player = stationary_bunny_hop_player_at_cycle_tick(3);
+        assert_stationary_release_emits_setdown_at_landing_tick(&mut player, 3);
+    }
 
-        update_bike_runtime_per_tick(&mut player, None, 0);
-        let delay = player.bike_runtime.queued_transition_delay_ticks;
-        assert!(delay > 0);
-
-        for _ in 0..delay.saturating_sub(1) {
-            update_bike_runtime_per_tick(&mut player, None, 0);
-            assert_ne!(
-                player.bike_runtime.last_transition,
-                BikeTransitionType::WheelieToNormal
-            );
-            assert_eq!(player.bike_runtime.acro_state, AcroBikeSubstate::None);
-            assert_eq!(
-                player.bike_runtime.queued_transition,
-                Some(BikeTransitionType::WheelieToNormal)
+    #[test]
+    fn stationary_bunny_hop_release_defer_targets_landing_across_phase_offsets() {
+        for tick_before_release in [1_u8, 7, 12] {
+            let mut player = stationary_bunny_hop_player_at_cycle_tick(tick_before_release);
+            assert_stationary_release_emits_setdown_at_landing_tick(
+                &mut player,
+                tick_before_release,
             );
         }
+    }
 
-        update_bike_runtime_per_tick(&mut player, None, 0);
-        assert_eq!(
-            player.bike_runtime.last_transition,
-            BikeTransitionType::WheelieToNormal
+    #[test]
+    fn stationary_bunny_hop_release_on_landing_tick_emits_setdown_immediately() {
+        let mut player =
+            stationary_bunny_hop_player_at_cycle_tick(ACRO_STATIONARY_LOW_HOP_LANDING_TICK);
+        assert_stationary_release_emits_setdown_at_landing_tick(
+            &mut player,
+            ACRO_STATIONARY_LOW_HOP_LANDING_TICK,
         );
-        assert_eq!(player.bike_runtime.acro_state, AcroBikeSubstate::None);
-        assert_eq!(player.bike_runtime.queued_transition, None);
-        assert_eq!(player.bike_runtime.queued_transition_delay_ticks, 0);
     }
 
     #[test]
