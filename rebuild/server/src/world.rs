@@ -440,6 +440,7 @@ impl World {
             let previous_traversal_state = session.player_state.traversal_state;
             let previous_acro_substate = bike_acro_substate_for_traversal(&session.player_state);
             let previous_bike_transition = session.player_state.bike_runtime.last_transition;
+            let had_active_walk_at_tick_start = session.active_walk_transition.is_some();
             let mut completed_walk_this_tick = false;
             let mut completed_walk_hop_landing_effect = false;
             let mut completed_stationary_hop_landing_effect = false;
@@ -554,7 +555,8 @@ impl World {
             let stationary_bunny_hop_release_exit =
                 matches!(previous_acro_substate, Some(AcroBikeSubstate::BunnyHop))
                     && !matches!(current_acro_substate, Some(AcroBikeSubstate::BunnyHop))
-                    && session.active_walk_transition.is_none()
+                    && !had_active_walk_at_tick_start
+                    && !completed_walk_hop_landing_effect
                     && !session
                         .player_state
                         .bike_runtime
@@ -2696,7 +2698,7 @@ mod tests {
 
         let mut saw_wheelie_to_normal = false;
         let mut landing_particle_count = 0usize;
-        for _ in 0..20 {
+        for _ in 0..30 {
             world.tick().await;
             for message in drain_server_messages(&mut rx) {
                 if let ServerMessage::BikeRuntimeDelta(delta) = message {
@@ -2708,16 +2710,6 @@ mod tests {
                     }
                 }
             }
-            let active_walk_still_running = {
-                let sessions = world.sessions.read().await;
-                sessions
-                    .get(&session.connection_id)
-                    .and_then(|state| state.active_walk_transition.as_ref())
-                    .is_some()
-            };
-            if saw_wheelie_to_normal && !active_walk_still_running {
-                break;
-            }
         }
 
         assert!(
@@ -2728,6 +2720,22 @@ mod tests {
             landing_particle_count, 1,
             "the in-flight hop must emit exactly one landing particle at action completion"
         );
+
+        {
+            let sessions = world.sessions.read().await;
+            let session_state = sessions
+                .get(&session.connection_id)
+                .expect("session should exist");
+            assert!(
+                !session_state
+                    .player_state
+                    .bike_runtime
+                    .pending_stationary_hop_landing_effect,
+                "directional hop completion in the same tick as release must not arm stationary landing latch"
+            );
+        }
+
+        assert_eq!(landing_particle_count, 1, "no delayed second landing particle should appear");
     }
 
     #[tokio::test]
