@@ -117,8 +117,6 @@ pub struct AcroRuntime {
     pub on_bumpy_slope: bool,
     bunny_hop_cycle_tick: u8,
     hop_landed_this_tick: bool,
-    pending_bunny_hop_release: bool,
-    exit_bunny_hop_next_tick: bool,
     phase_advanced_this_tick: bool,
     pending_action: Option<AcroAnimationAction>,
     pending_jump_intent: Option<PendingJumpIntent>,
@@ -147,8 +145,6 @@ impl Default for AcroRuntime {
             on_bumpy_slope: false,
             bunny_hop_cycle_tick: 0,
             hop_landed_this_tick: false,
-            pending_bunny_hop_release: false,
-            exit_bunny_hop_next_tick: false,
             phase_advanced_this_tick: false,
             pending_action: None,
             pending_jump_intent: None,
@@ -461,14 +457,16 @@ impl AcroRuntime {
         requested_direction: Option<Direction>,
         facing_direction: Direction,
     ) -> AcroAnimationAction {
-        if self.exit_bunny_hop_next_tick && self.hop_landed_this_tick {
+        if !self.holding_b {
+            self.bike_frame_counter = 0;
+            if self.on_bumpy_slope {
+                self.state = AcroState::WheelieStanding;
+                return self.handle_input_wheelie_standing(requested_direction, facing_direction);
+            }
+
+            self.state = AcroState::Normal;
             self.running_state = RunningState::NotMoving;
             return AcroAnimationAction::WheelieToNormal;
-        }
-
-        if !self.holding_b {
-            self.pending_bunny_hop_release = true;
-            return self.bunny_hop_action_for_input(requested_direction, facing_direction);
         }
 
         self.bunny_hop_action_for_input(requested_direction, facing_direction)
@@ -556,21 +554,6 @@ impl AcroRuntime {
     fn advance_bunny_hop_phase(&mut self) {
         if !matches!(self.state, AcroState::BunnyHop) {
             self.bunny_hop_cycle_tick = 0;
-            self.pending_bunny_hop_release = false;
-            self.exit_bunny_hop_next_tick = false;
-            return;
-        }
-
-        if self.exit_bunny_hop_next_tick && !self.hop_landed_this_tick {
-            self.bike_frame_counter = 0;
-            self.bunny_hop_cycle_tick = 0;
-            self.running_state = RunningState::NotMoving;
-            self.state = if self.on_bumpy_slope {
-                AcroState::WheelieStanding
-            } else {
-                AcroState::Normal
-            };
-            self.exit_bunny_hop_next_tick = false;
             return;
         }
 
@@ -578,10 +561,6 @@ impl AcroRuntime {
         if self.bunny_hop_cycle_tick >= BUNNY_HOP_CYCLE_TICKS {
             self.bunny_hop_cycle_tick = 0;
             self.hop_landed_this_tick = true;
-            if self.pending_bunny_hop_release {
-                self.pending_bunny_hop_release = false;
-                self.exit_bunny_hop_next_tick = true;
-            }
         }
     }
 }
