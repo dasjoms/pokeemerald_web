@@ -895,7 +895,12 @@ impl World {
                     };
 
                 if accepted {
+                    let previous_step_transition = session.player_state.bike_runtime.last_transition;
                     update_bike_runtime_after_step(&mut session.player_state, movement_direction);
+                    preserve_rising_moving_transition_for_walk_result(
+                        &mut session.player_state,
+                        previous_step_transition,
+                    );
                     let should_latch_walk_hop_landing_effect =
                         should_latch_hop_landing_effect_on_transition_start(
                             session.player_state.bike_runtime.last_transition,
@@ -998,6 +1003,10 @@ impl World {
                     .player_state
                     .bike_runtime
                     .preserve_transition_until_walk_result = false;
+                session
+                    .player_state
+                    .bike_runtime
+                    .preserve_rise_transition_for_next_walk_result = false;
 
                 if accepted {
                     break;
@@ -1621,6 +1630,30 @@ fn flush_queued_acro_runtime_updates(player_state: &mut PlayerState) {
         return;
     }
     apply_acro_runtime_outcome(player_state, None);
+    if matches!(
+        player_state.bike_runtime.last_transition,
+        BikeTransitionType::WheelieRisingMoving
+    ) {
+        player_state
+            .bike_runtime
+            .preserve_rise_transition_for_next_walk_result = true;
+    }
+}
+
+fn preserve_rising_moving_transition_for_walk_result(
+    player_state: &mut PlayerState,
+    previous_step_transition: BikeTransitionType,
+) {
+    if player_state
+        .bike_runtime
+        .preserve_rise_transition_for_next_walk_result
+        && matches!(
+            previous_step_transition,
+            BikeTransitionType::WheelieRisingMoving
+        )
+    {
+        player_state.bike_runtime.last_transition = BikeTransitionType::WheelieRisingMoving;
+    }
 }
 
 fn avatar_for_player_id(player_id: &str) -> PlayerAvatar {
@@ -3971,6 +4004,39 @@ mod tests {
             BikeTransitionType::WheelieToNormal
         );
         assert_eq!(player.bike_runtime.queued_transition, None);
+    }
+
+    #[test]
+    fn queued_rising_transition_is_preserved_for_first_followup_walk_result() {
+        let mut player = test_player_state();
+        player.traversal_state = TraversalState::AcroBike;
+        player.facing = Direction::Right;
+        player.bike_runtime.queued_transition = Some(BikeTransitionType::WheelieRisingMoving);
+        player.bike_runtime.acro_runtime.state = AcroState::WheelieMoving;
+
+        flush_queued_acro_runtime_updates(&mut player);
+        assert_eq!(
+            player.bike_runtime.last_transition,
+            BikeTransitionType::WheelieRisingMoving
+        );
+        assert!(
+            player
+                .bike_runtime
+                .preserve_rise_transition_for_next_walk_result
+        );
+
+        let previous_step_transition = player.bike_runtime.last_transition;
+        update_bike_runtime_after_step(&mut player, Direction::Right);
+        assert_ne!(
+            player.bike_runtime.last_transition,
+            BikeTransitionType::WheelieRisingMoving
+        );
+
+        preserve_rising_moving_transition_for_walk_result(&mut player, previous_step_transition);
+        assert_eq!(
+            player.bike_runtime.last_transition,
+            BikeTransitionType::WheelieRisingMoving
+        );
     }
 
     #[test]
