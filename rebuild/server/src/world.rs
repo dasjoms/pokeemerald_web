@@ -456,6 +456,8 @@ impl World {
                 .acro_runtime
                 .set_on_bumpy_slope(on_bumpy_slope);
             let effective_held_direction = session.effective_held_direction();
+            session.player_state.bike_runtime.action_in_progress =
+                session.active_walk_transition.is_some();
             update_bike_runtime_per_tick(
                 &mut session.player_state,
                 effective_held_direction,
@@ -550,6 +552,8 @@ impl World {
                         }
                     }
                     session.active_walk_transition = None;
+                    session.player_state.bike_runtime.action_in_progress = false;
+                    flush_queued_acro_runtime_updates(&mut session.player_state);
                 } else if cfg!(debug_assertions) {
                     trace!(
                         connection_id = session.connection_id,
@@ -1416,39 +1420,7 @@ fn update_bike_runtime_after_step(player_state: &mut PlayerState, direction: Dir
                 .bike_runtime
                 .acro_runtime
                 .apply_step(player_state.facing, direction);
-
-            player_state.bike_runtime.acro_state =
-                match player_state.bike_runtime.acro_runtime.state {
-                    AcroState::Normal
-                    | AcroState::Turning
-                    | AcroState::SideJump
-                    | AcroState::TurnJump => AcroBikeSubstate::None,
-                    AcroState::WheelieStanding => AcroBikeSubstate::StandingWheelie,
-                    AcroState::BunnyHop => AcroBikeSubstate::BunnyHop,
-                    AcroState::WheelieMoving => AcroBikeSubstate::MovingWheelie,
-                };
-            player_state.bike_runtime.last_transition = match action {
-                AcroAnimationAction::None => BikeTransitionType::None,
-                AcroAnimationAction::FaceDirection => BikeTransitionType::None,
-                AcroAnimationAction::TurnDirection => BikeTransitionType::None,
-                AcroAnimationAction::Moving => BikeTransitionType::None,
-                AcroAnimationAction::NormalToWheelie => BikeTransitionType::NormalToWheelie,
-                AcroAnimationAction::WheelieToNormal => BikeTransitionType::WheelieToNormal,
-                AcroAnimationAction::WheelieIdle => BikeTransitionType::WheelieIdle,
-                AcroAnimationAction::WheelieHoppingStanding => {
-                    BikeTransitionType::WheelieHoppingStanding
-                }
-                AcroAnimationAction::WheelieHoppingMoving => {
-                    BikeTransitionType::WheelieHoppingMoving
-                }
-                AcroAnimationAction::SideJump => BikeTransitionType::SideJump,
-                AcroAnimationAction::TurnJump => BikeTransitionType::TurnJump,
-                AcroAnimationAction::WheelieMoving => BikeTransitionType::WheelieMoving,
-                AcroAnimationAction::WheelieRisingMoving => BikeTransitionType::WheelieRisingMoving,
-                AcroAnimationAction::WheelieLoweringMoving => {
-                    BikeTransitionType::WheelieLoweringMoving
-                }
-            };
+            apply_acro_runtime_outcome(player_state, Some(action));
         }
     }
 }
@@ -1468,34 +1440,70 @@ fn update_bike_runtime_per_tick(
         .acro_runtime
         .set_held_input(held_direction, holding_b);
     player_state.bike_runtime.acro_runtime.advance_tick();
-    player_state.bike_runtime.acro_state = match player_state.bike_runtime.acro_runtime.state {
+    let pending_action = player_state.bike_runtime.acro_runtime.pending_action();
+    apply_acro_runtime_outcome(player_state, pending_action);
+}
+
+fn acro_substate_from_runtime(state: AcroState) -> AcroBikeSubstate {
+    match state {
         AcroState::Normal | AcroState::Turning | AcroState::SideJump | AcroState::TurnJump => {
             AcroBikeSubstate::None
         }
         AcroState::WheelieStanding => AcroBikeSubstate::StandingWheelie,
         AcroState::BunnyHop => AcroBikeSubstate::BunnyHop,
         AcroState::WheelieMoving => AcroBikeSubstate::MovingWheelie,
-    };
-    if let Some(action) = player_state.bike_runtime.acro_runtime.pending_action() {
-        player_state.bike_runtime.last_transition = match action {
-            AcroAnimationAction::None
-            | AcroAnimationAction::FaceDirection
-            | AcroAnimationAction::TurnDirection
-            | AcroAnimationAction::Moving => BikeTransitionType::None,
-            AcroAnimationAction::NormalToWheelie => BikeTransitionType::NormalToWheelie,
-            AcroAnimationAction::WheelieToNormal => BikeTransitionType::WheelieToNormal,
-            AcroAnimationAction::WheelieIdle => BikeTransitionType::WheelieIdle,
-            AcroAnimationAction::WheelieHoppingStanding => {
-                BikeTransitionType::WheelieHoppingStanding
-            }
-            AcroAnimationAction::WheelieHoppingMoving => BikeTransitionType::WheelieHoppingMoving,
-            AcroAnimationAction::SideJump => BikeTransitionType::SideJump,
-            AcroAnimationAction::TurnJump => BikeTransitionType::TurnJump,
-            AcroAnimationAction::WheelieMoving => BikeTransitionType::WheelieMoving,
-            AcroAnimationAction::WheelieRisingMoving => BikeTransitionType::WheelieRisingMoving,
-            AcroAnimationAction::WheelieLoweringMoving => BikeTransitionType::WheelieLoweringMoving,
-        };
     }
+}
+
+fn bike_transition_from_action(action: AcroAnimationAction) -> BikeTransitionType {
+    match action {
+        AcroAnimationAction::None
+        | AcroAnimationAction::FaceDirection
+        | AcroAnimationAction::TurnDirection
+        | AcroAnimationAction::Moving => BikeTransitionType::None,
+        AcroAnimationAction::NormalToWheelie => BikeTransitionType::NormalToWheelie,
+        AcroAnimationAction::WheelieToNormal => BikeTransitionType::WheelieToNormal,
+        AcroAnimationAction::WheelieIdle => BikeTransitionType::WheelieIdle,
+        AcroAnimationAction::WheelieHoppingStanding => BikeTransitionType::WheelieHoppingStanding,
+        AcroAnimationAction::WheelieHoppingMoving => BikeTransitionType::WheelieHoppingMoving,
+        AcroAnimationAction::SideJump => BikeTransitionType::SideJump,
+        AcroAnimationAction::TurnJump => BikeTransitionType::TurnJump,
+        AcroAnimationAction::WheelieMoving => BikeTransitionType::WheelieMoving,
+        AcroAnimationAction::WheelieRisingMoving => BikeTransitionType::WheelieRisingMoving,
+        AcroAnimationAction::WheelieLoweringMoving => BikeTransitionType::WheelieLoweringMoving,
+    }
+}
+
+fn apply_acro_runtime_outcome(
+    player_state: &mut PlayerState,
+    action: Option<AcroAnimationAction>,
+) {
+    let logical_substate = acro_substate_from_runtime(player_state.bike_runtime.acro_runtime.state);
+    let logical_transition = action.map(bike_transition_from_action);
+    if player_state.bike_runtime.action_in_progress {
+        player_state.bike_runtime.queued_acro_state = Some(logical_substate);
+        if let Some(transition) = logical_transition.filter(|t| *t != BikeTransitionType::None) {
+            player_state.bike_runtime.queued_transition = Some(transition);
+        }
+        return;
+    }
+
+    player_state.bike_runtime.acro_state = logical_substate;
+    if let Some(queued_state) = player_state.bike_runtime.queued_acro_state.take() {
+        player_state.bike_runtime.acro_state = queued_state;
+    }
+    if let Some(queued_transition) = player_state.bike_runtime.queued_transition.take() {
+        player_state.bike_runtime.last_transition = queued_transition;
+    } else if let Some(transition) = logical_transition {
+        player_state.bike_runtime.last_transition = transition;
+    }
+}
+
+fn flush_queued_acro_runtime_updates(player_state: &mut PlayerState) {
+    if !matches!(player_state.traversal_state, TraversalState::AcroBike) {
+        return;
+    }
+    apply_acro_runtime_outcome(player_state, None);
 }
 
 fn avatar_for_player_id(player_id: &str) -> PlayerAvatar {
@@ -3214,7 +3222,7 @@ mod tests {
     }
 
     #[test]
-    fn releasing_b_while_in_bunny_hop_latches_until_landing_then_exits_wheelie_flow() {
+    fn releasing_b_while_in_bunny_hop_updates_logical_state_immediately() {
         let mut player = test_player_state();
         player.traversal_state = TraversalState::AcroBike;
         player.bike_runtime.acro_runtime.state = AcroState::BunnyHop;
@@ -3225,24 +3233,44 @@ mod tests {
 
         update_bike_runtime_per_tick(&mut player, None, 0);
         assert!(!player.bike_runtime.acro_runtime.holding_b);
-        assert_eq!(player.bike_runtime.acro_runtime.state, AcroState::BunnyHop);
-        assert_ne!(
-            player.bike_runtime.last_transition,
-            BikeTransitionType::WheelieToNormal
-        );
-
-        for _ in 0..16 {
-            update_bike_runtime_per_tick(&mut player, None, 0);
-            if player.bike_runtime.acro_runtime.state == AcroState::Normal {
-                break;
-            }
-        }
-
         assert_eq!(player.bike_runtime.acro_runtime.state, AcroState::Normal);
         assert_eq!(
             player.bike_runtime.last_transition,
             BikeTransitionType::WheelieToNormal
         );
+    }
+
+    #[test]
+    fn releasing_b_in_bunny_hop_queues_transition_while_action_is_in_progress() {
+        let mut player = test_player_state();
+        player.traversal_state = TraversalState::AcroBike;
+        player.bike_runtime.acro_runtime.state = AcroState::BunnyHop;
+        player.bike_runtime.acro_state = AcroBikeSubstate::BunnyHop;
+        player.bike_runtime.last_transition = BikeTransitionType::WheelieHoppingMoving;
+        player.bike_runtime.action_in_progress = true;
+
+        update_bike_runtime_per_tick(&mut player, None, 0);
+
+        assert_eq!(player.bike_runtime.acro_runtime.state, AcroState::Normal);
+        assert_eq!(player.bike_runtime.acro_state, AcroBikeSubstate::BunnyHop);
+        assert_eq!(
+            player.bike_runtime.last_transition,
+            BikeTransitionType::WheelieHoppingMoving
+        );
+        assert_eq!(
+            player.bike_runtime.queued_transition,
+            Some(BikeTransitionType::WheelieToNormal)
+        );
+
+        player.bike_runtime.action_in_progress = false;
+        flush_queued_acro_runtime_updates(&mut player);
+
+        assert_eq!(player.bike_runtime.acro_state, AcroBikeSubstate::None);
+        assert_eq!(
+            player.bike_runtime.last_transition,
+            BikeTransitionType::WheelieToNormal
+        );
+        assert_eq!(player.bike_runtime.queued_transition, None);
     }
 
     #[test]

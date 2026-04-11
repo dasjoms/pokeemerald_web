@@ -117,7 +117,6 @@ pub struct AcroRuntime {
     pub on_bumpy_slope: bool,
     bunny_hop_cycle_tick: u8,
     hop_landed_this_tick: bool,
-    pending_bunny_hop_release: bool,
     pending_action: Option<AcroAnimationAction>,
     pending_jump_intent: Option<PendingJumpIntent>,
 }
@@ -145,7 +144,6 @@ impl Default for AcroRuntime {
             on_bumpy_slope: false,
             bunny_hop_cycle_tick: 0,
             hop_landed_this_tick: false,
-            pending_bunny_hop_release: false,
             pending_action: None,
             pending_jump_intent: None,
         }
@@ -452,20 +450,7 @@ impl AcroRuntime {
         requested_direction: Option<Direction>,
         facing_direction: Direction,
     ) -> AcroAnimationAction {
-        if self.holding_b {
-            // Deterministic rule: re-pressing B before landing cancels any pending
-            // release, so bunny-hop continues uninterrupted.
-            self.pending_bunny_hop_release = false;
-        } else {
-            self.pending_bunny_hop_release = true;
-        }
-
-        if self.pending_bunny_hop_release {
-            if !self.hop_landed_this_tick {
-                return self.bunny_hop_action_for_input(requested_direction, facing_direction);
-            }
-
-            self.pending_bunny_hop_release = false;
+        if !self.holding_b {
             self.bike_frame_counter = 0;
             if self.on_bumpy_slope {
                 self.state = AcroState::WheelieStanding;
@@ -562,7 +547,6 @@ impl AcroRuntime {
     fn advance_bunny_hop_phase(&mut self) {
         if !matches!(self.state, AcroState::BunnyHop) {
             self.bunny_hop_cycle_tick = 0;
-            self.pending_bunny_hop_release = false;
             return;
         }
 
@@ -993,15 +977,6 @@ mod tests {
 
         runtime.set_held_input(None, false);
         runtime.advance_tick();
-        assert_eq!(runtime.state, AcroState::BunnyHop);
-        assert_eq!(
-            runtime.take_pending_action(),
-            Some(AcroAnimationAction::WheelieHoppingStanding)
-        );
-
-        runtime.bunny_hop_cycle_tick = BUNNY_HOP_CYCLE_TICKS - 1;
-        runtime.set_held_input(None, false);
-        runtime.advance_tick();
         assert_eq!(runtime.state, AcroState::Normal);
         assert_eq!(
             runtime.take_pending_action(),
@@ -1010,7 +985,7 @@ mod tests {
     }
 
     #[test]
-    fn bunny_hop_repress_before_landing_clears_pending_release_latch() {
+    fn bunny_hop_release_and_repress_transitions_via_normal_state() {
         let mut runtime = AcroRuntime {
             state: AcroState::BunnyHop,
             bunny_hop_cycle_tick: BUNNY_HOP_CYCLE_TICKS - 2,
@@ -1019,18 +994,18 @@ mod tests {
 
         runtime.set_held_input(None, false);
         runtime.advance_tick();
-        assert_eq!(runtime.state, AcroState::BunnyHop);
+        assert_eq!(runtime.state, AcroState::Normal);
         assert_eq!(
             runtime.take_pending_action(),
-            Some(AcroAnimationAction::WheelieHoppingStanding)
+            Some(AcroAnimationAction::WheelieToNormal)
         );
 
         runtime.set_held_input(None, true);
         runtime.advance_tick();
-        assert_eq!(runtime.state, AcroState::BunnyHop);
+        assert_eq!(runtime.state, AcroState::WheelieStanding);
         assert_eq!(
             runtime.take_pending_action(),
-            Some(AcroAnimationAction::WheelieHoppingStanding)
+            Some(AcroAnimationAction::NormalToWheelie)
         );
     }
 
