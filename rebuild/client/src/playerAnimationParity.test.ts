@@ -183,10 +183,58 @@ describe('player animation parity fixtures', () => {
 
     controller.tick(1000 / 60);
     controller.tick(1000 / 60);
+    expect(controller.getDebugState().frameIndex).toBe(400);
+
+    controller.tick(1000 / 60);
     expect(controller.getDebugState().frameIndex).toBe(401);
 
     controller.tick((1000 / 60) * 16);
     expect(controller.getDebugState().frameIndex).toBe(401);
+  });
+
+  it.each([
+    {
+      label: 'acro_pop_wheelie_stationary',
+      transition: BikeTransitionType.WHEELIE_POP,
+      expectedFrames: [400, 400, 401, 401, 401],
+    },
+    {
+      label: 'acro_end_wheelie_stationary',
+      transition: BikeTransitionType.WHEELIE_END,
+      expectedFrames: [410, 410, 411, 411, 411],
+    },
+  ])(
+    'keeps first frame dwell when ticking before rendering for $label one-shot actions',
+    ({ transition, expectedFrames }) => {
+      const controller = new PlayerAnimationController(makeMockAssets());
+      controller.setTraversalState({
+        traversalState: TraversalState.ACRO_BIKE,
+        bikeTransition: transition,
+      });
+      controller.stopMoving(Direction.RIGHT);
+      controller.applyPendingModeChanges();
+
+      const observedFrames: number[] = [];
+      for (let tick = 0; tick < expectedFrames.length; tick += 1) {
+        controller.tick(1000 / 60);
+        observedFrames.push(controller.getDebugState().frameIndex);
+      }
+
+      expect(observedFrames).toEqual(expectedFrames);
+    },
+  );
+
+  it('preserves looping walk cadence when ticking before rendering', () => {
+    const controller = new PlayerAnimationController(makeMockAssets());
+    controller.startWalkStep(Direction.RIGHT);
+
+    const observedFrames: number[] = [];
+    for (let tick = 0; tick < 6; tick += 1) {
+      controller.tick(1000 / 60);
+      observedFrames.push(controller.getDebugState().frameIndex);
+    }
+
+    expect(observedFrames).toEqual([230, 231, 231, 232, 232, 233]);
   });
 });
 
@@ -374,6 +422,44 @@ function makeMockAssets(): PlayerAnimationAssets {
               frames: [
                 { duration: 2, frame: 400, h_flip: false },
                 { duration: 2, frame: 401, h_flip: false },
+              ],
+            },
+          },
+          acro_end_wheelie_stationary: {
+            south: {
+              action_id: 'acro_end_wheelie_stationary',
+              anim_cmd_symbol: 'anim_acro_end_wheelie_stationary_south',
+              loop_mode: 'end_hold',
+              frames: [
+                { duration: 2, frame: 412, h_flip: false },
+                { duration: 2, frame: 413, h_flip: false },
+              ],
+            },
+            north: {
+              action_id: 'acro_end_wheelie_stationary',
+              anim_cmd_symbol: 'anim_acro_end_wheelie_stationary_north',
+              loop_mode: 'end_hold',
+              frames: [
+                { duration: 2, frame: 414, h_flip: false },
+                { duration: 2, frame: 415, h_flip: false },
+              ],
+            },
+            west: {
+              action_id: 'acro_end_wheelie_stationary',
+              anim_cmd_symbol: 'anim_acro_end_wheelie_stationary_west',
+              loop_mode: 'end_hold',
+              frames: [
+                { duration: 2, frame: 416, h_flip: false },
+                { duration: 2, frame: 417, h_flip: false },
+              ],
+            },
+            east: {
+              action_id: 'acro_end_wheelie_stationary',
+              anim_cmd_symbol: 'anim_acro_end_wheelie_stationary_east',
+              loop_mode: 'end_hold',
+              frames: [
+                { duration: 2, frame: 410, h_flip: false },
+                { duration: 2, frame: 411, h_flip: false },
               ],
             },
           },

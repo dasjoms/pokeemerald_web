@@ -336,6 +336,7 @@ export class PlayerAnimationController {
   private latchedTransition: BikeTransitionType | null = null;
   private frameCommandIndex = 0;
   private ticksUntilAdvance = 0;
+  private skipNextTickDecrement = false;
   private tickAccumulatorMs = 0;
   private stridePhase: 0 | 1 = 0;
 
@@ -473,6 +474,12 @@ export class PlayerAnimationController {
   }
 
   private stepOneTick(): void {
+    if (this.skipNextTickDecrement) {
+      this.skipNextTickDecrement = false;
+      this.maybeReleaseActionLatch();
+      return;
+    }
+
     this.ticksUntilAdvance -= 1;
     if (this.ticksUntilAdvance > 0) {
       return;
@@ -587,6 +594,7 @@ export class PlayerAnimationController {
     this.activeActionId = nextActionId;
     this.frameCommandIndex = 0;
     this.resetFrameTimer();
+    this.skipNextTickDecrement = this.currentDirectionalAnimation().loop_mode === 'end_hold';
   }
 
   private resolveBikeSpeedActionId(): string {
