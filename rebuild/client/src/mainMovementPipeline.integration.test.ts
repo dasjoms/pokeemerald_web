@@ -356,17 +356,70 @@ describe("main movement pipeline integration", () => {
       );
     }
 
-    playerAnimation.tick(1000 / 60);
+    let settledToWheelieIdle = false;
+    for (let tick = 0; tick < 3; tick += 1) {
+      playerAnimation.tick(1000 / 60);
+      playerAnimation.setTraversalState({
+        traversalState: TraversalState.ACRO_BIKE,
+        acroSubstate: AcroBikeSubstate.STANDING_WHEELIE,
+        bikeTransition: BikeTransitionType.NONE,
+      });
+      playerAnimation.stopMoving(direction);
+      playerAnimation.applyPendingModeChanges();
+      if (playerAnimation.getDebugState().animId === "anim_acro_wheelie_face_east") {
+        settledToWheelieIdle = true;
+        break;
+      }
+    }
+    expect(settledToWheelieIdle).toBe(true);
+  });
+
+  it("does not let wheelie-idle updates interrupt a latched pop-wheelie one-shot", () => {
+    const playerAnimation = new PlayerAnimationController(makeMockAssets());
+    const direction = Direction.RIGHT;
+    const popWheelieDurationTicks = 6;
+
     playerAnimation.setTraversalState({
       traversalState: TraversalState.ACRO_BIKE,
       acroSubstate: AcroBikeSubstate.STANDING_WHEELIE,
-      bikeTransition: BikeTransitionType.NONE,
+      bikeTransition: BikeTransitionType.NORMAL_TO_WHEELIE,
     });
     playerAnimation.stopMoving(direction);
     playerAnimation.applyPendingModeChanges();
     expect(playerAnimation.getDebugState().animId).toBe(
-      "anim_acro_wheelie_face_east",
+      "anim_acro_pop_wheelie_stationary_east",
     );
+
+    for (let tick = 0; tick < popWheelieDurationTicks - 1; tick += 1) {
+      playerAnimation.setTraversalState({
+        traversalState: TraversalState.ACRO_BIKE,
+        acroSubstate: AcroBikeSubstate.STANDING_WHEELIE,
+        bikeTransition: BikeTransitionType.WHEELIE_IDLE,
+      });
+      playerAnimation.stopMoving(direction);
+      playerAnimation.applyPendingModeChanges();
+      playerAnimation.tick(1000 / 60);
+      expect(playerAnimation.getDebugState().animId).toBe(
+        "anim_acro_pop_wheelie_stationary_east",
+      );
+    }
+
+    let settledToWheelieIdle = false;
+    for (let tick = 0; tick < 3; tick += 1) {
+      playerAnimation.tick(1000 / 60);
+      playerAnimation.setTraversalState({
+        traversalState: TraversalState.ACRO_BIKE,
+        acroSubstate: AcroBikeSubstate.STANDING_WHEELIE,
+        bikeTransition: BikeTransitionType.WHEELIE_IDLE,
+      });
+      playerAnimation.stopMoving(direction);
+      playerAnimation.applyPendingModeChanges();
+      if (playerAnimation.getDebugState().animId === "anim_acro_wheelie_face_east") {
+        settledToWheelieIdle = true;
+        break;
+      }
+    }
+    expect(settledToWheelieIdle).toBe(true);
   });
 
   it("keeps bunny-hop one-shot playback latched without looping during the 16-tick low-jump arc", () => {
