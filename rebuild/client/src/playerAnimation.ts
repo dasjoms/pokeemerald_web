@@ -334,6 +334,7 @@ export class PlayerAnimationController {
   private pendingMode: PlayerAnimationMode | null = null;
   private activeActionId = 'face';
   private latchedTransition: BikeTransitionType | null = null;
+  private acroHopArcAirborne = false;
   private frameCommandIndex = 0;
   private ticksUntilAdvance = 0;
   private skipNextTickDecrement = false;
@@ -362,12 +363,14 @@ export class PlayerAnimationController {
     machSpeedStage?: number;
     acroSubstate?: AcroBikeSubstate;
     bikeTransition?: BikeTransitionType;
+    acroHopArcAirborne?: boolean;
   }): void {
     const previousTraversalState = this.traversalState;
     this.traversalState = state.traversalState;
     this.machSpeedStage = state.machSpeedStage ?? 0;
     this.acroSubstate = state.acroSubstate ?? AcroBikeSubstate.NONE;
     this.bikeTransition = state.bikeTransition ?? BikeTransitionType.NONE;
+    this.acroHopArcAirborne = state.acroHopArcAirborne ?? false;
 
     if (
       previousTraversalState !== this.traversalState ||
@@ -390,6 +393,14 @@ export class PlayerAnimationController {
       this.latchedTransition = this.bikeTransition;
     }
 
+    this.updateResolvedAction();
+  }
+
+  setAcroHopArcAirborne(airborne: boolean): void {
+    if (this.acroHopArcAirborne === airborne) {
+      return;
+    }
+    this.acroHopArcAirborne = airborne;
     this.updateResolvedAction();
   }
 
@@ -622,6 +633,9 @@ export class PlayerAnimationController {
       case BikeTransitionType.WHEELIE_END:
       case BikeTransitionType.WHEELIE_TO_NORMAL:
       case BikeTransitionType.EXIT_WHEELIE:
+        if (this.acroHopArcAirborne) {
+          return 'acro_bunny_hop_back_wheel';
+        }
         return 'acro_end_wheelie_stationary';
       case BikeTransitionType.HOP:
       case BikeTransitionType.HOP_STANDING:
@@ -665,6 +679,9 @@ export class PlayerAnimationController {
       case BikeTransitionType.WHEELIE_END:
       case BikeTransitionType.WHEELIE_TO_NORMAL:
       case BikeTransitionType.WHEELIE_LOWERING_MOVING:
+        if (this.acroHopArcAirborne) {
+          return 'acro_bunny_hop_back_wheel';
+        }
         return 'acro_end_wheelie_moving';
       case BikeTransitionType.WHEELIE_MOVING:
         return 'acro_moving_wheelie';
