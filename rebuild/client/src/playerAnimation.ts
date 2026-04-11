@@ -398,7 +398,7 @@ export class PlayerAnimationController {
 
     if (
       previousTraversalState !== this.traversalState ||
-      ACRO_LATCH_INTERRUPT_TRANSITIONS.has(this.bikeTransition)
+      this.shouldInterruptActionLatch(this.bikeTransition)
     ) {
       this.latchedTransition = null;
       this.pendingPostHopTransition = null;
@@ -408,8 +408,7 @@ export class PlayerAnimationController {
       this.traversalState === TraversalState.ACRO_BIKE &&
       this.latchedTransition !== null &&
       this.bikeTransition !== BikeTransitionType.NONE &&
-      classifyAcroTransitionFamily(this.latchedTransition) !==
-        classifyAcroTransitionFamily(this.bikeTransition)
+      this.shouldClearLatchForTransitionFamilyChange(this.bikeTransition)
     ) {
       this.latchedTransition = null;
     }
@@ -609,6 +608,31 @@ export class PlayerAnimationController {
       this.traversalState === TraversalState.ACRO_BIKE &&
       ACRO_TRANSIENT_TRANSITIONS.has(this.bikeTransition)
     );
+  }
+
+  private shouldInterruptActionLatch(nextTransition: BikeTransitionType): boolean {
+    if (!ACRO_LATCH_INTERRUPT_TRANSITIONS.has(nextTransition)) {
+      return false;
+    }
+
+    if (nextTransition !== BikeTransitionType.WHEELIE_IDLE) {
+      return true;
+    }
+
+    return classifyAcroTransitionFamily(this.latchedTransition ?? BikeTransitionType.NONE) !==
+      'wheelie_pop';
+  }
+
+  private shouldClearLatchForTransitionFamilyChange(nextTransition: BikeTransitionType): boolean {
+    const latchedFamily = classifyAcroTransitionFamily(
+      this.latchedTransition ?? BikeTransitionType.NONE,
+    );
+    const nextFamily = classifyAcroTransitionFamily(nextTransition);
+    if (latchedFamily === nextFamily) {
+      return false;
+    }
+
+    return !(latchedFamily === 'wheelie_pop' && nextFamily === 'wheelie_idle');
   }
 
   private maybeReleaseActionLatch(): void {
