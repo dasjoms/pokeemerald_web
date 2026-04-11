@@ -625,6 +625,43 @@ describe("main movement pipeline integration", () => {
     expect(fakeLayer.removedCount).toBe(0);
   });
 
+  it("keeps stationary hop arc in-flight on mid-hop B release until landing", () => {
+    const movementRuntime = new PlayerMovementActionRuntime();
+
+    movementRuntime.setAuthoritativeInput({
+      traversalState: TraversalState.ACRO_BIKE,
+      acroSubstate: AcroBikeSubstate.BUNNY_HOP,
+      bikeTransition: BikeTransitionType.HOP_STANDING,
+      bunnyHopCycleTick: 4,
+    });
+    expect(movementRuntime.getVisualState()).toEqual({
+      yOffsetPx: -5,
+      activeAction: "acro_wheelie_hop_face",
+    });
+
+    movementRuntime.setAuthoritativeInput({
+      traversalState: TraversalState.ACRO_BIKE,
+      acroSubstate: AcroBikeSubstate.STANDING_WHEELIE,
+      bikeTransition: BikeTransitionType.WHEELIE_TO_NORMAL,
+    });
+    expect(movementRuntime.getVisualState()).toEqual({
+      yOffsetPx: -5,
+      activeAction: "acro_wheelie_hop_face",
+    });
+
+    movementRuntime.tickTicks(8);
+    expect(movementRuntime.getVisualState()).toEqual({
+      yOffsetPx: -2,
+      activeAction: "acro_wheelie_hop_face",
+    });
+
+    movementRuntime.tickTicks(1);
+    expect(movementRuntime.getVisualState()).toEqual({
+      yOffsetPx: 0,
+      activeAction: "none",
+    });
+  });
+
   it("keeps moving bunny-hop animation when authoritative transition clears to NONE mid-hop", () => {
     const playerAnimation = new PlayerAnimationController(makeMockAssets());
 
