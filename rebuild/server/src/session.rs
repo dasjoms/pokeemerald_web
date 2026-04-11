@@ -182,6 +182,7 @@ pub struct Session {
     pub next_expected_input_seq: u32,
     pub next_expected_held_input_seq: u32,
     pub active_walk_transition: Option<ActiveWalkTransition>,
+    pub avatar_action_lock: Option<AvatarActionLock>,
     pub held_dpad: u8,
     resolved_held_direction: Option<Direction>,
     pub held_buttons: u8,
@@ -209,6 +210,7 @@ impl Session {
             next_expected_input_seq: 0,
             next_expected_held_input_seq: 0,
             active_walk_transition: None,
+            avatar_action_lock: None,
             held_dpad: 0,
             resolved_held_direction: None,
             held_buttons: 0,
@@ -352,12 +354,52 @@ impl Session {
         self.walk_inputs.pop_front()
     }
 
+    pub fn avatar_action_lock_active(&self) -> bool {
+        self.avatar_action_lock
+            .as_ref()
+            .is_some_and(|lock| lock.remaining_ticks > 0)
+    }
+
+    pub fn begin_avatar_action_lock(&mut self, lock_type: AvatarActionLockType, ticks: u8) {
+        if ticks == 0 {
+            self.avatar_action_lock = None;
+            return;
+        }
+        self.avatar_action_lock = Some(AvatarActionLock {
+            lock_type,
+            remaining_ticks: ticks,
+        });
+    }
+
+    pub fn advance_avatar_action_lock_tick(&mut self) {
+        let Some(lock) = self.avatar_action_lock.as_mut() else {
+            return;
+        };
+        if lock.remaining_ticks > 0 {
+            lock.remaining_ticks -= 1;
+        }
+        if lock.remaining_ticks == 0 {
+            self.avatar_action_lock = None;
+        }
+    }
+
     pub fn send(
         &self,
         message: ServerMessage,
     ) -> Result<(), mpsc::error::SendError<ServerMessage>> {
         self.outbound.send(message)
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AvatarActionLockType {
+    BikeTransition(BikeTransitionType),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AvatarActionLock {
+    pub lock_type: AvatarActionLockType,
+    pub remaining_ticks: u8,
 }
 
 #[derive(Debug)]
