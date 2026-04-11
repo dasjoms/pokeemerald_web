@@ -123,6 +123,7 @@ pub struct ActiveWalkTransition {
     pub direction: Direction,
     pub movement_mode: MovementMode,
     pub speed: StepSpeed,
+    pending_hop_landing_effect: bool,
     sample_accumulator_ms: f32,
     elapsed_samples: u16,
 }
@@ -151,6 +152,7 @@ impl ActiveWalkTransition {
             direction,
             movement_mode,
             speed,
+            pending_hop_landing_effect: false,
             sample_accumulator_ms: 0.0,
             elapsed_samples: 0,
         }
@@ -170,6 +172,16 @@ impl ActiveWalkTransition {
 
     pub fn is_complete(&self) -> bool {
         self.elapsed_samples >= self.speed.samples_per_tile()
+    }
+
+    pub fn latch_hop_landing_effect(&mut self) {
+        self.pending_hop_landing_effect = true;
+    }
+
+    pub fn consume_hop_landing_effect(&mut self) -> bool {
+        let pending = self.pending_hop_landing_effect;
+        self.pending_hop_landing_effect = false;
+        pending
     }
 }
 
