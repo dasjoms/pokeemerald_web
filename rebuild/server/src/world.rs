@@ -444,7 +444,11 @@ impl World {
             let previous_bike_transition = session.player_state.bike_runtime.last_transition;
             let mut completed_walk_this_tick = false;
             let mut completed_walk_hop_landing_effect = false;
-            if should_clear_bike_last_transition(&session.player_state) {
+            if !session
+                .player_state
+                .bike_runtime
+                .preserve_transition_until_walk_result
+            {
                 session.player_state.bike_runtime.last_transition = BikeTransitionType::None;
             }
             let on_bumpy_slope = self.maps.get(&session.player_state.map_id).and_then(|map| {
@@ -685,7 +689,11 @@ impl World {
                     continue;
                 };
 
-                if should_clear_bike_last_transition(&session.player_state) {
+                if !session
+                    .player_state
+                    .bike_runtime
+                    .preserve_transition_until_walk_result
+                {
                     session.player_state.bike_runtime.last_transition = BikeTransitionType::None;
                 }
 
@@ -1228,18 +1236,6 @@ fn bike_acro_substate_for_traversal(player_state: &PlayerState) -> Option<AcroBi
     } else {
         None
     }
-}
-
-fn should_clear_bike_last_transition(player_state: &PlayerState) -> bool {
-    if player_state
-        .bike_runtime
-        .preserve_transition_until_walk_result
-    {
-        return false;
-    }
-
-    !(player_state.bike_runtime.queued_transition == Some(BikeTransitionType::WheelieToNormal)
-        && player_state.bike_runtime.queued_transition_delay_ticks > 0)
 }
 
 fn source_tile_behavior(map: &MapData, player_state: &PlayerState) -> Option<u8> {
@@ -3870,59 +3866,6 @@ mod tests {
         assert_stationary_release_emits_setdown_at_landing_tick(
             &mut player,
             ACRO_STATIONARY_LOW_HOP_LANDING_TICK,
-        );
-    }
-
-    #[test]
-    fn stationary_bunny_hop_release_keeps_non_neutral_transition_latched_until_setdown_boundary() {
-        let mut player = stationary_bunny_hop_player_at_cycle_tick(3);
-        player.bike_runtime.last_transition = BikeTransitionType::WheelieHoppingStanding;
-        update_bike_runtime_per_tick(&mut player, None, 0);
-
-        let defer_ticks = player.bike_runtime.queued_transition_delay_ticks;
-        assert!(defer_ticks > 0);
-        let latched_hop_transition = player.bike_runtime.last_transition;
-        assert_eq!(player.bike_runtime.acro_state, AcroBikeSubstate::None);
-        assert!(!should_clear_bike_last_transition(&player));
-        if should_clear_bike_last_transition(&player) {
-            player.bike_runtime.last_transition = BikeTransitionType::None;
-        }
-        assert_eq!(
-            player.bike_runtime.last_transition,
-            latched_hop_transition,
-            "defer ticks must keep a non-neutral transition latched before setdown releases"
-        );
-        let mut wheelie_to_normal_emissions = 0_u8;
-        let mut ticks_remaining = defer_ticks;
-        while ticks_remaining > 0 {
-            if should_clear_bike_last_transition(&player) {
-                player.bike_runtime.last_transition = BikeTransitionType::None;
-            }
-            update_bike_runtime_per_tick(&mut player, None, 0);
-            ticks_remaining -= 1;
-
-            if player.bike_runtime.queued_transition_delay_ticks == 0 {
-                assert_eq!(
-                    player.bike_runtime.last_transition,
-                    BikeTransitionType::WheelieToNormal
-                );
-                wheelie_to_normal_emissions += 1;
-                assert_eq!(player.bike_runtime.queued_transition, None);
-            }
-        }
-        assert_eq!(player.bike_runtime.queued_transition_delay_ticks, 0);
-
-        if should_clear_bike_last_transition(&player) {
-            player.bike_runtime.last_transition = BikeTransitionType::None;
-        }
-        update_bike_runtime_per_tick(&mut player, None, 0);
-        if player.bike_runtime.last_transition == BikeTransitionType::WheelieToNormal {
-            wheelie_to_normal_emissions += 1;
-        }
-
-        assert_eq!(
-            wheelie_to_normal_emissions, 1,
-            "setdown transition must emit exactly once when defer window ends"
         );
     }
 
