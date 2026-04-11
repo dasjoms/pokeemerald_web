@@ -6,6 +6,10 @@ const ACRO_JUMP_TIMER_LIST: [u8; 2] = [4, TIMER_END];
 const JUMP_INTENT_TTL_TICKS: u8 = 2;
 const BUNNY_HOP_CYCLE_TICKS: u8 = 16;
 
+pub const fn bunny_hop_cycle_ticks() -> u8 {
+    BUNNY_HOP_CYCLE_TICKS
+}
+
 const ABSS_A: u8 = 1 << 0;
 const ABSS_B: u8 = 1 << 1;
 const ABSS_SELECT: u8 = 1 << 2;

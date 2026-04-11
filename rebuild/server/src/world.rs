@@ -11,7 +11,7 @@ use tokio::sync::{mpsc, RwLock};
 use tracing::{error, trace};
 
 use crate::{
-    acro::{AcroAnimationAction, AcroState},
+    acro::{bunny_hop_cycle_ticks, AcroAnimationAction, AcroState},
     map_chunk::{serialize_world_snapshot_map_chunk, world_snapshot_map_chunk_hash},
     movement::{
         facing_delta, get_player_speed, is_biking_disallowed_by_player as movement_bike_gate,
@@ -442,6 +442,7 @@ impl World {
             let previous_bike_transition = session.player_state.bike_runtime.last_transition;
             let mut completed_walk_this_tick = false;
             let mut completed_walk_hop_landing_effect = false;
+            let mut completed_stationary_hop_landing_effect = false;
             if !session
                 .player_state
                 .bike_runtime
@@ -459,6 +460,27 @@ impl World {
                 .bike_runtime
                 .acro_runtime
                 .set_on_bumpy_slope(on_bumpy_slope);
+            if session
+                .player_state
+                .bike_runtime
+                .pending_stationary_hop_landing_effect
+            {
+                session.player_state.bike_runtime.stationary_hop_landing_ticks = session
+                    .player_state
+                    .bike_runtime
+                    .stationary_hop_landing_ticks
+                    .saturating_add(1);
+                if session.player_state.bike_runtime.stationary_hop_landing_ticks
+                    >= bunny_hop_cycle_ticks()
+                {
+                    completed_stationary_hop_landing_effect = true;
+                    session
+                        .player_state
+                        .bike_runtime
+                        .pending_stationary_hop_landing_effect = false;
+                    session.player_state.bike_runtime.stationary_hop_landing_ticks = 0;
+                }
+            }
             if let Some(active_walk) = session.active_walk_transition.as_mut() {
                 active_walk.advance(SERVER_TICK_MS);
                 if active_walk.is_complete() {
@@ -514,6 +536,16 @@ impl World {
             let current_acro_substate = bike_acro_substate_for_traversal(&session.player_state);
             let current_bike_transition = session.player_state.bike_runtime.last_transition;
             if current_bike_transition != previous_bike_transition {
+                if should_latch_stationary_hop_landing_effect_on_transition_start(
+                    current_bike_transition,
+                    session.active_walk_transition.is_some(),
+                ) {
+                    session
+                        .player_state
+                        .bike_runtime
+                        .pending_stationary_hop_landing_effect = true;
+                    session.player_state.bike_runtime.stationary_hop_landing_ticks = 0;
+                }
                 if let Some(lock_ticks) =
                     avatar_action_lock_ticks_for_bike_transition(current_bike_transition)
                 {
@@ -542,7 +574,8 @@ impl World {
                 .bike_runtime
                 .acro_runtime
                 .hop_landed_this_tick()
-                || completed_walk_hop_landing_effect;
+                || completed_walk_hop_landing_effect
+                || completed_stationary_hop_landing_effect;
             let (hop_landing_particle_class, hop_landing_tile) =
                 hop_landing_signal_for_authoritative_tile(
                     self.maps.get(hop_landing_map_id),
@@ -828,9 +861,14 @@ impl World {
 
                 if accepted {
                     update_bike_runtime_after_step(&mut session.player_state, movement_direction);
-                    if should_latch_hop_landing_effect_on_transition_start(
-                        session.player_state.bike_runtime.last_transition,
-                    ) {
+                    let should_latch_walk_hop_landing_effect =
+                        should_latch_hop_landing_effect_on_transition_start(
+                            session.player_state.bike_runtime.last_transition,
+                        ) || matches!(
+                            session.player_state.bike_runtime.acro_runtime.state,
+                            AcroState::BunnyHop
+                        );
+                    if should_latch_walk_hop_landing_effect {
                         if let Some(active_walk) = session.active_walk_transition.as_mut() {
                             active_walk.latch_hop_landing_effect();
                         }
@@ -1164,6 +1202,13 @@ fn should_latch_hop_landing_effect_on_transition_start(transition: BikeTransitio
         transition,
         BikeTransitionType::WheelieHoppingStanding | BikeTransitionType::WheelieHoppingMoving
     )
+}
+
+fn should_latch_stationary_hop_landing_effect_on_transition_start(
+    transition: BikeTransitionType,
+    has_active_walk_transition: bool,
+) -> bool {
+    !has_active_walk_transition && matches!(transition, BikeTransitionType::WheelieHoppingStanding)
 }
 
 fn hop_landing_signal_for_authoritative_tile(
@@ -2657,6 +2702,105 @@ mod tests {
         assert_eq!(
             landing_particle_count, 1,
             "the in-flight hop must emit exactly one landing particle at action completion"
+        );
+    }
+
+    #[tokio::test]
+    async fn releasing_b_during_stationary_hop_still_emits_one_landing_particle_at_action_completion(
+    ) {
+        let world = test_world_with_initial_map(MapData {
+            map_id: "MAP_RELEASE_DURING_STATIONARY_HOP_LANDING".to_string(),
+            width: 1,
+            height: 1,
+            metatile_id: vec![0; 1],
+            collision: vec![0; 1],
+            elevation: vec![0; 1],
+            behavior: vec![0; 1],
+            allow_cycling: true,
+            allow_running: true,
+            connections: vec![],
+        });
+        let (tx, mut rx) = mpsc::unbounded_channel();
+        let session = world
+            .create_session(tx)
+            .await
+            .expect("session should create");
+        world
+            .join_session(session.connection_id, "release-during-stationary-hop-landing")
+            .await
+            .expect("session should join");
+        let _ = drain_server_messages(&mut rx);
+
+        {
+            let mut sessions = world.sessions.write().await;
+            let session_state = sessions
+                .get_mut(&session.connection_id)
+                .expect("session should exist");
+            session_state.player_state.map_id =
+                "MAP_RELEASE_DURING_STATIONARY_HOP_LANDING".to_string();
+            session_state.player_state.tile_x = 0;
+            session_state.player_state.tile_y = 0;
+            session_state.player_state.facing = Direction::Right;
+            session_state.player_state.traversal_state = TraversalState::AcroBike;
+            session_state.player_state.preferred_bike_type = TraversalState::AcroBike;
+            session_state.player_state.bike_runtime.acro_runtime.state = AcroState::BunnyHop;
+            session_state.player_state.bike_runtime.acro_state = AcroBikeSubstate::BunnyHop;
+        }
+
+        world
+            .enqueue_held_input_state(
+                session.connection_id,
+                HeldInputState {
+                    input_seq: 0,
+                    held_dpad: 0,
+                    held_buttons: crate::protocol::HeldButtons::B as u8,
+                    client_time: 0,
+                },
+            )
+            .await
+            .expect("held input should enqueue");
+        world.tick().await;
+        let _ = drain_server_messages(&mut rx);
+
+        world
+            .enqueue_held_input_state(
+                session.connection_id,
+                HeldInputState {
+                    input_seq: 1,
+                    held_dpad: 0,
+                    held_buttons: 0,
+                    client_time: 1,
+                },
+            )
+            .await
+            .expect("held input should enqueue");
+
+        let mut saw_wheelie_to_normal = false;
+        let mut landing_particle_count = 0usize;
+        for _ in 0..20 {
+            world.tick().await;
+            for message in drain_server_messages(&mut rx) {
+                if let ServerMessage::BikeRuntimeDelta(delta) = message {
+                    if delta.bike_transition == Some(BikeTransitionType::WheelieToNormal) {
+                        saw_wheelie_to_normal = true;
+                    }
+                    if delta.hop_landing_particle_class.is_some() {
+                        landing_particle_count += 1;
+                    }
+                }
+            }
+            if saw_wheelie_to_normal && landing_particle_count == 1 {
+                break;
+            }
+        }
+
+        assert!(
+            saw_wheelie_to_normal,
+            "releasing B during the stationary hop must still trigger WheelieToNormal at runtime boundary"
+        );
+        assert_eq!(
+            landing_particle_count, 1,
+            "the in-flight stationary hop must emit exactly one landing particle at action completion"
         );
     }
 
