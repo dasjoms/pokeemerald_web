@@ -236,6 +236,39 @@ describe('player animation parity fixtures', () => {
 
     expect(observedFrames).toEqual([230, 231, 231, 232, 232, 233]);
   });
+
+  it.each([
+    {
+      label: 'acro_pop_wheelie_moving',
+      transition: BikeTransitionType.WHEELIE_POP,
+      expectedFirstFrame: 430,
+      expectedSecondFrame: 431,
+    },
+    {
+      label: 'acro_end_wheelie_moving',
+      transition: BikeTransitionType.WHEELIE_END,
+      expectedFirstFrame: 440,
+      expectedSecondFrame: 441,
+    },
+  ])(
+    'does not stride-remap 2-frame end_hold moving transition for $label on repeated accepted steps',
+    ({ transition, expectedFirstFrame, expectedSecondFrame }) => {
+      const controller = new PlayerAnimationController(makeMockAssets());
+      controller.setTraversalState({
+        traversalState: TraversalState.ACRO_BIKE,
+        bikeTransition: transition,
+      });
+
+      controller.startWalkStep(Direction.RIGHT);
+      expect(controller.getDebugState().frameIndex).toBe(expectedFirstFrame);
+
+      controller.tick((1000 / 60) * 3);
+      expect(controller.getDebugState().frameIndex).toBe(expectedSecondFrame);
+
+      controller.startWalkStep(Direction.RIGHT);
+      expect(controller.getDebugState().frameIndex).toBe(expectedSecondFrame);
+    },
+  );
 });
 
 function loadFixture(): ParityFixture {
@@ -343,6 +376,12 @@ function makeMockAssets(): PlayerAnimationAssets {
     330, 331, 332, 333,
     400, 401, 402, 403,
     404, 405, 406, 407,
+    410, 411, 412, 413,
+    414, 415, 416, 417,
+    430, 431, 432, 433,
+    434, 435, 436, 437,
+    440, 441, 442, 443,
+    444, 445, 446, 447,
   ]) {
     frameTextures.set(frame, {});
   }
@@ -460,6 +499,82 @@ function makeMockAssets(): PlayerAnimationAssets {
               frames: [
                 { duration: 2, frame: 410, h_flip: false },
                 { duration: 2, frame: 411, h_flip: false },
+              ],
+            },
+          },
+          acro_pop_wheelie_moving: {
+            south: {
+              action_id: 'acro_pop_wheelie_moving',
+              anim_cmd_symbol: 'anim_acro_pop_wheelie_moving_south',
+              loop_mode: 'end_hold',
+              frames: [
+                { duration: 2, frame: 432, h_flip: false },
+                { duration: 2, frame: 433, h_flip: false },
+              ],
+            },
+            north: {
+              action_id: 'acro_pop_wheelie_moving',
+              anim_cmd_symbol: 'anim_acro_pop_wheelie_moving_north',
+              loop_mode: 'end_hold',
+              frames: [
+                { duration: 2, frame: 434, h_flip: false },
+                { duration: 2, frame: 435, h_flip: false },
+              ],
+            },
+            west: {
+              action_id: 'acro_pop_wheelie_moving',
+              anim_cmd_symbol: 'anim_acro_pop_wheelie_moving_west',
+              loop_mode: 'end_hold',
+              frames: [
+                { duration: 2, frame: 436, h_flip: false },
+                { duration: 2, frame: 437, h_flip: false },
+              ],
+            },
+            east: {
+              action_id: 'acro_pop_wheelie_moving',
+              anim_cmd_symbol: 'anim_acro_pop_wheelie_moving_east',
+              loop_mode: 'end_hold',
+              frames: [
+                { duration: 2, frame: 430, h_flip: false },
+                { duration: 2, frame: 431, h_flip: false },
+              ],
+            },
+          },
+          acro_end_wheelie_moving: {
+            south: {
+              action_id: 'acro_end_wheelie_moving',
+              anim_cmd_symbol: 'anim_acro_end_wheelie_moving_south',
+              loop_mode: 'end_hold',
+              frames: [
+                { duration: 2, frame: 442, h_flip: false },
+                { duration: 2, frame: 443, h_flip: false },
+              ],
+            },
+            north: {
+              action_id: 'acro_end_wheelie_moving',
+              anim_cmd_symbol: 'anim_acro_end_wheelie_moving_north',
+              loop_mode: 'end_hold',
+              frames: [
+                { duration: 2, frame: 444, h_flip: false },
+                { duration: 2, frame: 445, h_flip: false },
+              ],
+            },
+            west: {
+              action_id: 'acro_end_wheelie_moving',
+              anim_cmd_symbol: 'anim_acro_end_wheelie_moving_west',
+              loop_mode: 'end_hold',
+              frames: [
+                { duration: 2, frame: 446, h_flip: false },
+                { duration: 2, frame: 447, h_flip: false },
+              ],
+            },
+            east: {
+              action_id: 'acro_end_wheelie_moving',
+              anim_cmd_symbol: 'anim_acro_end_wheelie_moving_east',
+              loop_mode: 'end_hold',
+              frames: [
+                { duration: 2, frame: 440, h_flip: false },
+                { duration: 2, frame: 441, h_flip: false },
               ],
             },
           },

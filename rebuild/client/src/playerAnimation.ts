@@ -187,6 +187,16 @@ const WALK_ALTERNATION_REMAP = new Map<number, number>([
   [3, 0],
 ]);
 
+const STRIDE_GAIT_ACTION_IDS = new Set<string>([
+  'walk',
+  'run',
+  'bike_walk',
+  'bike_fast',
+  'bike_faster',
+  'bike_fastest',
+  'acro_moving_wheelie',
+]);
+
 const TICK_60HZ_MS = 1000 / 60;
 
 export async function loadPlayerAnimationAssets(
@@ -446,7 +456,10 @@ export class PlayerAnimationController {
   startStep(direction: Direction, mode: 'walk' | 'run'): void {
     this.pendingMode = null;
     const cardinal = mapDirection(direction);
-    if (this.mode.kind === mode) {
+    const directionalAnimation = this.currentDirectionalAnimation();
+    const shouldAlternateStride =
+      this.mode.kind === mode && this.shouldAlternateStrideForAction(directionalAnimation);
+    if (shouldAlternateStride) {
       this.frameCommandIndex =
         WALK_ALTERNATION_REMAP.get(this.frameCommandIndex) ?? this.frameCommandIndex;
       this.stridePhase = this.stridePhase === 0 ? 1 : 0;
@@ -457,6 +470,18 @@ export class PlayerAnimationController {
       direction: cardinal,
     };
     this.updateResolvedAction();
+  }
+
+  private shouldAlternateStrideForAction(directionalAnimation: DirectionalAnimationMeta): boolean {
+    if (directionalAnimation.loop_mode === 'end_hold') {
+      return false;
+    }
+
+    if (STRIDE_GAIT_ACTION_IDS.has(this.activeActionId)) {
+      return true;
+    }
+
+    return this.activeActionId === this.mode.kind && directionalAnimation.frames.length >= 4;
   }
 
   tick(deltaMs: number): void {
