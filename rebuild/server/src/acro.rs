@@ -117,6 +117,7 @@ pub struct AcroRuntime {
     pub on_bumpy_slope: bool,
     bunny_hop_cycle_tick: u8,
     hop_landed_this_tick: bool,
+    phase_advanced_this_tick: bool,
     pending_action: Option<AcroAnimationAction>,
     pending_jump_intent: Option<PendingJumpIntent>,
 }
@@ -144,6 +145,7 @@ impl Default for AcroRuntime {
             on_bumpy_slope: false,
             bunny_hop_cycle_tick: 0,
             hop_landed_this_tick: false,
+            phase_advanced_this_tick: false,
             pending_action: None,
             pending_jump_intent: None,
         }
@@ -174,6 +176,7 @@ impl AcroRuntime {
     }
 
     pub fn advance_tick(&mut self) {
+        self.phase_advanced_this_tick = false;
         self.hop_landed_this_tick = false;
         self.age_pending_jump_intent();
         self.update_history(self.held_direction, if self.holding_b { ABSS_B } else { 0 });
@@ -181,6 +184,7 @@ impl AcroRuntime {
         // Tick the bunny-hop phase before input handling so state transitions can
         // deterministically observe whether this evaluation is at a landing boundary.
         self.advance_bunny_hop_phase();
+        self.phase_advanced_this_tick = true;
         self.pending_action = Some(self.handle_input(self.held_direction, self.movement_direction));
     }
 
@@ -256,7 +260,10 @@ impl AcroRuntime {
         self.hop_landed_this_tick = false;
         // Keep phase progression and input evaluation ordering consistent with
         // advance_tick so bunny-hop landing gating behaves identically.
-        self.advance_bunny_hop_phase();
+        if !self.phase_advanced_this_tick {
+            self.advance_bunny_hop_phase();
+            self.phase_advanced_this_tick = true;
+        }
         let action = self.handle_input(Some(requested_direction), facing_direction);
         self.movement_direction = requested_direction;
         action
@@ -1176,5 +1183,73 @@ mod tests {
         }
 
         assert_eq!(landing_ticks, vec![15, 31, 47]);
+    }
+
+    #[test]
+    fn bunny_hop_phase_advances_once_per_tick_with_matching_held_direction() {
+        let mut runtime = AcroRuntime {
+            state: AcroState::BunnyHop,
+            movement_direction: Direction::Right,
+            bunny_hop_cycle_tick: 5,
+            ..Default::default()
+        };
+        runtime.set_held_input(Some(Direction::Right), true);
+
+        runtime.advance_tick();
+        let tick_after_advance = runtime.bunny_hop_cycle_tick();
+
+        assert_eq!(
+            runtime.apply_step(Direction::Right, Direction::Right),
+            AcroAnimationAction::WheelieHoppingMoving
+        );
+        assert_eq!(runtime.bunny_hop_cycle_tick(), tick_after_advance);
+    }
+
+    #[test]
+    fn bunny_hop_phase_advances_once_per_tick_when_step_order_mismatches_held_direction() {
+        let mut runtime = AcroRuntime {
+            state: AcroState::BunnyHop,
+            running_state: RunningState::NotMoving,
+            movement_direction: Direction::Right,
+            bunny_hop_cycle_tick: 7,
+            ..Default::default()
+        };
+        runtime.set_held_input(Some(Direction::Right), true);
+
+        runtime.advance_tick();
+        let tick_after_advance = runtime.bunny_hop_cycle_tick();
+
+        assert_eq!(
+            runtime.apply_step(Direction::Up, Direction::Left),
+            AcroAnimationAction::WheelieHoppingMoving
+        );
+        assert_eq!(runtime.bunny_hop_cycle_tick(), tick_after_advance);
+    }
+
+    #[test]
+    fn bunny_hop_step_outputs_remain_unchanged_when_phase_already_advanced() {
+        let mut standing = AcroRuntime {
+            state: AcroState::BunnyHop,
+            running_state: RunningState::NotMoving,
+            phase_advanced_this_tick: true,
+            ..Default::default()
+        };
+        standing.set_held_input(Some(Direction::Right), true);
+        assert_eq!(
+            standing.apply_step(Direction::Up, Direction::Left),
+            AcroAnimationAction::WheelieHoppingStanding
+        );
+
+        let mut moving = AcroRuntime {
+            state: AcroState::BunnyHop,
+            running_state: RunningState::Moving,
+            phase_advanced_this_tick: true,
+            ..Default::default()
+        };
+        moving.set_held_input(Some(Direction::Right), true);
+        assert_eq!(
+            moving.apply_step(Direction::Right, Direction::Right),
+            AcroAnimationAction::WheelieHoppingMoving
+        );
     }
 }
