@@ -11,7 +11,7 @@ use tokio::sync::{mpsc, RwLock};
 use tracing::{error, trace};
 
 use crate::{
-    acro::{AcroAnimationAction, AcroState},
+    acro::{AcroAnimationAction, AcroState, RunningState, BUNNY_HOP_CYCLE_TICKS},
     map_chunk::{serialize_world_snapshot_map_chunk, world_snapshot_map_chunk_hash},
     movement::{
         facing_delta, get_player_speed, is_biking_disallowed_by_player as movement_bike_gate,
@@ -830,7 +830,8 @@ impl World {
                     update_bike_runtime_after_step(&mut session.player_state, movement_direction);
                     if should_latch_hop_landing_effect_on_transition_start(
                         session.player_state.bike_runtime.last_transition,
-                    ) {
+                    ) || session.player_state.bike_runtime.acro_state == AcroBikeSubstate::BunnyHop
+                    {
                         if let Some(active_walk) = session.active_walk_transition.as_mut() {
                             active_walk.latch_hop_landing_effect();
                         }
@@ -1471,6 +1472,10 @@ fn update_bike_runtime_per_tick(
         return;
     }
 
+    if player_state.bike_runtime.queued_transition_delay_ticks > 0 {
+        player_state.bike_runtime.queued_transition_delay_ticks -= 1;
+    }
+
     let holding_b = (held_buttons & crate::protocol::HeldButtons::B as u8) != 0;
     player_state
         .bike_runtime
@@ -1519,6 +1524,20 @@ fn avatar_action_lock_ticks_for_bike_transition(transition: BikeTransitionType) 
 }
 
 fn apply_acro_runtime_outcome(player_state: &mut PlayerState, action: Option<AcroAnimationAction>) {
+    let should_defer_stationary_bunny_hop_setdown =
+        matches!(action, Some(AcroAnimationAction::WheelieToNormal))
+            && player_state.bike_runtime.acro_state == AcroBikeSubstate::BunnyHop
+            && player_state.bike_runtime.acro_runtime.held_direction.is_none()
+            && player_state.bike_runtime.acro_runtime.running_state == RunningState::NotMoving
+            && player_state
+                .bike_runtime
+                .acro_runtime
+                .bunny_hop_cycle_tick()
+                > 0
+            && !player_state
+                .bike_runtime
+                .acro_runtime
+                .hop_landed_this_tick();
     let logical_substate = acro_substate_from_runtime(player_state.bike_runtime.acro_runtime.state);
     let logical_transition = action.map(bike_transition_from_action);
     if player_state.bike_runtime.action_in_progress {
@@ -1533,10 +1552,21 @@ fn apply_acro_runtime_outcome(player_state: &mut PlayerState, action: Option<Acr
     if let Some(queued_state) = player_state.bike_runtime.queued_acro_state.take() {
         player_state.bike_runtime.acro_state = queued_state;
     }
-    if let Some(queued_transition) = player_state.bike_runtime.queued_transition.take() {
-        player_state.bike_runtime.last_transition = queued_transition;
+    if should_defer_stationary_bunny_hop_setdown {
+        player_state.bike_runtime.queued_transition = Some(BikeTransitionType::WheelieToNormal);
+        player_state.bike_runtime.queued_transition_delay_ticks = BUNNY_HOP_CYCLE_TICKS
+            - player_state
+                .bike_runtime
+                .acro_runtime
+                .bunny_hop_cycle_tick();
     } else if let Some(transition) = logical_transition {
         player_state.bike_runtime.last_transition = transition;
+    }
+
+    if player_state.bike_runtime.queued_transition_delay_ticks == 0 {
+        if let Some(queued_transition) = player_state.bike_runtime.queued_transition.take() {
+            player_state.bike_runtime.last_transition = queued_transition;
+        }
     }
 }
 
@@ -3019,7 +3049,8 @@ mod tests {
             let session_state = sessions
                 .get_mut(&session.connection_id)
                 .expect("session should exist");
-            session_state.player_state.map_id = "MAP_BUNNY_HOP_FIRST_DIRECTIONAL_CADENCE".to_string();
+            session_state.player_state.map_id =
+                "MAP_BUNNY_HOP_FIRST_DIRECTIONAL_CADENCE".to_string();
             session_state.player_state.traversal_state = TraversalState::AcroBike;
             session_state.player_state.preferred_bike_type = TraversalState::AcroBike;
             session_state.player_state.facing = Direction::Right;
@@ -3068,14 +3099,17 @@ mod tests {
 
         let first_accepted = loop {
             world.tick().await;
-            if let Some(result) = drain_server_messages(&mut rx).into_iter().find_map(|message| {
-                match message {
-                    ServerMessage::WalkResult(result) if result.input_seq == 0 && result.accepted => {
+            if let Some(result) = drain_server_messages(&mut rx)
+                .into_iter()
+                .find_map(|message| match message {
+                    ServerMessage::WalkResult(result)
+                        if result.input_seq == 0 && result.accepted =>
+                    {
                         Some(result)
                     }
                     _ => None,
-                }
-            }) {
+                })
+            {
                 break result;
             }
         };
@@ -3108,14 +3142,17 @@ mod tests {
 
         let second_accepted = loop {
             world.tick().await;
-            if let Some(result) = drain_server_messages(&mut rx).into_iter().find_map(|message| {
-                match message {
-                    ServerMessage::WalkResult(result) if result.input_seq == 1 && result.accepted => {
+            if let Some(result) = drain_server_messages(&mut rx)
+                .into_iter()
+                .find_map(|message| match message {
+                    ServerMessage::WalkResult(result)
+                        if result.input_seq == 1 && result.accepted =>
+                    {
                         Some(result)
                     }
                     _ => None,
-                }
-            }) {
+                })
+            {
                 break result;
             }
         };
@@ -3716,6 +3753,12 @@ mod tests {
         let mut player = test_player_state();
         player.traversal_state = TraversalState::AcroBike;
         player.bike_runtime.acro_runtime.state = AcroState::BunnyHop;
+        player.bike_runtime.acro_runtime.bike_frame_counter = 40;
+        player.bike_runtime.acro_runtime.running_state = RunningState::NotMoving;
+        player.bike_runtime.acro_runtime.set_held_input(None, true);
+        player.bike_runtime.acro_runtime.advance_tick();
+        player.bike_runtime.acro_runtime.advance_tick();
+        player.bike_runtime.acro_runtime.advance_tick();
         player.bike_runtime.acro_state = AcroBikeSubstate::BunnyHop;
 
         update_bike_runtime_per_tick(&mut player, None, crate::protocol::HeldButtons::B as u8);
@@ -3724,10 +3767,54 @@ mod tests {
         update_bike_runtime_per_tick(&mut player, None, 0);
         assert!(!player.bike_runtime.acro_runtime.holding_b);
         assert_eq!(player.bike_runtime.acro_runtime.state, AcroState::Normal);
+        assert_eq!(player.bike_runtime.acro_state, AcroBikeSubstate::None);
+        assert_eq!(
+            player.bike_runtime.queued_transition,
+            Some(BikeTransitionType::WheelieToNormal)
+        );
+        assert!(player.bike_runtime.queued_transition_delay_ticks > 0);
+        assert_eq!(
+            player.bike_runtime.last_transition,
+            BikeTransitionType::WheelieHoppingStanding
+        );
+    }
+
+    #[test]
+    fn releasing_b_while_in_stationary_bunny_hop_publishes_setdown_only_at_landing_boundary() {
+        let mut player = test_player_state();
+        player.traversal_state = TraversalState::AcroBike;
+        player.bike_runtime.acro_runtime.state = AcroState::BunnyHop;
+        player.bike_runtime.acro_runtime.bike_frame_counter = 40;
+        player.bike_runtime.acro_runtime.running_state = RunningState::NotMoving;
+        player.bike_runtime.acro_runtime.set_held_input(None, true);
+        player.bike_runtime.acro_runtime.advance_tick();
+        player.bike_runtime.acro_runtime.advance_tick();
+        player.bike_runtime.acro_runtime.advance_tick();
+        player.bike_runtime.acro_state = AcroBikeSubstate::BunnyHop;
+
+        update_bike_runtime_per_tick(&mut player, None, 0);
+        let delay = player.bike_runtime.queued_transition_delay_ticks;
+        assert!(delay > 0);
+
+        for _ in 0..delay.saturating_sub(1) {
+            update_bike_runtime_per_tick(&mut player, None, 0);
+            assert_ne!(
+                player.bike_runtime.last_transition,
+                BikeTransitionType::WheelieToNormal
+            );
+            assert_eq!(
+                player.bike_runtime.queued_transition,
+                Some(BikeTransitionType::WheelieToNormal)
+            );
+        }
+
+        update_bike_runtime_per_tick(&mut player, None, 0);
         assert_eq!(
             player.bike_runtime.last_transition,
             BikeTransitionType::WheelieToNormal
         );
+        assert_eq!(player.bike_runtime.queued_transition, None);
+        assert_eq!(player.bike_runtime.queued_transition_delay_ticks, 0);
     }
 
     #[test]
