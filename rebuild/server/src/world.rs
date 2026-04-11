@@ -555,6 +555,7 @@ impl World {
                     &mut session.player_state,
                     effective_held_direction,
                     session.held_buttons,
+                    session.active_walk_transition.is_some(),
                 );
             }
             session.update_authoritative_tick(tick);
@@ -1557,6 +1558,7 @@ fn update_bike_runtime_per_tick(
     player_state: &mut PlayerState,
     held_direction: Option<Direction>,
     held_buttons: u8,
+    has_active_walk_transition: bool,
 ) {
     if !matches!(player_state.traversal_state, TraversalState::AcroBike) {
         return;
@@ -1567,9 +1569,26 @@ fn update_bike_runtime_per_tick(
         .bike_runtime
         .acro_runtime
         .set_held_input(held_direction, holding_b);
-    player_state.bike_runtime.acro_runtime.advance_tick();
+    if !should_freeze_acro_runtime_tick(player_state, has_active_walk_transition) {
+        player_state.bike_runtime.acro_runtime.advance_tick();
+    }
     let pending_action = player_state.bike_runtime.acro_runtime.pending_action();
     apply_acro_runtime_outcome(player_state, pending_action);
+}
+
+fn should_freeze_acro_runtime_tick(
+    player_state: &PlayerState,
+    has_active_walk_transition: bool,
+) -> bool {
+    if !player_state.bike_runtime.action_in_progress || has_active_walk_transition {
+        return false;
+    }
+
+    let lock_transition = player_state
+        .bike_runtime
+        .held_transition
+        .unwrap_or(player_state.bike_runtime.last_transition);
+    transition_is_transient_wheelie_state(lock_transition)
 }
 
 fn acro_substate_from_runtime(state: AcroState) -> AcroBikeSubstate {
@@ -2183,6 +2202,7 @@ mod tests {
             &mut player,
             Some(Direction::Right),
             crate::protocol::HeldButtons::B as u8,
+            false,
         );
         update_bike_runtime_after_step(&mut player, Direction::Right);
 
@@ -2203,6 +2223,7 @@ mod tests {
             &mut player,
             Some(Direction::Right),
             crate::protocol::HeldButtons::B as u8,
+            false,
         );
         update_bike_runtime_after_step(&mut player, Direction::Right);
 
@@ -2228,6 +2249,7 @@ mod tests {
                 &mut player,
                 Some(Direction::Right),
                 crate::protocol::HeldButtons::B as u8,
+                false,
             );
             update_bike_runtime_after_step(&mut player, Direction::Right);
 
@@ -2282,7 +2304,7 @@ mod tests {
             .acro_runtime
             .set_on_bumpy_slope(map.behavior[0] == MB_BUMPY_SLOPE);
 
-        update_bike_runtime_per_tick(&mut player, None, 0);
+        update_bike_runtime_per_tick(&mut player, None, 0, false);
 
         assert_eq!(
             player.bike_runtime.acro_state,
@@ -2333,7 +2355,12 @@ mod tests {
         player.traversal_state = TraversalState::AcroBike;
         player.facing = Direction::Right;
 
-        update_bike_runtime_per_tick(&mut player, None, crate::protocol::HeldButtons::B as u8);
+        update_bike_runtime_per_tick(
+            &mut player,
+            None,
+            crate::protocol::HeldButtons::B as u8,
+            false,
+        );
         assert_eq!(
             player.bike_runtime.acro_runtime.state,
             AcroState::WheelieStanding
@@ -2344,7 +2371,12 @@ mod tests {
         );
 
         for _ in 0..40 {
-            update_bike_runtime_per_tick(&mut player, None, crate::protocol::HeldButtons::B as u8);
+            update_bike_runtime_per_tick(
+                &mut player,
+                None,
+                crate::protocol::HeldButtons::B as u8,
+                false,
+            );
         }
 
         assert_eq!(player.bike_runtime.acro_runtime.state, AcroState::BunnyHop);
@@ -2366,6 +2398,7 @@ mod tests {
             &mut player,
             Some(Direction::Right),
             crate::protocol::HeldButtons::B as u8,
+            false,
         );
         assert_eq!(
             player.bike_runtime.last_transition,
@@ -2378,6 +2411,7 @@ mod tests {
             &mut player,
             Some(Direction::Right),
             crate::protocol::HeldButtons::B as u8,
+            false,
         );
         assert_eq!(
             player.bike_runtime.last_transition,
@@ -2390,6 +2424,7 @@ mod tests {
             &mut player,
             Some(Direction::Right),
             crate::protocol::HeldButtons::B as u8,
+            false,
         );
         assert_eq!(
             player.bike_runtime.last_transition,
@@ -2402,7 +2437,7 @@ mod tests {
 
         player.bike_runtime.acro_runtime.state = AcroState::WheelieMoving;
         player.bike_runtime.acro_runtime.movement_direction = Direction::Right;
-        update_bike_runtime_per_tick(&mut player, Some(Direction::Right), 0);
+        update_bike_runtime_per_tick(&mut player, Some(Direction::Right), 0, false);
         assert_eq!(
             player.bike_runtime.last_transition,
             BikeTransitionType::WheelieLoweringMoving
@@ -4059,13 +4094,19 @@ mod tests {
             &mut player,
             Some(Direction::Right),
             crate::protocol::HeldButtons::B as u8,
+            false,
         );
         assert_eq!(
             player.bike_runtime.acro_runtime.held_direction,
             Some(Direction::Right)
         );
 
-        update_bike_runtime_per_tick(&mut player, None, crate::protocol::HeldButtons::B as u8);
+        update_bike_runtime_per_tick(
+            &mut player,
+            None,
+            crate::protocol::HeldButtons::B as u8,
+            false,
+        );
         assert_eq!(player.bike_runtime.acro_runtime.held_direction, None);
     }
 
@@ -4076,10 +4117,15 @@ mod tests {
         player.bike_runtime.acro_runtime.state = AcroState::BunnyHop;
         player.bike_runtime.acro_state = AcroBikeSubstate::BunnyHop;
 
-        update_bike_runtime_per_tick(&mut player, None, crate::protocol::HeldButtons::B as u8);
+        update_bike_runtime_per_tick(
+            &mut player,
+            None,
+            crate::protocol::HeldButtons::B as u8,
+            false,
+        );
         assert!(player.bike_runtime.acro_runtime.holding_b);
 
-        update_bike_runtime_per_tick(&mut player, None, 0);
+        update_bike_runtime_per_tick(&mut player, None, 0, false);
         assert!(!player.bike_runtime.acro_runtime.holding_b);
         assert_eq!(player.bike_runtime.acro_runtime.state, AcroState::Normal);
         assert_eq!(
@@ -4097,7 +4143,7 @@ mod tests {
         player.bike_runtime.last_transition = BikeTransitionType::WheelieHoppingMoving;
         player.bike_runtime.action_in_progress = true;
 
-        update_bike_runtime_per_tick(&mut player, None, 0);
+        update_bike_runtime_per_tick(&mut player, None, 0, false);
 
         assert_eq!(player.bike_runtime.acro_runtime.state, AcroState::Normal);
         assert_eq!(player.bike_runtime.acro_state, AcroBikeSubstate::BunnyHop);
@@ -4231,6 +4277,121 @@ mod tests {
     }
 
     #[test]
+    fn transient_wheelie_lock_freezes_bunny_hop_progression_until_lock_releases() {
+        let mut baseline = test_player_state();
+        baseline.traversal_state = TraversalState::AcroBike;
+        baseline.facing = Direction::Right;
+        update_bike_runtime_per_tick(
+            &mut baseline,
+            None,
+            crate::protocol::HeldButtons::B as u8,
+            false,
+        );
+        assert_eq!(
+            baseline.bike_runtime.acro_runtime.state,
+            AcroState::WheelieStanding
+        );
+
+        let mut locked = baseline.clone();
+
+        let mut baseline_ticks_until_hop = 0_u16;
+        while !matches!(
+            baseline.bike_runtime.acro_runtime.state,
+            AcroState::BunnyHop
+        ) {
+            update_bike_runtime_per_tick(
+                &mut baseline,
+                None,
+                crate::protocol::HeldButtons::B as u8,
+                false,
+            );
+            baseline_ticks_until_hop += 1;
+            assert!(
+                baseline_ticks_until_hop < 200,
+                "baseline should reach bunny-hop within 200 ticks"
+            );
+        }
+
+        for _ in 0..ACRO_WHEELIE_POP_LOCK_TICKS {
+            locked.bike_runtime.action_in_progress = true;
+            locked.bike_runtime.held_transition = Some(BikeTransitionType::NormalToWheelie);
+            update_bike_runtime_per_tick(
+                &mut locked,
+                None,
+                crate::protocol::HeldButtons::B as u8,
+                false,
+            );
+            assert_eq!(
+                locked.bike_runtime.acro_runtime.state,
+                AcroState::WheelieStanding
+            );
+        }
+        locked.bike_runtime.action_in_progress = false;
+        locked.bike_runtime.held_transition = None;
+
+        let mut locked_ticks_after_release = 0_u16;
+        while !matches!(locked.bike_runtime.acro_runtime.state, AcroState::BunnyHop) {
+            update_bike_runtime_per_tick(
+                &mut locked,
+                None,
+                crate::protocol::HeldButtons::B as u8,
+                false,
+            );
+            locked_ticks_after_release += 1;
+            assert!(
+                locked_ticks_after_release < 200,
+                "locked case should reach bunny-hop within 200 ticks after lock release"
+            );
+        }
+
+        assert_eq!(
+            locked_ticks_after_release, baseline_ticks_until_hop,
+            "logical bunny-hop timing after lock release should match unlocked baseline"
+        );
+    }
+
+    #[test]
+    fn active_walk_action_lock_does_not_freeze_acro_runtime_progression() {
+        let mut control = test_player_state();
+        control.traversal_state = TraversalState::AcroBike;
+        control.facing = Direction::Right;
+        update_bike_runtime_per_tick(
+            &mut control,
+            None,
+            crate::protocol::HeldButtons::B as u8,
+            false,
+        );
+
+        let mut walk_locked = control.clone();
+        walk_locked.bike_runtime.action_in_progress = true;
+        walk_locked.bike_runtime.held_transition = Some(BikeTransitionType::NormalToWheelie);
+
+        for _ in 0..6 {
+            update_bike_runtime_per_tick(
+                &mut control,
+                None,
+                crate::protocol::HeldButtons::B as u8,
+                false,
+            );
+            update_bike_runtime_per_tick(
+                &mut walk_locked,
+                None,
+                crate::protocol::HeldButtons::B as u8,
+                true,
+            );
+        }
+
+        assert_eq!(
+            walk_locked.bike_runtime.acro_runtime.state,
+            control.bike_runtime.acro_runtime.state
+        );
+        assert_eq!(
+            walk_locked.bike_runtime.acro_runtime.bunny_hop_cycle_tick(),
+            control.bike_runtime.acro_runtime.bunny_hop_cycle_tick()
+        );
+    }
+
+    #[test]
     fn transition_hold_blocks_steady_wheelie_overwrite_until_expiry() {
         let mut player = test_player_state();
         player.traversal_state = TraversalState::AcroBike;
@@ -4270,6 +4431,7 @@ mod tests {
             &mut player,
             Some(Direction::Left),
             crate::protocol::HeldButtons::B as u8,
+            false,
         );
         assert_eq!(
             player.bike_runtime.acro_runtime.held_direction,
@@ -4277,9 +4439,9 @@ mod tests {
         );
         assert!(player.bike_runtime.acro_runtime.holding_b);
 
-        update_bike_runtime_per_tick(&mut player, None, 0);
-        update_bike_runtime_per_tick(&mut player, None, 0);
-        update_bike_runtime_per_tick(&mut player, None, 0);
+        update_bike_runtime_per_tick(&mut player, None, 0, false);
+        update_bike_runtime_per_tick(&mut player, None, 0, false);
+        update_bike_runtime_per_tick(&mut player, None, 0, false);
 
         assert_eq!(player.bike_runtime.acro_runtime.held_direction, None);
         assert!(!player.bike_runtime.acro_runtime.holding_b);
