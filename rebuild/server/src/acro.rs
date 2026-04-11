@@ -4,7 +4,7 @@ const INPUT_HISTORY_LEN: usize = 8;
 const TIMER_END: u8 = 0;
 const ACRO_JUMP_TIMER_LIST: [u8; 2] = [4, TIMER_END];
 const JUMP_INTENT_TTL_TICKS: u8 = 2;
-pub const BUNNY_HOP_CYCLE_TICKS: u8 = 16;
+const BUNNY_HOP_CYCLE_TICKS: u8 = 16;
 
 const ABSS_A: u8 = 1 << 0;
 const ABSS_B: u8 = 1 << 1;

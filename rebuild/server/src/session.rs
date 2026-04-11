@@ -44,7 +44,6 @@ pub struct BikeRuntimeState {
     pub preserve_transition_until_walk_result: bool,
     pub action_in_progress: bool,
     pub queued_transition: Option<BikeTransitionType>,
-    pub queued_transition_delay_ticks: u8,
     pub queued_acro_state: Option<AcroBikeSubstate>,
     pub acro_runtime: AcroRuntime,
 }
@@ -106,7 +105,6 @@ impl Default for BikeRuntimeState {
             preserve_transition_until_walk_result: false,
             action_in_progress: false,
             queued_transition: None,
-            queued_transition_delay_ticks: 0,
             queued_acro_state: None,
             acro_runtime: AcroRuntime::default(),
         }
