@@ -1595,9 +1595,7 @@ fn bike_transition_from_action(action: AcroAnimationAction) -> BikeTransitionTyp
 
 fn avatar_action_lock_ticks_for_bike_transition(transition: BikeTransitionType) -> Option<u8> {
     match transition {
-        BikeTransitionType::NormalToWheelie | BikeTransitionType::WheelieRisingMoving => {
-            Some(ACRO_WHEELIE_POP_LOCK_TICKS)
-        }
+        BikeTransitionType::NormalToWheelie => Some(ACRO_WHEELIE_POP_LOCK_TICKS),
         BikeTransitionType::WheelieToNormal => Some(ACRO_WHEELIE_TO_NORMAL_LOCK_TICKS),
         _ => None,
     }
@@ -4036,6 +4034,22 @@ mod tests {
         assert_eq!(
             player.bike_runtime.last_transition,
             BikeTransitionType::WheelieRisingMoving
+        );
+    }
+
+    #[test]
+    fn wheelie_rising_moving_transition_has_no_avatar_action_lock() {
+        assert_eq!(
+            avatar_action_lock_ticks_for_bike_transition(BikeTransitionType::WheelieRisingMoving),
+            None
+        );
+        assert_eq!(
+            avatar_action_lock_ticks_for_bike_transition(BikeTransitionType::NormalToWheelie),
+            Some(ACRO_WHEELIE_POP_LOCK_TICKS)
+        );
+        assert_eq!(
+            avatar_action_lock_ticks_for_bike_transition(BikeTransitionType::WheelieToNormal),
+            Some(ACRO_WHEELIE_TO_NORMAL_LOCK_TICKS)
         );
     }
 
