@@ -1629,6 +1629,45 @@ fn transition_is_steady_wheelie_state(transition: BikeTransitionType) -> bool {
     )
 }
 
+fn transition_is_transient_wheelie_state(transition: BikeTransitionType) -> bool {
+    matches!(
+        transition,
+        BikeTransitionType::NormalToWheelie
+            | BikeTransitionType::WheelieRisingMoving
+            | BikeTransitionType::WheelieToNormal
+            | BikeTransitionType::WheelieLoweringMoving
+    )
+}
+
+fn transition_precedence(transition: BikeTransitionType) -> u8 {
+    match transition {
+        BikeTransitionType::None => 0,
+        BikeTransitionType::WheelieIdle | BikeTransitionType::WheelieMoving => 1,
+        BikeTransitionType::WheelieRisingMoving | BikeTransitionType::WheelieLoweringMoving => 2,
+        BikeTransitionType::NormalToWheelie | BikeTransitionType::WheelieToNormal => 3,
+        _ => 4,
+    }
+}
+
+fn should_replace_queued_transition(
+    queued_transition: BikeTransitionType,
+    next_transition: BikeTransitionType,
+) -> bool {
+    if transition_is_transient_wheelie_state(queued_transition)
+        && transition_is_steady_wheelie_state(next_transition)
+    {
+        return false;
+    }
+
+    if transition_is_transient_wheelie_state(queued_transition)
+        && transition_is_transient_wheelie_state(next_transition)
+    {
+        return transition_precedence(next_transition) >= transition_precedence(queued_transition);
+    }
+
+    true
+}
+
 fn apply_bike_transition_with_hold(
     player_state: &mut PlayerState,
     next_transition: BikeTransitionType,
@@ -1669,8 +1708,12 @@ fn apply_acro_runtime_outcome(player_state: &mut PlayerState, action: Option<Acr
     let logical_transition = action.map(bike_transition_from_action);
     if player_state.bike_runtime.action_in_progress {
         player_state.bike_runtime.queued_acro_state = Some(logical_substate);
-        if let Some(transition) = logical_transition.filter(|t| *t != BikeTransitionType::None) {
-            player_state.bike_runtime.queued_transition = Some(transition);
+        if let Some(transition) = logical_transition {
+            match player_state.bike_runtime.queued_transition {
+                Some(queued_transition)
+                    if !should_replace_queued_transition(queued_transition, transition) => {}
+                _ => player_state.bike_runtime.queued_transition = Some(transition),
+            }
         }
         return;
     }
@@ -4076,6 +4119,66 @@ mod tests {
             BikeTransitionType::WheelieToNormal
         );
         assert_eq!(player.bike_runtime.queued_transition, None);
+    }
+
+    #[test]
+    fn queued_wheelie_rising_moving_is_not_overwritten_by_steady_updates() {
+        let mut player = test_player_state();
+        player.traversal_state = TraversalState::AcroBike;
+        player.bike_runtime.action_in_progress = true;
+        player.bike_runtime.acro_runtime.state = AcroState::WheelieMoving;
+
+        apply_acro_runtime_outcome(&mut player, Some(AcroAnimationAction::WheelieRisingMoving));
+        assert_eq!(
+            player.bike_runtime.queued_transition,
+            Some(BikeTransitionType::WheelieRisingMoving)
+        );
+
+        apply_acro_runtime_outcome(&mut player, Some(AcroAnimationAction::WheelieMoving));
+        apply_acro_runtime_outcome(&mut player, Some(AcroAnimationAction::WheelieIdle));
+        apply_acro_runtime_outcome(&mut player, Some(AcroAnimationAction::None));
+        assert_eq!(
+            player.bike_runtime.queued_transition,
+            Some(BikeTransitionType::WheelieRisingMoving)
+        );
+
+        player.bike_runtime.action_in_progress = false;
+        flush_queued_acro_runtime_updates(&mut player);
+        assert_eq!(
+            player.bike_runtime.last_transition,
+            BikeTransitionType::WheelieRisingMoving
+        );
+    }
+
+    #[test]
+    fn queued_wheelie_lowering_moving_is_not_overwritten_by_steady_updates() {
+        let mut player = test_player_state();
+        player.traversal_state = TraversalState::AcroBike;
+        player.bike_runtime.action_in_progress = true;
+        player.bike_runtime.acro_runtime.state = AcroState::Normal;
+
+        apply_acro_runtime_outcome(
+            &mut player,
+            Some(AcroAnimationAction::WheelieLoweringMoving),
+        );
+        assert_eq!(
+            player.bike_runtime.queued_transition,
+            Some(BikeTransitionType::WheelieLoweringMoving)
+        );
+
+        apply_acro_runtime_outcome(&mut player, Some(AcroAnimationAction::WheelieIdle));
+        apply_acro_runtime_outcome(&mut player, Some(AcroAnimationAction::None));
+        assert_eq!(
+            player.bike_runtime.queued_transition,
+            Some(BikeTransitionType::WheelieLoweringMoving)
+        );
+
+        player.bike_runtime.action_in_progress = false;
+        flush_queued_acro_runtime_updates(&mut player);
+        assert_eq!(
+            player.bike_runtime.last_transition,
+            BikeTransitionType::WheelieLoweringMoving
+        );
     }
 
     #[test]
