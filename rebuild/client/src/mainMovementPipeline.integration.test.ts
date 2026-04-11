@@ -677,6 +677,44 @@ describe("main movement pipeline integration", () => {
     }
   });
 
+  it("does not dip into grounded bike/end-wheelie frames on held-B reverse turn when transition is NONE", () => {
+    const playerAnimation = new PlayerAnimationController(makeMockAssets());
+    const reverseTurnSequence = [
+      {
+        direction: Direction.LEFT,
+        acroSubstate: AcroBikeSubstate.MOVING_WHEELIE,
+        bikeTransition: BikeTransitionType.WHEELIE_MOVING,
+      },
+      {
+        direction: Direction.RIGHT,
+        acroSubstate: AcroBikeSubstate.STANDING_WHEELIE,
+        bikeTransition: BikeTransitionType.NONE,
+      },
+      {
+        direction: Direction.RIGHT,
+        acroSubstate: AcroBikeSubstate.MOVING_WHEELIE,
+        bikeTransition: BikeTransitionType.WHEELIE_MOVING,
+      },
+    ] as const;
+
+    const observedAnimIds: string[] = [];
+    for (const frame of reverseTurnSequence) {
+      playerAnimation.setTraversalState({
+        traversalState: TraversalState.ACRO_BIKE,
+        acroSubstate: frame.acroSubstate,
+        bikeTransition: frame.bikeTransition,
+      });
+      playerAnimation.startStep(frame.direction, "run");
+      observedAnimIds.push(playerAnimation.getDebugState().animId);
+    }
+
+    expect(observedAnimIds[1]).toBe("anim_acro_wheelie_face_east");
+    for (const animId of observedAnimIds) {
+      expect(animId).not.toMatch(/^anim_acro_end_wheelie_/);
+      expect(animId).not.toMatch(/^anim_bike_(walk|fast)_/);
+    }
+  });
+
   it("drops stale hop latch immediately when authoritative wheelie-rise-moving transition arrives", () => {
     const playerAnimation = new PlayerAnimationController(makeMockAssets());
     const direction = Direction.RIGHT;

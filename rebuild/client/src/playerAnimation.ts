@@ -668,6 +668,11 @@ export class PlayerAnimationController {
     if (this.acroSubstate === AcroBikeSubstate.MOVING_WHEELIE) {
       return 'acro_moving_wheelie';
     }
+    if (this.acroSubstate === AcroBikeSubstate.STANDING_WHEELIE) {
+      // Preserve held-B wheelie posture when authoritative transition edges
+      // have already cleared but moving-mode resolution is still executing.
+      return 'acro_wheelie_face';
+    }
     if (this.acroSubstate === AcroBikeSubstate.BUNNY_HOP) {
       // ROM-parity fallback: preserve moving bunny-hop action family when only
       // substate is available and transition edge data has already cleared.
