@@ -168,7 +168,7 @@ export class PlayerMovementActionRuntime {
     this.activeAction = this.yOffsetPx < 0 ? 'acro_wheelie_hop_face' : 'none';
   }
 
-  isHopArcAirborne(): boolean {
+  private isHopArcAirborne(): boolean {
     return this.yOffsetPx < 0;
   }
 }
