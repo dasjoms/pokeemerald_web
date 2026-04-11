@@ -326,6 +326,53 @@ describe("main movement pipeline integration", () => {
     );
   });
 
+  it("defers end-wheelie action family until stationary hop arc lands", () => {
+    const playerAnimation = new PlayerAnimationController(makeMockAssets());
+    const movementActionRuntime = new PlayerMovementActionRuntime();
+    const direction = Direction.RIGHT;
+
+    movementActionRuntime.setAuthoritativeInput({
+      traversalState: TraversalState.ACRO_BIKE,
+      acroSubstate: AcroBikeSubstate.BUNNY_HOP,
+      bikeTransition: BikeTransitionType.HOP_STANDING,
+      bunnyHopCycleTick: 1,
+    });
+    playerAnimation.setTraversalState({
+      traversalState: TraversalState.ACRO_BIKE,
+      acroSubstate: AcroBikeSubstate.BUNNY_HOP,
+      bikeTransition: BikeTransitionType.HOP_STANDING,
+      acroHopArcAirborne: movementActionRuntime.isHopArcAirborne(),
+    });
+    playerAnimation.stopMoving(direction);
+    playerAnimation.applyPendingModeChanges();
+    expect(playerAnimation.getDebugState().animId).toBe(
+      "anim_acro_bunny_hop_back_east",
+    );
+
+    playerAnimation.setTraversalState({
+      traversalState: TraversalState.ACRO_BIKE,
+      acroSubstate: AcroBikeSubstate.BUNNY_HOP,
+      bikeTransition: BikeTransitionType.WHEELIE_TO_NORMAL,
+      acroHopArcAirborne: movementActionRuntime.isHopArcAirborne(),
+    });
+    playerAnimation.stopMoving(direction);
+    playerAnimation.applyPendingModeChanges();
+
+    for (let tick = 0; tick < 11; tick += 1) {
+      movementActionRuntime.tickTicks(1);
+      playerAnimation.setAcroHopArcAirborne(movementActionRuntime.isHopArcAirborne());
+      expect(playerAnimation.getDebugState().animId).toBe(
+        "anim_acro_bunny_hop_back_east",
+      );
+    }
+
+    movementActionRuntime.tickTicks(1);
+    playerAnimation.setAcroHopArcAirborne(movementActionRuntime.isHopArcAirborne());
+    expect(playerAnimation.getDebugState().animId).toBe(
+      "anim_acro_end_wheelie_stationary_east",
+    );
+  });
+
   it("holds pop-wheelie action for full one-shot duration before returning to idle wheelie hold", () => {
     const playerAnimation = new PlayerAnimationController(makeMockAssets());
     const direction = Direction.RIGHT;
