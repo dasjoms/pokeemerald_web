@@ -65,7 +65,7 @@ describe('PlayerMovementActionRuntime', () => {
     });
   });
 
-  it('clears y offset when leaving stationary hop transitions', () => {
+  it('finishes active stationary hop arc after leaving hop-capable state', () => {
     const runtime = new PlayerMovementActionRuntime();
     runtime.setAuthoritativeInput({
       traversalState: TraversalState.ACRO_BIKE,
@@ -79,6 +79,18 @@ describe('PlayerMovementActionRuntime', () => {
       traversalState: TraversalState.ACRO_BIKE,
       bikeTransition: BikeTransitionType.WHEELIE_IDLE,
     });
+    expect(runtime.getVisualState()).toEqual({
+      yOffsetPx: -5,
+      activeAction: 'acro_wheelie_hop_face',
+    });
+
+    runtime.tickTicks(8);
+    expect(runtime.getVisualState()).toEqual({
+      yOffsetPx: -2,
+      activeAction: 'acro_wheelie_hop_face',
+    });
+
+    runtime.tickTicks(1);
     expect(runtime.getVisualState()).toEqual({
       yOffsetPx: 0,
       activeAction: 'none',

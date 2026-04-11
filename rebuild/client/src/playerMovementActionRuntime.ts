@@ -84,7 +84,9 @@ export class PlayerMovementActionRuntime {
 
     const isHopCapable = this.shouldRunAcroHop();
     if (!isHopCapable) {
-      this.resetActionState();
+      if (!this.isHopArcAirborne()) {
+        this.resetActionState();
+      }
       return;
     }
 
@@ -95,22 +97,29 @@ export class PlayerMovementActionRuntime {
   }
 
   tickTicks(ticks: number): void {
+    const wholeTicks = Math.max(0, Math.floor(ticks));
+
     if (!this.shouldRunAcroHop()) {
-      this.resetActionState();
+      if (!this.isHopArcAirborne()) {
+        this.resetActionState();
+        return;
+      }
+      if (wholeTicks === 0) {
+        return;
+      }
+      this.advanceHopPhase(wholeTicks);
+      if (!this.isHopArcAirborne()) {
+        this.resetActionState();
+      }
       return;
     }
     if (!this.hopCycleActive) {
       this.hopCycleActive = true;
     }
-
-    const wholeTicks = Math.max(0, Math.floor(ticks));
     if (wholeTicks === 0) {
       return;
     }
-
-    this.jumpTimer = normalizeHopTick(this.jumpTimer + wholeTicks);
-    this.yOffsetPx = ACRO_JUMP_Y_LOW[this.jumpTimer] ?? 0;
-    this.activeAction = this.jumpTimer === 0 ? 'none' : 'acro_wheelie_hop_face';
+    this.advanceHopPhase(wholeTicks);
   }
 
   getVisualState(): PlayerMovementActionVisualState {
@@ -135,8 +144,7 @@ export class PlayerMovementActionRuntime {
         ? this.jumpTimer
         : normalizeHopTick(this.authoritativeInput.bunnyHopCycleTick);
     this.jumpTimer = authoritativeTick;
-    this.yOffsetPx = ACRO_JUMP_Y_LOW[this.jumpTimer] ?? 0;
-    this.activeAction = this.jumpTimer === 0 ? 'none' : 'acro_wheelie_hop_face';
+    this.syncVisualsToJumpTimer();
   }
 
   private shouldRunAcroHop(): boolean {
@@ -148,5 +156,19 @@ export class PlayerMovementActionRuntime {
     this.activeAction = 'none';
     this.jumpTimer = 0;
     this.yOffsetPx = 0;
+  }
+
+  private advanceHopPhase(wholeTicks: number): void {
+    this.jumpTimer = normalizeHopTick(this.jumpTimer + wholeTicks);
+    this.syncVisualsToJumpTimer();
+  }
+
+  private syncVisualsToJumpTimer(): void {
+    this.yOffsetPx = ACRO_JUMP_Y_LOW[this.jumpTimer] ?? 0;
+    this.activeAction = this.yOffsetPx < 0 ? 'acro_wheelie_hop_face' : 'none';
+  }
+
+  private isHopArcAirborne(): boolean {
+    return this.yOffsetPx < 0;
   }
 }
