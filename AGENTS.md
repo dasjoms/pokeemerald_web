@@ -113,6 +113,8 @@ Agents must preserve behavioral parity where players can observe outcomes:
 
 **Rule of thumb:** modernize internals freely, but never change gameplay outcomes for equivalent inputs.
 
+When the user describes symptoms they want to address/replicate, in most cases it is more appropriate to find what causes this symptom in the original ROM so we can replicate logic that causes it without hard-coding the specific symptom. 
+
 ---
 
 ## Save Data Policy
