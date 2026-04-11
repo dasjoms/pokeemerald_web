@@ -438,6 +438,7 @@ impl World {
             let previous_traversal_state = session.player_state.traversal_state;
             let previous_acro_substate = bike_acro_substate_for_traversal(&session.player_state);
             let previous_bike_transition = session.player_state.bike_runtime.last_transition;
+            let mut completed_walk_this_tick = false;
             if !session
                 .player_state
                 .bike_runtime
@@ -455,14 +456,56 @@ impl World {
                 .bike_runtime
                 .acro_runtime
                 .set_on_bumpy_slope(on_bumpy_slope);
+            if let Some(active_walk) = session.active_walk_transition.as_mut() {
+                active_walk.advance(SERVER_TICK_MS);
+                if active_walk.is_complete() {
+                    session.player_state.map_id = active_walk.target_map_id.clone();
+                    session.player_state.tile_x = active_walk.target_x;
+                    session.player_state.tile_y = active_walk.target_y;
+                    session.player_state.facing = active_walk.direction;
+
+                    if session.player_state.map_id != active_walk.start_map_id {
+                        match self
+                            .world_snapshot_for_player_state(&session.player_state, tick as u32)
+                        {
+                            Ok(snapshot) => {
+                                let _ = session.send(ServerMessage::WorldSnapshot(snapshot));
+                            }
+                            Err(error) => {
+                                error!(
+                                    connection_id = session.connection_id,
+                                    previous_map_id = %active_walk.start_map_id,
+                                    map_id = %session.player_state.map_id,
+                                    "failed to build world snapshot after map transition: {error:#}"
+                                );
+                            }
+                        }
+                    }
+                    session.active_walk_transition = None;
+                    session.player_state.bike_runtime.action_in_progress = false;
+                    flush_queued_acro_runtime_updates(&mut session.player_state);
+                    completed_walk_this_tick = true;
+                } else if cfg!(debug_assertions) {
+                    trace!(
+                        connection_id = session.connection_id,
+                        input_seq = active_walk.input_seq,
+                        direction = ?active_walk.direction,
+                        movement_mode = ?active_walk.movement_mode,
+                        progress_pixels = active_walk.progress_pixels(),
+                        "walk transition advanced"
+                    );
+                }
+            }
             let effective_held_direction = session.effective_held_direction();
             session.player_state.bike_runtime.action_in_progress =
                 session.active_walk_transition.is_some();
-            update_bike_runtime_per_tick(
-                &mut session.player_state,
-                effective_held_direction,
-                session.held_buttons,
-            );
+            if !completed_walk_this_tick {
+                update_bike_runtime_per_tick(
+                    &mut session.player_state,
+                    effective_held_direction,
+                    session.held_buttons,
+                );
+            }
             session.update_authoritative_tick(tick);
             let current_acro_substate = bike_acro_substate_for_traversal(&session.player_state);
             let current_bike_transition = session.player_state.bike_runtime.last_transition;
@@ -525,45 +568,6 @@ impl World {
                 && matches!(session.player_state.traversal_state, TraversalState::OnFoot)
             {
                 session.capture_step_end_direction_intent();
-            }
-            if let Some(active_walk) = session.active_walk_transition.as_mut() {
-                active_walk.advance(SERVER_TICK_MS);
-                if active_walk.is_complete() {
-                    session.player_state.map_id = active_walk.target_map_id.clone();
-                    session.player_state.tile_x = active_walk.target_x;
-                    session.player_state.tile_y = active_walk.target_y;
-                    session.player_state.facing = active_walk.direction;
-
-                    if session.player_state.map_id != active_walk.start_map_id {
-                        match self
-                            .world_snapshot_for_player_state(&session.player_state, tick as u32)
-                        {
-                            Ok(snapshot) => {
-                                let _ = session.send(ServerMessage::WorldSnapshot(snapshot));
-                            }
-                            Err(error) => {
-                                error!(
-                                    connection_id = session.connection_id,
-                                    previous_map_id = %active_walk.start_map_id,
-                                    map_id = %session.player_state.map_id,
-                                    "failed to build world snapshot after map transition: {error:#}"
-                                );
-                            }
-                        }
-                    }
-                    session.active_walk_transition = None;
-                    session.player_state.bike_runtime.action_in_progress = false;
-                    flush_queued_acro_runtime_updates(&mut session.player_state);
-                } else if cfg!(debug_assertions) {
-                    trace!(
-                        connection_id = session.connection_id,
-                        input_seq = active_walk.input_seq,
-                        direction = ?active_walk.direction,
-                        movement_mode = ?active_walk.movement_mode,
-                        progress_pixels = active_walk.progress_pixels(),
-                        "walk transition advanced"
-                    );
-                }
             }
 
             if session.active_walk_transition.is_some() {
@@ -2464,6 +2468,84 @@ mod tests {
         assert_eq!(walk_result.authoritative_pos.x, 1);
         assert_eq!(walk_result.authoritative_pos.y, 0);
         assert_eq!(walk_result.authoritative_step_speed, Some(StepSpeed::Step1));
+    }
+
+    #[tokio::test]
+    async fn queued_wheelie_to_normal_emits_runtime_delta_when_action_lock_clears() {
+        let world = test_world_with_initial_map(MapData {
+            map_id: "MAP_QUEUE_FLUSH_DELTA".to_string(),
+            width: 2,
+            height: 1,
+            metatile_id: vec![0; 2],
+            collision: vec![0; 2],
+            elevation: vec![0; 2],
+            behavior: vec![0; 2],
+            allow_cycling: true,
+            allow_running: true,
+            connections: vec![],
+        });
+        let (tx, mut rx) = mpsc::unbounded_channel();
+        let session = world
+            .create_session(tx)
+            .await
+            .expect("session should create");
+        world
+            .join_session(session.connection_id, "queued-wheelie-to-normal")
+            .await
+            .expect("session should join");
+        let _ = drain_server_messages(&mut rx);
+
+        {
+            let mut sessions = world.sessions.write().await;
+            let session_state = sessions
+                .get_mut(&session.connection_id)
+                .expect("session should exist");
+            session_state.player_state.map_id = "MAP_QUEUE_FLUSH_DELTA".to_string();
+            session_state.player_state.tile_x = 0;
+            session_state.player_state.tile_y = 0;
+            session_state.player_state.facing = Direction::Right;
+            session_state.player_state.traversal_state = TraversalState::AcroBike;
+            session_state.player_state.preferred_bike_type = TraversalState::AcroBike;
+            session_state.player_state.bike_runtime.acro_state = AcroBikeSubstate::BunnyHop;
+            session_state.player_state.bike_runtime.last_transition = BikeTransitionType::None;
+            session_state.player_state.bike_runtime.action_in_progress = true;
+            session_state.player_state.bike_runtime.queued_transition =
+                Some(BikeTransitionType::WheelieToNormal);
+            session_state.player_state.bike_runtime.queued_acro_state =
+                Some(AcroBikeSubstate::None);
+            session_state.active_walk_transition = Some(ActiveWalkTransition::new(
+                0,
+                "MAP_QUEUE_FLUSH_DELTA".to_string(),
+                0,
+                0,
+                "MAP_QUEUE_FLUSH_DELTA".to_string(),
+                1,
+                0,
+                Direction::Right,
+                MovementMode::Walk,
+                MovementStepSpeed::Step1,
+            ));
+        }
+
+        let mut seen_transitions = Vec::new();
+        for _ in 0..20 {
+            world.tick().await;
+            for message in drain_server_messages(&mut rx) {
+                if let ServerMessage::BikeRuntimeDelta(delta) = message {
+                    if let Some(transition) = delta.bike_transition {
+                        seen_transitions.push(transition);
+                    }
+                }
+            }
+            if seen_transitions.contains(&BikeTransitionType::WheelieToNormal) {
+                break;
+            }
+        }
+
+        assert!(
+            seen_transitions.contains(&BikeTransitionType::WheelieToNormal),
+            "queued WheelieToNormal must be emitted in BikeRuntimeDelta when action lock clears; seen transitions: {seen_transitions:?}"
+        );
     }
 
     #[tokio::test]
