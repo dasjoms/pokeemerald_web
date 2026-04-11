@@ -623,6 +623,10 @@ export class PlayerAnimationController {
 
   private resolveAcroStationaryActionId(transitionOverride?: BikeTransitionType): string {
     const bikeTransition = transitionOverride ?? this.bikeTransition;
+    if (this.acroHopArcAirborne) {
+      return 'acro_bunny_hop_back_wheel';
+    }
+
     switch (bikeTransition) {
       case BikeTransitionType.WHEELIE_IDLE:
         return 'acro_wheelie_face';
@@ -660,6 +664,10 @@ export class PlayerAnimationController {
 
   private resolveAcroMovingActionId(transitionOverride?: BikeTransitionType): string {
     const bikeTransition = transitionOverride ?? this.bikeTransition;
+    if (this.acroHopArcAirborne) {
+      return 'acro_bunny_hop_back_wheel';
+    }
+
     if (bikeTransition !== BikeTransitionType.NONE) {
       switch (bikeTransition) {
       case BikeTransitionType.WHEELIE_IDLE:
