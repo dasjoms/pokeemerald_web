@@ -27,8 +27,8 @@ use crate::{
         SessionAccepted, StepSpeed, TraversalState, WalkInput, WalkResult, WorldSnapshot,
     },
     session::{
-        ActiveWalkTransition, BikeRuntimeState, CrackedFloorRuntimeState, PlayerState, Session,
-        SessionInit, WalkIntentTimingValidation, MAX_PENDING_WALK_INPUTS,
+        ActiveWalkTransition, AvatarActionLockType, BikeRuntimeState, CrackedFloorRuntimeState,
+        PlayerState, Session, SessionInit, WalkIntentTimingValidation, MAX_PENDING_WALK_INPUTS,
     },
 };
 
@@ -52,6 +52,7 @@ const MB_UNUSED_SOOTOPOLIS_DEEP_WATER: u8 = 0x18;
 const MB_NO_SURFACING: u8 = 0x19;
 const MB_UNUSED_SOOTOPOLIS_DEEP_WATER_2: u8 = 0x1A;
 const MB_SEAWEED_NO_SURFACING: u8 = 0x2A;
+const ACRO_WHEELIE_TO_NORMAL_LOCK_TICKS: u8 = 8;
 
 #[derive(Debug, Clone)]
 pub struct MapConnection {
@@ -435,6 +436,7 @@ impl World {
         const SERVER_TICK_MS: f32 = WALK_SAMPLE_MS;
 
         for session in sessions.values_mut() {
+            session.advance_avatar_action_lock_tick();
             let previous_traversal_state = session.player_state.traversal_state;
             let previous_acro_substate = bike_acro_substate_for_traversal(&session.player_state);
             let previous_bike_transition = session.player_state.bike_runtime.last_transition;
@@ -498,7 +500,7 @@ impl World {
             }
             let effective_held_direction = session.effective_held_direction();
             session.player_state.bike_runtime.action_in_progress =
-                session.active_walk_transition.is_some();
+                session.active_walk_transition.is_some() || session.avatar_action_lock_active();
             if !completed_walk_this_tick {
                 update_bike_runtime_per_tick(
                     &mut session.player_state,
@@ -509,6 +511,16 @@ impl World {
             session.update_authoritative_tick(tick);
             let current_acro_substate = bike_acro_substate_for_traversal(&session.player_state);
             let current_bike_transition = session.player_state.bike_runtime.last_transition;
+            if current_bike_transition != previous_bike_transition {
+                if let Some(lock_ticks) =
+                    avatar_action_lock_ticks_for_bike_transition(current_bike_transition)
+                {
+                    session.begin_avatar_action_lock(
+                        AvatarActionLockType::BikeTransition(current_bike_transition),
+                        lock_ticks,
+                    );
+                }
+            }
             let (hop_landing_map_id, hop_landing_x, hop_landing_y) =
                 if let Some(active_walk) = session.active_walk_transition.as_ref() {
                     (
@@ -571,6 +583,9 @@ impl World {
             }
 
             if session.active_walk_transition.is_some() {
+                continue;
+            }
+            if session.avatar_action_lock_active() {
                 continue;
             }
 
@@ -1478,10 +1493,14 @@ fn bike_transition_from_action(action: AcroAnimationAction) -> BikeTransitionTyp
     }
 }
 
-fn apply_acro_runtime_outcome(
-    player_state: &mut PlayerState,
-    action: Option<AcroAnimationAction>,
-) {
+fn avatar_action_lock_ticks_for_bike_transition(transition: BikeTransitionType) -> Option<u8> {
+    match transition {
+        BikeTransitionType::WheelieToNormal => Some(ACRO_WHEELIE_TO_NORMAL_LOCK_TICKS),
+        _ => None,
+    }
+}
+
+fn apply_acro_runtime_outcome(player_state: &mut PlayerState, action: Option<AcroAnimationAction>) {
     let logical_substate = acro_substate_from_runtime(player_state.bike_runtime.acro_runtime.state);
     let logical_transition = action.map(bike_transition_from_action);
     if player_state.bike_runtime.action_in_progress {
@@ -2386,6 +2405,122 @@ mod tests {
         assert!(
             !seen_transitions.contains(&BikeTransitionType::WheelieToNormal),
             "no intermediate grounded transition should occur before standing hop flow"
+        );
+    }
+
+    #[tokio::test]
+    async fn releasing_b_after_bunny_hop_landing_blocks_directional_movement_until_wheelie_to_normal_lock_expires(
+    ) {
+        let world = test_world_with_initial_map(MapData {
+            map_id: "MAP_WHEELIE_TO_NORMAL_LOCK".to_string(),
+            width: 4,
+            height: 1,
+            metatile_id: vec![0; 4],
+            collision: vec![0; 4],
+            elevation: vec![0; 4],
+            behavior: vec![0; 4],
+            allow_cycling: true,
+            allow_running: true,
+            connections: vec![],
+        });
+        let (tx, mut rx) = mpsc::unbounded_channel();
+        let session = world
+            .create_session(tx)
+            .await
+            .expect("session should create");
+        world
+            .join_session(session.connection_id, "wheelie-to-normal-lock")
+            .await
+            .expect("session should join");
+        let _ = drain_server_messages(&mut rx);
+
+        {
+            let mut sessions = world.sessions.write().await;
+            let session_state = sessions
+                .get_mut(&session.connection_id)
+                .expect("session should exist");
+            session_state.player_state.map_id = "MAP_WHEELIE_TO_NORMAL_LOCK".to_string();
+            session_state.player_state.tile_x = 0;
+            session_state.player_state.tile_y = 0;
+            session_state.player_state.facing = Direction::Right;
+            session_state.player_state.traversal_state = TraversalState::AcroBike;
+            session_state.player_state.preferred_bike_type = TraversalState::AcroBike;
+            session_state.player_state.bike_runtime.acro_runtime.state = AcroState::BunnyHop;
+            session_state.player_state.bike_runtime.acro_state = AcroBikeSubstate::BunnyHop;
+        }
+
+        world
+            .enqueue_held_input_state(
+                session.connection_id,
+                HeldInputState {
+                    input_seq: 0,
+                    held_dpad: crate::protocol::HeldDpad::Right as u8,
+                    held_buttons: 0,
+                    client_time: 0,
+                },
+            )
+            .await
+            .expect("held input should enqueue");
+        world
+            .enqueue_walk_input(
+                session.connection_id,
+                WalkInput {
+                    direction: Direction::Right,
+                    movement_mode: MovementMode::Walk,
+                    held_buttons: 0,
+                    input_seq: 0,
+                    client_time: 0,
+                },
+            )
+            .await
+            .expect("walk input should enqueue");
+        world.tick().await;
+
+        let tick0_messages = drain_server_messages(&mut rx);
+        assert!(
+            tick0_messages.iter().any(|message| {
+                matches!(
+                    message,
+                    ServerMessage::BikeRuntimeDelta(BikeRuntimeDelta {
+                        bike_transition: Some(BikeTransitionType::WheelieToNormal),
+                        ..
+                    })
+                )
+            }),
+            "release tick must emit WheelieToNormal runtime transition"
+        );
+        assert!(
+            tick0_messages
+                .iter()
+                .all(|message| !matches!(message, ServerMessage::WalkResult(_))),
+            "directional walk input should remain queued when WheelieToNormal lock starts"
+        );
+
+        for _ in 0..(ACRO_WHEELIE_TO_NORMAL_LOCK_TICKS as usize - 1) {
+            world.tick().await;
+            let tick_messages = drain_server_messages(&mut rx);
+            assert!(
+                tick_messages
+                    .iter()
+                    .all(|message| !matches!(message, ServerMessage::WalkResult(_))),
+                "no walk result should be produced while the stationary lock remains active"
+            );
+        }
+
+        world.tick().await;
+        let release_tick_messages = drain_server_messages(&mut rx);
+        let accepted_result = release_tick_messages
+            .into_iter()
+            .find_map(|message| match message {
+                ServerMessage::WalkResult(result) if result.input_seq == 0 => Some(result),
+                _ => None,
+            });
+        let accepted_result = accepted_result
+            .expect("queued directional walk input should execute once lock expires");
+        assert!(accepted_result.accepted);
+        assert_eq!(
+            accepted_result.authoritative_pos,
+            crate::protocol::Position { x: 1, y: 0 }
         );
     }
 
