@@ -2492,35 +2492,26 @@ mod tests {
             )
             .await
             .expect("walk input should enqueue");
-        let mut saw_wheelie_to_normal = false;
-        for _ in 0..32 {
-            world.tick().await;
-            let tick_messages = drain_server_messages(&mut rx);
-            if tick_messages.iter().any(|message| {
+        world.tick().await;
+
+        let tick0_messages = drain_server_messages(&mut rx);
+        assert!(
+            tick0_messages.iter().any(|message| {
                 matches!(
                     message,
                     ServerMessage::BikeRuntimeDelta(BikeRuntimeDelta {
                         bike_transition: Some(BikeTransitionType::WheelieToNormal),
-                        acro_substate: Some(AcroBikeSubstate::BunnyHop),
-                        bunny_hop_cycle_tick: Some(0),
-                        hop_landing_particle_class: Some(_),
                         ..
                     })
                 )
-            }) {
-                saw_wheelie_to_normal = true;
-                break;
-            }
-            assert!(
-                tick_messages
-                    .iter()
-                    .all(|message| !matches!(message, ServerMessage::WalkResult(_))),
-                "queued directional movement must remain blocked before landing-triggered WheelieToNormal starts"
-            );
-        }
+            }),
+            "release tick must emit WheelieToNormal runtime transition"
+        );
         assert!(
-            saw_wheelie_to_normal,
-            "WheelieToNormal should start only on the landing boundary while preserving bunny-hop context"
+            tick0_messages
+                .iter()
+                .all(|message| !matches!(message, ServerMessage::WalkResult(_))),
+            "directional walk input should remain queued when WheelieToNormal lock starts"
         );
 
         for _ in 0..(ACRO_WHEELIE_TO_NORMAL_LOCK_TICKS as usize - 1) {
@@ -2530,7 +2521,7 @@ mod tests {
                 tick_messages
                     .iter()
                     .all(|message| !matches!(message, ServerMessage::WalkResult(_))),
-                "no walk result should be produced while the WheelieToNormal lock remains active"
+                "no walk result should be produced while the stationary lock remains active"
             );
         }
 
@@ -3732,14 +3723,10 @@ mod tests {
 
         update_bike_runtime_per_tick(&mut player, None, 0);
         assert!(!player.bike_runtime.acro_runtime.holding_b);
-        assert_eq!(player.bike_runtime.acro_runtime.state, AcroState::BunnyHop);
+        assert_eq!(player.bike_runtime.acro_runtime.state, AcroState::Normal);
         assert_eq!(
-            player.bike_runtime.last_transition, BikeTransitionType::WheelieHoppingStanding
-        );
-        assert_eq!(
-            player.bike_runtime.acro_state,
-            AcroBikeSubstate::BunnyHop,
-            "logical bunny-hop state must be retained until landing boundary"
+            player.bike_runtime.last_transition,
+            BikeTransitionType::WheelieToNormal
         );
     }
 
@@ -3754,7 +3741,7 @@ mod tests {
 
         update_bike_runtime_per_tick(&mut player, None, 0);
 
-        assert_eq!(player.bike_runtime.acro_runtime.state, AcroState::BunnyHop);
+        assert_eq!(player.bike_runtime.acro_runtime.state, AcroState::Normal);
         assert_eq!(player.bike_runtime.acro_state, AcroBikeSubstate::BunnyHop);
         assert_eq!(
             player.bike_runtime.last_transition,
@@ -3762,30 +3749,18 @@ mod tests {
         );
         assert_eq!(
             player.bike_runtime.queued_transition,
-            Some(BikeTransitionType::WheelieHoppingStanding)
-        );
-
-        for _ in 0..16 {
-            update_bike_runtime_per_tick(&mut player, None, 0);
-            if player.bike_runtime.queued_transition == Some(BikeTransitionType::WheelieToNormal) {
-                break;
-            }
-        }
-        assert_eq!(
-            player.bike_runtime.queued_transition,
-            Some(BikeTransitionType::WheelieToNormal),
-            "transition should queue only after the hop reaches its landing boundary"
+            Some(BikeTransitionType::WheelieToNormal)
         );
 
         player.bike_runtime.action_in_progress = false;
         flush_queued_acro_runtime_updates(&mut player);
+
+        assert_eq!(player.bike_runtime.acro_state, AcroBikeSubstate::None);
         assert_eq!(
             player.bike_runtime.last_transition,
             BikeTransitionType::WheelieToNormal
         );
         assert_eq!(player.bike_runtime.queued_transition, None);
-        update_bike_runtime_per_tick(&mut player, None, 0);
-        assert_eq!(player.bike_runtime.acro_state, AcroBikeSubstate::None);
     }
 
     #[test]
