@@ -495,7 +495,7 @@ describe("main movement pipeline integration", () => {
     }
   });
 
-  it("despawns hop shadow exactly once when authoritative state exits hop-capable context", () => {
+  it("keeps hop shadow alive through mid-hop B release and despawns once after landing", () => {
     const movementRuntime = new PlayerMovementActionRuntime();
     const { fakeLayer, shadowRenderer } = createShadowHarness();
 
@@ -503,6 +503,7 @@ describe("main movement pipeline integration", () => {
       traversalState: TraversalState.ACRO_BIKE,
       acroSubstate: AcroBikeSubstate.BUNNY_HOP,
       bikeTransition: BikeTransitionType.HOP_STANDING,
+      bunnyHopCycleTick: 4,
     });
     shadowRenderer.setAuthoritativeState({
       traversalState: TraversalState.ACRO_BIKE,
@@ -518,15 +519,16 @@ describe("main movement pipeline integration", () => {
     expect(fakeLayer.addedCount).toBe(1);
     expect(fakeLayer.removedCount).toBe(0);
 
+    // Mid-hop B release exits authoritative hop-capable context while hop arc is still airborne.
     movementRuntime.setAuthoritativeInput({
       traversalState: TraversalState.ACRO_BIKE,
-      acroSubstate: AcroBikeSubstate.BUNNY_HOP,
-      bikeTransition: BikeTransitionType.NONE,
+      acroSubstate: AcroBikeSubstate.STANDING_WHEELIE,
+      bikeTransition: BikeTransitionType.WHEELIE_TO_NORMAL,
     });
     shadowRenderer.setAuthoritativeState({
       traversalState: TraversalState.ACRO_BIKE,
       bikeTransition: BikeTransitionType.NONE,
-      acroSubstate: AcroBikeSubstate.BUNNY_HOP,
+      acroSubstate: AcroBikeSubstate.NONE,
     });
     shadowRenderer.presentFrame({
       tileX: 12,
@@ -538,11 +540,19 @@ describe("main movement pipeline integration", () => {
     expect(fakeLayer.addedCount).toBe(1);
     expect(fakeLayer.removedCount).toBe(0);
 
-    shadowRenderer.setAuthoritativeState({
-      traversalState: TraversalState.ACRO_BIKE,
-      bikeTransition: BikeTransitionType.NONE,
-      acroSubstate: AcroBikeSubstate.NONE,
+    // Keep presenting while airborne under non-hop authoritative context.
+    movementRuntime.tickTicks(8);
+    shadowRenderer.presentFrame({
+      tileX: 12,
+      tileY: 9,
+      visualState: movementRuntime.getVisualState(),
     });
+    expect(shadowRenderer.hasActiveShadow()).toBe(true);
+    expect(fakeLayer.addedCount).toBe(1);
+    expect(fakeLayer.removedCount).toBe(0);
+
+    // Landing frame: visual arc completes, so shadow despawns once.
+    movementRuntime.tickTicks(1);
     shadowRenderer.presentFrame({
       tileX: 12,
       tileY: 9,

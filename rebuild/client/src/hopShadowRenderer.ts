@@ -115,11 +115,16 @@ export class HopShadowRenderer {
     tileY: number;
     visualState: PlayerMovementActionVisualState;
   }): void {
-    if (this.hopContextActive && !this.sprite) {
+    const visualHopArcInFlight =
+      input.visualState.activeAction === 'acro_wheelie_hop_face' ||
+      input.visualState.yOffsetPx < 0;
+    const shouldKeepShadowActive = this.hopContextActive || visualHopArcInFlight;
+
+    if (shouldKeepShadowActive && !this.sprite) {
       this.spawn();
     }
 
-    if (!this.hopContextActive) {
+    if (!shouldKeepShadowActive) {
       this.despawn();
       return;
     }
