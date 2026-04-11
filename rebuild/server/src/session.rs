@@ -47,6 +47,7 @@ pub struct BikeRuntimeState {
     pub stationary_hop_landing_ticks_remaining: u8,
     pub queued_transition: Option<BikeTransitionType>,
     pub queued_acro_state: Option<AcroBikeSubstate>,
+    pub preserve_rise_transition_for_next_walk_result: bool,
     pub acro_runtime: AcroRuntime,
 }
 
@@ -110,6 +111,7 @@ impl Default for BikeRuntimeState {
             stationary_hop_landing_ticks_remaining: 0,
             queued_transition: None,
             queued_acro_state: None,
+            preserve_rise_transition_for_next_walk_result: false,
             acro_runtime: AcroRuntime::default(),
         }
     }
