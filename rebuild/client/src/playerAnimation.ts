@@ -135,6 +135,13 @@ const ACRO_LATCH_INTERRUPT_TRANSITIONS = new Set<BikeTransitionType>([
   BikeTransitionType.WHEELIE_IDLE,
 ]);
 
+const ACRO_WHEELIE_LOWERING_TRANSITIONS = new Set<BikeTransitionType>([
+  BikeTransitionType.WHEELIE_TO_NORMAL,
+  BikeTransitionType.WHEELIE_END,
+  BikeTransitionType.EXIT_WHEELIE,
+  BikeTransitionType.WHEELIE_LOWERING_MOVING,
+]);
+
 type AcroTransitionFamily =
   | 'none'
   | 'hop'
@@ -334,6 +341,8 @@ export class PlayerAnimationController {
   private pendingMode: PlayerAnimationMode | null = null;
   private activeActionId = 'face';
   private latchedTransition: BikeTransitionType | null = null;
+  private hopArcAirborne = false;
+  private pendingPostHopTransition: BikeTransitionType | null = null;
   private frameCommandIndex = 0;
   private ticksUntilAdvance = 0;
   private skipNextTickDecrement = false;
@@ -357,6 +366,24 @@ export class PlayerAnimationController {
     };
   }
 
+  setHopArcAirborne(isAirborne: boolean): void {
+    if (this.hopArcAirborne === isAirborne) {
+      return;
+    }
+
+    this.hopArcAirborne = isAirborne;
+    if (this.hopArcAirborne || this.pendingPostHopTransition === null) {
+      return;
+    }
+
+    const releasedTransition = this.pendingPostHopTransition;
+    this.pendingPostHopTransition = null;
+    if (this.traversalState === TraversalState.ACRO_BIKE) {
+      this.latchedTransition = releasedTransition;
+    }
+    this.updateResolvedAction();
+  }
+
   setTraversalState(state: {
     traversalState: TraversalState;
     machSpeedStage?: number;
@@ -374,6 +401,7 @@ export class PlayerAnimationController {
       ACRO_LATCH_INTERRUPT_TRANSITIONS.has(this.bikeTransition)
     ) {
       this.latchedTransition = null;
+      this.pendingPostHopTransition = null;
     }
 
     if (
@@ -535,15 +563,16 @@ export class PlayerAnimationController {
   }
 
   private resolveAuthoritativeActionId(transitionOverride?: BikeTransitionType): string {
+    const bikeTransition = this.resolveGatedBikeTransition(transitionOverride ?? this.bikeTransition);
     if (this.mode.kind === 'face') {
       if (this.traversalState !== TraversalState.ACRO_BIKE) {
         return 'face';
       }
-      return this.resolveAcroStationaryActionId(transitionOverride);
+      return this.resolveAcroStationaryActionId(bikeTransition);
     }
 
     if (this.traversalState === TraversalState.ACRO_BIKE) {
-      return this.resolveAcroMovingActionId(transitionOverride);
+      return this.resolveAcroMovingActionId(bikeTransition);
     }
 
     if (this.traversalState === TraversalState.MACH_BIKE) {
@@ -551,6 +580,28 @@ export class PlayerAnimationController {
     }
 
     return this.mode.kind;
+  }
+
+  private resolveGatedBikeTransition(bikeTransition: BikeTransitionType): BikeTransitionType {
+    if (this.traversalState !== TraversalState.ACRO_BIKE) {
+      return bikeTransition;
+    }
+
+    if (!this.hopArcAirborne) {
+      return bikeTransition;
+    }
+
+    if (ACRO_WHEELIE_LOWERING_TRANSITIONS.has(bikeTransition)) {
+      this.pendingPostHopTransition = bikeTransition;
+    }
+
+    if (this.pendingPostHopTransition === null) {
+      return bikeTransition;
+    }
+
+    return this.mode.kind === 'face'
+      ? BikeTransitionType.WHEELIE_HOPPING_STANDING
+      : BikeTransitionType.WHEELIE_HOPPING_MOVING;
   }
 
   private shouldLatchCurrentTransition(): boolean {
