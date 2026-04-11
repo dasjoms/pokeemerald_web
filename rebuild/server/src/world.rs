@@ -465,20 +465,36 @@ impl World {
                 .bike_runtime
                 .pending_stationary_hop_landing_effect
             {
-                session.player_state.bike_runtime.stationary_hop_landing_ticks = session
+                if session
                     .player_state
                     .bike_runtime
-                    .stationary_hop_landing_ticks
-                    .saturating_add(1);
-                if session.player_state.bike_runtime.stationary_hop_landing_ticks
-                    >= bunny_hop_cycle_ticks()
+                    .stationary_hop_landing_ticks_remaining
+                    > 0
+                {
+                    session
+                        .player_state
+                        .bike_runtime
+                        .stationary_hop_landing_ticks_remaining = session
+                        .player_state
+                        .bike_runtime
+                        .stationary_hop_landing_ticks_remaining
+                        .saturating_sub(1);
+                }
+                if session
+                    .player_state
+                    .bike_runtime
+                    .stationary_hop_landing_ticks_remaining
+                    == 0
                 {
                     completed_stationary_hop_landing_effect = true;
                     session
                         .player_state
                         .bike_runtime
                         .pending_stationary_hop_landing_effect = false;
-                    session.player_state.bike_runtime.stationary_hop_landing_ticks = 0;
+                    session
+                        .player_state
+                        .bike_runtime
+                        .stationary_hop_landing_ticks_remaining = 0;
                 }
             }
             if let Some(active_walk) = session.active_walk_transition.as_mut() {
@@ -535,17 +551,33 @@ impl World {
             session.update_authoritative_tick(tick);
             let current_acro_substate = bike_acro_substate_for_traversal(&session.player_state);
             let current_bike_transition = session.player_state.bike_runtime.last_transition;
-            if current_bike_transition != previous_bike_transition {
-                if should_latch_stationary_hop_landing_effect_on_transition_start(
-                    current_bike_transition,
-                    session.active_walk_transition.is_some(),
-                ) {
-                    session
+            let stationary_bunny_hop_release_exit =
+                matches!(previous_acro_substate, Some(AcroBikeSubstate::BunnyHop))
+                    && !matches!(current_acro_substate, Some(AcroBikeSubstate::BunnyHop))
+                    && session.active_walk_transition.is_none()
+                    && !session
                         .player_state
                         .bike_runtime
-                        .pending_stationary_hop_landing_effect = true;
-                    session.player_state.bike_runtime.stationary_hop_landing_ticks = 0;
-                }
+                        .acro_runtime
+                        .hop_landed_this_tick();
+            if stationary_bunny_hop_release_exit {
+                let current_hop_tick = session
+                    .player_state
+                    .bike_runtime
+                    .acro_runtime
+                    .bunny_hop_cycle_tick();
+                let ticks_remaining_until_landing =
+                    bunny_hop_cycle_ticks().saturating_sub(current_hop_tick);
+                session
+                    .player_state
+                    .bike_runtime
+                    .pending_stationary_hop_landing_effect = true;
+                session
+                    .player_state
+                    .bike_runtime
+                    .stationary_hop_landing_ticks_remaining = ticks_remaining_until_landing;
+            }
+            if current_bike_transition != previous_bike_transition {
                 if let Some(lock_ticks) =
                     avatar_action_lock_ticks_for_bike_transition(current_bike_transition)
                 {
@@ -1202,13 +1234,6 @@ fn should_latch_hop_landing_effect_on_transition_start(transition: BikeTransitio
         transition,
         BikeTransitionType::WheelieHoppingStanding | BikeTransitionType::WheelieHoppingMoving
     )
-}
-
-fn should_latch_stationary_hop_landing_effect_on_transition_start(
-    transition: BikeTransitionType,
-    has_active_walk_transition: bool,
-) -> bool {
-    !has_active_walk_transition && matches!(transition, BikeTransitionType::WheelieHoppingStanding)
 }
 
 fn hop_landing_signal_for_authoritative_tile(
@@ -2726,7 +2751,10 @@ mod tests {
             .await
             .expect("session should create");
         world
-            .join_session(session.connection_id, "release-during-stationary-hop-landing")
+            .join_session(
+                session.connection_id,
+                "release-during-stationary-hop-landing",
+            )
             .await
             .expect("session should join");
         let _ = drain_server_messages(&mut rx);
@@ -3163,7 +3191,8 @@ mod tests {
             let session_state = sessions
                 .get_mut(&session.connection_id)
                 .expect("session should exist");
-            session_state.player_state.map_id = "MAP_BUNNY_HOP_FIRST_DIRECTIONAL_CADENCE".to_string();
+            session_state.player_state.map_id =
+                "MAP_BUNNY_HOP_FIRST_DIRECTIONAL_CADENCE".to_string();
             session_state.player_state.traversal_state = TraversalState::AcroBike;
             session_state.player_state.preferred_bike_type = TraversalState::AcroBike;
             session_state.player_state.facing = Direction::Right;
@@ -3212,14 +3241,17 @@ mod tests {
 
         let first_accepted = loop {
             world.tick().await;
-            if let Some(result) = drain_server_messages(&mut rx).into_iter().find_map(|message| {
-                match message {
-                    ServerMessage::WalkResult(result) if result.input_seq == 0 && result.accepted => {
+            if let Some(result) = drain_server_messages(&mut rx)
+                .into_iter()
+                .find_map(|message| match message {
+                    ServerMessage::WalkResult(result)
+                        if result.input_seq == 0 && result.accepted =>
+                    {
                         Some(result)
                     }
                     _ => None,
-                }
-            }) {
+                })
+            {
                 break result;
             }
         };
@@ -3252,14 +3284,17 @@ mod tests {
 
         let second_accepted = loop {
             world.tick().await;
-            if let Some(result) = drain_server_messages(&mut rx).into_iter().find_map(|message| {
-                match message {
-                    ServerMessage::WalkResult(result) if result.input_seq == 1 && result.accepted => {
+            if let Some(result) = drain_server_messages(&mut rx)
+                .into_iter()
+                .find_map(|message| match message {
+                    ServerMessage::WalkResult(result)
+                        if result.input_seq == 1 && result.accepted =>
+                    {
                         Some(result)
                     }
                     _ => None,
-                }
-            }) {
+                })
+            {
                 break result;
             }
         };
