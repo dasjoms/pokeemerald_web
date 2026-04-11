@@ -53,6 +53,7 @@ const MB_NO_SURFACING: u8 = 0x19;
 const MB_UNUSED_SOOTOPOLIS_DEEP_WATER_2: u8 = 0x1A;
 const MB_SEAWEED_NO_SURFACING: u8 = 0x2A;
 const ACRO_WHEELIE_TO_NORMAL_LOCK_TICKS: u8 = 8;
+const ACRO_WHEELIE_POP_LOCK_TICKS: u8 = 8;
 
 #[derive(Debug, Clone)]
 pub struct MapConnection {
@@ -1585,6 +1586,9 @@ fn bike_transition_from_action(action: AcroAnimationAction) -> BikeTransitionTyp
 
 fn avatar_action_lock_ticks_for_bike_transition(transition: BikeTransitionType) -> Option<u8> {
     match transition {
+        BikeTransitionType::NormalToWheelie | BikeTransitionType::WheelieRisingMoving => {
+            Some(ACRO_WHEELIE_POP_LOCK_TICKS)
+        }
         BikeTransitionType::WheelieToNormal => Some(ACRO_WHEELIE_TO_NORMAL_LOCK_TICKS),
         _ => None,
     }
@@ -2302,6 +2306,7 @@ mod tests {
         let _ = drain_server_messages(&mut rx);
 
         let mut seen_transition_sequence = Vec::new();
+        let mut seen_transitions_by_tick = Vec::new();
         for input_seq in 0..45_u32 {
             world
                 .enqueue_held_input_state(
@@ -2322,6 +2327,7 @@ mod tests {
                     ServerMessage::BikeRuntimeDelta(delta) => {
                         if let Some(transition) = delta.bike_transition {
                             seen_transition_sequence.push(transition);
+                            seen_transitions_by_tick.push((input_seq, transition));
                         }
                     }
                     ServerMessage::WalkResult(result) => {
@@ -2347,6 +2353,23 @@ mod tests {
         assert!(
             normal_to_wheelie_index < wheelie_hop_index,
             "NormalToWheelie must occur before WheelieHoppingStanding"
+        );
+
+        let normal_to_wheelie_tick = seen_transitions_by_tick
+            .iter()
+            .find_map(|(tick, transition)| {
+                (*transition == BikeTransitionType::NormalToWheelie).then_some(*tick)
+            })
+            .expect("expected NormalToWheelie transition tick");
+        let first_wheelie_idle_tick = seen_transitions_by_tick
+            .iter()
+            .find_map(|(tick, transition)| {
+                (*transition == BikeTransitionType::WheelieIdle).then_some(*tick)
+            })
+            .expect("expected WheelieIdle transition tick");
+        assert!(
+            first_wheelie_idle_tick >= normal_to_wheelie_tick + ACRO_WHEELIE_POP_LOCK_TICKS as u32,
+            "WheelieIdle must not override NormalToWheelie during pop-window; normal_tick={normal_to_wheelie_tick}, wheelie_idle_tick={first_wheelie_idle_tick}"
         );
     }
 
