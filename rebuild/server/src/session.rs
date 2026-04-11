@@ -331,8 +331,6 @@ impl Session {
 
         if !self.bunny_hop_cadence_initialized {
             self.bunny_hop_cadence_initialized = true;
-            self.pending_bunny_hop_direction = None;
-            return WalkIntentTimingValidation::Accepted;
         }
         self.pending_bunny_hop_direction = Some(input.direction);
         WalkIntentTimingValidation::Accepted
@@ -583,6 +581,8 @@ mod tests {
             session.validate_and_commit_walk_intent_timing(&walk_input(Direction::Right, 0)),
             WalkIntentTimingValidation::Accepted
         );
+        assert!(session.bunny_hop_cadence_initialized());
+        assert!(session.has_pending_bunny_hop_direction());
     }
 
     #[test]
