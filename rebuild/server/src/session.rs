@@ -42,6 +42,9 @@ pub struct BikeRuntimeState {
     pub acro_state: AcroBikeSubstate,
     pub last_transition: BikeTransitionType,
     pub preserve_transition_until_walk_result: bool,
+    pub action_in_progress: bool,
+    pub queued_transition: Option<BikeTransitionType>,
+    pub queued_acro_state: Option<AcroBikeSubstate>,
     pub acro_runtime: AcroRuntime,
 }
 
@@ -100,6 +103,9 @@ impl Default for BikeRuntimeState {
             acro_state: AcroBikeSubstate::None,
             last_transition: BikeTransitionType::None,
             preserve_transition_until_walk_result: false,
+            action_in_progress: false,
+            queued_transition: None,
+            queued_acro_state: None,
             acro_runtime: AcroRuntime::default(),
         }
     }
