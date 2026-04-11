@@ -632,7 +632,10 @@ export class PlayerAnimationController {
       return false;
     }
 
-    return !(latchedFamily === 'wheelie_pop' && nextFamily === 'wheelie_idle');
+    return !(
+      latchedFamily === 'wheelie_pop' &&
+      (nextFamily === 'wheelie_idle' || nextFamily === 'wheelie_move')
+    );
   }
 
   private maybeReleaseActionLatch(): void {

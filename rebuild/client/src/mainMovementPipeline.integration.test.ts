@@ -357,7 +357,7 @@ describe("main movement pipeline integration", () => {
     }
 
     let settledToWheelieIdle = false;
-    for (let tick = 0; tick < 3; tick += 1) {
+    for (let tick = 0; tick < 40; tick += 1) {
       playerAnimation.tick(1000 / 60);
       playerAnimation.setTraversalState({
         traversalState: TraversalState.ACRO_BIKE,
@@ -420,6 +420,46 @@ describe("main movement pipeline integration", () => {
       }
     }
     expect(settledToWheelieIdle).toBe(true);
+  });
+
+  it("does not let wheelie-moving updates interrupt a latched moving pop-wheelie one-shot", () => {
+    const playerAnimation = new PlayerAnimationController(makeMockAssets());
+    const direction = Direction.RIGHT;
+    const popWheelieDurationTicks = 6;
+
+    playerAnimation.setTraversalState({
+      traversalState: TraversalState.ACRO_BIKE,
+      acroSubstate: AcroBikeSubstate.MOVING_WHEELIE,
+      bikeTransition: BikeTransitionType.WHEELIE_RISING_MOVING,
+    });
+    playerAnimation.startStep(direction, "run");
+    expect(playerAnimation.getDebugState().animId).toBe(
+      "anim_acro_pop_wheelie_moving_east",
+    );
+
+    for (let tick = 0; tick < popWheelieDurationTicks - 1; tick += 1) {
+      playerAnimation.setTraversalState({
+        traversalState: TraversalState.ACRO_BIKE,
+        acroSubstate: AcroBikeSubstate.MOVING_WHEELIE,
+        bikeTransition: BikeTransitionType.WHEELIE_MOVING,
+      });
+      playerAnimation.applyPendingModeChanges();
+      playerAnimation.tick(1000 / 60);
+      expect(playerAnimation.getDebugState().animId).toBe(
+        "anim_acro_pop_wheelie_moving_east",
+      );
+    }
+
+    playerAnimation.setTraversalState({
+      traversalState: TraversalState.ACRO_BIKE,
+      acroSubstate: AcroBikeSubstate.MOVING_WHEELIE,
+      bikeTransition: BikeTransitionType.WHEELIE_END,
+    });
+    playerAnimation.startStep(direction, "run");
+    playerAnimation.applyPendingModeChanges();
+    expect(playerAnimation.getDebugState().animId).not.toBe(
+      "anim_acro_pop_wheelie_moving_east",
+    );
   });
 
   it("keeps bunny-hop one-shot playback latched without looping during the 16-tick low-jump arc", () => {
