@@ -7,7 +7,15 @@
       "type": "server_hello",
       "protocolVersion": "u16",
       "serverAuthority": "bool",
-      "clientVersionEcho": "string"
+      "clientVersionEcho": "string",
+      "assetManifest": {
+        "assetBaseUrl": "string",
+        "assetVersion": "string",
+        "tilesetPairId": "string",
+        "atlasUrl": "string?",
+        "palettesUrl": "string?",
+        "metatilesUrl": "string?"
+      }
     },
     "render_state_v1": {
       "type": "render_state_v1",

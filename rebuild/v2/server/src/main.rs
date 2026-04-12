@@ -16,11 +16,11 @@ use axum::{
     Router,
 };
 use rebuild_v2_server::{
-    map_runtime::{RuntimeMapAssembler, MAP_OFFSET},
+    map_runtime::{LayoutRenderAssets, RuntimeMapAssembler, MAP_OFFSET},
     render_assets::RenderMetatileResolver,
     render_state::{
-        CameraAnchor, RenderStateV1, RenderWindow, ServerMessage, RENDER_WINDOW_HEIGHT,
-        RENDER_WINDOW_WIDTH,
+        AssetManifest, CameraAnchor, RenderStateV1, RenderWindow, ServerMessage,
+        RENDER_WINDOW_HEIGHT, RENDER_WINDOW_WIDTH,
     },
 };
 use serde::Deserialize;
@@ -31,6 +31,8 @@ const DEFAULT_BIND_ADDR: &str = "127.0.0.1:4100";
 const PROTOCOL_VERSION: u16 = 1;
 const DEFAULT_MAP_ID: &str = "MAP_PETALBURG_CITY";
 const ALLOWED_ASSET_TOP_LEVEL_DIRS: &[&str] = &["layouts", "players", "render"];
+const DEFAULT_ASSET_BASE_URL: &str = "/assets";
+const DEFAULT_ASSET_VERSION: &str = "dev";
 
 #[derive(Clone)]
 struct AppState {
@@ -228,47 +230,53 @@ fn content_type_for_path(path: &Path) -> &'static str {
 }
 
 async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>, client_version: String) {
+    let render_payload = match build_render_payload(&state.asset_root, &state.player_runtime) {
+        Ok(payload) => payload,
+        Err(err) => {
+            error!("failed to build render payload: {err}");
+            return;
+        }
+    };
+
     let hello = ServerMessage::ServerHello {
         protocol_version: PROTOCOL_VERSION,
         server_authority: true,
         client_version_echo: client_version,
+        asset_manifest: render_payload.asset_manifest.clone(),
     };
 
     if send_json(&mut socket, &hello).await.is_err() {
         return;
     }
 
-    match build_render_state(&state.asset_root, &state.player_runtime) {
-        Ok(render_state) => {
-            if send_json(
-                &mut socket,
-                &ServerMessage::RenderStateV1 {
-                    state: render_state,
-                },
-            )
-            .await
-            .is_err()
-            {
-                return;
-            }
-        }
-        Err(err) => {
-            error!("failed to build render state: {err}");
-            return;
-        }
+    if send_json(
+        &mut socket,
+        &ServerMessage::RenderStateV1 {
+            state: render_payload.render_state,
+        },
+    )
+    .await
+    .is_err()
+    {
+        return;
     }
 
     while let Some(Ok(message)) = socket.recv().await {
         if let Message::Close(_) = message {
-            break;
+            return;
         }
     }
 }
 
-fn build_render_state(
+struct BuildRenderPayload {
+    render_state: RenderStateV1,
+    asset_manifest: AssetManifest,
+}
+
+fn build_render_payload(
     asset_root: &PathBuf,
     player_runtime: &PlayerRuntimeState,
-) -> Result<RenderStateV1, String> {
+) -> Result<BuildRenderPayload, String> {
     let assembler =
         RuntimeMapAssembler::from_asset_root(asset_root).map_err(|err| err.to_string())?;
     let bundle = assembler
@@ -335,7 +343,7 @@ fn build_render_state(
         }
     }
 
-    Ok(RenderStateV1 {
+    let render_state = RenderStateV1 {
         protocol_version: PROTOCOL_VERSION,
         map_id: player_runtime.map_id.clone(),
         tileset_pair_id: render_assets.pair_id.clone(),
@@ -350,7 +358,37 @@ fn build_render_state(
             height: RENDER_WINDOW_HEIGHT,
         },
         metatiles,
+    };
+
+    Ok(BuildRenderPayload {
+        render_state,
+        asset_manifest: build_asset_manifest(render_assets),
     })
+}
+
+fn build_asset_manifest(render_assets: &LayoutRenderAssets) -> AssetManifest {
+    let asset_base_url =
+        env::var("V2_ASSET_BASE_URL").unwrap_or_else(|_| DEFAULT_ASSET_BASE_URL.to_string());
+    let asset_version =
+        env::var("V2_ASSET_VERSION").unwrap_or_else(|_| DEFAULT_ASSET_VERSION.to_string());
+    let normalized_base = asset_base_url.trim_end_matches('/').to_string();
+
+    AssetManifest {
+        asset_base_url: normalized_base.clone(),
+        asset_version,
+        tileset_pair_id: render_assets.pair_id.clone(),
+        atlas_url: Some(build_asset_url(&normalized_base, &render_assets.atlas)),
+        palettes_url: Some(build_asset_url(&normalized_base, &render_assets.palettes)),
+        metatiles_url: Some(build_asset_url(&normalized_base, &render_assets.metatiles)),
+    }
+}
+
+fn build_asset_url(base_url: &str, relative_path: &str) -> String {
+    let normalized_path = relative_path.trim_start_matches('/');
+    if base_url.is_empty() {
+        return format!("/{normalized_path}");
+    }
+    format!("{base_url}/{normalized_path}")
 }
 
 async fn send_json(socket: &mut WebSocket, message: &ServerMessage) -> Result<(), ()> {

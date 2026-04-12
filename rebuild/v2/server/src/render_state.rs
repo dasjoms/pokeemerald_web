@@ -14,11 +14,26 @@ pub enum ServerMessage {
         protocol_version: u16,
         server_authority: bool,
         client_version_echo: String,
+        asset_manifest: AssetManifest,
     },
     RenderStateV1 {
         #[serde(flatten)]
         state: RenderStateV1,
     },
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct AssetManifest {
+    pub asset_base_url: String,
+    pub asset_version: String,
+    pub tileset_pair_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub atlas_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub palettes_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metatiles_url: Option<String>,
 }
 
 #[derive(Debug, Serialize)]

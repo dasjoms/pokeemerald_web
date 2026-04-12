@@ -7,6 +7,15 @@ export type AtlasPage = {
   logical_tile_count: number;
 };
 
+export type AssetManifest = {
+  assetBaseUrl: string;
+  assetVersion: string;
+  tilesetPairId: string;
+  atlasUrl?: string;
+  palettesUrl?: string;
+  metatilesUrl?: string;
+};
+
 type AtlasJson = {
   pages: AtlasPage[];
 };
@@ -25,8 +34,10 @@ export class TilesetTextureResolver {
     this.pages = pages;
   }
 
-  static async create(assetRoot: string, tilesetPairId: string): Promise<TilesetTextureResolver> {
-    const atlasUrl = buildAssetUrl(assetRoot, `render/${tilesetPairId}/atlas.json`);
+  static async create(manifest: AssetManifest): Promise<TilesetTextureResolver> {
+    const atlasUrl = manifest.atlasUrl
+      ? appendVersion(manifest.atlasUrl, manifest.assetVersion)
+      : buildAssetUrl(manifest.assetBaseUrl, `render/${manifest.tilesetPairId}/atlas.json`, manifest.assetVersion);
     const atlasResponse = await fetch(atlasUrl);
     if (!atlasResponse.ok) {
       throw new Error(`Failed to load atlas json: ${atlasUrl}`);
@@ -37,7 +48,9 @@ export class TilesetTextureResolver {
     let runningStart = 0;
 
     for (const page of atlas.pages) {
-      const texture = await Assets.load<Texture>(buildAssetUrl(assetRoot, page.path));
+      const texture = await Assets.load<Texture>(
+        buildAssetUrl(manifest.assetBaseUrl, page.path, manifest.assetVersion)
+      );
       const tilesPerRow = Math.max(1, Math.floor(texture.width / 8));
       const startTile = runningStart;
       const endTile = runningStart + page.logical_tile_count;
@@ -69,11 +82,14 @@ export class TilesetTextureResolver {
   }
 }
 
-function buildAssetUrl(assetRoot: string, relativePath: string): string {
+function buildAssetUrl(assetRoot: string, relativePath: string, assetVersion: string): string {
   const normalizedRoot = assetRoot.replace(/^\/+|\/+$/g, "");
   const normalizedPath = relativePath.replace(/^\/+/, "");
-  if (!normalizedRoot) {
-    return `/${normalizedPath}`;
-  }
-  return `/${normalizedRoot}/${normalizedPath}`;
+  const raw = normalizedRoot ? `/${normalizedRoot}/${normalizedPath}` : `/${normalizedPath}`;
+  return appendVersion(raw, assetVersion);
+}
+
+function appendVersion(url: string, assetVersion: string): string {
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}v=${encodeURIComponent(assetVersion)}`;
 }

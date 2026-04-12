@@ -1,7 +1,7 @@
 import { Application, Text } from "pixi.js";
-import { DEFAULT_DEV_ASSET_ROOT, V2_PROTOCOL_VERSION } from "./assetConfig";
+import { V2_PROTOCOL_VERSION } from "./assetConfig";
 import { OverworldCompositor } from "./compositor";
-import { parseServerMessage, type RenderStateV1Message } from "./protocol";
+import { parseServerMessage, type AssetManifest, type RenderStateV1Message } from "./protocol";
 
 const appElement = document.querySelector<HTMLDivElement>("#app");
 if (!appElement) {
@@ -21,12 +21,10 @@ const compositor = new OverworldCompositor();
 compositor.root.visible = false;
 app.stage.addChild(compositor.root);
 
-const assetRoot = DEFAULT_DEV_ASSET_ROOT;
-
 const banner = new Text({
   text: [
     "Emerald Rebuild V2",
-    `Asset root: ${assetRoot}`,
+    "Asset root: pending server manifest",
     "Target: 32x32 (16-metatile) buffer-wheel renderer",
     "Handshake: connecting..."
   ].join("\n"),
@@ -55,6 +53,7 @@ appElement.style.position = "relative";
 appElement.appendChild(playButton);
 
 let latestRenderState: RenderStateV1Message | null = null;
+let assetManifest: AssetManifest | null = null;
 let launched = false;
 
 playButton.addEventListener("click", async () => {
@@ -66,7 +65,10 @@ playButton.addEventListener("click", async () => {
     playButton.style.display = "none";
     banner.visible = false;
     compositor.root.visible = true;
-    await compositor.fullRedraw(latestRenderState, assetRoot);
+    if (!assetManifest) {
+      throw new Error("Missing asset manifest from server hello");
+    }
+    await compositor.fullRedraw(latestRenderState, assetManifest);
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     console.error("[v2-client] initial redraw failed", error);
@@ -86,14 +88,25 @@ ws.addEventListener("message", async (event) => {
   const raw = String(event.data);
   const message = parseServerMessage(raw);
   if (!message) {
-    banner.text = `Invalid message: ${raw}`;
+    if (!reportManifestParseError(raw)) {
+      banner.text = `Invalid message: ${raw}`;
+    }
     return;
   }
 
   if (message.type === "server_hello") {
+    if (!message.assetManifest.assetBaseUrl || !message.assetManifest.assetVersion || !message.assetManifest.tilesetPairId) {
+      const reason =
+        "Server hello missing required asset manifest fields: assetBaseUrl, assetVersion, and tilesetPairId are required.";
+      console.error(`[v2-client] ${reason}`, message);
+      banner.text = reason;
+      return;
+    }
+    assetManifest = message.assetManifest;
     banner.text = [
       "Emerald Rebuild V2",
-      `Asset root: ${assetRoot}`,
+      `Asset root: ${message.assetManifest.assetBaseUrl}`,
+      `Asset version: ${message.assetManifest.assetVersion}`,
       "Target: 32x32 (16-metatile) buffer-wheel renderer",
       `Handshake: protocol=${message.protocolVersion} authority=${message.serverAuthority}`,
       "Press Play when render state arrives"
@@ -103,6 +116,14 @@ ws.addEventListener("message", async (event) => {
 
   latestRenderState = message;
   playButton.disabled = false;
+
+  if (!assetManifest) {
+    const reason =
+      "Render state arrived before a valid asset manifest. Expected server_hello with assetBaseUrl, assetVersion, and tilesetPairId.";
+    console.error(`[v2-client] ${reason}`, message);
+    banner.text = reason;
+    return;
+  }
 
   if (!launched) {
     banner.text = [
@@ -115,7 +136,7 @@ ws.addEventListener("message", async (event) => {
   }
 
   try {
-    await compositor.fullRedraw(message, assetRoot);
+    await compositor.fullRedraw(message, assetManifest);
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     console.error("[v2-client] redraw failed", error);
@@ -127,8 +148,24 @@ ws.addEventListener("message", async (event) => {
 ws.addEventListener("error", () => {
   banner.text = [
     "Emerald Rebuild V2",
-    `Asset root: ${assetRoot}`,
+    "Asset root: pending server manifest",
     "Target: 32x32 (16-metatile) buffer-wheel renderer",
     "Handshake: unable to connect to ws://127.0.0.1:4100/ws"
   ].join("\n");
 });
+
+function reportManifestParseError(raw: string): boolean {
+  try {
+    const parsed = JSON.parse(raw) as { type?: string };
+    if (parsed?.type === "server_hello") {
+      const reason =
+        "Server hello rejected: missing required asset manifest fields (assetBaseUrl, assetVersion, tilesetPairId).";
+      console.error(`[v2-client] ${reason}`, parsed);
+      banner.text = reason;
+      return true;
+    }
+  } catch {
+    // intentionally ignore parse failures; generic invalid message text is already set by caller.
+  }
+  return false;
+}

@@ -1,8 +1,18 @@
+export type AssetManifest = {
+  assetBaseUrl: string;
+  assetVersion: string;
+  tilesetPairId: string;
+  atlasUrl?: string;
+  palettesUrl?: string;
+  metatilesUrl?: string;
+};
+
 export type ServerHelloMessage = {
   type: "server_hello";
   protocolVersion: number;
   serverAuthority: boolean;
   clientVersionEcho: string;
+  assetManifest: AssetManifest;
 };
 
 export type RenderSubtile = {
@@ -58,11 +68,16 @@ export function parseServerMessage(raw: string): ServerMessage | null {
 
   const type = getString(parsed, "type");
   if (type === "server_hello") {
+    const manifest = parseAssetManifest(getObject(parsed, "assetManifest", "asset_manifest"));
+    if (!manifest) {
+      return null;
+    }
     return {
       type,
       protocolVersion: getNumber(parsed, "protocolVersion", "protocol_version"),
       serverAuthority: getBoolean(parsed, "serverAuthority", "server_authority"),
-      clientVersionEcho: getString(parsed, "clientVersionEcho", "client_version_echo")
+      clientVersionEcho: getString(parsed, "clientVersionEcho", "client_version_echo"),
+      assetManifest: manifest
     };
   }
 
@@ -132,12 +147,45 @@ function normalizeSubtile(value: unknown): RenderSubtile | null {
   };
 }
 
-function getObject(source: unknown, key: string): Record<string, unknown> {
+function parseAssetManifest(source: unknown): AssetManifest | null {
+  if (!source || typeof source !== "object") {
+    return null;
+  }
+
+  const assetBaseUrl = getString(source, "assetBaseUrl", "asset_base_url");
+  const assetVersion = getString(source, "assetVersion", "asset_version");
+  const tilesetPairId = getString(source, "tilesetPairId", "tileset_pair_id");
+
+  if (!assetBaseUrl || !assetVersion || !tilesetPairId) {
+    return null;
+  }
+
+  const atlasUrl = optionalString(source, "atlasUrl", "atlas_url");
+  const palettesUrl = optionalString(source, "palettesUrl", "palettes_url");
+  const metatilesUrl = optionalString(source, "metatilesUrl", "metatiles_url");
+
+  return {
+    assetBaseUrl,
+    assetVersion,
+    tilesetPairId,
+    atlasUrl: atlasUrl || undefined,
+    palettesUrl: palettesUrl || undefined,
+    metatilesUrl: metatilesUrl || undefined
+  };
+}
+
+function getObject(source: unknown, ...keys: string[]): Record<string, unknown> {
   if (!source || typeof source !== "object") {
     return {};
   }
-  const candidate = (source as Record<string, unknown>)[key];
-  return candidate && typeof candidate === "object" ? (candidate as Record<string, unknown>) : {};
+  const record = source as Record<string, unknown>;
+  for (const key of keys) {
+    const candidate = record[key];
+    if (candidate && typeof candidate === "object") {
+      return candidate as Record<string, unknown>;
+    }
+  }
+  return {};
 }
 
 function getArray(source: unknown, key: string): unknown[] {
@@ -184,6 +232,20 @@ function getString(source: unknown, ...keys: string[]): string {
   for (const key of keys) {
     const value = record[key];
     if (typeof value === "string") {
+      return value;
+    }
+  }
+  return "";
+}
+
+function optionalString(source: unknown, ...keys: string[]): string {
+  if (!source || typeof source !== "object") {
+    return "";
+  }
+  const record = source as Record<string, unknown>;
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "string" && value.length > 0) {
       return value;
     }
   }
