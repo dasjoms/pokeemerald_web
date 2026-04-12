@@ -2,6 +2,7 @@ import { Container, Graphics, SCALE_MODES, Sprite, Texture } from "pixi.js";
 import type { AssetManifest, RenderStateV1Message, RenderSubtile } from "./protocol";
 import { wheelIndex, WHEEL_SIZE, wrap32 } from "./tileWheel32";
 import { TilesetTextureResolver } from "./assetLoader";
+import { runCameraWheelFixtures } from "./cameraWheel";
 import {
   computeBgScrollWindow,
   runScrollWindowFixtures,
@@ -15,6 +16,7 @@ const NORMAL_BOTTOM_FILL_TILE_INDEX = 0x14;
 const NORMAL_BOTTOM_FILL_PALETTE_INDEX = 3;
 
 runScrollWindowFixtures();
+runCameraWheelFixtures();
 
 export class OverworldCompositor {
   readonly root = new Container();
