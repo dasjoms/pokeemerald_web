@@ -12,6 +12,12 @@ use tokio::sync::mpsc;
 const BIKE_EFFECT_TIRE_TRACKS: u8 = 1 << 0;
 const BIKE_EFFECT_CYCLING_BGM_MOUNT: u8 = 1 << 3;
 const BIKE_EFFECT_CYCLING_BGM_DISMOUNT: u8 = 1 << 4;
+const MB_DEEP_SAND: u8 = 0x06;
+const MB_SAND: u8 = 0x21;
+
+fn is_track_eligible_behavior(behavior: u8) -> bool {
+    matches!(behavior, MB_SAND | MB_DEEP_SAND)
+}
 
 fn test_asset_paths() -> (String, String) {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
@@ -111,6 +117,19 @@ async fn traversal_transitions_emit_snapshot_and_walk_result_state() {
     assert_eq!(
         mount_walk_result.bike_effect_flags & BIKE_EFFECT_TIRE_TRACKS,
         0
+    );
+
+    let source_behavior = {
+        let map = world
+            .map(&session.player_state.map_id)
+            .expect("current map should exist");
+        let source_idx = session.player_state.tile_y as usize * map.width as usize
+            + session.player_state.tile_x as usize;
+        map.behavior[source_idx]
+    };
+    assert!(
+        !is_track_eligible_behavior(source_behavior),
+        "test fixture expects a non-sand source tile"
     );
 
     world
