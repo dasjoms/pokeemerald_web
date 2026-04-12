@@ -109,13 +109,16 @@ import {
 import {
   advanceFieldCameraByMetatile,
   CAMERA_METATILE_BUFFER_DIM,
-  createInitialFieldCameraOffset,
   mod as cameraMod,
   toMetatileRingOffset,
   updateFieldCameraPixelOffset,
-  type FieldCameraOffset,
 } from './cameraTilemap';
 import { computeCameraViewportLayout } from './cameraViewport';
+import {
+  createInitialCameraWindowOffset,
+  initializeCameraWindowOriginFromPlayerTile,
+  resolveEnteringCameraSlice,
+} from './cameraWindowBuffer';
 
 type ServerMessage =
   | { type: MessageType.SESSION_ACCEPTED; payload: SessionAccepted }
@@ -461,7 +464,7 @@ let activeSecondaryMetatiles: Metatile[] = [];
 let activePrimaryPalettes: number[][][] = [];
 let activeSecondaryPalettes: number[][][] = [];
 let activePrimaryTileCount = Number.MAX_SAFE_INTEGER;
-const fieldCameraOffset: FieldCameraOffset = createInitialFieldCameraOffset();
+const fieldCameraOffset = createInitialCameraWindowOffset();
 let cameraWindowOriginTileX = 0;
 let cameraWindowOriginTileY = 0;
 let lastAuthoritativeCameraTileX = 0;
@@ -1288,8 +1291,11 @@ function clearCameraBufferSlotContent(): void {
 }
 
 function initializeCameraWindowFromPlayerTile(playerTileX: number, playerTileY: number): void {
-  cameraWindowOriginTileX = playerTileX - Math.floor(CAMERA_METATILE_BUFFER_DIM / 2);
-  cameraWindowOriginTileY = playerTileY - Math.floor(CAMERA_METATILE_BUFFER_DIM / 2);
+  // 16 backing columns / 15 visible columns implies one spare offscreen column at a time.
+  // Visual centering is independent from preload origin.
+  const initialOrigin = initializeCameraWindowOriginFromPlayerTile(playerTileX, playerTileY);
+  cameraWindowOriginTileX = initialOrigin.originTileX;
+  cameraWindowOriginTileY = initialOrigin.originTileY;
   fieldCameraOffset.xTileOffset = 0;
   fieldCameraOffset.yTileOffset = 0;
   fieldCameraOffset.xPixelOffset = 0;
@@ -1356,41 +1362,15 @@ function applyCameraWindowMetatileStep(stepX: number, stepY: number): void {
 }
 
 function redrawEnteringCameraSlice(stepX: number, stepY: number): void {
-  const ringOffsetX = toMetatileRingOffset(fieldCameraOffset.xTileOffset);
-  const ringOffsetY = toMetatileRingOffset(fieldCameraOffset.yTileOffset);
-
-  if (stepX > 0) {
-    const bufferX = cameraMod(ringOffsetX + CAMERA_METATILE_BUFFER_DIM - 1, CAMERA_METATILE_BUFFER_DIM);
-    const worldX = cameraWindowOriginTileX + CAMERA_METATILE_BUFFER_DIM - 1;
-    for (let logicalY = 0; logicalY < CAMERA_METATILE_BUFFER_DIM; logicalY += 1) {
-      const bufferY = cameraMod(logicalY + ringOffsetY, CAMERA_METATILE_BUFFER_DIM);
-      drawCameraSlotAt(bufferX, bufferY, worldX, cameraWindowOriginTileY + logicalY);
-    }
-    return;
-  }
-  if (stepX < 0) {
-    const bufferX = ringOffsetX;
-    const worldX = cameraWindowOriginTileX;
-    for (let logicalY = 0; logicalY < CAMERA_METATILE_BUFFER_DIM; logicalY += 1) {
-      const bufferY = cameraMod(logicalY + ringOffsetY, CAMERA_METATILE_BUFFER_DIM);
-      drawCameraSlotAt(bufferX, bufferY, worldX, cameraWindowOriginTileY + logicalY);
-    }
-    return;
-  }
-  if (stepY > 0) {
-    const bufferY = cameraMod(ringOffsetY + CAMERA_METATILE_BUFFER_DIM - 1, CAMERA_METATILE_BUFFER_DIM);
-    const worldY = cameraWindowOriginTileY + CAMERA_METATILE_BUFFER_DIM - 1;
-    for (let logicalX = 0; logicalX < CAMERA_METATILE_BUFFER_DIM; logicalX += 1) {
-      const bufferX = cameraMod(logicalX + ringOffsetX, CAMERA_METATILE_BUFFER_DIM);
-      drawCameraSlotAt(bufferX, bufferY, cameraWindowOriginTileX + logicalX, worldY);
-    }
-    return;
-  }
-  const bufferY = ringOffsetY;
-  const worldY = cameraWindowOriginTileY;
-  for (let logicalX = 0; logicalX < CAMERA_METATILE_BUFFER_DIM; logicalX += 1) {
-    const bufferX = cameraMod(logicalX + ringOffsetX, CAMERA_METATILE_BUFFER_DIM);
-    drawCameraSlotAt(bufferX, bufferY, cameraWindowOriginTileX + logicalX, worldY);
+  // Spare capacity must track incoming movement side to avoid edge pop.
+  const redraws = resolveEnteringCameraSlice(
+    { originTileX: cameraWindowOriginTileX, originTileY: cameraWindowOriginTileY },
+    fieldCameraOffset,
+    stepX,
+    stepY,
+  );
+  for (const redraw of redraws) {
+    drawCameraSlotAt(redraw.bufferX, redraw.bufferY, redraw.worldTileX, redraw.worldTileY);
   }
 }
 
