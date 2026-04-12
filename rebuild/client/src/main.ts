@@ -466,6 +466,8 @@ let cameraWindowOriginTileX = 0;
 let cameraWindowOriginTileY = 0;
 let lastAuthoritativeCameraTileX = 0;
 let lastAuthoritativeCameraTileY = 0;
+let pendingCameraWindowStepX = 0;
+let pendingCameraWindowStepY = 0;
 const cameraBufferSlots: CameraBufferSlot[] = [];
 const renderedSubtileBindings: RenderedSubtileBinding[] = [];
 const subtileBindingsByTile = new Map<string, RenderedSubtileBinding[]>();
@@ -643,7 +645,6 @@ app.ticker.add(() => {
   }
   walkInputController.tick();
   tickWalkTransition(app.ticker.deltaMS);
-  updateCameraWindowForAuthoritativeTileStep();
   const quantizedInterpolatedOffsetX = resolveQuantizedInterpolatedCameraPixelOffset(
     state.renderTileX,
     state.playerTileX,
@@ -660,6 +661,7 @@ app.ticker.add(() => {
     quantizedInterpolatedOffsetY,
     TILE_SIZE,
   );
+  updateCameraWindowForAuthoritativeTileStep();
   updateCameraWindowSlotPositions();
   playerAnimation.applyPendingModeChanges();
   presentPlayerAnimationFrame();
@@ -1296,6 +1298,8 @@ function initializeCameraWindowFromPlayerTile(playerTileX: number, playerTileY: 
   fieldCameraOffset.yPixelOffset = 0;
   lastAuthoritativeCameraTileX = playerTileX;
   lastAuthoritativeCameraTileY = playerTileY;
+  pendingCameraWindowStepX = 0;
+  pendingCameraWindowStepY = 0;
   redrawEntireCameraWindow();
 }
 
@@ -1317,34 +1321,23 @@ function updateCameraWindowForAuthoritativeTileStep(): void {
   if (!activeRuntimeChunk || !activeLayoutForRender) {
     return;
   }
-  let diffX = state.playerTileX - lastAuthoritativeCameraTileX;
-  let diffY = state.playerTileY - lastAuthoritativeCameraTileY;
-  if (diffX === 0 && diffY === 0) {
-    return;
-  }
-
-  while (diffX !== 0 || diffY !== 0) {
-    if (diffX > 0) {
-      applyCameraWindowMetatileStep(1, 0);
-      diffX -= 1;
-      continue;
-    }
-    if (diffX < 0) {
-      applyCameraWindowMetatileStep(-1, 0);
-      diffX += 1;
-      continue;
-    }
-    if (diffY > 0) {
-      applyCameraWindowMetatileStep(0, 1);
-      diffY -= 1;
-      continue;
-    }
-    applyCameraWindowMetatileStep(0, -1);
-    diffY += 1;
-  }
-
+  pendingCameraWindowStepX += state.playerTileX - lastAuthoritativeCameraTileX;
+  pendingCameraWindowStepY += state.playerTileY - lastAuthoritativeCameraTileY;
   lastAuthoritativeCameraTileX = state.playerTileX;
   lastAuthoritativeCameraTileY = state.playerTileY;
+
+  while (fieldCameraOffset.xPixelOffset === 0 && pendingCameraWindowStepX !== 0) {
+    const stepX = pendingCameraWindowStepX > 0 ? 1 : -1;
+    applyCameraWindowMetatileStep(stepX, 0);
+    pendingCameraWindowStepX -= stepX;
+  }
+
+  while (fieldCameraOffset.yPixelOffset === 0 && pendingCameraWindowStepY !== 0) {
+    const stepY = pendingCameraWindowStepY > 0 ? 1 : -1;
+    applyCameraWindowMetatileStep(0, stepY);
+    pendingCameraWindowStepY -= stepY;
+  }
+
   updateCameraWindowSlotPositions();
 }
 
