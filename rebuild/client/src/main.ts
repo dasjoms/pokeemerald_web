@@ -507,7 +507,6 @@ const mapBg2Layer = new Container();
 const shadowBetweenBg2Bg1Layer = new Container();
 const bikeEffectsBetweenBg2Bg1Layer = new Container();
 const objectDepthBetweenBg2Bg1Layer = new Container({ sortableChildren: true });
-const bikeEffectsLayer = new Container();
 const mapBg1Layer = new Container();
 const debugOverlayLayer = new Container();
 worldContainer.addChild(mapBg3Layer);
@@ -518,7 +517,6 @@ worldContainer.addChild(mapBg2Layer);
 worldContainer.addChild(shadowBetweenBg2Bg1Layer);
 worldContainer.addChild(bikeEffectsBetweenBg2Bg1Layer);
 worldContainer.addChild(objectDepthBetweenBg2Bg1Layer);
-worldContainer.addChild(bikeEffectsLayer);
 worldContainer.addChild(mapBg1Layer);
 worldContainer.addChild(debugOverlayLayer);
 gameContainer.scale.set(RENDER_SCALE, RENDER_SCALE);
@@ -560,7 +558,7 @@ let playerActiveActorLayer = objectDepthBetweenBg2Bg1Layer;
 let activeMapTileRenderPriorityContexts: (MapTileRenderPriorityContext | undefined)[] = [];
 let playerObjectRenderPriorityState: PlayerObjectRenderPriorityState = 'normal';
 const bikeEffectRenderer = new BikeEffectRenderer(
-  bikeEffectsLayer,
+  (tileX, tileY) => resolveBikeEffectLayerForPlayer(tileX, tileY),
   TILE_SIZE,
   bikeTireTrackAtlas,
   bikeTireTracksConfig.metadata,
@@ -1036,7 +1034,6 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
   shadowBetweenBg2Bg1Layer.removeChildren();
   bikeEffectsBetweenBg2Bg1Layer.removeChildren();
   objectDepthBetweenBg2Bg1Layer.removeChildren();
-  bikeEffectsLayer.removeChildren();
   bikeEffectRenderer.clear();
   hopShadowRenderer.clear();
   hopParticleRenderer.clear();
@@ -2644,6 +2641,14 @@ function resolveHopEffectLayerForPlayer(tileX: number, tileY: number): Container
     return objectDepthBelowBg2Layer;
   }
   return objectDepthBetweenBg2Bg1Layer;
+}
+
+function resolveBikeEffectLayerForPlayer(tileX: number, tileY: number): Container {
+  const actorLayer = resolveActorLayerForPlayer(tileX, tileY);
+  if (actorLayer === objectDepthBelowBg2Layer) {
+    return bikeEffectsBelowBg2Layer;
+  }
+  return bikeEffectsBetweenBg2Bg1Layer;
 }
 
 function updateObjectDepthSorting(): void {

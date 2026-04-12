@@ -98,21 +98,30 @@ function createCornerTurnManifestMetadata(): BikeTireTrackManifestMetadata {
   };
 }
 
+function createAtlas(pixi: PixiModule): BikeTireTrackAtlas {
+  return {
+    south: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
+    north: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
+    west: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
+    east: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
+    se_corner_turn: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
+    sw_corner_turn: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
+    nw_corner_turn: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
+    ne_corner_turn: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
+  };
+}
+
 describe('BikeEffectRenderer tire track lifecycle parity', () => {
   it('holds visible, then flickers each frame, and stops at extracted timer threshold', async () => {
     const { renderer: rendererModule, pixi } = await loadRendererWithPixi();
-    const atlas: BikeTireTrackAtlas = {
-      south: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
-      north: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
-      west: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
-      east: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
-      se_corner_turn: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
-      sw_corner_turn: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
-      nw_corner_turn: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
-      ne_corner_turn: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
-    };
+    const atlas = createAtlas(pixi);
     const layer = new pixi.Container();
-    const renderer = new rendererModule.BikeEffectRenderer(layer, 16, atlas, createManifestMetadata());
+    const renderer = new rendererModule.BikeEffectRenderer(
+      () => layer,
+      16,
+      atlas,
+      createManifestMetadata(),
+    );
     renderer.onAuthoritativeStep({
       fromX: 4,
       fromY: 5,
@@ -147,18 +156,14 @@ describe('BikeEffectRenderer tire track lifecycle parity', () => {
 
   it('converts ticker delta into deterministic frame ticks for lifecycle updates', async () => {
     const { renderer: rendererModule, pixi } = await loadRendererWithPixi();
-    const atlas: BikeTireTrackAtlas = {
-      south: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
-      north: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
-      west: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
-      east: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
-      se_corner_turn: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
-      sw_corner_turn: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
-      nw_corner_turn: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
-      ne_corner_turn: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
-    };
+    const atlas = createAtlas(pixi);
     const layer = new pixi.Container();
-    const renderer = new rendererModule.BikeEffectRenderer(layer, 16, atlas, createManifestMetadata());
+    const renderer = new rendererModule.BikeEffectRenderer(
+      () => layer,
+      16,
+      atlas,
+      createManifestMetadata(),
+    );
     renderer.onAuthoritativeStep({
       fromX: 4,
       fromY: 5,
@@ -184,18 +189,12 @@ describe('BikeEffectRenderer tire track lifecycle parity', () => {
   it('uses consecutive authoritative facings for UP→RIGHT tire corner and spawns on source tile', async () => {
     const { renderer: rendererModule, pixi } = await loadRendererWithPixi();
     const atlas: BikeTireTrackAtlas = {
-      south: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
-      north: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
-      west: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
-      east: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
-      se_corner_turn: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
-      sw_corner_turn: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
-      nw_corner_turn: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
+      ...createAtlas(pixi),
       ne_corner_turn: { texture: pixi.Texture.EMPTY, hFlip: true, vFlip: true },
     };
     const layer = new pixi.Container();
     const renderer = new rendererModule.BikeEffectRenderer(
-      layer,
+      () => layer,
       16,
       atlas,
       createCornerTurnManifestMetadata(),
@@ -239,5 +238,47 @@ describe('BikeEffectRenderer tire track lifecycle parity', () => {
     expect(trackSprite.scale.x).toBe(-1);
     expect(trackSprite.scale.y).toBe(-1);
     expect(state.lastAuthoritativeStepFacing).toBe(Direction.RIGHT);
+  });
+
+  it('routes tire tracks to tile-stratum layer resolver based on source tile', async () => {
+    const { renderer: rendererModule, pixi } = await loadRendererWithPixi();
+    const belowBg2Layer = new pixi.Container();
+    const betweenBg2Bg1Layer = new pixi.Container();
+    const renderer = new rendererModule.BikeEffectRenderer(
+      (tileX, tileY) => (tileX < 10 && tileY < 10 ? belowBg2Layer : betweenBg2Bg1Layer),
+      16,
+      createAtlas(pixi),
+      createManifestMetadata(),
+    );
+
+    renderer.onAuthoritativeStep({
+      fromX: 2,
+      fromY: 3,
+      previousFacing: Direction.DOWN,
+      currentFacing: Direction.DOWN,
+      traversalState: TraversalState.MACH_BIKE,
+      bikeEffectFlags: rendererModule.BIKE_EFFECT_TIRE_TRACKS,
+      serverFrame: 1,
+    });
+    renderer.onAuthoritativeStep({
+      fromX: 12,
+      fromY: 8,
+      previousFacing: Direction.DOWN,
+      currentFacing: Direction.DOWN,
+      traversalState: TraversalState.MACH_BIKE,
+      bikeEffectFlags: rendererModule.BIKE_EFFECT_TIRE_TRACKS,
+      serverFrame: 2,
+    });
+
+    expect(belowBg2Layer.children).toHaveLength(1);
+    expect(betweenBg2Bg1Layer.children).toHaveLength(1);
+    expect((belowBg2Layer.children[0] as { x: number; y: number }).x).toBe(2 * 16 + 8);
+    expect((belowBg2Layer.children[0] as { x: number; y: number }).y).toBe(3 * 16 + 8);
+    expect((betweenBg2Bg1Layer.children[0] as { x: number; y: number }).x).toBe(12 * 16 + 8);
+    expect((betweenBg2Bg1Layer.children[0] as { x: number; y: number }).y).toBe(8 * 16 + 8);
+
+    renderer.clear();
+    expect(belowBg2Layer.children).toHaveLength(0);
+    expect(betweenBg2Bg1Layer.children).toHaveLength(0);
   });
 });

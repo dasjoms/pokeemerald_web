@@ -52,7 +52,7 @@ export class BikeEffectRenderer {
   private simulationFrameRemainder = 0;
 
   constructor(
-    private readonly layer: Container,
+    private readonly resolveLayerForTile: (tileX: number, tileY: number) => Container,
     private readonly tileSize: number,
     private readonly tireTrackAtlas: BikeTireTrackAtlas,
     metadata: BikeTireTrackManifestMetadata,
@@ -92,7 +92,7 @@ export class BikeEffectRenderer {
 
   clear(): void {
     for (const effect of this.effects) {
-      this.layer.removeChild(effect.sprite as unknown as ContainerChild);
+      this.removeSpriteFromParent(effect.sprite);
       effect.sprite.destroy();
     }
     this.effects.length = 0;
@@ -122,7 +122,7 @@ export class BikeEffectRenderer {
       effect.visible = !effect.visible;
       effect.sprite.visible = effect.visible;
       if (effect.timerFrames > this.step1StopThreshold) {
-        this.layer.removeChild(effect.sprite as unknown as ContainerChild);
+        this.removeSpriteFromParent(effect.sprite);
         effect.sprite.destroy();
         this.effects.splice(i, 1);
       }
@@ -146,12 +146,20 @@ export class BikeEffectRenderer {
     sprite.visible = true;
     sprite.x = event.fromX * this.tileSize + this.tileSize / 2;
     sprite.y = event.fromY * this.tileSize + this.tileSize / 2;
-    this.layer.addChild(sprite as unknown as ContainerChild);
+    const layer = this.resolveLayerForTile(event.fromX, event.fromY);
+    layer.addChild(sprite as unknown as ContainerChild);
     this.effects.push({
       sprite,
       phase: 'step0_hold',
       timerFrames: 0,
       visible: true,
     });
+  }
+
+  private removeSpriteFromParent(sprite: Sprite): void {
+    const parent = sprite.parent;
+    if (parent) {
+      parent.removeChild(sprite as unknown as ContainerChild);
+    }
   }
 }
