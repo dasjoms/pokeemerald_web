@@ -2765,10 +2765,10 @@ function updateHopShadowSuppressionContext(): void {
 function positionPlayerSprite(): void {
   updatePlayerActorLayer();
   const movementActionVisual = playerMovementActionRuntime.getVisualState();
-  const playerScreenAnchorX = app.screen.width / (2 * RENDER_SCALE);
-  const playerScreenAnchorY = app.screen.height / (2 * RENDER_SCALE);
-  playerSprite.x = playerScreenAnchorX;
-  playerSprite.y = playerScreenAnchorY + movementActionVisual.yOffsetPx;
+  const playerPixelX = state.cameraPosTileX * TILE_SIZE + state.pixelOffsetX;
+  const playerPixelY = state.cameraPosTileY * TILE_SIZE + state.pixelOffsetY;
+  playerSprite.x = playerPixelX + TILE_SIZE / 2;
+  playerSprite.y = playerPixelY + TILE_SIZE + movementActionVisual.yOffsetPx;
   updateHopShadowSuppressionContext();
   hopShadowRenderer.presentFrame({
     tileX: state.renderTileX,
@@ -3072,8 +3072,14 @@ function presentPlayerAnimationFrame(): void {
 }
 
 function updateCamera(): void {
-  gameContainer.x = 0;
-  gameContainer.y = 0;
+  const centerX = state.cameraPosTileX * TILE_SIZE + state.pixelOffsetX + TILE_SIZE / 2;
+  const centerY =
+    state.cameraPosTileY * TILE_SIZE +
+    state.pixelOffsetY +
+    TILE_SIZE / 2 +
+    state.verticalCameraBiasPx;
+  gameContainer.x = app.screen.width / 2 - centerX * RENDER_SCALE;
+  gameContainer.y = app.screen.height / 2 - centerY * RENDER_SCALE;
 }
 
 function resolveWindowOriginTileFromPlayerTile(playerTile: number): number {
@@ -3089,12 +3095,12 @@ function setRenderPositionToPlayerTile(playerTileX: number, playerTileY: number)
 function syncCameraWindowFromRenderPosition(): void {
   const renderPixelX = Math.floor(state.renderTileX * TILE_SIZE);
   const renderPixelY = Math.floor(state.renderTileY * TILE_SIZE);
-  const cameraPixelX = renderPixelX - MAP_OFFSET * TILE_SIZE;
-  const cameraPixelY = renderPixelY - MAP_OFFSET * TILE_SIZE;
-  state.cameraPosTileX = Math.floor(cameraPixelX / TILE_SIZE);
-  state.cameraPosTileY = Math.floor(cameraPixelY / TILE_SIZE);
-  state.pixelOffsetX = cameraPixelX - state.cameraPosTileX * TILE_SIZE;
-  state.pixelOffsetY = cameraPixelY - state.cameraPosTileY * TILE_SIZE;
+  const renderTileX = Math.floor(renderPixelX / TILE_SIZE);
+  const renderTileY = Math.floor(renderPixelY / TILE_SIZE);
+  state.cameraPosTileX = resolveWindowOriginTileFromPlayerTile(renderTileX);
+  state.cameraPosTileY = resolveWindowOriginTileFromPlayerTile(renderTileY);
+  state.pixelOffsetX = ((renderPixelX % TILE_SIZE) + TILE_SIZE) % TILE_SIZE;
+  state.pixelOffsetY = ((renderPixelY % TILE_SIZE) + TILE_SIZE) % TILE_SIZE;
 }
 
 function startAuthoritativeWalkTransition(
