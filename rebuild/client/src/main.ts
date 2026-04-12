@@ -118,6 +118,7 @@ import {
   createInitialCameraWindowOffset,
   initializeCameraWindowOriginFromPlayerTile,
   resolveEnteringCameraSlice,
+  resolvePreloadIncomingCameraSlice,
 } from './cameraWindowBuffer';
 import { resolveRenderedCameraAxisTile } from './cameraWindowTiming';
 
@@ -1403,19 +1404,12 @@ function preloadIncomingCameraSlices(diffX: number, diffY: number): void {
 }
 
 function redrawPreloadEnteringCameraSlice(stepX: number, stepY: number): void {
-  const preloadOffset = {
-    xTileOffset: fieldCameraOffset.xTileOffset,
-    yTileOffset: fieldCameraOffset.yTileOffset,
-    xPixelOffset: fieldCameraOffset.xPixelOffset,
-    yPixelOffset: fieldCameraOffset.yPixelOffset,
-  };
-  advanceFieldCameraByMetatile(preloadOffset, stepX, stepY);
-  const redraws = resolveEnteringCameraSlice(
+  const redraws = resolvePreloadIncomingCameraSlice(
     {
-      originTileX: cameraWindowOriginTileX + stepX,
-      originTileY: cameraWindowOriginTileY + stepY,
+      originTileX: cameraWindowOriginTileX,
+      originTileY: cameraWindowOriginTileY,
     },
-    preloadOffset,
+    fieldCameraOffset,
     stepX,
     stepY,
   );
