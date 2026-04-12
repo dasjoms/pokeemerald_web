@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[3]
-FIELD_EFFECT_ASSETS_VERSION = 1
+FIELD_EFFECT_ASSETS_VERSION = 2
 
 
 def read_text(path: Path) -> str:
@@ -181,11 +181,17 @@ def parse_anim_table(field_effect_objects_text: str, table_symbol: str) -> dict[
             raise ValueError(f"Missing anim cmd block {anim_symbol}")
 
         frames: list[dict[str, int]] = []
-        for frame_idx, duration in re.findall(
-            r"ANIMCMD_FRAME\((\d+),\s*(\d+)(?:,\s*\.hFlip\s*=\s*(?:TRUE|FALSE))?\)",
+        for frame_idx, duration, attrs in re.findall(
+            r"ANIMCMD_FRAME\(\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([^\)]*))?\)",
             anim_block_match.group(1),
         ):
-            frames.append({"frame": int(frame_idx), "duration": int(duration)})
+            frames.append(
+                {
+                    "frame": int(frame_idx),
+                    "duration": int(duration),
+                    "h_flip": bool(attrs and ".hFlip = TRUE" in attrs),
+                }
+            )
 
         sequences[anim_symbol] = frames
 
@@ -218,6 +224,7 @@ def build_effect_template_payload(
     *,
     effect_id: str,
     helper_function: str,
+    helper_update_callback: str,
     template_symbol: str,
     graphics_paths: dict[str, str],
     field_effect_objects_text: str,
@@ -239,7 +246,7 @@ def build_effect_template_payload(
     return {
         "field_effect_id": effect_id,
         "helper_function": helper_function,
-        "helper_update_callback": "UpdateJumpImpactEffect",
+        "helper_update_callback": helper_update_callback,
         "template": {
             "template_symbol": template_symbol,
             "palette_tag": template["paletteTag"],
@@ -250,6 +257,78 @@ def build_effect_template_payload(
             "pic_table_entries": pic_entries,
             "anim_table": anim_table,
             "sources": sources,
+        },
+    }
+
+
+def parse_bike_tire_tracks_transitions() -> dict[str, Any]:
+    text = read_text(ROOT / "src/event_object_movement.c")
+    block_match = re.search(
+        r"static\s+const\s+u8\s+bikeTireTracks_Transitions\[4\]\[4\]\s*=\s*\{(.*?)\};",
+        text,
+        re.S,
+    )
+    if not block_match:
+        raise ValueError("Missing bikeTireTracks_Transitions in src/event_object_movement.c")
+
+    rows = re.findall(r"\{([^\}]*)\}", block_match.group(1))
+    parsed_rows: list[list[int]] = []
+    for row in rows:
+        values = [int(token.strip(), 0) for token in row.split(",") if token.strip()]
+        parsed_rows.append(values)
+
+    if len(parsed_rows) != 4 or any(len(row) != 4 for row in parsed_rows):
+        raise ValueError("Expected 4x4 bike tire-track transitions table")
+
+    direction_order = ["down", "up", "left", "right"]
+    by_previous = {
+        direction_order[row_idx]: {
+            direction_order[col_idx]: parsed_rows[row_idx][col_idx]
+            for col_idx in range(4)
+        }
+        for row_idx in range(4)
+    }
+
+    return {
+        "table_symbol": "bikeTireTracks_Transitions",
+        "direction_index_order": direction_order,
+        "table": parsed_rows,
+        "by_previous_direction": by_previous,
+    }
+
+
+def parse_footprints_tire_tracks_fade_timing() -> dict[str, Any]:
+    text = read_text(ROOT / "src/field_effect_helpers.c")
+
+    step0_body_match = re.search(
+        r"static\s+void\s+FadeFootprintsTireTracks_Step0\([^)]*\)\s*\{(.*?)\n\}",
+        text,
+        re.S,
+    )
+    step1_body_match = re.search(
+        r"static\s+void\s+FadeFootprintsTireTracks_Step1\([^)]*\)\s*\{(.*?)\n\}",
+        text,
+        re.S,
+    )
+    if not step0_body_match or not step1_body_match:
+        raise ValueError("Missing fade step function bodies for footprints/tire tracks")
+
+    step0_body = step0_body_match.group(1)
+    step1_body = step1_body_match.group(1)
+    step0_match = re.search(r"sprite->sTimer\s*>\s*(\d+)", step0_body)
+    step1_match = re.search(r"sprite->sTimer\s*>\s*(\d+)", step1_body)
+    blink_match = re.search(r"sprite->invisible\s*\^=\s*1;", step1_body)
+    if not step0_match or not step1_match or not blink_match:
+        raise ValueError("Missing fade timing metadata for footprints/tire tracks")
+
+    return {
+        "timer_field": "sprite->sTimer",
+        "step0_wait_until_timer_gt": int(step0_match.group(1)),
+        "step1_stop_when_timer_gt": int(step1_match.group(1)),
+        "step1_blink": {
+            "enabled": True,
+            "mode": "toggle_visibility_each_frame",
+            "expression": "sprite->invisible ^= 1",
         },
     }
 
@@ -318,12 +397,23 @@ def resolve_assets() -> dict[str, Any]:
         effect_key: build_effect_template_payload(
             effect_id=effect_id,
             helper_function=helper_function,
+            helper_update_callback="UpdateJumpImpactEffect",
             template_symbol=template_symbol,
             graphics_paths=graphics_paths,
             field_effect_objects_text=object_templates_text,
         )
         for effect_key, effect_id, helper_function, template_symbol in jump_impact_effect_configs
     }
+    bike_tire_tracks = build_effect_template_payload(
+        effect_id="FLDEFF_BIKE_TIRE_TRACKS",
+        helper_function="FldEff_BikeTireTracks",
+        helper_update_callback="UpdateFootprintsTireTracksFieldEffect",
+        template_symbol="gFieldEffectObjectTemplate_BikeTireTracks",
+        graphics_paths=graphics_paths,
+        field_effect_objects_text=object_templates_text,
+    )
+    bike_tire_tracks["transition_mapping"] = parse_bike_tire_tracks_transitions()
+    bike_tire_tracks["fade_timing"] = parse_footprints_tire_tracks_fade_timing()
 
     palette_symbols = ["gFieldEffectObjectPalette0", "gFieldEffectObjectPalette1"]
     palettes = []
@@ -344,6 +434,7 @@ def resolve_assets() -> dict[str, Any]:
                 "templates": shadow_template_payload,
             },
             **jump_impact_effects,
+            "bike_tire_tracks": bike_tire_tracks,
         },
         "palettes": palettes,
         "source_files": [
@@ -351,6 +442,7 @@ def resolve_assets() -> dict[str, Any]:
             "src/field_effect_helpers.c",
             "src/data/object_events/object_event_graphics.h",
             "src/data/field_effects/field_effect_objects.h",
+            "src/event_object_movement.c",
         ],
     }
 
@@ -406,6 +498,46 @@ def validate_assets(payload: dict[str, Any]) -> None:
         durations = [frame["duration"] for frame in frames]
         if durations != expected:
             raise ValueError(f"Unexpected {effect_key} frame durations: {durations} != {expected}")
+
+    bike_tire_tracks = payload["effects"]["bike_tire_tracks"]
+    bike_template = bike_tire_tracks["template"]
+    if bike_template["anim_table_symbol"] != "sAnimTable_BikeTireTracks":
+        raise ValueError("Unexpected bike tire tracks anim table symbol")
+    if bike_template["pic_table_symbol"] != "sPicTable_BikeTireTracks":
+        raise ValueError("Unexpected bike tire tracks pic table symbol")
+
+    bike_anim_symbols = bike_template["anim_table"]["anim_cmd_symbols"]
+    if len(bike_anim_symbols) != 9:
+        raise ValueError(f"Expected 9 bike tire-tracks anim table entries, got {len(bike_anim_symbols)}")
+    if bike_anim_symbols[0] != "sBikeTireTracksAnim_South" or bike_anim_symbols[1] != "sBikeTireTracksAnim_South":
+        raise ValueError("Bike tire tracks anim table should start with duplicated south entry")
+
+    bike_sequences = bike_template["anim_table"]["sequences"]
+    if not bike_sequences["sBikeTireTracksAnim_SWCornerTurn"][0]["h_flip"]:
+        raise ValueError("Expected hFlip on SW corner tire-track variant")
+    if not bike_sequences["sBikeTireTracksAnim_NWCornerTurn"][0]["h_flip"]:
+        raise ValueError("Expected hFlip on NW corner tire-track variant")
+    if bike_sequences["sBikeTireTracksAnim_SECornerTurn"][0]["h_flip"]:
+        raise ValueError("Unexpected hFlip on SE corner tire-track variant")
+    if bike_sequences["sBikeTireTracksAnim_NECornerTurn"][0]["h_flip"]:
+        raise ValueError("Unexpected hFlip on NE corner tire-track variant")
+
+    transition = bike_tire_tracks["transition_mapping"]
+    if transition["direction_index_order"] != ["down", "up", "left", "right"]:
+        raise ValueError("Unexpected bike tire tracks direction index order")
+    table = transition["table"]
+    if len(table) != 4 or any(len(row) != 4 for row in table):
+        raise ValueError("Expected 4x4 bike tire tracks transition table")
+    if table != [[1, 2, 7, 8], [1, 2, 6, 5], [5, 8, 3, 4], [6, 7, 3, 4]]:
+        raise ValueError("Unexpected bike tire tracks transition values")
+
+    fade = bike_tire_tracks["fade_timing"]
+    if fade["step0_wait_until_timer_gt"] != 40:
+        raise ValueError("Unexpected tire tracks fade Step0 threshold")
+    if fade["step1_stop_when_timer_gt"] != 56:
+        raise ValueError("Unexpected tire tracks fade Step1 stop threshold")
+    if fade["step1_blink"]["mode"] != "toggle_visibility_each_frame":
+        raise ValueError("Unexpected tire tracks fade blink mode")
 
 
 def write_manifest(output_dir: Path, payload: dict[str, Any]) -> Path:

@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "artifact_group": "acro_bike_field_effects",
   "files": [
     {
@@ -15,10 +15,40 @@
       "output_path": "field_effects/acro_bike/palettes/general_1.pal"
     },
     {
+      "symbol": "gFieldEffectObjectPic_BikeTireTracks",
+      "declared_source_path": "graphics/field_effects/pics/bike_tire_tracks.4bpp",
+      "resolved_source_path": "graphics/field_effects/pics/bike_tire_tracks.png",
+      "output_path": "field_effects/acro_bike/pics/bike_tire_tracks.png"
+    },
+    {
       "symbol": "gFieldEffectObjectPic_GroundImpactDust",
       "declared_source_path": "graphics/field_effects/pics/ground_impact_dust.4bpp",
       "resolved_source_path": "graphics/field_effects/pics/ground_impact_dust.png",
       "output_path": "field_effects/acro_bike/pics/ground_impact_dust.png"
+    },
+    {
+      "symbol": "gFieldEffectObjectPic_JumpBigSplash",
+      "declared_source_path": "graphics/field_effects/pics/jump_big_splash.4bpp",
+      "resolved_source_path": "graphics/field_effects/pics/jump_big_splash.png",
+      "output_path": "field_effects/acro_bike/pics/jump_big_splash.png"
+    },
+    {
+      "symbol": "gFieldEffectObjectPic_JumpLongGrass",
+      "declared_source_path": "graphics/field_effects/pics/jump_long_grass.4bpp",
+      "resolved_source_path": "graphics/field_effects/pics/jump_long_grass.png",
+      "output_path": "field_effects/acro_bike/pics/jump_long_grass.png"
+    },
+    {
+      "symbol": "gFieldEffectObjectPic_JumpSmallSplash",
+      "declared_source_path": "graphics/field_effects/pics/jump_small_splash.4bpp",
+      "resolved_source_path": "graphics/field_effects/pics/jump_small_splash.png",
+      "output_path": "field_effects/acro_bike/pics/jump_small_splash.png"
+    },
+    {
+      "symbol": "gFieldEffectObjectPic_JumpTallGrass",
+      "declared_source_path": "graphics/field_effects/pics/jump_tall_grass.4bpp",
+      "resolved_source_path": "graphics/field_effects/pics/jump_tall_grass.png",
+      "output_path": "field_effects/acro_bike/pics/jump_tall_grass.png"
     },
     {
       "symbol": "gFieldEffectObjectPic_ShadowExtraLarge",
@@ -44,5 +74,6 @@
       "resolved_source_path": "graphics/field_effects/pics/shadow_small.png",
       "output_path": "field_effects/acro_bike/pics/shadow_small.png"
     }
-  ]
+  ],
+  "unresolved_sources": []
 }
