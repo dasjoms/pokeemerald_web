@@ -1,7 +1,7 @@
 export type WindowMapData<TTile> = {
   width: number;
   height: number;
-  sampleTileAt: (worldTileX: number, worldTileY: number) => TTile | undefined;
+  tiles: TTile[];
 };
 
 type WindowRenderSlotArgs<TTile> = {
@@ -162,7 +162,13 @@ export class OverworldWindowRenderer<TTile> {
     const slotTileY = mod32(worldTileY);
     const slotIndex = mapPosToBgTilemapOffset(slotTileX, slotTileY);
 
-    const tile = this.mapData.sampleTileAt(worldTileX, worldTileY);
+    const tile =
+      worldTileX < 0 ||
+      worldTileY < 0 ||
+      worldTileX >= this.mapData.width ||
+      worldTileY >= this.mapData.height
+        ? undefined
+        : this.mapData.tiles[worldTileY * this.mapData.width + worldTileX];
 
     const tileToken = tile ? worldTileY * this.mapData.width + worldTileX : -1;
     this.bg1Buffer[slotIndex] = tileToken;

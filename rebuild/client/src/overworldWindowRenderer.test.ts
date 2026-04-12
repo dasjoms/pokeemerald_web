@@ -16,7 +16,7 @@ describe('OverworldWindowRenderer slice redraws', () => {
       },
     });
 
-    renderer.initWindow(40, 40, { width: mapWidth, height: mapHeight, sampleTileAt: (x, y) => tiles[y * mapWidth + x] });
+    renderer.initWindow(40, 40, { width: mapWidth, height: mapHeight, tiles });
     calls.length = 0;
 
     renderer.redrawEdgeSlices(1, 0);
@@ -40,7 +40,7 @@ describe('OverworldWindowRenderer slice redraws', () => {
       },
     });
 
-    renderer.initWindow(40, 40, { width: mapWidth, height: mapHeight, sampleTileAt: (x, y) => tiles[y * mapWidth + x] });
+    renderer.initWindow(40, 40, { width: mapWidth, height: mapHeight, tiles });
     calls.length = 0;
 
     renderer.redrawEdgeSlices(1, 1);
