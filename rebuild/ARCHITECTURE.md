@@ -30,3 +30,19 @@ The browser client should remain lightweight:
 ## Deterministic Parity Goal
 
 For equivalent inputs, rebuild outcomes must match expected legacy Emerald behavior in player-visible systems.
+
+## Camera Parity Shadow Mode (Client)
+
+The client includes a shadow-mode camera parity module (`rebuild/client/src/fieldCameraParity.ts`) that computes ROM-style camera offsets and metatile boundary-cross events from `renderTileX/renderTileY`.
+
+Current intent:
+- Observe and validate parity counters/events without changing gameplay behavior.
+- Keep module read-only relative to movement/prediction/reconciliation.
+
+Intentionally not switched yet:
+- No map slice redraws are driven by parity events.
+- No viewport crop/window logic is driven by parity offsets.
+- Existing camera transform/rendering path remains active.
+
+Next planned integration step:
+- Feed `metatile-cross` events into a ring-buffer renderer that performs parity-consistent metatile strip updates.

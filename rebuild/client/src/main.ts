@@ -106,6 +106,12 @@ import {
   resolvePlayerRenderPriority,
   type PlayerObjectRenderPriorityState,
 } from './playerLayerSelection';
+import {
+  initFieldCameraParityFromTile,
+  updateFieldCameraParity,
+  type CameraBoundaryEvent,
+  type FieldCameraParityState,
+} from './fieldCameraParity';
 
 type ServerMessage =
   | { type: MessageType.SESSION_ACCEPTED; payload: SessionAccepted }
@@ -325,6 +331,7 @@ const ENABLE_DEBUG_OVERLAY_DEFAULT =
   new URLSearchParams(window.location.search).get('debug') === '1';
 const ENABLE_DEV_DEBUG_ACTIONS =
   new URLSearchParams(window.location.search).get('devDebugActions') === '1';
+const ENABLE_PARITY_CAMERA_SHADOW = true;
 const DEBUG_ACRO_HOP = true;
 const jsonAssetLoaders = import.meta.glob('../../assets/**/*.json');
 const binaryAssetUrls = import.meta.glob('../../assets/**/*.bin', {
@@ -432,6 +439,11 @@ let lastLoggedPrereqBlockSignature: string | null = null;
 let nextAcroHopAttemptId = 1;
 let activeAcroHopAttempt: AcroHopAttempt | null = null;
 let pendingHopLandingParticleEvent: PendingHopLandingParticleEvent | null = null;
+let fieldCameraParityState: FieldCameraParityState = initFieldCameraParityFromTile(
+  state.renderTileX,
+  state.renderTileY,
+);
+let lastParityCameraBoundaryEvents: CameraBoundaryEvent[] = [];
 
 let activeTilesetAnimationPairId: string | null = null;
 let activeTilesetAnimationState: TilesetAnimationState | null = null;
@@ -599,6 +611,7 @@ app.ticker.add(() => {
   }
   walkInputController.tick();
   tickWalkTransition(app.ticker.deltaMS);
+  tickFieldCameraParityShadow();
   playerAnimation.applyPendingModeChanges();
   presentPlayerAnimationFrame();
   tickTilesetAnimationClock(app.ticker.deltaMS);
@@ -618,6 +631,14 @@ function normalizeRepoRelative(path: string): string {
   const posixPath = path.replace(/\\/g, '/');
   const rebuildAssetsPrefix = /^(?:[A-Za-z]:)?\/?.*?rebuild\/assets\//;
   return posixPath.replace(rebuildAssetsPrefix, '');
+}
+
+function resetFieldCameraParityFromAuthoritativeTile(tileX: number, tileY: number): void {
+  if (!ENABLE_PARITY_CAMERA_SHADOW) {
+    return;
+  }
+  fieldCameraParityState = initFieldCameraParityFromTile(tileX, tileY);
+  lastParityCameraBoundaryEvents = [];
 }
 
 async function loadJsonFromAssets<T>(repoRelativePath: string): Promise<T> {
@@ -735,6 +756,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     state.playerTileY = snapshot.player_pos.y;
     state.renderTileX = state.playerTileX;
     state.renderTileY = state.playerTileY;
+    resetFieldCameraParityFromAuthoritativeTile(state.renderTileX, state.renderTileY);
     activeWalkTransition = null;
     state.facing = snapshot.facing;
     state.lastAuthoritativeStepFacing = snapshot.facing;
@@ -940,6 +962,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     activeWalkTransition = null;
     state.renderTileX = state.playerTileX;
     state.renderTileY = state.playerTileY;
+    resetFieldCameraParityFromAuthoritativeTile(state.renderTileX, state.renderTileY);
     playerAnimation.stopMoving(result.facing);
     bikeEffectRenderer.onAuthoritativeStep({
       fromX: state.playerTileX,
@@ -993,6 +1016,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     state.facing = reconciled.facing;
     state.renderTileX = state.playerTileX;
     state.renderTileY = state.playerTileY;
+    resetFieldCameraParityFromAuthoritativeTile(state.renderTileX, state.renderTileY);
   }
 }
 
@@ -2705,6 +2729,34 @@ function updateCamera(): void {
   const centerY = state.renderTileY * TILE_SIZE + TILE_SIZE / 2;
   gameContainer.x = app.screen.width / 2 - centerX * RENDER_SCALE;
   gameContainer.y = app.screen.height / 2 - centerY * RENDER_SCALE;
+}
+
+function tickFieldCameraParityShadow(): void {
+  if (!ENABLE_PARITY_CAMERA_SHADOW) {
+    return;
+  }
+
+  const parityUpdate = updateFieldCameraParity(
+    fieldCameraParityState,
+    state.renderTileX,
+    state.renderTileY,
+  );
+  fieldCameraParityState = parityUpdate.state;
+  lastParityCameraBoundaryEvents = parityUpdate.boundaryEvents;
+
+  if (debugOverlayEnabled && parityUpdate.boundaryEvents.length > 0) {
+    console.debug('[camera-parity][shadow]', {
+      boundaryEvents: parityUpdate.boundaryEvents,
+      pixelDeltaX: parityUpdate.pixelDeltaX,
+      pixelDeltaY: parityUpdate.pixelDeltaY,
+      xPixelOffset: fieldCameraParityState.xPixelOffset,
+      yPixelOffset: fieldCameraParityState.yPixelOffset,
+      xTileOffset: fieldCameraParityState.xTileOffset,
+      yTileOffset: fieldCameraParityState.yTileOffset,
+      anchorMetatileX: fieldCameraParityState.anchorMetatileX,
+      anchorMetatileY: fieldCameraParityState.anchorMetatileY,
+    });
+  }
 }
 
 function startAuthoritativeWalkTransition(
