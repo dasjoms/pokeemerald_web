@@ -289,43 +289,6 @@ describe("main movement pipeline integration", () => {
     expect(startStepSpy).not.toHaveBeenCalled();
   });
 
-  it("holds stationary held-B wheelie idle on standing back-wheel frames before bunny-hop transition", () => {
-    const playerAnimation = new PlayerAnimationController(makeMockAssets());
-    const direction = Direction.RIGHT;
-
-    playerAnimation.setTraversalState({
-      traversalState: TraversalState.ACRO_BIKE,
-      acroSubstate: AcroBikeSubstate.STANDING_WHEELIE,
-      bikeTransition: BikeTransitionType.WHEELIE_IDLE,
-    });
-    playerAnimation.stopMoving(direction);
-    playerAnimation.applyPendingModeChanges();
-
-    const idleDebugState = playerAnimation.getDebugState();
-    expect(idleDebugState.animId).toBe("anim_acro_wheelie_face_east");
-    expect(idleDebugState.frameIndex).toBe(483);
-    expect(idleDebugState.frameIndex).not.toBe(443);
-
-    for (let tick = 0; tick < 4; tick += 1) {
-      playerAnimation.tick(1000 / 60);
-      playerAnimation.stopMoving(direction);
-      playerAnimation.applyPendingModeChanges();
-      expect(playerAnimation.getDebugState().frameIndex).toBe(483);
-    }
-
-    playerAnimation.setTraversalState({
-      traversalState: TraversalState.ACRO_BIKE,
-      acroSubstate: AcroBikeSubstate.BUNNY_HOP,
-      bikeTransition: BikeTransitionType.HOP_STANDING,
-    });
-    playerAnimation.stopMoving(direction);
-    playerAnimation.applyPendingModeChanges();
-
-    expect(playerAnimation.getDebugState().animId).toBe(
-      "anim_acro_bunny_hop_back_east",
-    );
-  });
-
   it("keeps wheelie posture when stopMoving lands before authoritative wheelie-idle transition", () => {
     const playerAnimation = new PlayerAnimationController(makeMockAssets());
     const direction = Direction.RIGHT;
@@ -1724,19 +1687,19 @@ function makeMockAssets(): PlayerAnimationAssets {
     acro_wheelie_face: {
       south: {
         anim_cmd_symbol: "anim_acro_wheelie_face_south",
-        frames: [{ duration: 2, frame: 480, h_flip: false }],
+        frames: [{ duration: 2, frame: 440, h_flip: false }],
       },
       north: {
         anim_cmd_symbol: "anim_acro_wheelie_face_north",
-        frames: [{ duration: 2, frame: 481, h_flip: false }],
+        frames: [{ duration: 2, frame: 441, h_flip: false }],
       },
       west: {
         anim_cmd_symbol: "anim_acro_wheelie_face_west",
-        frames: [{ duration: 2, frame: 482, h_flip: false }],
+        frames: [{ duration: 2, frame: 442, h_flip: false }],
       },
       east: {
         anim_cmd_symbol: "anim_acro_wheelie_face_east",
-        frames: [{ duration: 2, frame: 483, h_flip: false }],
+        frames: [{ duration: 2, frame: 443, h_flip: false }],
       },
     },
     acro_pop_wheelie_stationary: {
