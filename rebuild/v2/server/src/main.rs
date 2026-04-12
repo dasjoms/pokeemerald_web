@@ -17,10 +17,11 @@ use axum::{
 };
 use rebuild_v2_server::{
     map_runtime::{LayoutRenderAssets, RuntimeMapAssembler, MAP_OFFSET},
+    movement::{Direction, MovementState},
     render_assets::RenderMetatileResolver,
     render_state::{
-        AssetManifest, BgScroll, CameraAnchor, RenderStateV1, RenderWindow, ServerMessage,
-        RENDER_WINDOW_HEIGHT, RENDER_WINDOW_WIDTH,
+        AssetManifest, BgScroll, CameraAnchor, CameraWheelFrame, MovementFrame, RenderStateV1,
+        RenderWindow, ServerMessage, RENDER_WINDOW_HEIGHT, RENDER_WINDOW_WIDTH,
     },
 };
 use serde::Deserialize;
@@ -314,6 +315,8 @@ fn build_render_payload(
     });
     let camera_runtime_x = camera_runtime.x;
     let camera_runtime_y = camera_runtime.y;
+    let movement = MovementState::new(camera_runtime_x, camera_runtime_y, Direction::South);
+    let (camera_anchor_x, camera_anchor_y) = movement.camera_runtime_anchor();
     let origin_runtime = render_window_origin_from_camera(camera_runtime);
     let origin_runtime_x = origin_runtime.x;
     let origin_runtime_y = origin_runtime.y;
@@ -362,14 +365,28 @@ fn build_render_payload(
         map_id: player_runtime.map_id.clone(),
         tileset_pair_id: render_assets.pair_id.clone(),
         camera: CameraAnchor {
-            runtime_x: camera_runtime_x,
-            runtime_y: camera_runtime_y,
+            runtime_x: camera_anchor_x,
+            runtime_y: camera_anchor_y,
         },
         scroll: BgScroll {
-            x_pixel_offset: 0,
-            y_pixel_offset: 0,
-            horizontal_pan: 0,
-            vertical_pan: 32,
+            x_pixel_offset: movement.pixel_offset_x,
+            y_pixel_offset: movement.pixel_offset_y,
+            horizontal_pan: movement.horizontal_pan,
+            vertical_pan: movement.vertical_pan,
+        },
+        movement: MovementFrame {
+            running_state: movement.running_state.as_spec_str().to_owned(),
+            tile_transition_state: movement.tile_transition_state.as_spec_str().to_owned(),
+            facing_direction: movement.facing_direction.as_spec_str().to_owned(),
+            movement_direction: movement.movement_direction.as_spec_str().to_owned(),
+            step_timer: movement.step_timer,
+        },
+        wheel: CameraWheelFrame {
+            camera_pos_x: movement.camera_pos_x,
+            camera_pos_y: movement.camera_pos_y,
+            x_tile_offset: movement.x_tile_offset,
+            y_tile_offset: movement.y_tile_offset,
+            strip_redraws: Vec::new(),
         },
         window: RenderWindow {
             origin_runtime_x,
@@ -394,7 +411,9 @@ mod tests {
     };
     use rebuild_v2_server::{
         map_runtime::{RuntimeMapGrid, MAPGRID_IMPASSABLE, MAPGRID_UNDEFINED},
-        render_state::{BgScroll, CameraAnchor, RenderStateV1, RenderWindow},
+        render_state::{
+            BgScroll, CameraAnchor, CameraWheelFrame, MovementFrame, RenderStateV1, RenderWindow,
+        },
     };
 
     #[test]
@@ -456,6 +475,20 @@ mod tests {
                 y_pixel_offset: 0,
                 horizontal_pan: 0,
                 vertical_pan: 32,
+            },
+            movement: MovementFrame {
+                running_state: "NOT_MOVING".to_owned(),
+                tile_transition_state: "T_NOT_MOVING".to_owned(),
+                facing_direction: "SOUTH".to_owned(),
+                movement_direction: "SOUTH".to_owned(),
+                step_timer: 0,
+            },
+            wheel: CameraWheelFrame {
+                camera_pos_x: 10,
+                camera_pos_y: 1,
+                x_tile_offset: 0,
+                y_tile_offset: 0,
+                strip_redraws: Vec::new(),
             },
             window: RenderWindow {
                 origin_runtime_x: 10,
