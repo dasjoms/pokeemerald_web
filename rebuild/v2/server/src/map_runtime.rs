@@ -9,8 +9,13 @@ use serde::Deserialize;
 pub const MAP_OFFSET: usize = 7;
 pub const MAP_OFFSET_W: usize = MAP_OFFSET * 2 + 1;
 pub const MAP_OFFSET_H: usize = MAP_OFFSET * 2;
+pub const MAPGRID_METATILE_ID_MASK: u16 = 0x03FF;
 pub const MAPGRID_UNDEFINED: u16 = 0x03FF;
 pub const MAPGRID_IMPASSABLE: u16 = 0x0C00;
+pub const MAPGRID_COLLISION_MASK: u16 = 0x0C00;
+pub const MAPGRID_ELEVATION_MASK: u16 = 0xF000;
+pub const MAPGRID_COLLISION_SHIFT: u16 = 10;
+pub const MAPGRID_ELEVATION_SHIFT: u16 = 12;
 pub const MAX_MAP_DATA_SIZE: usize = 10_240;
 
 #[derive(Debug, Clone)]
@@ -77,8 +82,24 @@ pub struct LayoutAsset {
     pub id: String,
     pub width: usize,
     pub height: usize,
+    #[serde(default)]
+    pub primary_tileset: String,
+    #[serde(default)]
+    pub secondary_tileset: String,
     pub tiles: Vec<PackedTile>,
     pub border_tiles: Vec<PackedTile>,
+    #[serde(default)]
+    pub render_assets: Option<LayoutRenderAssets>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct LayoutRenderAssets {
+    pub pair_id: String,
+    pub atlas: String,
+    pub palettes: String,
+    pub metatiles: String,
+    #[serde(default)]
+    pub tile_anims: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -111,6 +132,12 @@ pub struct RuntimeMapAssembler {
     maps_by_id: HashMap<String, MapAsset>,
 }
 
+#[derive(Debug, Clone)]
+pub struct RuntimeMapBundle {
+    pub runtime: RuntimeMapGrid,
+    pub layout: LayoutAsset,
+}
+
 impl RuntimeMapAssembler {
     pub fn from_asset_root(asset_root: impl AsRef<Path>) -> Result<Self, MapRuntimeError> {
         let asset_root = asset_root.as_ref().to_path_buf();
@@ -132,6 +159,13 @@ impl RuntimeMapAssembler {
         &self,
         map_id: &str,
     ) -> Result<Option<RuntimeMapGrid>, MapRuntimeError> {
+        Ok(Some(self.build_bundle_for_map_id(map_id)?.runtime))
+    }
+
+    pub fn build_bundle_for_map_id(
+        &self,
+        map_id: &str,
+    ) -> Result<RuntimeMapBundle, MapRuntimeError> {
         let active_map = match self.maps_by_id.get(map_id) {
             Some(map) => map,
             None => return Err(MapRuntimeError::MissingMap(map_id.to_owned())),
@@ -160,7 +194,10 @@ impl RuntimeMapAssembler {
             }
         }
 
-        Ok(Some(runtime))
+        Ok(RuntimeMapBundle {
+            runtime,
+            layout: active_layout,
+        })
     }
 
     fn load_layout(&self, layout_id: &str) -> Result<LayoutAsset, MapRuntimeError> {
@@ -447,8 +484,11 @@ mod tests {
             id: id.to_owned(),
             width,
             height,
+            primary_tileset: String::new(),
+            secondary_tileset: String::new(),
             tiles: v,
             border_tiles: border.into_iter().map(|raw| PackedTile { raw }).collect(),
+            render_assets: None,
         }
     }
 
@@ -459,8 +499,7 @@ mod tests {
     #[test]
     fn active_map_origin_and_runtime_size_match_emerald_offsets() {
         let active = mk_layout("A", 3, 2, 100, [1, 2, 3, 4]);
-        let runtime = assemble_runtime_grid(&active, MAX_MAP_DATA_SIZE)
-            .expect("runtime");
+        let runtime = assemble_runtime_grid(&active, MAX_MAP_DATA_SIZE).expect("runtime");
 
         assert_eq!(runtime.width, 3 + 15);
         assert_eq!(runtime.height, 2 + 14);
@@ -474,8 +513,7 @@ mod tests {
         let active = mk_layout("A", 4, 4, 10, [1, 2, 3, 4]);
         let west = mk_layout("W", 9, 4, 1000, [1, 2, 3, 4]);
         let east = mk_layout("E", 12, 4, 2000, [1, 2, 3, 4]);
-        let mut runtime = assemble_runtime_grid(&active, MAX_MAP_DATA_SIZE)
-            .expect("runtime");
+        let mut runtime = assemble_runtime_grid(&active, MAX_MAP_DATA_SIZE).expect("runtime");
 
         fill_west_connection(&mut runtime, &west, 0);
         fill_east_connection(&mut runtime, &active, &east, 0);
@@ -496,16 +534,16 @@ mod tests {
         let active = mk_layout("A", 6, 5, 50, [1, 2, 3, 4]);
         let connected = mk_layout("N", 8, 12, 1000, [1, 2, 3, 4]);
 
-        let mut runtime_neg = assemble_runtime_grid(&active, MAX_MAP_DATA_SIZE)
-            .expect("runtime neg");
+        let mut runtime_neg =
+            assemble_runtime_grid(&active, MAX_MAP_DATA_SIZE).expect("runtime neg");
         fill_north_connection(&mut runtime_neg, &connected, -9);
         assert_eq!(
             get(&runtime_neg, 0, 0),
             connected.tiles[2 + 5 * connected.width].raw
         );
 
-        let mut runtime_pos = assemble_runtime_grid(&active, MAX_MAP_DATA_SIZE)
-            .expect("runtime pos");
+        let mut runtime_pos =
+            assemble_runtime_grid(&active, MAX_MAP_DATA_SIZE).expect("runtime pos");
         fill_south_connection(&mut runtime_pos, &active, &connected, 4);
         let sx = 4 + MAP_OFFSET;
         let sy = active.height + MAP_OFFSET;
@@ -521,16 +559,16 @@ mod tests {
         let active = mk_layout("A", 6, 5, 100, [1, 2, 3, 4]);
         let connected = mk_layout("C", 10, 8, 3000, [1, 2, 3, 4]);
 
-        let mut runtime_neg = assemble_runtime_grid(&active, MAX_MAP_DATA_SIZE)
-            .expect("runtime neg");
+        let mut runtime_neg =
+            assemble_runtime_grid(&active, MAX_MAP_DATA_SIZE).expect("runtime neg");
         fill_west_connection(&mut runtime_neg, &connected, -10);
         assert_eq!(
             get(&runtime_neg, 0, 0),
             connected.tiles[3 + 3 * connected.width].raw
         );
 
-        let mut runtime_pos = assemble_runtime_grid(&active, MAX_MAP_DATA_SIZE)
-            .expect("runtime pos");
+        let mut runtime_pos =
+            assemble_runtime_grid(&active, MAX_MAP_DATA_SIZE).expect("runtime pos");
         fill_east_connection(&mut runtime_pos, &active, &connected, 10);
         let x = active.width + MAP_OFFSET;
         let y = 10 + MAP_OFFSET;
@@ -540,8 +578,7 @@ mod tests {
     #[test]
     fn out_of_bounds_reads_use_border_2x2_index_and_impassable_collision() {
         let active = mk_layout("A", 2, 2, 10, [0x0001, 0x0002, 0x0003, 0x0004]);
-        let runtime = assemble_runtime_grid(&active, MAX_MAP_DATA_SIZE)
-            .expect("runtime");
+        let runtime = assemble_runtime_grid(&active, MAX_MAP_DATA_SIZE).expect("runtime");
 
         assert_eq!(
             runtime.get_packed_with_border_fallback(-1, -1),
@@ -566,8 +603,7 @@ mod tests {
         let active = mk_layout("A", 4, 4, 10, [1, 2, 3, 4]);
         let east = mk_layout("E", 8, 8, 2000, [1, 2, 3, 4]);
         let south = mk_layout("S", 8, 8, 3000, [1, 2, 3, 4]);
-        let mut runtime = assemble_runtime_grid(&active, MAX_MAP_DATA_SIZE)
-            .expect("runtime");
+        let mut runtime = assemble_runtime_grid(&active, MAX_MAP_DATA_SIZE).expect("runtime");
 
         let declared = vec![
             MapConnectionAsset {
