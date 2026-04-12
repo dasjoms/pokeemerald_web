@@ -153,6 +153,10 @@ export class OverworldWindowRenderer<TTile> {
     }
   }
 
+  redrawWorldTileAt(worldTileX: number, worldTileY: number): void {
+    this.drawWorldTile(worldTileX, worldTileY);
+  }
+
   private drawWorldTile(worldTileX: number, worldTileY: number): void {
     if (!this.mapData) {
       return;
