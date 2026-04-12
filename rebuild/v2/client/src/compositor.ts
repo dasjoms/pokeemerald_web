@@ -93,7 +93,7 @@ export class OverworldCompositor {
       const dy = Math.floor(i / 2);
       const idx = wheelIndex(baseX + dx, baseY + dy);
       const sprite = layer[idx];
-      sprite.texture = this.tileTexture(NORMAL_BOTTOM_FILL_TILE_INDEX);
+      sprite.texture = this.tileTexture(NORMAL_BOTTOM_FILL_TILE_INDEX, NORMAL_BOTTOM_FILL_PALETTE_INDEX);
       sprite.tint = this.tileTint(NORMAL_BOTTOM_FILL_TILE_INDEX, NORMAL_BOTTOM_FILL_PALETTE_INDEX);
       sprite.visible = true;
       sprite.scale.set(1, 1);
@@ -111,7 +111,7 @@ export class OverworldCompositor {
       }
       const idx = wheelIndex(baseX + dx, baseY + dy);
       const sprite = layer[idx];
-      sprite.texture = this.tileTexture(subtile.tileIndex);
+      sprite.texture = this.tileTexture(subtile.tileIndex, subtile.paletteIndex);
       sprite.tint = this.tileTint(subtile.tileIndex, subtile.paletteIndex);
       sprite.visible = true;
       sprite.scale.set(subtile.hflip ? -1 : 1, subtile.vflip ? -1 : 1);
@@ -128,8 +128,8 @@ export class OverworldCompositor {
     }
   }
 
-  private tileTexture(tileIndex: number): Texture {
-    const texture = this.resolver?.textureForTile(tileIndex) ?? Texture.WHITE;
+  private tileTexture(tileIndex: number, paletteIndex: number): Texture {
+    const texture = this.resolver?.textureForTile(tileIndex, paletteIndex) ?? Texture.WHITE;
     texture.source.scaleMode = SCALE_MODES.NEAREST;
     return texture;
   }
