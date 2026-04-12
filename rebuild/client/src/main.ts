@@ -210,6 +210,7 @@ type ClientWorldState = {
   playerTileX: number;
   playerTileY: number;
   facing: Direction;
+  lastAuthoritativeStepFacing: Direction;
   traversalState: TraversalState;
   preferredBikeType: TraversalState;
   playerElevation: number;
@@ -349,6 +350,7 @@ const state: ClientWorldState = {
   playerTileX: 0,
   playerTileY: 0,
   facing: Direction.DOWN,
+  lastAuthoritativeStepFacing: Direction.DOWN,
   traversalState: TraversalState.ON_FOOT,
   preferredBikeType: TraversalState.MACH_BIKE,
   playerElevation: 0,
@@ -737,6 +739,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     state.renderTileY = state.playerTileY;
     activeWalkTransition = null;
     state.facing = snapshot.facing;
+    state.lastAuthoritativeStepFacing = snapshot.facing;
     state.traversalState = snapshot.traversal_state;
     state.preferredBikeType = snapshot.preferred_bike_type;
     state.playerElevation = snapshot.player_elevation;
@@ -857,7 +860,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     state.mapWidth,
     state.mapHeight,
   );
-  const previousFacing = state.facing;
+  const previousAuthoritativeStepFacing = state.lastAuthoritativeStepFacing;
   const previousAuthoritativeTileX = state.playerTileX;
   const previousAuthoritativeTileY = state.playerTileY;
   state.playerTileX = clampedAuthoritativeTile.x;
@@ -928,12 +931,13 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     bikeEffectRenderer.onAuthoritativeStep({
       fromX: previousAuthoritativeTileX,
       fromY: previousAuthoritativeTileY,
-      previousFacing,
+      previousFacing: previousAuthoritativeStepFacing,
       currentFacing: result.facing,
       traversalState: result.traversal_state,
       bikeEffectFlags: result.bike_effect_flags,
       serverFrame: result.server_frame,
     });
+    state.lastAuthoritativeStepFacing = result.facing;
   } else {
     activeWalkTransition = null;
     state.renderTileX = state.playerTileX;
@@ -942,7 +946,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     bikeEffectRenderer.onAuthoritativeStep({
       fromX: state.playerTileX,
       fromY: state.playerTileY,
-      previousFacing,
+      previousFacing: previousAuthoritativeStepFacing,
       currentFacing: result.facing,
       traversalState: result.traversal_state,
       bikeEffectFlags: result.bike_effect_flags,
