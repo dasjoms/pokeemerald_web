@@ -1,15 +1,49 @@
 {
   "protocolName": "pokeemerald-rebuild-v2",
-  "wireFormat": "versioned-binary-placeholder",
+  "wireFormat": "versioned-json-placeholder",
   "version": 1,
-  "handshake": {
-    "clientHello": {
-      "clientVersion": "string"
+  "messages": {
+    "server_hello": {
+      "type": "server_hello",
+      "protocolVersion": "u16",
+      "serverAuthority": "bool",
+      "clientVersionEcho": "string"
     },
-    "serverHello": {
-      "protocolVersion": 1,
-      "serverAuthority": true,
-      "message": "string"
+    "render_state_v1": {
+      "type": "render_state_v1",
+      "protocolVersion": "u16",
+      "mapId": "string",
+      "tilesetPairId": "string",
+      "camera": {
+        "runtimeX": "i32",
+        "runtimeY": "i32"
+      },
+      "window": {
+        "originRuntimeX": "i32",
+        "originRuntimeY": "i32",
+        "width": 16,
+        "height": 16
+      },
+      "metatiles": [
+        {
+          "packedRaw": "u16",
+          "metatileId": "u16",
+          "collision": "u8",
+          "elevation": "u8",
+          "layerType": "u8",
+          "subtiles": [
+            {
+              "subtileIndex": "u8",
+              "tileIndex": "u16",
+              "paletteIndex": "u8",
+              "hflip": "bool",
+              "vflip": "bool",
+              "layer": "u8",
+              "layerOrder": "u8"
+            }
+          ]
+        }
+      ]
     }
   }
 }
