@@ -106,6 +106,7 @@ import {
   resolvePlayerRenderPriority,
   type PlayerObjectRenderPriorityState,
 } from './playerLayerSelection';
+import { OverworldWindowRenderer } from './overworldWindowRenderer';
 
 type ServerMessage =
   | { type: MessageType.SESSION_ACCEPTED; payload: SessionAccepted }
@@ -283,6 +284,14 @@ type RenderedSubtileBinding = {
   sourceTileset: string;
 };
 
+type WindowSlotRenderState = {
+  bg1Sprites: Sprite[];
+  bg2Sprites: Sprite[];
+  bg3Sprites: Sprite[];
+  debugOverlay?: Graphics;
+  bindings: RenderedSubtileBinding[];
+};
+
 type PlayersManifestFile = {
   avatars: Array<{
     avatar_id: 'brendan' | 'may';
@@ -440,11 +449,19 @@ let activeIndexedAtlasPages: IndexedAtlasPages | null = null;
 const renderedSubtileBindings: RenderedSubtileBinding[] = [];
 const subtileBindingsByTile = new Map<string, RenderedSubtileBinding[]>();
 const subtileBindingsByPalette = new Map<string, RenderedSubtileBinding[]>();
+const windowSlotRenderStates = new Map<number, WindowSlotRenderState>();
 const activeTileSwaps = new Map<string, ActiveTileSwapSource>();
 const activePaletteSwaps = new Map<string, CopyPaletteOp>();
 const activePaletteBlends = new Map<string, BlendPaletteOp>();
 const basePalettesBySource = new Map<string, number[][][]>();
 const activePalettesBySource = new Map<string, number[][][]>();
+let activeRuntimeChunk: DecodedMapChunk | null = null;
+let activeLayout: LayoutFile | null = null;
+let activePrimaryMetatiles: Metatile[] = [];
+let activeSecondaryMetatiles: Metatile[] = [];
+let activePrimaryPalettes: number[][][] = [];
+let activeSecondaryPalettes: number[][][] = [];
+let activePrimaryTileCount = 0;
 const appRoot = document.getElementById('app-root');
 if (!appRoot) {
   throw new Error('missing #app-root container');
@@ -523,6 +540,12 @@ gameContainer.scale.set(RENDER_SCALE, RENDER_SCALE);
 gameContainer.addChild(worldContainer);
 app.stage.addChild(gameContainer);
 debugOverlayLayer.visible = debugOverlayEnabled;
+const overworldWindowRenderer = new OverworldWindowRenderer<LayoutTile>({
+  tileSize: TILE_SIZE,
+  renderSlot: renderWindowSlot,
+});
+let activeWindowCenterTileX = 0;
+let activeWindowCenterTileY = 0;
 
 let activeAvatar: PlayerAvatar = PlayerAvatar.BRENDAN;
 let debugAvatarOverride: PlayerAvatar | null = null;
@@ -605,6 +628,7 @@ app.ticker.add(() => {
   presentTilesetAnimation();
   bikeEffectRenderer.tick(app.ticker.deltaMS);
   hopParticleRenderer.tick(app.ticker.deltaMS);
+  updateMapWindowPresentation();
   positionPlayerSprite();
   updateObjectDepthSorting();
   updateCamera();
@@ -1042,11 +1066,16 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
   renderedSubtileBindings.length = 0;
   subtileBindingsByTile.clear();
   subtileBindingsByPalette.clear();
+  windowSlotRenderStates.clear();
   activeTileSwaps.clear();
   activePaletteSwaps.clear();
   activePaletteBlends.clear();
   basePalettesBySource.clear();
   activePalettesBySource.clear();
+  mapBg3Layer.position.set(0, 0);
+  mapBg2Layer.position.set(0, 0);
+  mapBg1Layer.position.set(0, 0);
+  debugOverlayLayer.position.set(0, 0);
 
   let indexedAtlasPages = indexedAtlasPageCache.get(renderAssets.pair_id);
   if (!indexedAtlasPages) {
@@ -1071,6 +1100,8 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
   activeIndexedAtlasPages = indexedAtlasPages;
   activeTilesetAnimationPairId = renderAssets.pair_id;
   activeMapTileRenderPriorityContexts = new Array(runtimeChunk.width * runtimeChunk.height);
+  activeRuntimeChunk = runtimeChunk;
+  activeLayout = layout;
 
   const primaryPage = atlas.pages[0];
   if (!primaryPage) {
@@ -1119,6 +1150,11 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
   const secondaryMetatiles = metatilesBySource.get(layout.secondary_tileset) ?? [];
   const primaryPalettes = palettesBySource.get(layout.primary_tileset) ?? [];
   const secondaryPalettes = palettesBySource.get(layout.secondary_tileset) ?? [];
+  activePrimaryMetatiles = primaryMetatiles;
+  activeSecondaryMetatiles = secondaryMetatiles;
+  activePrimaryPalettes = primaryPalettes;
+  activeSecondaryPalettes = secondaryPalettes;
+  activePrimaryTileCount = primaryTileCount;
 
   let animationState = tilesetAnimationStates.get(renderAssets.pair_id);
   if (!animationState) {
@@ -1159,14 +1195,12 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
     tilesetAnimationStates.set(renderAssets.pair_id, animationState);
   }
   activeTilesetAnimationState = animationState;
-
   for (let y = 0; y < runtimeChunk.height; y += 1) {
     for (let x = 0; x < runtimeChunk.width; x += 1) {
       const tile = runtimeChunk.tiles[y * runtimeChunk.width + x];
       if (!tile) {
         continue;
       }
-
       const isPrimaryMetatile = tile.metatile_id < primaryMetatiles.length;
       const metatile = isPrimaryMetatile
         ? primaryMetatiles[tile.metatile_id]
@@ -1186,78 +1220,13 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
         hasLayer0,
         hasLayer1,
       };
-
-      const sourcePalettes = isPrimaryMetatile ? primaryPalettes : secondaryPalettes;
-      const sortedSubtiles = [...metatile.subtiles].sort((a, b) => a.layer_order - b.layer_order);
-
-      for (const subtile of sortedSubtiles) {
-        const sourcePage = subtile.tile_index >= primaryTileCount ? 1 : 0;
-        const localTileIndex =
-          sourcePage === 0 ? subtile.tile_index : subtile.tile_index - primaryTileCount;
-        if (localTileIndex < 0) {
-          continue;
-        }
-
-        const sourceTilesetName =
-          sourcePage === 0 ? layout.primary_tileset : layout.secondary_tileset;
-        const subtileTexture = textureCache.getTexture({
-          atlasPages: indexedAtlasPages,
-          pageId: sourcePage,
-          localTileIndex,
-          sourceTileIndices: resolveFramePayloadTileIndices(animationState, sourcePage, localTileIndex),
-          paletteIndex: resolveActivePaletteSwap(sourceTilesetName, subtile.palette_index),
-          palettes: activePalettesBySource.get(sourceTilesetName) ?? sourcePalettes,
-          animationKey: `${animationState.tickSerial}`,
-        });
-        if (!subtileTexture) {
-          continue;
-        }
-
-        const sprite = new Sprite(subtileTexture);
-        registerSubtileBinding({
-          sprite,
-          pageId: sourcePage,
-          localTileIndex,
-          paletteIndex: subtile.palette_index,
-          sourceTileset: sourceTilesetName,
-        });
-        const subtileX = subtile.subtile_index % 2;
-        const subtileY = Math.floor(subtile.subtile_index / 2) % 2;
-        sprite.x = x * TILE_SIZE + subtileX * SUBTILE_SIZE;
-        sprite.y = y * TILE_SIZE + subtileY * SUBTILE_SIZE;
-
-        if (subtile.hflip) {
-          sprite.scale.x = -1;
-          sprite.x += SUBTILE_SIZE;
-        }
-        if (subtile.vflip) {
-          sprite.scale.y = -1;
-          sprite.y += SUBTILE_SIZE;
-        }
-        const mapRenderStratum = resolveMapRenderStratum(metatile.layer_type, subtile.layer);
-        switch (mapRenderStratum) {
-          case MapRenderStratum.BG3:
-            mapBg3Layer.addChild(sprite);
-            break;
-          case MapRenderStratum.BG2:
-            mapBg2Layer.addChild(sprite);
-            break;
-          case MapRenderStratum.BG1:
-            mapBg1Layer.addChild(sprite);
-            break;
-        }
-      }
-
-      const overlayColor = tile.collision === 0 ? 0x16a34a : 0xdc2626;
-      const overlay = new Graphics()
-        .rect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
-        .fill({ color: overlayColor, alpha: 0.25 })
-        .stroke({ color: 0x0f172a, width: 1, alpha: 0.35 });
-      overlay.visible = debugOverlayEnabled;
-      overlay.label = `collision=${tile.collision} behavior=${tile.behavior_id}`;
-      debugOverlayLayer.addChild(overlay);
     }
   }
+
+  activeWindowCenterTileX = state.playerTileX;
+  activeWindowCenterTileY = state.playerTileY;
+  overworldWindowRenderer.initWindow(state.playerTileX, state.playerTileY, runtimeChunk);
+  updateMapWindowPresentation();
 }
 
 function registerSubtileBinding(binding: RenderedSubtileBinding): void {
@@ -1276,6 +1245,193 @@ function registerSubtileBinding(binding: RenderedSubtileBinding): void {
   } else {
     subtileBindingsByPalette.set(paletteKey, [binding]);
   }
+}
+
+function unregisterSubtileBindings(bindings: RenderedSubtileBinding[]): void {
+  for (const binding of bindings) {
+    const index = renderedSubtileBindings.indexOf(binding);
+    if (index >= 0) {
+      renderedSubtileBindings.splice(index, 1);
+    }
+
+    const tileKey = `${binding.pageId}:${binding.localTileIndex}`;
+    const paletteKey = `${binding.sourceTileset}:${binding.paletteIndex}`;
+    const tileBindings = subtileBindingsByTile.get(tileKey);
+    if (tileBindings) {
+      const tileIndex = tileBindings.indexOf(binding);
+      if (tileIndex >= 0) {
+        tileBindings.splice(tileIndex, 1);
+      }
+      if (tileBindings.length === 0) {
+        subtileBindingsByTile.delete(tileKey);
+      }
+    }
+    const paletteBindings = subtileBindingsByPalette.get(paletteKey);
+    if (paletteBindings) {
+      const paletteIndex = paletteBindings.indexOf(binding);
+      if (paletteIndex >= 0) {
+        paletteBindings.splice(paletteIndex, 1);
+      }
+      if (paletteBindings.length === 0) {
+        subtileBindingsByPalette.delete(paletteKey);
+      }
+    }
+  }
+}
+
+function renderWindowSlot({
+  slotIndex,
+  slotTileX,
+  slotTileY,
+  worldTileX,
+  worldTileY,
+  tile,
+}: {
+  slotIndex: number;
+  slotTileX: number;
+  slotTileY: number;
+  worldTileX: number;
+  worldTileY: number;
+  tile: LayoutTile | undefined;
+}): void {
+  const existing = windowSlotRenderStates.get(slotIndex);
+  if (existing) {
+    for (const sprite of existing.bg3Sprites) mapBg3Layer.removeChild(sprite);
+    for (const sprite of existing.bg2Sprites) mapBg2Layer.removeChild(sprite);
+    for (const sprite of existing.bg1Sprites) mapBg1Layer.removeChild(sprite);
+    if (existing.debugOverlay) {
+      debugOverlayLayer.removeChild(existing.debugOverlay);
+    }
+    unregisterSubtileBindings(existing.bindings);
+  }
+
+  if (!tile || !activeTextureCache || !activeIndexedAtlasPages || !activeLayout || !activeTilesetAnimationState) {
+    windowSlotRenderStates.delete(slotIndex);
+    return;
+  }
+
+  const isPrimaryMetatile = tile.metatile_id < activePrimaryMetatiles.length;
+  const metatile = isPrimaryMetatile
+    ? activePrimaryMetatiles[tile.metatile_id]
+    : activeSecondaryMetatiles[tile.metatile_id - activePrimaryMetatiles.length];
+  if (!metatile) {
+    windowSlotRenderStates.delete(slotIndex);
+    return;
+  }
+
+  const sourcePalettes = isPrimaryMetatile ? activePrimaryPalettes : activeSecondaryPalettes;
+  const sortedSubtiles = [...metatile.subtiles].sort((a, b) => a.layer_order - b.layer_order);
+  const bg1Sprites: Sprite[] = [];
+  const bg2Sprites: Sprite[] = [];
+  const bg3Sprites: Sprite[] = [];
+  const bindings: RenderedSubtileBinding[] = [];
+  for (const subtile of sortedSubtiles) {
+    const sourcePage = subtile.tile_index >= activePrimaryTileCount ? 1 : 0;
+    const localTileIndex =
+      sourcePage === 0 ? subtile.tile_index : subtile.tile_index - activePrimaryTileCount;
+    if (localTileIndex < 0) {
+      continue;
+    }
+
+    const sourceTilesetName =
+      sourcePage === 0 ? activeLayout.primary_tileset : activeLayout.secondary_tileset;
+    const subtileTexture = activeTextureCache.getTexture({
+      atlasPages: activeIndexedAtlasPages,
+      pageId: sourcePage,
+      localTileIndex,
+      sourceTileIndices: resolveFramePayloadTileIndices(activeTilesetAnimationState, sourcePage, localTileIndex),
+      paletteIndex: resolveActivePaletteSwap(sourceTilesetName, subtile.palette_index),
+      palettes: activePalettesBySource.get(sourceTilesetName) ?? sourcePalettes,
+      animationKey: `${activeTilesetAnimationState.tickSerial}`,
+    });
+    if (!subtileTexture) {
+      continue;
+    }
+
+    const sprite = new Sprite(subtileTexture);
+    const binding: RenderedSubtileBinding = {
+      sprite,
+      pageId: sourcePage,
+      localTileIndex,
+      paletteIndex: subtile.palette_index,
+      sourceTileset: sourceTilesetName,
+    };
+    registerSubtileBinding(binding);
+    bindings.push(binding);
+    const subtileX = subtile.subtile_index % 2;
+    const subtileY = Math.floor(subtile.subtile_index / 2) % 2;
+    sprite.x = slotTileX * TILE_SIZE + subtileX * SUBTILE_SIZE;
+    sprite.y = slotTileY * TILE_SIZE + subtileY * SUBTILE_SIZE;
+
+    if (subtile.hflip) {
+      sprite.scale.x = -1;
+      sprite.x += SUBTILE_SIZE;
+    }
+    if (subtile.vflip) {
+      sprite.scale.y = -1;
+      sprite.y += SUBTILE_SIZE;
+    }
+    const mapRenderStratum = resolveMapRenderStratum(metatile.layer_type, subtile.layer);
+    switch (mapRenderStratum) {
+      case MapRenderStratum.BG3:
+        mapBg3Layer.addChild(sprite);
+        bg3Sprites.push(sprite);
+        break;
+      case MapRenderStratum.BG2:
+        mapBg2Layer.addChild(sprite);
+        bg2Sprites.push(sprite);
+        break;
+      case MapRenderStratum.BG1:
+        mapBg1Layer.addChild(sprite);
+        bg1Sprites.push(sprite);
+        break;
+    }
+  }
+
+  const overlayColor = tile.collision === 0 ? 0x16a34a : 0xdc2626;
+  const overlay = new Graphics()
+    .rect(slotTileX * TILE_SIZE, slotTileY * TILE_SIZE, TILE_SIZE, TILE_SIZE)
+    .fill({ color: overlayColor, alpha: 0.25 })
+    .stroke({ color: 0x0f172a, width: 1, alpha: 0.35 });
+  overlay.visible = debugOverlayEnabled;
+  overlay.label = `x=${worldTileX} y=${worldTileY} collision=${tile.collision} behavior=${tile.behavior_id}`;
+  debugOverlayLayer.addChild(overlay);
+
+  windowSlotRenderStates.set(slotIndex, {
+    bg1Sprites,
+    bg2Sprites,
+    bg3Sprites,
+    debugOverlay: overlay,
+    bindings,
+  });
+}
+
+function updateMapWindowPresentation(): void {
+  if (!activeRuntimeChunk) {
+    return;
+  }
+  const renderTileX = Math.floor(state.renderTileX);
+  const renderTileY = Math.floor(state.renderTileY);
+  const deltaTileX = renderTileX - activeWindowCenterTileX;
+  const deltaTileY = renderTileY - activeWindowCenterTileY;
+  if (deltaTileX !== 0 || deltaTileY !== 0) {
+    overworldWindowRenderer.redrawEdgeSlices(deltaTileX, deltaTileY);
+    activeWindowCenterTileX = renderTileX;
+    activeWindowCenterTileY = renderTileY;
+  }
+
+  const windowOffset = overworldWindowRenderer.applyWindowScroll(
+    Math.floor(state.renderTileX * TILE_SIZE),
+    Math.floor(state.renderTileY * TILE_SIZE),
+  );
+  mapBg3Layer.x = windowOffset.x;
+  mapBg3Layer.y = windowOffset.y;
+  mapBg2Layer.x = windowOffset.x;
+  mapBg2Layer.y = windowOffset.y;
+  mapBg1Layer.x = windowOffset.x;
+  mapBg1Layer.y = windowOffset.y;
+  debugOverlayLayer.x = windowOffset.x;
+  debugOverlayLayer.y = windowOffset.y;
 }
 
 function resolveActiveTileSwap(pageId: number, localTileIndex: number): ActiveTileSwapSource | null {
