@@ -1,15 +1,27 @@
-import { Container, SCALE_MODES, Sprite, Texture } from "pixi.js";
+import { Container, Graphics, SCALE_MODES, Sprite, Texture } from "pixi.js";
 import type { AssetManifest, RenderStateV1Message, RenderSubtile } from "./protocol";
-import { wheelIndex, WHEEL_SIZE } from "./tileWheel32";
+import { wheelIndex, WHEEL_SIZE, wrap32 } from "./tileWheel32";
 import { TilesetTextureResolver } from "./assetLoader";
+import {
+  computeBgScrollWindow,
+  runScrollWindowFixtures,
+  SUBTILE_SIZE,
+  VIEWPORT_HEIGHT,
+  VIEWPORT_WIDTH
+} from "./scrollWindow";
 
-const TILE_SIZE = 8;
 const METATILE_SIZE = 2;
 const NORMAL_BOTTOM_FILL_TILE_INDEX = 0x14;
 const NORMAL_BOTTOM_FILL_PALETTE_INDEX = 3;
 
+runScrollWindowFixtures();
+
 export class OverworldCompositor {
   readonly root = new Container();
+
+  private readonly viewport = new Container();
+  private readonly wheelRoot = new Container();
+  private readonly viewportMask = new Graphics();
 
   private readonly bgBottom = new Container();
   private readonly bgMiddle = new Container();
@@ -21,10 +33,17 @@ export class OverworldCompositor {
   private loadedPairId: string | null = null;
 
   constructor() {
-    this.root.addChild(this.bgBottom, this.bgMiddle, this.bgTop);
+    this.root.addChild(this.viewport, this.viewportMask);
+    this.viewport.addChild(this.wheelRoot);
+    this.wheelRoot.addChild(this.bgBottom, this.bgMiddle, this.bgTop);
+
     this.seedLayer(this.bgBottom, this.bottomSprites);
     this.seedLayer(this.bgMiddle, this.middleSprites);
     this.seedLayer(this.bgTop, this.topSprites);
+
+    this.viewportMask.rect(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT).fill(0xffffff);
+    this.viewport.mask = this.viewportMask;
+
     this.root.position.set(64, 64);
   }
 
@@ -59,6 +78,26 @@ export class OverworldCompositor {
         const subtileX = mx * METATILE_SIZE;
         const subtileY = my * METATILE_SIZE;
         this.drawMetatile(subtileX, subtileY, metatile.layerType, metatile.subtiles);
+      }
+    }
+
+    this.applyBgScroll(message);
+  }
+
+  private applyBgScroll(message: RenderStateV1Message): void {
+    const scroll = computeBgScrollWindow(message.scroll);
+
+    for (let y = 0; y < WHEEL_SIZE; y += 1) {
+      for (let x = 0; x < WHEEL_SIZE; x += 1) {
+        const screenTileX = wrap32(x - scroll.tileOriginX);
+        const screenTileY = wrap32(y - scroll.tileOriginY);
+        const drawX = screenTileX * SUBTILE_SIZE - scroll.fineX;
+        const drawY = screenTileY * SUBTILE_SIZE - scroll.fineY;
+
+        const idx = wheelIndex(x, y);
+        this.bottomSprites[idx].position.set(drawX, drawY);
+        this.middleSprites[idx].position.set(drawX, drawY);
+        this.topSprites[idx].position.set(drawX, drawY);
       }
     }
   }
@@ -225,10 +264,10 @@ export class OverworldCompositor {
     for (let y = 0; y < WHEEL_SIZE; y += 1) {
       for (let x = 0; x < WHEEL_SIZE; x += 1) {
         const sprite = new Sprite(Texture.WHITE);
-        sprite.width = TILE_SIZE;
-        sprite.height = TILE_SIZE;
-        sprite.x = x * TILE_SIZE;
-        sprite.y = y * TILE_SIZE;
+        sprite.width = SUBTILE_SIZE;
+        sprite.height = SUBTILE_SIZE;
+        sprite.x = x * SUBTILE_SIZE;
+        sprite.y = y * SUBTILE_SIZE;
         sprite.visible = false;
         container.addChild(sprite);
         target.push(sprite);
