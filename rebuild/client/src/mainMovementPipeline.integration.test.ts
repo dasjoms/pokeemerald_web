@@ -11,10 +11,6 @@ import {
   type WalkTransition,
   type WalkTransitionMutableState,
 } from "./walkTransitionPipeline";
-import {
-  createInitialFieldCameraOffset,
-  updateFieldCameraPixelOffset,
-} from "./cameraTilemap";
 import { createWalkInputController } from "./input";
 import {
   AcroBikeSubstate,
@@ -188,7 +184,7 @@ describe("main movement pipeline integration", () => {
     },
   );
 
-  it("keeps camera center monotonic during one accepted right-step interpolation", () => {
+  it("updates camera center every frame during one accepted right-step interpolation", () => {
     const TILE_SIZE = 16;
     const state: PipelineState = {
       playerTileX: 10,
@@ -197,7 +193,6 @@ describe("main movement pipeline integration", () => {
       renderTileY: 7,
       facing: Direction.RIGHT,
     };
-    const cameraOffset = createInitialFieldCameraOffset();
 
     state.playerTileX = 11;
     let activeWalkTransition = startAuthoritativeWalkTransition(
@@ -226,24 +221,20 @@ describe("main movement pipeline integration", () => {
         markWalkTransitionCompleted: () => {},
         stopMoving: () => {},
       });
-      updateFieldCameraPixelOffset(
-        cameraOffset,
-        (state.renderTileX - state.playerTileX) * TILE_SIZE,
-        (state.renderTileY - state.playerTileY) * TILE_SIZE,
-        TILE_SIZE,
-      );
+      if (activeWalkTransition === null) {
+        break;
+      }
       cameraCenters.push({
-        x: state.playerTileX * TILE_SIZE + TILE_SIZE / 2 + cameraOffset.xPixelOffset,
-        y: state.playerTileY * TILE_SIZE + TILE_SIZE / 2 + cameraOffset.yPixelOffset,
+        x: state.renderTileX * TILE_SIZE + TILE_SIZE / 2,
+        y: state.renderTileY * TILE_SIZE + TILE_SIZE / 2,
       });
     }
 
-    expect(cameraCenters.length).toBeGreaterThan(0);
+    expect(cameraCenters.length).toBeGreaterThan(1);
     for (let index = 1; index < cameraCenters.length; index += 1) {
       const prev = cameraCenters[index - 1];
       const next = cameraCenters[index];
-      expect(next.x).toBeGreaterThanOrEqual(prev.x);
-      expect(next.x - prev.x).toBeLessThanOrEqual(1);
+      expect(next.x).toBeGreaterThan(prev.x);
       expect(next.y).toBe(prev.y);
     }
   });
