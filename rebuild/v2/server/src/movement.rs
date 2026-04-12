@@ -147,6 +147,31 @@ impl MovementState {
         true
     }
 
+    pub fn apply_direction_request(
+        &mut self,
+        direction: Option<Direction>,
+        runtime: &RuntimeMapGrid,
+    ) {
+        if self.running_state == RunningState::Moving {
+            return;
+        }
+
+        let Some(direction) = direction else {
+            self.running_state = RunningState::NotMoving;
+            self.tile_transition_state = TileTransitionState::TNotMoving;
+            return;
+        };
+
+        if self.facing_direction != direction {
+            self.facing_direction = direction;
+            self.running_state = RunningState::TurnDirection;
+            self.tile_transition_state = TileTransitionState::TNotMoving;
+            return;
+        }
+
+        self.try_start_walk(direction, runtime);
+    }
+
     pub fn tick(&mut self) -> TickOutput {
         if self.running_state != RunningState::Moving {
             return TickOutput {
@@ -277,6 +302,53 @@ mod tests {
         }
     }
 
+    #[test]
+    fn hold_direction_for_n_frames_matches_completed_tiles_and_remainder() {
+        let runtime = open_runtime();
+        let mut state = MovementState::new(24, 24, Direction::South);
+
+        state.apply_direction_request(Some(Direction::East), &runtime);
+        assert_eq!(state.running_state, RunningState::TurnDirection);
+        state.apply_direction_request(Some(Direction::East), &runtime);
+        assert_eq!(state.running_state, RunningState::Moving);
+
+        for _ in 0..39 {
+            state.tick();
+            state.apply_direction_request(Some(Direction::East), &runtime);
+        }
+
+        assert_eq!(state.player_runtime_x, 26);
+        assert_eq!(state.player_runtime_y, 24);
+        assert_eq!(state.step_timer, 7);
+    }
+
+    #[test]
+    fn direction_change_applies_at_center_boundary_not_mid_step() {
+        let runtime = open_runtime();
+        let mut state = MovementState::new(24, 24, Direction::East);
+        assert!(state.try_start_walk(Direction::East, &runtime));
+
+        for _ in 0..7 {
+            state.tick();
+        }
+        state.apply_direction_request(Some(Direction::North), &runtime);
+        assert_eq!(state.running_state, RunningState::Moving);
+        assert_eq!(state.movement_direction, Direction::East);
+
+        for _ in 0..9 {
+            state.tick();
+        }
+        assert_eq!(state.running_state, RunningState::NotMoving);
+        assert_eq!(state.player_runtime_x, 25);
+        assert_eq!(state.player_runtime_y, 24);
+
+        state.apply_direction_request(Some(Direction::North), &runtime);
+        assert_eq!(state.running_state, RunningState::TurnDirection);
+        state.apply_direction_request(Some(Direction::North), &runtime);
+        assert_eq!(state.running_state, RunningState::Moving);
+        assert_eq!(state.movement_direction, Direction::North);
+    }
+
     fn replay_walk(runtime: &RuntimeMapGrid, direction: Direction, tiles: i32) -> ReplayResult {
         let mut state = MovementState::new(24, 24, Direction::South);
         let mut strip_lengths = Vec::new();
@@ -312,5 +384,16 @@ mod tests {
         final_offsets: (i32, i32),
         final_wheel: (i32, i32, i32, i32),
         strip_lengths: Vec<usize>,
+    }
+
+    fn open_runtime() -> RuntimeMapGrid {
+        RuntimeMapGrid {
+            width: 96,
+            height: 96,
+            tiles: vec![0; 96 * 96],
+            border_tiles: [0; 4],
+            source_map_ids: vec!["MAP".to_owned()],
+            tile_source_indices: vec![0; 96 * 96],
+        }
     }
 }

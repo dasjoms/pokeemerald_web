@@ -1,6 +1,7 @@
 import { Application, Text } from "pixi.js";
 import { V2_PROTOCOL_VERSION } from "./assetConfig";
 import { OverworldCompositor } from "./compositor";
+import { InputPipeline, runInputPipelineFixtures } from "./inputPipeline";
 import { parseServerMessage, type AssetManifest, type RenderStateV1Message } from "./protocol";
 
 const appElement = document.querySelector<HTMLDivElement>("#app");
@@ -39,6 +40,19 @@ const banner = new Text({
 banner.position.set(16, 64);
 app.stage.addChild(banner);
 
+const debugOverlay = new Text({
+  text: "dpad=NONE run=NOT_MOVING transition=T_NOT_MOVING step=0",
+  style: {
+    fill: "#00ff7f",
+    fontFamily: "monospace",
+    fontSize: 11,
+    lineHeight: 14
+  }
+});
+debugOverlay.position.set(308, 226);
+debugOverlay.visible = false;
+app.stage.addChild(debugOverlay);
+
 const playButton = document.createElement("button");
 playButton.textContent = "Play";
 playButton.disabled = true;
@@ -55,6 +69,10 @@ appElement.appendChild(playButton);
 let latestRenderState: RenderStateV1Message | null = null;
 let assetManifest: AssetManifest | null = null;
 let launched = false;
+let latestResolvedDirection = "NONE";
+
+runInputPipelineFixtures();
+const inputPipeline = new InputPipeline();
 
 playButton.addEventListener("click", async () => {
   if (!latestRenderState) {
@@ -65,6 +83,7 @@ playButton.addEventListener("click", async () => {
     playButton.style.display = "none";
     banner.visible = false;
     compositor.root.visible = true;
+    debugOverlay.visible = true;
     if (!assetManifest) {
       throw new Error("Missing asset manifest from server hello");
     }
@@ -83,6 +102,33 @@ playButton.addEventListener("click", async () => {
 const ws = new WebSocket(
   `ws://127.0.0.1:4100/ws?clientVersion=v2-client-proto-${V2_PROTOCOL_VERSION}`
 );
+
+window.addEventListener("keydown", (event) => {
+  inputPipeline.handleKeyDown(event.code);
+});
+
+window.addEventListener("keyup", (event) => {
+  inputPipeline.handleKeyUp(event.code);
+});
+
+let inputInterval: number | null = null;
+ws.addEventListener("open", () => {
+  inputInterval = window.setInterval(() => {
+    if (ws.readyState !== WebSocket.OPEN) {
+      return;
+    }
+    const frame = inputPipeline.synthesizeFrame();
+    latestResolvedDirection = frame.resolvedDirection;
+    ws.send(
+      JSON.stringify({
+        type: "input_frame",
+        heldKeys: frame.heldKeys,
+        newKeys: frame.newKeys
+      })
+    );
+    refreshDebugOverlay();
+  }, 1000 / 60);
+});
 
 ws.addEventListener("message", async (event) => {
   const raw = String(event.data);
@@ -137,6 +183,7 @@ ws.addEventListener("message", async (event) => {
 
   try {
     await compositor.fullRedraw(message, assetManifest);
+    refreshDebugOverlay();
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     console.error("[v2-client] redraw failed", error);
@@ -153,6 +200,25 @@ ws.addEventListener("error", () => {
     "Handshake: unable to connect to ws://127.0.0.1:4100/ws"
   ].join("\n");
 });
+
+ws.addEventListener("close", () => {
+  if (inputInterval !== null) {
+    window.clearInterval(inputInterval);
+    inputInterval = null;
+  }
+});
+
+function refreshDebugOverlay(): void {
+  if (!latestRenderState || !debugOverlay.visible) {
+    return;
+  }
+  debugOverlay.text = [
+    `dpad=${latestResolvedDirection}`,
+    `run=${latestRenderState.movement.runningState}`,
+    `transition=${latestRenderState.movement.tileTransitionState}`,
+    `step=${latestRenderState.movement.stepTimer}`
+  ].join(" ");
+}
 
 function reportManifestParseError(raw: string): boolean {
   try {

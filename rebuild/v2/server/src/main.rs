@@ -17,7 +17,7 @@ use axum::{
 };
 use rebuild_v2_server::{
     map_runtime::{LayoutRenderAssets, RuntimeMapAssembler, MAP_OFFSET},
-    movement::{Direction, MovementState},
+    movement::{Direction, MovementState, FIXED_SIMULATION_TICK_HZ},
     render_assets::RenderMetatileResolver,
     render_state::{
         AssetManifest, BgScroll, CameraAnchor, CameraWheelFrame, MovementFrame, RenderStateV1,
@@ -25,6 +25,8 @@ use rebuild_v2_server::{
     },
 };
 use serde::Deserialize;
+use serde_json::Value;
+use tokio::time::{self, MissedTickBehavior};
 use tracing::{error, info};
 
 const DEFAULT_ASSET_ROOT: &str = "../../assets";
@@ -73,6 +75,30 @@ impl PlayerRuntimeState {
             x: map_local.x + MAP_OFFSET as i32,
             y: map_local.y + MAP_OFFSET as i32,
         }
+    }
+}
+
+const DPAD_UP: u8 = 1 << 0;
+const DPAD_DOWN: u8 = 1 << 1;
+const DPAD_LEFT: u8 = 1 << 2;
+const DPAD_RIGHT: u8 = 1 << 3;
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ClientInputFrame {
+    held_keys: u8,
+    #[allow(dead_code)]
+    new_keys: u8,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct SessionInputState {
+    held_keys: u8,
+}
+
+impl SessionInputState {
+    fn new() -> Self {
+        Self { held_keys: 0 }
     }
 }
 
@@ -237,7 +263,7 @@ fn content_type_for_path(path: &Path) -> &'static str {
 }
 
 async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>, client_version: String) {
-    let render_payload = match build_render_payload(&state.asset_root, &state.player_runtime) {
+    let mut session = match build_session_context(&state.asset_root, &state.player_runtime) {
         Ok(payload) => payload,
         Err(err) => {
             error!("failed to build render payload: {err}");
@@ -249,7 +275,7 @@ async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>, client_versi
         protocol_version: PROTOCOL_VERSION,
         server_authority: true,
         client_version_echo: client_version,
-        asset_manifest: render_payload.asset_manifest.clone(),
+        asset_manifest: session.asset_manifest.clone(),
     };
 
     if send_json(&mut socket, &hello).await.is_err() {
@@ -259,7 +285,7 @@ async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>, client_versi
     if send_json(
         &mut socket,
         &ServerMessage::RenderStateV1 {
-            state: render_payload.render_state,
+            state: build_render_state(&session),
         },
     )
     .await
@@ -268,15 +294,46 @@ async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>, client_versi
         return;
     }
 
-    while let Some(Ok(message)) = socket.recv().await {
-        if let Message::Close(_) = message {
-            return;
+    let mut input_state = SessionInputState::new();
+    let mut simulation_interval = time::interval(time::Duration::from_secs_f64(
+        1.0 / f64::from(FIXED_SIMULATION_TICK_HZ),
+    ));
+    simulation_interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
+
+    loop {
+        tokio::select! {
+            _ = simulation_interval.tick() => {
+                run_overworld_frame(&mut session.movement, input_state.held_keys, &session.runtime);
+                if send_json(&mut socket, &ServerMessage::RenderStateV1 { state: build_render_state(&session) }).await.is_err() {
+                    return;
+                }
+            }
+            incoming = socket.recv() => {
+                match incoming {
+                    Some(Ok(message)) => {
+                        match message {
+                            Message::Text(payload) => {
+                                if let Some(frame) = parse_client_input_frame(payload.as_ref()) {
+                                    input_state.held_keys = frame.held_keys;
+                                }
+                            }
+                            Message::Close(_) => return,
+                            _ => {}
+                        }
+                    }
+                    _ => return,
+                }
+            }
         }
     }
 }
 
-struct BuildRenderPayload {
-    render_state: RenderStateV1,
+struct SessionContext {
+    map_id: String,
+    tileset_pair_id: String,
+    runtime: rebuild_v2_server::map_runtime::RuntimeMapGrid,
+    resolver_by_map_id: HashMap<String, RenderMetatileResolver>,
+    movement: MovementState,
     asset_manifest: AssetManifest,
 }
 
@@ -287,10 +344,10 @@ fn render_window_origin_from_camera(camera_runtime: RuntimeCoord) -> RuntimeCoor
     }
 }
 
-fn build_render_payload(
+fn build_session_context(
     asset_root: &PathBuf,
     player_runtime: &PlayerRuntimeState,
-) -> Result<BuildRenderPayload, String> {
+) -> Result<SessionContext, String> {
     let assembler =
         RuntimeMapAssembler::from_asset_root(asset_root).map_err(|err| err.to_string())?;
     let bundle = assembler
@@ -316,11 +373,6 @@ fn build_render_payload(
     let camera_runtime_x = camera_runtime.x;
     let camera_runtime_y = camera_runtime.y;
     let movement = MovementState::new(camera_runtime_x, camera_runtime_y, Direction::South);
-    let (camera_anchor_x, camera_anchor_y) = movement.camera_runtime_anchor();
-    let origin_runtime = render_window_origin_from_camera(camera_runtime);
-    let origin_runtime_x = origin_runtime.x;
-    let origin_runtime_y = origin_runtime.y;
-
     let mut resolver_by_map_id: HashMap<String, RenderMetatileResolver> = HashMap::new();
     for (source_map_id, source_layout) in &bundle.source_layouts_by_map_id {
         let resolver =
@@ -332,60 +384,84 @@ fn build_render_payload(
         resolver_by_map_id.insert(source_map_id.clone(), resolver);
     }
 
-    let active_pair_id = render_assets.pair_id.clone();
+    Ok(SessionContext {
+        map_id: player_runtime.map_id.clone(),
+        tileset_pair_id: render_assets.pair_id.clone(),
+        runtime,
+        resolver_by_map_id,
+        movement,
+        asset_manifest: build_asset_manifest(render_assets),
+    })
+}
+
+fn build_render_state(session: &SessionContext) -> RenderStateV1 {
+    let (camera_anchor_x, camera_anchor_y) = session.movement.camera_runtime_anchor();
+    let origin_runtime = render_window_origin_from_camera(RuntimeCoord {
+        x: camera_anchor_x,
+        y: camera_anchor_y,
+    });
+    let origin_runtime_x = origin_runtime.x;
+    let origin_runtime_y = origin_runtime.y;
+    let active_pair_id = &session.tileset_pair_id;
     let mut metatiles = Vec::with_capacity(RENDER_WINDOW_WIDTH * RENDER_WINDOW_HEIGHT);
     for y in 0..RENDER_WINDOW_HEIGHT as i32 {
         for x in 0..RENDER_WINDOW_WIDTH as i32 {
             let runtime_x = origin_runtime_x + x;
             let runtime_y = origin_runtime_y + y;
-            let (packed, source_map_id) = runtime.packed_and_source_map_id_with_border_fallback(
-                runtime_x,
-                runtime_y,
-                &player_runtime.map_id,
-            );
-            let resolver = resolver_by_map_id.get(source_map_id).ok_or_else(|| {
-                format!(
+            let (packed, source_map_id) = session
+                .runtime
+                .packed_and_source_map_id_with_border_fallback(
+                    runtime_x,
+                    runtime_y,
+                    &session.map_id,
+                );
+            let resolver = session.resolver_by_map_id.get(source_map_id).unwrap_or_else(|| {
+                panic!(
                     "missing render resolver for source_map_id={source_map_id}; active_pair_id={active_pair_id}; metatile_id={}",
                     packed & rebuild_v2_server::map_runtime::MAPGRID_METATILE_ID_MASK
                 )
-            })?;
+            });
             let source_pair_id = resolver.pair_id();
-            let metatile = resolver.resolve(packed).map_err(|err| {
-                format!(
+            let metatile = resolver.resolve(packed).unwrap_or_else(|err| {
+                panic!(
                     "metatile resolve failed: source_map_id={source_map_id}, active_pair_id={active_pair_id}, source_pair_id={source_pair_id}, metatile_id={}, runtime_x={runtime_x}, runtime_y={runtime_y}, error={err}",
                     packed & rebuild_v2_server::map_runtime::MAPGRID_METATILE_ID_MASK
                 )
-            })?;
+            });
             metatiles.push(metatile);
         }
     }
 
-    let render_state = RenderStateV1 {
+    RenderStateV1 {
         protocol_version: PROTOCOL_VERSION,
-        map_id: player_runtime.map_id.clone(),
-        tileset_pair_id: render_assets.pair_id.clone(),
+        map_id: session.map_id.clone(),
+        tileset_pair_id: session.tileset_pair_id.clone(),
         camera: CameraAnchor {
             runtime_x: camera_anchor_x,
             runtime_y: camera_anchor_y,
         },
         scroll: BgScroll {
-            x_pixel_offset: movement.pixel_offset_x,
-            y_pixel_offset: movement.pixel_offset_y,
-            horizontal_pan: movement.horizontal_pan,
-            vertical_pan: movement.vertical_pan,
+            x_pixel_offset: session.movement.pixel_offset_x,
+            y_pixel_offset: session.movement.pixel_offset_y,
+            horizontal_pan: session.movement.horizontal_pan,
+            vertical_pan: session.movement.vertical_pan,
         },
         movement: MovementFrame {
-            running_state: movement.running_state.as_spec_str().to_owned(),
-            tile_transition_state: movement.tile_transition_state.as_spec_str().to_owned(),
-            facing_direction: movement.facing_direction.as_spec_str().to_owned(),
-            movement_direction: movement.movement_direction.as_spec_str().to_owned(),
-            step_timer: movement.step_timer,
+            running_state: session.movement.running_state.as_spec_str().to_owned(),
+            tile_transition_state: session
+                .movement
+                .tile_transition_state
+                .as_spec_str()
+                .to_owned(),
+            facing_direction: session.movement.facing_direction.as_spec_str().to_owned(),
+            movement_direction: session.movement.movement_direction.as_spec_str().to_owned(),
+            step_timer: session.movement.step_timer,
         },
         wheel: CameraWheelFrame {
-            camera_pos_x: movement.camera_pos_x,
-            camera_pos_y: movement.camera_pos_y,
-            x_tile_offset: movement.x_tile_offset,
-            y_tile_offset: movement.y_tile_offset,
+            camera_pos_x: session.movement.camera_pos_x,
+            camera_pos_y: session.movement.camera_pos_y,
+            x_tile_offset: session.movement.x_tile_offset,
+            y_tile_offset: session.movement.y_tile_offset,
             strip_redraws: Vec::new(),
         },
         window: RenderWindow {
@@ -395,22 +471,61 @@ fn build_render_payload(
             height: RENDER_WINDOW_HEIGHT,
         },
         metatiles,
-    };
+    }
+}
 
-    Ok(BuildRenderPayload {
-        render_state,
-        asset_manifest: build_asset_manifest(render_assets),
-    })
+fn parse_client_input_frame(raw: &str) -> Option<ClientInputFrame> {
+    let parsed: Value = serde_json::from_str(raw).ok()?;
+    let kind = parsed.get("type")?.as_str()?;
+    if kind != "input_frame" {
+        return None;
+    }
+    serde_json::from_value(parsed).ok()
+}
+
+fn resolve_dpad_direction(held_keys: u8) -> Option<Direction> {
+    if held_keys & DPAD_UP != 0 {
+        return Some(Direction::North);
+    }
+    if held_keys & DPAD_DOWN != 0 {
+        return Some(Direction::South);
+    }
+    if held_keys & DPAD_LEFT != 0 {
+        return Some(Direction::West);
+    }
+    if held_keys & DPAD_RIGHT != 0 {
+        return Some(Direction::East);
+    }
+    None
+}
+
+fn run_overworld_frame(
+    movement: &mut MovementState,
+    held_keys: u8,
+    runtime: &rebuild_v2_server::map_runtime::RuntimeMapGrid,
+) {
+    // 1) update transition state
+    movement.tick();
+    // 2) gather field input
+    let dpad_direction = resolve_dpad_direction(held_keys);
+    // 3) placeholder script/input consumers slot (unconsumed in phase 1)
+    let consumed = false;
+    // 4) if not consumed, dispatch movement request through state machine
+    if !consumed {
+        movement.apply_direction_request(dpad_direction, runtime);
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
-        render_window_origin_from_camera, RuntimeCoord, ServerMessage, MAP_OFFSET,
-        RENDER_WINDOW_HEIGHT, RENDER_WINDOW_WIDTH,
+        parse_client_input_frame, render_window_origin_from_camera, resolve_dpad_direction,
+        run_overworld_frame, RuntimeCoord, ServerMessage, DPAD_DOWN, DPAD_LEFT, DPAD_RIGHT,
+        DPAD_UP, MAP_OFFSET, RENDER_WINDOW_HEIGHT, RENDER_WINDOW_WIDTH,
     };
     use rebuild_v2_server::{
         map_runtime::{RuntimeMapGrid, MAPGRID_IMPASSABLE, MAPGRID_UNDEFINED},
+        movement::{Direction, MovementState, RunningState},
         render_state::{
             BgScroll, CameraAnchor, CameraWheelFrame, MovementFrame, RenderStateV1, RenderWindow,
         },
@@ -509,6 +624,51 @@ mod tests {
         assert_eq!(json["scroll"]["yPixelOffset"], 0);
         assert_eq!(json["scroll"]["horizontalPan"], 0);
         assert_eq!(json["scroll"]["verticalPan"], 32);
+    }
+
+    #[test]
+    fn dpad_priority_matches_emerald_field_input_order() {
+        assert_eq!(
+            resolve_dpad_direction(DPAD_UP | DPAD_DOWN),
+            Some(Direction::North)
+        );
+        assert_eq!(
+            resolve_dpad_direction(DPAD_LEFT | DPAD_RIGHT),
+            Some(Direction::West)
+        );
+        assert_eq!(
+            resolve_dpad_direction(DPAD_RIGHT | DPAD_DOWN),
+            Some(Direction::South)
+        );
+    }
+
+    #[test]
+    fn client_input_frame_parses_type_and_masks() {
+        let parsed = parse_client_input_frame(r#"{"type":"input_frame","heldKeys":5,"newKeys":1}"#)
+            .expect("valid input frame");
+        assert_eq!(parsed.held_keys, 5);
+    }
+
+    #[test]
+    fn run_overworld_frame_keeps_hold_to_walk_cadence() {
+        let runtime = RuntimeMapGrid {
+            width: 96,
+            height: 96,
+            tiles: vec![0; 96 * 96],
+            border_tiles: [0; 4],
+            source_map_ids: vec!["MAP".to_owned()],
+            tile_source_indices: vec![0; 96 * 96],
+        };
+        let mut movement = MovementState::new(24, 24, Direction::South);
+
+        for _ in 0..39 {
+            run_overworld_frame(&mut movement, DPAD_RIGHT, &runtime);
+        }
+
+        assert_eq!(movement.player_runtime_x, 26);
+        assert_eq!(movement.player_runtime_y, 24);
+        assert_eq!(movement.running_state, RunningState::Moving);
+        assert_eq!(movement.step_timer, 5);
     }
 }
 
