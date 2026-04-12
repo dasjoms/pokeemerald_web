@@ -1,7 +1,10 @@
 use std::{env, path::PathBuf};
 
 use axum::{
-    extract::{ws::{Message, WebSocket, WebSocketUpgrade}, Query},
+    extract::{
+        ws::{Message, WebSocket, WebSocketUpgrade},
+        Query,
+    },
     response::IntoResponse,
     routing::get,
     Router,
@@ -32,7 +35,8 @@ async fn main() {
     }
 
     let app = Router::new().route("/ws", get(handle_ws_upgrade));
-    let bind_addr = env::var("V2_SERVER_BIND_ADDR").unwrap_or_else(|_| DEFAULT_BIND_ADDR.to_string());
+    let bind_addr =
+        env::var("V2_SERVER_BIND_ADDR").unwrap_or_else(|_| DEFAULT_BIND_ADDR.to_string());
 
     let listener = tokio::net::TcpListener::bind(&bind_addr)
         .await
@@ -88,8 +92,7 @@ async fn handle_ws_upgrade(
 async fn handle_socket(mut socket: WebSocket, client_version: String) {
     let server_hello = format!(
         r#"{{"type":"server_hello","protocolVersion":{},"serverAuthority":true,"clientVersion":"{}"}}"#,
-        PROTOCOL_VERSION,
-        client_version
+        PROTOCOL_VERSION, client_version
     );
 
     if socket.send(Message::Text(server_hello)).await.is_err() {
