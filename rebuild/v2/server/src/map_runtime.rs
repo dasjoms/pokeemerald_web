@@ -142,14 +142,21 @@ impl RuntimeMapAssembler {
 
         if runtime.width * runtime.height <= MAX_MAP_DATA_SIZE {
             for connection in &active_map.connections {
-                let connected_layout = self
+                if connection.target_map_id.trim().is_empty() {
+                    continue;
+                }
+
+                let connected_map = self
                     .maps_by_id
                     .get(&connection.target_map_id)
-                    .and_then(|map| self.load_layout(&map.layout_id).ok());
-
-                if let Some(layout) = connected_layout {
-                    fill_declared_connection(&mut runtime, &active_layout, &layout, connection);
-                }
+                    .ok_or_else(|| MapRuntimeError::MissingMap(connection.target_map_id.clone()))?;
+                let connected_layout = self.load_layout(&connected_map.layout_id)?;
+                fill_declared_connection(
+                    &mut runtime,
+                    &active_layout,
+                    &connected_layout,
+                    connection,
+                );
             }
         }
 
