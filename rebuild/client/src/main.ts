@@ -1,4 +1,14 @@
-import { Application, Assets, Container, Graphics, Sprite, Texture, TextureSource, TextureStyle } from 'pixi.js';
+import {
+  Application,
+  Assets,
+  Container,
+  Graphics,
+  Rectangle,
+  Sprite,
+  Texture,
+  TextureSource,
+  TextureStyle,
+} from 'pixi.js';
 import {
   AcroBikeSubstate,
   BikeTransitionType,
@@ -54,7 +64,7 @@ import {
   type WalkTransitionStart,
   type WalkTransitionMutableState,
 } from './walkTransitionPipeline';
-import { BikeEffectRenderer } from './bikeEffectRenderer';
+import { BikeEffectRenderer, type BikeTireTrackAnimId, type BikeTireTrackAtlas } from './bikeEffectRenderer';
 import {
   HopShadowRenderer,
   ROM_SHADOW_TEMPLATE_ID_MEDIUM,
@@ -291,6 +301,28 @@ type AcroHopAttempt = {
 
 type PendingHopLandingParticleEvent = QueuedHopLandingParticleEvent;
 
+type BikeEffectTemplate = {
+  palette_tag: string;
+  pic_table_entries: Array<{
+    tile_width: number;
+    tile_height: number;
+    frame_index: number;
+  }>;
+  anim_table: {
+    anim_cmd_symbols: string[];
+    sequences: Record<string, Array<{ frame: number; duration: number; h_flip?: boolean; v_flip?: boolean }>>;
+  };
+  sources: Array<{ source_path: string }>;
+};
+
+type BikeEffectsManifest = {
+  effects: {
+    bike_tire_tracks?: {
+      template: BikeEffectTemplate;
+    };
+  };
+};
+
 
 const TILE_SIZE = 16;
 const SUBTILE_SIZE = 8;
@@ -448,11 +480,24 @@ const HOP_SHADOW_ASSET_PATHS: Readonly<Record<HopShadowSizeVariant, string>> = {
   extra_large: 'field_effects/acro_bike/pics/shadow_extra_large.png',
 };
 const HOP_SHADOW_PALETTE_PATH = 'field_effects/acro_bike/palettes/general_0.pal';
+const BIKE_EFFECTS_MANIFEST_PATH = 'field_effects/acro_bike_effects_manifest.json';
+const BIKE_TIRE_TRACKS_PALETTE_PATH = 'field_effects/acro_bike/palettes/general_0.pal';
 const hopShadowTextures = new Map<HopShadowSizeVariant, Texture>();
+const BIKE_TIRE_TRACK_ANIM_INDEX_BY_VARIANT: Record<BikeTireTrackAnimId, number> = {
+  south: 1,
+  north: 2,
+  west: 3,
+  east: 4,
+  se_corner_turn: 5,
+  sw_corner_turn: 6,
+  nw_corner_turn: 7,
+  ne_corner_turn: 8,
+};
 TextureStyle.defaultOptions.scaleMode = 'nearest';
 TextureSource.defaultOptions.scaleMode = 'nearest';
 await preloadPlayerAvatarSheets();
 await preloadHopShadowTextures();
+const bikeTireTrackAtlas = await preloadBikeTireTrackAtlas();
 await app.init({
   background: '#0f172a',
   antialias: false,
@@ -522,7 +567,7 @@ objectDepthBetweenBg2Bg1Layer.addChild(playerSprite);
 let playerActiveActorLayer = objectDepthBetweenBg2Bg1Layer;
 let activeMapTileRenderPriorityContexts: (MapTileRenderPriorityContext | undefined)[] = [];
 let playerObjectRenderPriorityState: PlayerObjectRenderPriorityState = 'normal';
-const bikeEffectRenderer = new BikeEffectRenderer(bikeEffectsLayer, TILE_SIZE);
+const bikeEffectRenderer = new BikeEffectRenderer(bikeEffectsLayer, TILE_SIZE, bikeTireTrackAtlas);
 const hopParticleRenderer = new HopParticleRenderer(
   (tileX, tileY) => resolveHopEffectLayerForPlayer(tileX, tileY),
   TILE_SIZE,
@@ -2384,6 +2429,68 @@ async function preloadHopShadowTextures(): Promise<void> {
     const texture = await loadIndexed4bppTextureFromAssets(repoRelativePath, paletteColors);
     hopShadowTextures.set(variant, texture);
   }
+}
+
+async function preloadBikeTireTrackAtlas(): Promise<BikeTireTrackAtlas> {
+  const manifest = await loadJsonFromAssets<BikeEffectsManifest>(BIKE_EFFECTS_MANIFEST_PATH);
+  const bikeTireTracksTemplate = manifest.effects.bike_tire_tracks?.template;
+  if (!bikeTireTracksTemplate) {
+    throw new Error('missing bike_tire_tracks template metadata in bike effects manifest');
+  }
+
+  const paletteColors = loadJascPaletteHexColorsFromAssets(BIKE_TIRE_TRACKS_PALETTE_PATH);
+  const sourcePath = bikeTireTracksTemplate.sources[0]?.source_path;
+  if (!sourcePath) {
+    throw new Error('missing bike_tire_tracks source path in manifest');
+  }
+  const runtimePngPath = sourcePath
+    .replace(/^graphics\/field_effects\/pics\//, 'field_effects/acro_bike/pics/')
+    .replace(/\.4bpp$/i, '.png');
+  const baseTexture = await loadIndexed4bppTextureFromAssets(runtimePngPath, paletteColors);
+  const sourceWidth = baseTexture.source.width;
+
+  const frameTextures = bikeTireTracksTemplate.pic_table_entries.map((entry) => {
+    const frameWidthPx = entry.tile_width * 8;
+    const frameHeightPx = entry.tile_height * 8;
+    const columns = Math.max(1, Math.floor(sourceWidth / frameWidthPx));
+    const frameX = (entry.frame_index % columns) * frameWidthPx;
+    const frameY = Math.floor(entry.frame_index / columns) * frameHeightPx;
+    return new Texture({
+      source: baseTexture.source,
+      frame: new Rectangle(frameX, frameY, frameWidthPx, frameHeightPx),
+    });
+  });
+
+  const atlasEntries = Object.entries(BIKE_TIRE_TRACK_ANIM_INDEX_BY_VARIANT).map(
+    ([variantRaw, animTableIndex]) => {
+      const variant = variantRaw as BikeTireTrackAnimId;
+      const animSymbol = bikeTireTracksTemplate.anim_table.anim_cmd_symbols[animTableIndex];
+      if (!animSymbol) {
+        throw new Error(`missing bike tire tracks anim symbol for variant=${variant}`);
+      }
+      const steps = bikeTireTracksTemplate.anim_table.sequences[animSymbol];
+      const firstStep = steps?.[0];
+      if (!firstStep) {
+        throw new Error(`missing bike tire tracks first frame for variant=${variant}`);
+      }
+      const texture = frameTextures[firstStep.frame];
+      if (!texture) {
+        throw new Error(
+          `bike tire tracks frame index out of range for variant=${variant} frame=${firstStep.frame}`,
+        );
+      }
+      return [
+        variant,
+        {
+          texture,
+          hFlip: firstStep.h_flip ?? false,
+          vFlip: firstStep.v_flip ?? false,
+        },
+      ] as const;
+    },
+  );
+
+  return Object.fromEntries(atlasEntries) as BikeTireTrackAtlas;
 }
 
 async function loadIndexed4bppTextureFromAssets(
