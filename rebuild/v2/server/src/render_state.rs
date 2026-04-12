@@ -44,6 +44,8 @@ pub struct RenderStateV1 {
     pub tileset_pair_id: String,
     pub camera: CameraAnchor,
     pub scroll: BgScroll,
+    pub movement: MovementFrame,
+    pub wheel: CameraWheelFrame,
     pub window: RenderWindow,
     pub metatiles: Vec<RenderMetatile>,
 }
@@ -62,6 +64,35 @@ pub struct BgScroll {
     pub y_pixel_offset: i32,
     pub horizontal_pan: i32,
     pub vertical_pan: i32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MovementFrame {
+    pub running_state: String,
+    pub tile_transition_state: String,
+    pub facing_direction: String,
+    pub movement_direction: String,
+    pub step_timer: u8,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CameraWheelFrame {
+    pub camera_pos_x: i32,
+    pub camera_pos_y: i32,
+    pub x_tile_offset: i32,
+    pub y_tile_offset: i32,
+    pub strip_redraws: Vec<StripRedrawFrame>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct StripRedrawFrame {
+    pub dest_x: i32,
+    pub dest_y: i32,
+    pub world_x: i32,
+    pub world_y: i32,
 }
 
 #[derive(Debug, Serialize)]
