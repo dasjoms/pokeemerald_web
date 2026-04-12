@@ -794,7 +794,9 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     state.mapId = snapshot.map_id;
     state.playerTileX = snapshot.player_pos.x;
     state.playerTileY = snapshot.player_pos.y;
-    setRenderPositionToTile(state.playerTileX, state.playerTileY);
+    state.cameraPosTileX = resolveWindowOriginTileFromPlayerTile(state.playerTileX);
+    state.cameraPosTileY = resolveWindowOriginTileFromPlayerTile(state.playerTileY);
+    setRenderPositionToPlayerTile(state.playerTileX, state.playerTileY);
     activeWalkTransition = null;
     state.facing = snapshot.facing;
     state.lastAuthoritativeStepFacing = snapshot.facing;
@@ -998,7 +1000,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     state.lastAuthoritativeStepFacing = result.facing;
   } else {
     activeWalkTransition = null;
-    setRenderPositionToTile(state.playerTileX, state.playerTileY);
+    setRenderPositionToPlayerTile(state.playerTileX, state.playerTileY);
     playerAnimation.stopMoving(result.facing);
     bikeEffectRenderer.onAuthoritativeStep({
       fromX: state.playerTileX,
@@ -1050,7 +1052,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     state.playerTileX = reconciled.tile.x;
     state.playerTileY = reconciled.tile.y;
     state.facing = reconciled.facing;
-    setRenderPositionToTile(state.playerTileX, state.playerTileY);
+    setRenderPositionToPlayerTile(state.playerTileX, state.playerTileY);
   }
 }
 
@@ -2659,7 +2661,7 @@ function applyPredictedWalk(
   );
   state.playerTileX = predictedTile.x;
   state.playerTileY = predictedTile.y;
-  setRenderPositionToTile(state.playerTileX, state.playerTileY);
+  setRenderPositionToPlayerTile(state.playerTileX, state.playerTileY);
   state.facing = direction;
   playerAnimation.startStep(
     direction,
@@ -3080,17 +3082,23 @@ function updateCamera(): void {
   gameContainer.y = app.screen.height / 2 - centerY * RENDER_SCALE;
 }
 
-function setRenderPositionToTile(tileX: number, tileY: number): void {
-  state.renderTileX = tileX;
-  state.renderTileY = tileY;
+function resolveWindowOriginTileFromPlayerTile(playerTile: number): number {
+  return playerTile - MAP_OFFSET;
+}
+
+function setRenderPositionToPlayerTile(playerTileX: number, playerTileY: number): void {
+  state.renderTileX = playerTileX;
+  state.renderTileY = playerTileY;
   syncCameraWindowFromRenderPosition();
 }
 
 function syncCameraWindowFromRenderPosition(): void {
   const renderPixelX = Math.floor(state.renderTileX * TILE_SIZE);
   const renderPixelY = Math.floor(state.renderTileY * TILE_SIZE);
-  state.cameraPosTileX = Math.floor(renderPixelX / TILE_SIZE) - MAP_OFFSET;
-  state.cameraPosTileY = Math.floor(renderPixelY / TILE_SIZE) - MAP_OFFSET;
+  const renderTileX = Math.floor(renderPixelX / TILE_SIZE);
+  const renderTileY = Math.floor(renderPixelY / TILE_SIZE);
+  state.cameraPosTileX = resolveWindowOriginTileFromPlayerTile(renderTileX);
+  state.cameraPosTileY = resolveWindowOriginTileFromPlayerTile(renderTileY);
   state.pixelOffsetX = ((renderPixelX % TILE_SIZE) + TILE_SIZE) % TILE_SIZE;
   state.pixelOffsetY = ((renderPixelY % TILE_SIZE) + TILE_SIZE) % TILE_SIZE;
 }
