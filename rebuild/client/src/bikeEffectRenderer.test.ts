@@ -112,6 +112,30 @@ function createAtlas(pixi: PixiModule): BikeTireTrackAtlas {
 }
 
 describe('BikeEffectRenderer tire track lifecycle parity', () => {
+  it('spawns tire tracks at full opacity by default', async () => {
+    const { renderer: rendererModule, pixi } = await loadRendererWithPixi();
+    const layer = new pixi.Container();
+    const renderer = new rendererModule.BikeEffectRenderer(
+      () => layer,
+      16,
+      createAtlas(pixi),
+      createManifestMetadata(),
+    );
+
+    renderer.onAuthoritativeStep({
+      fromX: 4,
+      fromY: 5,
+      previousFacing: Direction.DOWN,
+      currentFacing: Direction.DOWN,
+      traversalState: TraversalState.MACH_BIKE,
+      bikeEffectFlags: rendererModule.BIKE_EFFECT_TIRE_TRACKS,
+      serverFrame: 99,
+    });
+
+    expect(layer.children).toHaveLength(1);
+    expect((layer.children[0] as { alpha: number }).alpha).toBe(1);
+  });
+
   it('holds visible, then flickers each frame, and stops at extracted timer threshold', async () => {
     const { renderer: rendererModule, pixi } = await loadRendererWithPixi();
     const atlas = createAtlas(pixi);
