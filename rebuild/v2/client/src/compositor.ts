@@ -64,8 +64,7 @@ export class OverworldCompositor {
   }
 
   private drawMetatile(subtileX: number, subtileY: number, layerType: number, subtiles: RenderSubtile[]): void {
-    const bottom = subtiles.slice(0, 4);
-    const top = subtiles.slice(4, 8);
+    const { bottom, top } = this.partitionSubtiles(subtileX, subtileY, layerType, subtiles);
 
     switch (layerType) {
       case 2: // SPLIT
@@ -85,6 +84,78 @@ export class OverworldCompositor {
         this.paintLayer(this.topSprites, subtileX, subtileY, top);
         break;
     }
+  }
+
+  private partitionSubtiles(
+    subtileX: number,
+    subtileY: number,
+    layerType: number,
+    subtiles: RenderSubtile[]
+  ): { bottom: RenderSubtile[]; top: RenderSubtile[] } {
+    const partitioned = new Map<number, RenderSubtile[]>();
+    for (const subtile of subtiles) {
+      const bucket = partitioned.get(subtile.layer);
+      if (bucket) {
+        bucket.push(subtile);
+      } else {
+        partitioned.set(subtile.layer, [subtile]);
+      }
+    }
+
+    for (const [layer, entries] of partitioned.entries()) {
+      if (layer !== 0 && layer !== 1) {
+        this.warnMalformedSubtiles("unknown_layer", subtileX, subtileY, layerType, {
+          layer,
+          count: entries.length
+        });
+      }
+    }
+
+    return {
+      bottom: this.orderedLayerQuad(partitioned.get(0) ?? [], "bottom", subtileX, subtileY, layerType),
+      top: this.orderedLayerQuad(partitioned.get(1) ?? [], "top", subtileX, subtileY, layerType)
+    };
+  }
+
+  private orderedLayerQuad(
+    subtiles: RenderSubtile[],
+    layerName: "bottom" | "top",
+    subtileX: number,
+    subtileY: number,
+    layerType: number
+  ): RenderSubtile[] {
+    if (subtiles.length !== 4) {
+      this.warnMalformedSubtiles("unexpected_layer_count", subtileX, subtileY, layerType, {
+        layerName,
+        count: subtiles.length
+      });
+      return [];
+    }
+
+    const ordered = [...subtiles].sort((a, b) => {
+      if (a.layerOrder !== b.layerOrder) {
+        return a.layerOrder - b.layerOrder;
+      }
+      return a.subtileIndex - b.subtileIndex;
+    });
+
+    return ordered;
+  }
+
+  private warnMalformedSubtiles(
+    reason: "unknown_layer" | "unexpected_layer_count",
+    subtileX: number,
+    subtileY: number,
+    layerType: number,
+    details: Record<string, number | string>
+  ): void {
+    console.warn("[compositor] malformed_metatile_subtiles", {
+      reason,
+      metatileSubtileX: subtileX,
+      metatileSubtileY: subtileY,
+      layerType,
+      ...details
+    });
   }
 
   private paintBottomFiller(layer: Sprite[], baseX: number, baseY: number): void {
