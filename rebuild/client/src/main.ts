@@ -106,15 +106,6 @@ import {
   resolvePlayerRenderPriority,
   type PlayerObjectRenderPriorityState,
 } from './playerLayerSelection';
-import {
-  advanceFieldCameraByMetatile,
-  CAMERA_METATILE_BUFFER_DIM,
-  createInitialFieldCameraOffset,
-  mod as cameraMod,
-  toMetatileRingOffset,
-  updateFieldCameraPixelOffset,
-  type FieldCameraOffset,
-} from './cameraTilemap';
 
 type ServerMessage =
   | { type: MessageType.SESSION_ACCEPTED; payload: SessionAccepted }
@@ -310,13 +301,6 @@ type MapTileRenderPriorityContext = {
   hasLayer1: boolean;
 };
 
-type CameraBufferSlot = {
-  bg3: Container;
-  bg2: Container;
-  bg1: Container;
-  overlay: Graphics;
-};
-
 type AcroHopFailureReason =
   | 'b_released'
   | 'direction_pressed'
@@ -453,19 +437,6 @@ let activeTilesetAnimationPairId: string | null = null;
 let activeTilesetAnimationState: TilesetAnimationState | null = null;
 let activeTextureCache: MetatileTextureCache | null = null;
 let activeIndexedAtlasPages: IndexedAtlasPages | null = null;
-let activeRuntimeChunk: DecodedMapChunk | null = null;
-let activeLayoutForRender: LayoutFile | null = null;
-let activePrimaryMetatiles: Metatile[] = [];
-let activeSecondaryMetatiles: Metatile[] = [];
-let activePrimaryPalettes: number[][][] = [];
-let activeSecondaryPalettes: number[][][] = [];
-let activePrimaryTileCount = Number.MAX_SAFE_INTEGER;
-const fieldCameraOffset: FieldCameraOffset = createInitialFieldCameraOffset();
-let cameraWindowOriginTileX = 0;
-let cameraWindowOriginTileY = 0;
-let lastAuthoritativeCameraTileX = 0;
-let lastAuthoritativeCameraTileY = 0;
-const cameraBufferSlots: CameraBufferSlot[] = [];
 const renderedSubtileBindings: RenderedSubtileBinding[] = [];
 const subtileBindingsByTile = new Map<string, RenderedSubtileBinding[]>();
 const subtileBindingsByPalette = new Map<string, RenderedSubtileBinding[]>();
@@ -548,7 +519,6 @@ worldContainer.addChild(bikeEffectsBetweenBg2Bg1Layer);
 worldContainer.addChild(objectDepthBetweenBg2Bg1Layer);
 worldContainer.addChild(mapBg1Layer);
 worldContainer.addChild(debugOverlayLayer);
-initializeCameraBufferSlots();
 gameContainer.scale.set(RENDER_SCALE, RENDER_SCALE);
 gameContainer.addChild(worldContainer);
 app.stage.addChild(gameContainer);
@@ -629,16 +599,6 @@ app.ticker.add(() => {
   }
   walkInputController.tick();
   tickWalkTransition(app.ticker.deltaMS);
-  updateCameraWindowForAuthoritativeTileStep();
-  updateFieldCameraPixelOffset(
-    fieldCameraOffset,
-    state.renderTileX,
-    state.renderTileY,
-    state.playerTileX,
-    state.playerTileY,
-    TILE_SIZE,
-  );
-  updateCameraWindowSlotPositions();
   playerAnimation.applyPendingModeChanges();
   presentPlayerAnimationFrame();
   tickTilesetAnimationClock(app.ticker.deltaMS);
@@ -1064,7 +1024,10 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
   state.mapWidth = runtimeChunk.width;
   state.mapHeight = runtimeChunk.height;
 
-  clearCameraBufferSlotContent();
+  mapBg3Layer.removeChildren();
+  mapBg2Layer.removeChildren();
+  mapBg1Layer.removeChildren();
+  debugOverlayLayer.removeChildren();
   objectDepthBelowBg2Layer.removeChildren();
   shadowBelowBg2Layer.removeChildren();
   bikeEffectsBelowBg2Layer.removeChildren();
@@ -1122,7 +1085,6 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
     Math.floor(primaryIndexedPage.height / SUBTILE_SIZE);
   const metadataPrimaryTileCount = primaryPage.logical_tile_count;
   const primaryTileCount = metadataPrimaryTileCount ?? dimensionDerivedPrimaryTileCount;
-  activePrimaryTileCount = primaryTileCount;
 
   if (
     import.meta.env.DEV &&
@@ -1157,12 +1119,6 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
   const secondaryMetatiles = metatilesBySource.get(layout.secondary_tileset) ?? [];
   const primaryPalettes = palettesBySource.get(layout.primary_tileset) ?? [];
   const secondaryPalettes = palettesBySource.get(layout.secondary_tileset) ?? [];
-  activeRuntimeChunk = runtimeChunk;
-  activeLayoutForRender = layout;
-  activePrimaryMetatiles = primaryMetatiles;
-  activeSecondaryMetatiles = secondaryMetatiles;
-  activePrimaryPalettes = primaryPalettes;
-  activeSecondaryPalettes = secondaryPalettes;
 
   let animationState = tilesetAnimationStates.get(renderAssets.pair_id);
   if (!animationState) {
@@ -1230,269 +1186,76 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
         hasLayer0,
         hasLayer1,
       };
-    }
-  }
-  initializeCameraWindowFromPlayerTile(state.playerTileX, state.playerTileY);
-}
 
-function initializeCameraBufferSlots(): void {
-  if (cameraBufferSlots.length > 0) {
-    return;
-  }
-  for (let y = 0; y < CAMERA_METATILE_BUFFER_DIM; y += 1) {
-    for (let x = 0; x < CAMERA_METATILE_BUFFER_DIM; x += 1) {
-      const bg3 = new Container();
-      const bg2 = new Container();
-      const bg1 = new Container();
-      const overlay = new Graphics();
+      const sourcePalettes = isPrimaryMetatile ? primaryPalettes : secondaryPalettes;
+      const sortedSubtiles = [...metatile.subtiles].sort((a, b) => a.layer_order - b.layer_order);
+
+      for (const subtile of sortedSubtiles) {
+        const sourcePage = subtile.tile_index >= primaryTileCount ? 1 : 0;
+        const localTileIndex =
+          sourcePage === 0 ? subtile.tile_index : subtile.tile_index - primaryTileCount;
+        if (localTileIndex < 0) {
+          continue;
+        }
+
+        const sourceTilesetName =
+          sourcePage === 0 ? layout.primary_tileset : layout.secondary_tileset;
+        const subtileTexture = textureCache.getTexture({
+          atlasPages: indexedAtlasPages,
+          pageId: sourcePage,
+          localTileIndex,
+          sourceTileIndices: resolveFramePayloadTileIndices(animationState, sourcePage, localTileIndex),
+          paletteIndex: resolveActivePaletteSwap(sourceTilesetName, subtile.palette_index),
+          palettes: activePalettesBySource.get(sourceTilesetName) ?? sourcePalettes,
+          animationKey: `${animationState.tickSerial}`,
+        });
+        if (!subtileTexture) {
+          continue;
+        }
+
+        const sprite = new Sprite(subtileTexture);
+        registerSubtileBinding({
+          sprite,
+          pageId: sourcePage,
+          localTileIndex,
+          paletteIndex: subtile.palette_index,
+          sourceTileset: sourceTilesetName,
+        });
+        const subtileX = subtile.subtile_index % 2;
+        const subtileY = Math.floor(subtile.subtile_index / 2) % 2;
+        sprite.x = x * TILE_SIZE + subtileX * SUBTILE_SIZE;
+        sprite.y = y * TILE_SIZE + subtileY * SUBTILE_SIZE;
+
+        if (subtile.hflip) {
+          sprite.scale.x = -1;
+          sprite.x += SUBTILE_SIZE;
+        }
+        if (subtile.vflip) {
+          sprite.scale.y = -1;
+          sprite.y += SUBTILE_SIZE;
+        }
+        const mapRenderStratum = resolveMapRenderStratum(metatile.layer_type, subtile.layer);
+        switch (mapRenderStratum) {
+          case MapRenderStratum.BG3:
+            mapBg3Layer.addChild(sprite);
+            break;
+          case MapRenderStratum.BG2:
+            mapBg2Layer.addChild(sprite);
+            break;
+          case MapRenderStratum.BG1:
+            mapBg1Layer.addChild(sprite);
+            break;
+        }
+      }
+
+      const overlayColor = tile.collision === 0 ? 0x16a34a : 0xdc2626;
+      const overlay = new Graphics()
+        .rect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
+        .fill({ color: overlayColor, alpha: 0.25 })
+        .stroke({ color: 0x0f172a, width: 1, alpha: 0.35 });
       overlay.visible = debugOverlayEnabled;
-      mapBg3Layer.addChild(bg3);
-      mapBg2Layer.addChild(bg2);
-      mapBg1Layer.addChild(bg1);
+      overlay.label = `collision=${tile.collision} behavior=${tile.behavior_id}`;
       debugOverlayLayer.addChild(overlay);
-      cameraBufferSlots.push({ bg3, bg2, bg1, overlay });
-    }
-  }
-}
-
-function clearCameraBufferSlotContent(): void {
-  for (const slot of cameraBufferSlots) {
-    slot.bg3.removeChildren();
-    slot.bg2.removeChildren();
-    slot.bg1.removeChildren();
-    slot.overlay.clear();
-    slot.overlay.label = '';
-  }
-}
-
-function initializeCameraWindowFromPlayerTile(playerTileX: number, playerTileY: number): void {
-  cameraWindowOriginTileX = playerTileX - Math.floor(CAMERA_METATILE_BUFFER_DIM / 2);
-  cameraWindowOriginTileY = playerTileY - Math.floor(CAMERA_METATILE_BUFFER_DIM / 2);
-  fieldCameraOffset.xTileOffset = 0;
-  fieldCameraOffset.yTileOffset = 0;
-  fieldCameraOffset.xPixelOffset = 0;
-  fieldCameraOffset.yPixelOffset = 0;
-  lastAuthoritativeCameraTileX = playerTileX;
-  lastAuthoritativeCameraTileY = playerTileY;
-  redrawEntireCameraWindow();
-}
-
-function redrawEntireCameraWindow(): void {
-  for (let y = 0; y < CAMERA_METATILE_BUFFER_DIM; y += 1) {
-    for (let x = 0; x < CAMERA_METATILE_BUFFER_DIM; x += 1) {
-      drawCameraSlotAt(
-        x,
-        y,
-        cameraWindowOriginTileX + x,
-        cameraWindowOriginTileY + y,
-      );
-    }
-  }
-  updateCameraWindowSlotPositions();
-}
-
-function updateCameraWindowForAuthoritativeTileStep(): void {
-  if (!activeRuntimeChunk || !activeLayoutForRender) {
-    return;
-  }
-  let diffX = state.playerTileX - lastAuthoritativeCameraTileX;
-  let diffY = state.playerTileY - lastAuthoritativeCameraTileY;
-  if (diffX === 0 && diffY === 0) {
-    return;
-  }
-
-  while (diffX !== 0 || diffY !== 0) {
-    if (diffX > 0) {
-      applyCameraWindowMetatileStep(1, 0);
-      diffX -= 1;
-      continue;
-    }
-    if (diffX < 0) {
-      applyCameraWindowMetatileStep(-1, 0);
-      diffX += 1;
-      continue;
-    }
-    if (diffY > 0) {
-      applyCameraWindowMetatileStep(0, 1);
-      diffY -= 1;
-      continue;
-    }
-    applyCameraWindowMetatileStep(0, -1);
-    diffY += 1;
-  }
-
-  lastAuthoritativeCameraTileX = state.playerTileX;
-  lastAuthoritativeCameraTileY = state.playerTileY;
-  updateCameraWindowSlotPositions();
-}
-
-function applyCameraWindowMetatileStep(stepX: number, stepY: number): void {
-  cameraWindowOriginTileX += stepX;
-  cameraWindowOriginTileY += stepY;
-  advanceFieldCameraByMetatile(fieldCameraOffset, stepX, stepY);
-  redrawEnteringCameraSlice(stepX, stepY);
-}
-
-function redrawEnteringCameraSlice(stepX: number, stepY: number): void {
-  const ringOffsetX = toMetatileRingOffset(fieldCameraOffset.xTileOffset);
-  const ringOffsetY = toMetatileRingOffset(fieldCameraOffset.yTileOffset);
-
-  if (stepX > 0) {
-    const bufferX = cameraMod(ringOffsetX + CAMERA_METATILE_BUFFER_DIM - 1, CAMERA_METATILE_BUFFER_DIM);
-    const worldX = cameraWindowOriginTileX + CAMERA_METATILE_BUFFER_DIM - 1;
-    for (let y = 0; y < CAMERA_METATILE_BUFFER_DIM; y += 1) {
-      drawCameraSlotAt(bufferX, y, worldX, cameraWindowOriginTileY + y);
-    }
-    return;
-  }
-  if (stepX < 0) {
-    const bufferX = ringOffsetX;
-    const worldX = cameraWindowOriginTileX;
-    for (let y = 0; y < CAMERA_METATILE_BUFFER_DIM; y += 1) {
-      drawCameraSlotAt(bufferX, y, worldX, cameraWindowOriginTileY + y);
-    }
-    return;
-  }
-  if (stepY > 0) {
-    const bufferY = cameraMod(ringOffsetY + CAMERA_METATILE_BUFFER_DIM - 1, CAMERA_METATILE_BUFFER_DIM);
-    const worldY = cameraWindowOriginTileY + CAMERA_METATILE_BUFFER_DIM - 1;
-    for (let x = 0; x < CAMERA_METATILE_BUFFER_DIM; x += 1) {
-      drawCameraSlotAt(x, bufferY, cameraWindowOriginTileX + x, worldY);
-    }
-    return;
-  }
-  const bufferY = ringOffsetY;
-  const worldY = cameraWindowOriginTileY;
-  for (let x = 0; x < CAMERA_METATILE_BUFFER_DIM; x += 1) {
-    drawCameraSlotAt(x, bufferY, cameraWindowOriginTileX + x, worldY);
-  }
-}
-
-function drawCameraSlotAt(bufferX: number, bufferY: number, worldTileX: number, worldTileY: number): void {
-  const runtimeChunk = activeRuntimeChunk;
-  const layout = activeLayoutForRender;
-  const textureCache = activeTextureCache;
-  const indexedAtlasPages = activeIndexedAtlasPages;
-  const animationState = activeTilesetAnimationState;
-  if (!runtimeChunk || !layout || !textureCache || !indexedAtlasPages || !animationState) {
-    return;
-  }
-
-  const slot = cameraBufferSlots[bufferY * CAMERA_METATILE_BUFFER_DIM + bufferX];
-  if (!slot) {
-    return;
-  }
-  slot.bg3.removeChildren();
-  slot.bg2.removeChildren();
-  slot.bg1.removeChildren();
-  slot.overlay.clear();
-  slot.overlay.label = '';
-
-  if (
-    worldTileX < 0 ||
-    worldTileY < 0 ||
-    worldTileX >= runtimeChunk.width ||
-    worldTileY >= runtimeChunk.height
-  ) {
-    return;
-  }
-
-  const tile = runtimeChunk.tiles[worldTileY * runtimeChunk.width + worldTileX];
-  if (!tile) {
-    return;
-  }
-
-  const isPrimaryMetatile = tile.metatile_id < activePrimaryMetatiles.length;
-  const metatile = isPrimaryMetatile
-    ? activePrimaryMetatiles[tile.metatile_id]
-    : activeSecondaryMetatiles[tile.metatile_id - activePrimaryMetatiles.length];
-  if (!metatile) {
-    return;
-  }
-  const sourcePalettes = isPrimaryMetatile ? activePrimaryPalettes : activeSecondaryPalettes;
-  const sortedSubtiles = [...metatile.subtiles].sort((a, b) => a.layer_order - b.layer_order);
-  for (const subtile of sortedSubtiles) {
-    const sourcePage = subtile.tile_index >= activePrimaryTileCount ? 1 : 0;
-    const localTileIndex =
-      sourcePage === 0 ? subtile.tile_index : subtile.tile_index - activePrimaryTileCount;
-    if (localTileIndex < 0) {
-      continue;
-    }
-    const sourceTilesetName =
-      sourcePage === 0 ? layout.primary_tileset : layout.secondary_tileset;
-    const subtileTexture = textureCache.getTexture({
-      atlasPages: indexedAtlasPages,
-      pageId: sourcePage,
-      localTileIndex,
-      sourceTileIndices: resolveFramePayloadTileIndices(animationState, sourcePage, localTileIndex),
-      paletteIndex: resolveActivePaletteSwap(sourceTilesetName, subtile.palette_index),
-      palettes: activePalettesBySource.get(sourceTilesetName) ?? sourcePalettes,
-      animationKey: `${animationState.tickSerial}`,
-    });
-    if (!subtileTexture) {
-      continue;
-    }
-    const sprite = new Sprite(subtileTexture);
-    registerSubtileBinding({
-      sprite,
-      pageId: sourcePage,
-      localTileIndex,
-      paletteIndex: subtile.palette_index,
-      sourceTileset: sourceTilesetName,
-    });
-    const subtileX = subtile.subtile_index % 2;
-    const subtileY = Math.floor(subtile.subtile_index / 2) % 2;
-    sprite.x = subtileX * SUBTILE_SIZE;
-    sprite.y = subtileY * SUBTILE_SIZE;
-    if (subtile.hflip) {
-      sprite.scale.x = -1;
-      sprite.x += SUBTILE_SIZE;
-    }
-    if (subtile.vflip) {
-      sprite.scale.y = -1;
-      sprite.y += SUBTILE_SIZE;
-    }
-    const mapRenderStratum = resolveMapRenderStratum(metatile.layer_type, subtile.layer);
-    switch (mapRenderStratum) {
-      case MapRenderStratum.BG3:
-        slot.bg3.addChild(sprite);
-        break;
-      case MapRenderStratum.BG2:
-        slot.bg2.addChild(sprite);
-        break;
-      case MapRenderStratum.BG1:
-        slot.bg1.addChild(sprite);
-        break;
-    }
-  }
-
-  const overlayColor = tile.collision === 0 ? 0x16a34a : 0xdc2626;
-  slot.overlay
-    .rect(0, 0, TILE_SIZE, TILE_SIZE)
-    .fill({ color: overlayColor, alpha: 0.25 })
-    .stroke({ color: 0x0f172a, width: 1, alpha: 0.35 });
-  slot.overlay.visible = debugOverlayEnabled;
-  slot.overlay.label = `collision=${tile.collision} behavior=${tile.behavior_id}`;
-}
-
-function updateCameraWindowSlotPositions(): void {
-  const ringOffsetX = toMetatileRingOffset(fieldCameraOffset.xTileOffset);
-  const ringOffsetY = toMetatileRingOffset(fieldCameraOffset.yTileOffset);
-  for (let y = 0; y < CAMERA_METATILE_BUFFER_DIM; y += 1) {
-    for (let x = 0; x < CAMERA_METATILE_BUFFER_DIM; x += 1) {
-      const physicalX = cameraMod(x - ringOffsetX, CAMERA_METATILE_BUFFER_DIM);
-      const physicalY = cameraMod(y - ringOffsetY, CAMERA_METATILE_BUFFER_DIM);
-      const slot = cameraBufferSlots[y * CAMERA_METATILE_BUFFER_DIM + x];
-      const xPx = (cameraWindowOriginTileX + physicalX) * TILE_SIZE;
-      const yPx = (cameraWindowOriginTileY + physicalY) * TILE_SIZE;
-      slot.bg3.x = xPx;
-      slot.bg3.y = yPx;
-      slot.bg2.x = xPx;
-      slot.bg2.y = yPx;
-      slot.bg1.x = xPx;
-      slot.bg1.y = yPx;
-      slot.overlay.x = xPx;
-      slot.overlay.y = yPx;
     }
   }
 }
@@ -2938,16 +2701,8 @@ function presentPlayerAnimationFrame(): void {
 }
 
 function updateCamera(): void {
-  const signedOffsetX =
-    fieldCameraOffset.xPixelOffset > TILE_SIZE / 2
-      ? fieldCameraOffset.xPixelOffset - TILE_SIZE
-      : fieldCameraOffset.xPixelOffset;
-  const signedOffsetY =
-    fieldCameraOffset.yPixelOffset > TILE_SIZE / 2
-      ? fieldCameraOffset.yPixelOffset - TILE_SIZE
-      : fieldCameraOffset.yPixelOffset;
-  const centerX = state.playerTileX * TILE_SIZE + TILE_SIZE / 2 + signedOffsetX;
-  const centerY = state.playerTileY * TILE_SIZE + TILE_SIZE / 2 + signedOffsetY;
+  const centerX = state.renderTileX * TILE_SIZE + TILE_SIZE / 2;
+  const centerY = state.renderTileY * TILE_SIZE + TILE_SIZE / 2;
   gameContainer.x = app.screen.width / 2 - centerX * RENDER_SCALE;
   gameContainer.y = app.screen.height / 2 - centerY * RENDER_SCALE;
 }
