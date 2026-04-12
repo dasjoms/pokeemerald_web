@@ -29,20 +29,14 @@ export function advanceFieldCameraByMetatile(
 
 export function updateFieldCameraPixelOffset(
   offset: FieldCameraOffset,
-  renderTileX: number,
-  renderTileY: number,
-  authoritativeTileX: number,
-  authoritativeTileY: number,
+  pixelOffsetX: number,
+  pixelOffsetY: number,
   tileSizePx: number,
 ): void {
-  offset.xPixelOffset = mod(
-    Math.round((renderTileX - authoritativeTileX) * tileSizePx),
-    tileSizePx,
-  );
-  offset.yPixelOffset = mod(
-    Math.round((renderTileY - authoritativeTileY) * tileSizePx),
-    tileSizePx,
-  );
+  const minOffset = -(tileSizePx - 1);
+  const maxOffset = tileSizePx - 1;
+  offset.xPixelOffset = Math.max(minOffset, Math.min(maxOffset, Math.round(pixelOffsetX)));
+  offset.yPixelOffset = Math.max(minOffset, Math.min(maxOffset, Math.round(pixelOffsetY)));
 }
 
 export function toMetatileRingOffset(tileOffset: number): number {
