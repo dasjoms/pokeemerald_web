@@ -41,7 +41,6 @@ type ActiveTrackEffect = {
   visible: boolean;
 };
 
-const TRACK_ALPHA = 0.52;
 const SIMULATION_FRAME_MS = 1000 / 60;
 
 export class BikeEffectRenderer {
@@ -142,7 +141,6 @@ export class BikeEffectRenderer {
     sprite.anchor.set(0.5, 0.5);
     sprite.scale.x = atlasEntry.hFlip ? -1 : 1;
     sprite.scale.y = atlasEntry.vFlip ? -1 : 1;
-    sprite.alpha = TRACK_ALPHA;
     sprite.visible = true;
     sprite.x = event.fromX * this.tileSize + this.tileSize / 2;
     sprite.y = event.fromY * this.tileSize + this.tileSize / 2;
