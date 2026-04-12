@@ -91,6 +91,22 @@ describe('fieldCameraParity', () => {
     expect(result.state.anchorMetatileY).toBe(1);
   });
 
+  it('emits a crossing event when cumulative per-frame motion passes a 16px boundary', () => {
+    let state = initFieldCameraParityFromTile(10, 4);
+
+    for (let i = 1; i <= 15; i += 1) {
+      const partial = updateFieldCameraParity(state, 10 + i / 16, 4);
+      expect(partial.boundaryEvents).toEqual([]);
+      state = partial.state;
+    }
+
+    const crossing = updateFieldCameraParity(state, 11, 4);
+
+    expect(crossing.boundaryEvents).toEqual([{ kind: 'metatile-cross', dir: 'east', count: 1 }]);
+    expect(crossing.state.xTileOffset).toBe(2);
+    expect(crossing.state.anchorMetatileX).toBe(11);
+  });
+
   it('wraps tile offsets correctly at 0/31 boundaries', () => {
     const start = {
       ...initFieldCameraParityFromTile(8, 8),
@@ -104,7 +120,7 @@ describe('fieldCameraParity', () => {
     expect(result.state.yTileOffset).toBe(0);
   });
 
-  it('keeps modulo offsets non-negative for negative sub-metatile deltas', () => {
+  it('keeps modulo offsets non-negative for negative deltas', () => {
     const start = initFieldCameraParityFromTile(0, 0);
 
     const result = updateFieldCameraParity(start, -0.3, -0.1);
@@ -115,6 +131,9 @@ describe('fieldCameraParity', () => {
     expect(result.state.yPixelOffset).toBeGreaterThanOrEqual(0);
     expect(result.state.xPixelOffset).toBeLessThan(16);
     expect(result.state.yPixelOffset).toBeLessThan(16);
-    expect(result.boundaryEvents).toEqual([]);
+    expect(result.boundaryEvents).toEqual([
+      { kind: 'metatile-cross', dir: 'west', count: 1 },
+      { kind: 'metatile-cross', dir: 'north', count: 1 },
+    ]);
   });
 });

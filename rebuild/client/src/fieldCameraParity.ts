@@ -93,8 +93,12 @@ export function updateFieldCameraParity(
   const pixelDeltaX = nextCameraPxX - state.cameraPxX;
   const pixelDeltaY = nextCameraPxY - state.cameraPxY;
 
-  const crossX = truncDiv(pixelDeltaX, METATILE_SIZE_PX);
-  const crossY = truncDiv(pixelDeltaY, METATILE_SIZE_PX);
+  const crossX =
+    floorDiv(state.cameraPxX + pixelDeltaX, METATILE_SIZE_PX) -
+    floorDiv(state.cameraPxX, METATILE_SIZE_PX);
+  const crossY =
+    floorDiv(state.cameraPxY + pixelDeltaY, METATILE_SIZE_PX) -
+    floorDiv(state.cameraPxY, METATILE_SIZE_PX);
 
   const boundaryEvents: CameraBoundaryEvent[] = [];
   if (crossX > 0) {
@@ -142,8 +146,8 @@ function modNonNegative(value: number, modulo: number): number {
   return ((value % modulo) + modulo) % modulo;
 }
 
-function truncDiv(value: number, divisor: number): number {
-  return value < 0 ? Math.ceil(value / divisor) : Math.floor(value / divisor);
+function floorDiv(value: number, divisor: number): number {
+  return Math.floor(value / divisor);
 }
 
 function assertParityInvariants(state: FieldCameraParityState): void {
