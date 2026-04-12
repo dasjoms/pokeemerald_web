@@ -224,6 +224,11 @@ type ClientWorldState = {
   lastAckServerTick: number;
   renderTileX: number;
   renderTileY: number;
+  windowOriginTileX: number;
+  windowOriginTileY: number;
+  pixelOffsetX: number;
+  pixelOffsetY: number;
+  verticalCameraBiasPx: number;
 };
 
 type CopyTilesOp = {
@@ -327,6 +332,7 @@ type PendingHopLandingParticleEvent = QueuedHopLandingParticleEvent;
 const TILE_SIZE = 16;
 const SUBTILE_SIZE = 8;
 const RENDER_SCALE = 4;
+const ROM_BG_VERTICAL_SCROLL_BIAS_PX = 8;
 const TILESET_ANIMATION_STEP_MS = 1000 / 60;
 const ENABLE_CLIENT_PREDICTION =
   new URLSearchParams(window.location.search).get('predict') === '1';
@@ -368,6 +374,11 @@ const state: ClientWorldState = {
   lastAckServerTick: 0,
   renderTileX: 0,
   renderTileY: 0,
+  windowOriginTileX: 0,
+  windowOriginTileY: 0,
+  pixelOffsetX: 0,
+  pixelOffsetY: 0,
+  verticalCameraBiasPx: ROM_BG_VERTICAL_SCROLL_BIAS_PX,
 };
 const pendingMovementModesByInputSeq = new Map<number, MovementMode>();
 
@@ -758,8 +769,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     state.mapId = snapshot.map_id;
     state.playerTileX = snapshot.player_pos.x;
     state.playerTileY = snapshot.player_pos.y;
-    state.renderTileX = state.playerTileX;
-    state.renderTileY = state.playerTileY;
+    setRenderPositionToTile(state.playerTileX, state.playerTileY);
     activeWalkTransition = null;
     state.facing = snapshot.facing;
     state.lastAuthoritativeStepFacing = snapshot.facing;
@@ -963,8 +973,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     state.lastAuthoritativeStepFacing = result.facing;
   } else {
     activeWalkTransition = null;
-    state.renderTileX = state.playerTileX;
-    state.renderTileY = state.playerTileY;
+    setRenderPositionToTile(state.playerTileX, state.playerTileY);
     playerAnimation.stopMoving(result.facing);
     bikeEffectRenderer.onAuthoritativeStep({
       fromX: state.playerTileX,
@@ -1016,8 +1025,7 @@ async function handleServerMessage(message: ServerMessage): Promise<void> {
     state.playerTileX = reconciled.tile.x;
     state.playerTileY = reconciled.tile.y;
     state.facing = reconciled.facing;
-    state.renderTileX = state.playerTileX;
-    state.renderTileY = state.playerTileY;
+    setRenderPositionToTile(state.playerTileX, state.playerTileY);
   }
 }
 
@@ -1224,9 +1232,10 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
     }
   }
 
-  activeWindowCenterTileX = state.playerTileX;
-  activeWindowCenterTileY = state.playerTileY;
-  overworldWindowRenderer.initWindow(state.playerTileX, state.playerTileY, runtimeChunk);
+  syncCameraWindowFromRenderPosition();
+  activeWindowCenterTileX = state.windowOriginTileX;
+  activeWindowCenterTileY = state.windowOriginTileY;
+  overworldWindowRenderer.initWindow(state.windowOriginTileX, state.windowOriginTileY, runtimeChunk);
   updateMapWindowPresentation();
 }
 
@@ -1411,14 +1420,12 @@ function redrawMapWindowSlicesFromMovement(): void {
   if (!activeRuntimeChunk) {
     return;
   }
-  const renderTileX = Math.floor(state.renderTileX);
-  const renderTileY = Math.floor(state.renderTileY);
-  const deltaTileX = renderTileX - activeWindowCenterTileX;
-  const deltaTileY = renderTileY - activeWindowCenterTileY;
+  const deltaTileX = state.windowOriginTileX - activeWindowCenterTileX;
+  const deltaTileY = state.windowOriginTileY - activeWindowCenterTileY;
   if (deltaTileX !== 0 || deltaTileY !== 0) {
     overworldWindowRenderer.redrawEdgeSlices(deltaTileX, deltaTileY);
-    activeWindowCenterTileX = renderTileX;
-    activeWindowCenterTileY = renderTileY;
+    activeWindowCenterTileX = state.windowOriginTileX;
+    activeWindowCenterTileY = state.windowOriginTileY;
   }
 }
 
@@ -1427,8 +1434,8 @@ function updateMapWindowPresentation(): void {
     return;
   }
   const windowOffset = overworldWindowRenderer.applyWindowScroll(
-    Math.floor(state.renderTileX * TILE_SIZE),
-    Math.floor(state.renderTileY * TILE_SIZE),
+    state.windowOriginTileX * TILE_SIZE + state.pixelOffsetX,
+    state.windowOriginTileY * TILE_SIZE + state.pixelOffsetY + state.verticalCameraBiasPx,
   );
   mapBg3Layer.x = windowOffset.x;
   mapBg3Layer.y = windowOffset.y;
@@ -2453,8 +2460,7 @@ function applyPredictedWalk(
   );
   state.playerTileX = predictedTile.x;
   state.playerTileY = predictedTile.y;
-  state.renderTileX = state.playerTileX;
-  state.renderTileY = state.playerTileY;
+  setRenderPositionToTile(state.playerTileX, state.playerTileY);
   state.facing = direction;
   playerAnimation.startStep(
     direction,
@@ -2558,8 +2564,10 @@ function updateHopShadowSuppressionContext(): void {
 function positionPlayerSprite(): void {
   updatePlayerActorLayer();
   const movementActionVisual = playerMovementActionRuntime.getVisualState();
-  playerSprite.x = state.renderTileX * TILE_SIZE + TILE_SIZE / 2;
-  playerSprite.y = state.renderTileY * TILE_SIZE + TILE_SIZE + movementActionVisual.yOffsetPx;
+  const playerPixelX = state.windowOriginTileX * TILE_SIZE + state.pixelOffsetX;
+  const playerPixelY = state.windowOriginTileY * TILE_SIZE + state.pixelOffsetY;
+  playerSprite.x = playerPixelX + TILE_SIZE / 2;
+  playerSprite.y = playerPixelY + TILE_SIZE + movementActionVisual.yOffsetPx;
   updateHopShadowSuppressionContext();
   hopShadowRenderer.presentFrame({
     tileX: state.renderTileX,
@@ -2863,10 +2871,29 @@ function presentPlayerAnimationFrame(): void {
 }
 
 function updateCamera(): void {
-  const centerX = state.renderTileX * TILE_SIZE + TILE_SIZE / 2;
-  const centerY = state.renderTileY * TILE_SIZE + TILE_SIZE / 2;
+  const centerX = state.windowOriginTileX * TILE_SIZE + state.pixelOffsetX + TILE_SIZE / 2;
+  const centerY =
+    state.windowOriginTileY * TILE_SIZE +
+    state.pixelOffsetY +
+    TILE_SIZE / 2 +
+    state.verticalCameraBiasPx;
   gameContainer.x = app.screen.width / 2 - centerX * RENDER_SCALE;
   gameContainer.y = app.screen.height / 2 - centerY * RENDER_SCALE;
+}
+
+function setRenderPositionToTile(tileX: number, tileY: number): void {
+  state.renderTileX = tileX;
+  state.renderTileY = tileY;
+  syncCameraWindowFromRenderPosition();
+}
+
+function syncCameraWindowFromRenderPosition(): void {
+  const renderPixelX = Math.floor(state.renderTileX * TILE_SIZE);
+  const renderPixelY = Math.floor(state.renderTileY * TILE_SIZE);
+  state.windowOriginTileX = Math.floor(renderPixelX / TILE_SIZE);
+  state.windowOriginTileY = Math.floor(renderPixelY / TILE_SIZE);
+  state.pixelOffsetX = ((renderPixelX % TILE_SIZE) + TILE_SIZE) % TILE_SIZE;
+  state.pixelOffsetY = ((renderPixelY % TILE_SIZE) + TILE_SIZE) % TILE_SIZE;
 }
 
 function startAuthoritativeWalkTransition(
@@ -2922,6 +2949,7 @@ function tickWalkTransition(deltaMs: number): void {
       playerAnimation.stopMoving(direction);
     },
   });
+  syncCameraWindowFromRenderPosition();
 }
 
 function renderHud(): void {
