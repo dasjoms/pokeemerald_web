@@ -21,10 +21,12 @@ const compositor = new OverworldCompositor();
 compositor.root.visible = false;
 app.stage.addChild(compositor.root);
 
+const assetRoot = DEFAULT_DEV_ASSET_ROOT;
+
 const banner = new Text({
   text: [
     "Emerald Rebuild V2",
-    `Asset root (dev default): ${DEFAULT_DEV_ASSET_ROOT}`,
+    `Asset root: ${assetRoot}`,
     "Target: 32x32 (16-metatile) buffer-wheel renderer",
     "Handshake: connecting..."
   ].join("\n"),
@@ -64,7 +66,7 @@ playButton.addEventListener("click", async () => {
     playButton.style.display = "none";
     banner.visible = false;
     compositor.root.visible = true;
-    await compositor.fullRedraw(latestRenderState, DEFAULT_DEV_ASSET_ROOT);
+    await compositor.fullRedraw(latestRenderState, assetRoot);
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     console.error("[v2-client] initial redraw failed", error);
@@ -91,7 +93,7 @@ ws.addEventListener("message", async (event) => {
   if (message.type === "server_hello") {
     banner.text = [
       "Emerald Rebuild V2",
-      `Asset root (dev default): ${DEFAULT_DEV_ASSET_ROOT}`,
+      `Asset root: ${assetRoot}`,
       "Target: 32x32 (16-metatile) buffer-wheel renderer",
       `Handshake: protocol=${message.protocolVersion} authority=${message.serverAuthority}`,
       "Press Play when render state arrives"
@@ -113,7 +115,7 @@ ws.addEventListener("message", async (event) => {
   }
 
   try {
-    await compositor.fullRedraw(message, DEFAULT_DEV_ASSET_ROOT);
+    await compositor.fullRedraw(message, assetRoot);
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     console.error("[v2-client] redraw failed", error);
@@ -125,7 +127,7 @@ ws.addEventListener("message", async (event) => {
 ws.addEventListener("error", () => {
   banner.text = [
     "Emerald Rebuild V2",
-    `Asset root (dev default): ${DEFAULT_DEV_ASSET_ROOT}`,
+    `Asset root: ${assetRoot}`,
     "Target: 32x32 (16-metatile) buffer-wheel renderer",
     "Handshake: unable to connect to ws://127.0.0.1:4100/ws"
   ].join("\n");
