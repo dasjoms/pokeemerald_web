@@ -5,6 +5,8 @@ This repository started as a clean fork of the **Pokémon Emerald ROM decompilat
 
 The product goal is to let players connect from web browsers to a remote server and play a version that is user-facingly as close to the original game as possible, while non-user-facing internals are modernized for server authority, maintainability, and scale.
 
+Current changes are meant for the v2 implementation in rebuild/v2/
+
 ---
 
 ## Non-Negotiable Rules
@@ -30,12 +32,12 @@ The product goal is to let players connect from web browsers to a remote server 
 ---
 
 ## Rebuild Location and Repository Boundaries
-All new implementation work belongs under `rebuild/`.
+All new implementation work belongs under `rebuild/v2`.
 
 Required core structure:
-- `rebuild/server/` — authoritative game server.
-- `rebuild/client/` — browser client/UI renderer.
-- Additional supporting folders may be added as needed (for example shared protocol/schema/tooling folders), but all rebuild code stays under `rebuild/`.
+- `rebuild/v2/server/` — authoritative game server.
+- `rebuild/v2/client/` — browser client/UI renderer.
+- Additional supporting folders may be added as needed (for example shared protocol/schema/tooling folders), but all rebuild code stays under `rebuild/v2/`.
 
 The legacy/original code paths outside `rebuild/` remain the canonical behavioral reference only.
 
@@ -132,12 +134,12 @@ When implementing features:
 3. Keep authoritative logic server-side.
 4. Keep client lightweight and non-authoritative.
 5. Prefer explicit protocol contracts and deterministic state updates.
-6. Keep rebuild code and tooling isolated under `rebuild/`.
+6. Keep rebuild code and tooling isolated under `rebuild/v2/`.
 7. Do not edit original decomp files.
 
 ---
 
 ## Summary for Future Agents
-You are not building a ROM hack in place. You are building a **separate, modern, server-authoritative Emerald rebuild** under `rebuild/`, using original assets and original behavior as reference.
+You are not building a ROM hack in place. You are building a **separate, modern, server-authoritative Emerald rebuild** under `rebuild/v2/`, using original assets and original behavior as reference.
 
 If uncertain between “authentic behavior” vs “implementation convenience,” choose authentic behavior.
