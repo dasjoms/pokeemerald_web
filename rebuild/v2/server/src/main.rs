@@ -18,10 +18,12 @@ use rebuild_v2_server::{
     },
 };
 use serde::Deserialize;
+use tower_http::services::ServeDir;
 use tracing::{error, info};
 
 const DEFAULT_ASSET_ROOT: &str = "../../assets";
 const DEFAULT_BIND_ADDR: &str = "127.0.0.1:4100";
+const ASSET_BASE_PATH: &str = "/v2/assets";
 const PROTOCOL_VERSION: u16 = 1;
 const DEFAULT_MAP_ID: &str = "MAP_PETALBURG_CITY";
 
@@ -86,6 +88,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/ws", get(handle_ws_upgrade))
+        .nest_service(ASSET_BASE_PATH, ServeDir::new(asset_root.clone()))
         .with_state(state);
     let bind_addr =
         env::var("V2_SERVER_BIND_ADDR").unwrap_or_else(|_| DEFAULT_BIND_ADDR.to_string());
@@ -97,6 +100,7 @@ async fn main() {
     info!(
         protocol_version = PROTOCOL_VERSION,
         asset_root = %asset_root.display(),
+        asset_base_path = ASSET_BASE_PATH,
         "rebuild v2 server starting"
     );
 
