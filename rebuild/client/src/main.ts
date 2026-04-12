@@ -110,12 +110,11 @@ import {
   advanceFieldCameraByMetatile,
   CAMERA_METATILE_BUFFER_DIM,
   createInitialFieldCameraOffset,
-  mod as cameraMod,
-  toMetatileRingOffset,
   updateFieldCameraPixelOffset,
   type FieldCameraOffset,
 } from './cameraTilemap';
 import { computeCameraViewportLayout } from './cameraViewport';
+import { computeEnteringCameraSliceSlots } from './cameraWindowRingMapping';
 
 type ServerMessage =
   | { type: MessageType.SESSION_ACCEPTED; payload: SessionAccepted }
@@ -1346,37 +1345,15 @@ function applyCameraWindowMetatileStep(stepX: number, stepY: number): void {
 }
 
 function redrawEnteringCameraSlice(stepX: number, stepY: number): void {
-  const ringOffsetX = toMetatileRingOffset(fieldCameraOffset.xTileOffset);
-  const ringOffsetY = toMetatileRingOffset(fieldCameraOffset.yTileOffset);
-
-  if (stepX > 0) {
-    const bufferX = cameraMod(ringOffsetX + CAMERA_METATILE_BUFFER_DIM - 1, CAMERA_METATILE_BUFFER_DIM);
-    const worldX = cameraWindowOriginTileX + CAMERA_METATILE_BUFFER_DIM - 1;
-    for (let y = 0; y < CAMERA_METATILE_BUFFER_DIM; y += 1) {
-      drawCameraSlotAt(bufferX, y, worldX, cameraWindowOriginTileY + y);
-    }
-    return;
-  }
-  if (stepX < 0) {
-    const bufferX = ringOffsetX;
-    const worldX = cameraWindowOriginTileX;
-    for (let y = 0; y < CAMERA_METATILE_BUFFER_DIM; y += 1) {
-      drawCameraSlotAt(bufferX, y, worldX, cameraWindowOriginTileY + y);
-    }
-    return;
-  }
-  if (stepY > 0) {
-    const bufferY = cameraMod(ringOffsetY + CAMERA_METATILE_BUFFER_DIM - 1, CAMERA_METATILE_BUFFER_DIM);
-    const worldY = cameraWindowOriginTileY + CAMERA_METATILE_BUFFER_DIM - 1;
-    for (let x = 0; x < CAMERA_METATILE_BUFFER_DIM; x += 1) {
-      drawCameraSlotAt(x, bufferY, cameraWindowOriginTileX + x, worldY);
-    }
-    return;
-  }
-  const bufferY = ringOffsetY;
-  const worldY = cameraWindowOriginTileY;
-  for (let x = 0; x < CAMERA_METATILE_BUFFER_DIM; x += 1) {
-    drawCameraSlotAt(x, bufferY, cameraWindowOriginTileX + x, worldY);
+  const enteringSlots = computeEnteringCameraSliceSlots({
+    stepX,
+    stepY,
+    windowOriginTileX: cameraWindowOriginTileX,
+    windowOriginTileY: cameraWindowOriginTileY,
+    bufferDim: CAMERA_METATILE_BUFFER_DIM,
+  });
+  for (const slot of enteringSlots) {
+    drawCameraSlotAt(slot.slotX, slot.slotY, slot.worldTileX, slot.worldTileY);
   }
 }
 
@@ -1488,15 +1465,11 @@ function drawCameraSlotAt(bufferX: number, bufferY: number, worldTileX: number, 
 }
 
 function updateCameraWindowSlotPositions(): void {
-  const ringOffsetX = toMetatileRingOffset(fieldCameraOffset.xTileOffset);
-  const ringOffsetY = toMetatileRingOffset(fieldCameraOffset.yTileOffset);
   for (let y = 0; y < CAMERA_METATILE_BUFFER_DIM; y += 1) {
     for (let x = 0; x < CAMERA_METATILE_BUFFER_DIM; x += 1) {
-      const physicalX = cameraMod(x - ringOffsetX, CAMERA_METATILE_BUFFER_DIM);
-      const physicalY = cameraMod(y - ringOffsetY, CAMERA_METATILE_BUFFER_DIM);
       const slot = cameraBufferSlots[y * CAMERA_METATILE_BUFFER_DIM + x];
-      const xPx = (cameraWindowOriginTileX + physicalX) * TILE_SIZE;
-      const yPx = (cameraWindowOriginTileY + physicalY) * TILE_SIZE;
+      const xPx = (cameraWindowOriginTileX + x) * TILE_SIZE;
+      const yPx = (cameraWindowOriginTileY + y) * TILE_SIZE;
       slot.bg3.x = xPx;
       slot.bg3.y = yPx;
       slot.bg2.x = xPx;
