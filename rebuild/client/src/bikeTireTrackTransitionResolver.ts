@@ -1,4 +1,5 @@
 import { Direction } from './protocol_generated';
+import type { BikeTireTracksEffectMetadata } from './fieldEffectsManifest';
 
 export type BikeTireTrackAnimId =
   | 'south'
@@ -10,32 +11,13 @@ export type BikeTireTrackAnimId =
   | 'nw_corner_turn'
   | 'ne_corner_turn';
 
-type BikeTireTrackDirectionName = 'down' | 'up' | 'left' | 'right';
-
-export type BikeTireTrackTransitionMetadata = {
-  direction_index_order: BikeTireTrackDirectionName[];
-  table: number[][];
-};
-
-export type BikeTireTrackAnimMetadata = {
-  anim_cmd_symbols: string[];
-  sequences: Record<string, Array<{ frame: number; duration: number; h_flip?: boolean; v_flip?: boolean }>>;
-};
-
-export type BikeTireTrackFadeTimingMetadata = {
-  step0_wait_until_timer_gt: number;
-  step1_stop_when_timer_gt: number;
-  step1_blink: {
-    enabled: boolean;
-    mode: string;
-  };
-};
-
 export type BikeTireTrackManifestMetadata = {
-  transition_mapping: BikeTireTrackTransitionMetadata;
-  anim_table: BikeTireTrackAnimMetadata;
-  fade_timing: BikeTireTrackFadeTimingMetadata;
+  transition_mapping: BikeTireTracksEffectMetadata['transition_mapping'];
+  anim_table: BikeTireTracksEffectMetadata['template']['anim_table'];
+  fade_timing: BikeTireTracksEffectMetadata['fade_timing'];
 };
+
+type BikeTireTrackDirectionName = BikeTireTrackManifestMetadata['transition_mapping']['direction_index_order'][number];
 
 export type BikeTireTrackVariantResolver = (
   previousFacing: Direction,
@@ -116,4 +98,3 @@ export function createBikeTireTrackVariantResolver(
     return resolveVariantFromAnimSymbol(animSymbol);
   };
 }
-

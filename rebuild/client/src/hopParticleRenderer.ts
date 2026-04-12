@@ -2,6 +2,11 @@ import { Rectangle, Sprite, Texture } from 'pixi.js';
 import { decodeIndexed4bppPngFromUrl } from './metatileRenderer';
 import { buildPlayerSheetRgba } from './playerAnimation';
 import { Direction, HopLandingParticleClass } from './protocol_generated';
+import {
+  FIELD_EFFECTS_MANIFEST_PATH,
+  type FieldEffectsManifest,
+  type FieldEffectTemplate,
+} from './fieldEffectsManifest';
 import type { ContainerChild } from 'pixi.js';
 
 type EffectKey =
@@ -10,23 +15,6 @@ type EffectKey =
   | 'jump_long_grass'
   | 'jump_small_splash'
   | 'jump_big_splash';
-
-type EffectTemplate = {
-  sources: Array<{ source_path: string }>;
-  pic_table_entries: Array<{
-    tile_width: number;
-    tile_height: number;
-    frame_index: number;
-  }>;
-  anim_table: {
-    anim_cmd_symbols: string[];
-    sequences: Record<string, Array<{ frame: number; duration: number }>>;
-  };
-};
-
-type HopEffectsManifest = {
-  effects: Record<EffectKey, { template: EffectTemplate }>;
-};
 
 type RendererAssetLoaders = {
   loadJsonFromAssets: <T>(repoRelativePath: string) => Promise<T>;
@@ -120,8 +108,8 @@ export class HopParticleRenderer {
   ) {}
 
   async init(): Promise<void> {
-    const manifest = await this.assets.loadJsonFromAssets<HopEffectsManifest>(
-      'field_effects/acro_bike_effects_manifest.json',
+    const manifest = await this.assets.loadJsonFromAssets<FieldEffectsManifest>(
+      FIELD_EFFECTS_MANIFEST_PATH,
     );
 
     await Promise.all(
@@ -223,7 +211,7 @@ export class HopParticleRenderer {
     this.lastConsumedServerFrame = null;
   }
 
-  private async loadEffect(template: EffectTemplate, palettePath: string): Promise<LoadedEffect> {
+  private async loadEffect(template: FieldEffectTemplate, palettePath: string): Promise<LoadedEffect> {
     const sourcePath = template.sources[0]?.source_path;
     if (!sourcePath) {
       throw new Error('missing particle source image path in effect template');
