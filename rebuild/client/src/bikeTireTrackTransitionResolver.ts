@@ -22,9 +22,19 @@ export type BikeTireTrackAnimMetadata = {
   sequences: Record<string, Array<{ frame: number; duration: number; h_flip?: boolean; v_flip?: boolean }>>;
 };
 
+export type BikeTireTrackFadeTimingMetadata = {
+  step0_wait_until_timer_gt: number;
+  step1_stop_when_timer_gt: number;
+  step1_blink: {
+    enabled: boolean;
+    mode: string;
+  };
+};
+
 export type BikeTireTrackManifestMetadata = {
   transition_mapping: BikeTireTrackTransitionMetadata;
   anim_table: BikeTireTrackAnimMetadata;
+  fade_timing: BikeTireTrackFadeTimingMetadata;
 };
 
 export type BikeTireTrackVariantResolver = (
