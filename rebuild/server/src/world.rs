@@ -40,6 +40,7 @@ const BIKE_EFFECT_CYCLING_BGM_DISMOUNT: u8 = 1 << 4;
 const MB_BUMPY_SLOPE: u8 = 0xD1;
 const MB_TALL_GRASS: u8 = 0x02;
 const MB_LONG_GRASS: u8 = 0x03;
+const MB_DEEP_SAND: u8 = 0x06;
 const MB_POND_WATER: u8 = 0x10;
 const MB_INTERIOR_DEEP_WATER: u8 = 0x11;
 const MB_DEEP_WATER: u8 = 0x12;
@@ -51,6 +52,8 @@ const MB_SHALLOW_WATER: u8 = 0x17;
 const MB_UNUSED_SOOTOPOLIS_DEEP_WATER: u8 = 0x18;
 const MB_NO_SURFACING: u8 = 0x19;
 const MB_UNUSED_SOOTOPOLIS_DEEP_WATER_2: u8 = 0x1A;
+const MB_SAND: u8 = 0x21;
+const MB_FOOTPRINTS: u8 = 0x25;
 const MB_SEAWEED_NO_SURFACING: u8 = 0x2A;
 const ACRO_WHEELIE_TO_NORMAL_LOCK_TICKS: u8 = 8;
 const ACRO_WHEELIE_POP_LOCK_TICKS: u8 = 8;
@@ -999,6 +1002,7 @@ impl World {
                         &session.player_state,
                         accepted,
                         reason,
+                        source_behavior,
                     ),
                     bunny_hop_cycle_tick: bike_bunny_hop_cycle_tick_for_traversal(
                         &session.player_state,
@@ -1158,7 +1162,7 @@ impl World {
             mach_speed_stage: bike_mach_speed_for_traversal(&session.player_state),
             acro_substate: bike_acro_substate_for_traversal(&session.player_state),
             bike_transition: Some(session.player_state.bike_runtime.last_transition),
-            bike_effect_flags: bike_effect_flags_for_step(&session.player_state, false, reason),
+            bike_effect_flags: bike_effect_flags_for_step(&session.player_state, false, reason, 0),
             bunny_hop_cycle_tick: bike_bunny_hop_cycle_tick_for_traversal(&session.player_state),
             hop_landing_particle_class: None,
             hop_landing_tile_x: None,
@@ -1213,19 +1217,24 @@ fn bike_effect_flags_for_step(
     player_state: &PlayerState,
     accepted: bool,
     reason: RejectionReason,
+    source_behavior: u8,
 ) -> u8 {
     let mut flags = bike_effect_flags_from_transition(player_state.bike_runtime.last_transition);
     let is_on_bike = matches!(
         player_state.traversal_state,
         TraversalState::MachBike | TraversalState::AcroBike
     );
-    if accepted && is_on_bike {
+    if accepted && is_on_bike && is_track_eligible_behavior(source_behavior) {
         flags |= BIKE_EFFECT_TIRE_TRACKS;
     }
     if !accepted && is_on_bike && matches!(reason, RejectionReason::Collision) {
         flags |= BIKE_EFFECT_COLLISION_SFX;
     }
     flags
+}
+
+fn is_track_eligible_behavior(behavior: u8) -> bool {
+    matches!(behavior, MB_SAND | MB_DEEP_SAND | MB_FOOTPRINTS)
 }
 
 fn bike_effect_flags_from_transition(transition: BikeTransitionType) -> u8 {
@@ -4656,16 +4665,28 @@ mod tests {
     }
 
     #[test]
-    fn bike_effect_flags_include_tire_tracks_for_accepted_bike_steps() {
+    fn bike_effect_flags_omit_tire_tracks_for_non_sand_bike_steps() {
         let player = test_player_state();
-        let flags = bike_effect_flags_for_step(&player, true, RejectionReason::None);
-        assert_ne!(flags & BIKE_EFFECT_TIRE_TRACKS, 0);
+        let flags = bike_effect_flags_for_step(&player, true, RejectionReason::None, 0);
+        assert_eq!(flags & BIKE_EFFECT_TIRE_TRACKS, 0);
+    }
+
+    #[test]
+    fn bike_effect_flags_include_tire_tracks_for_track_eligible_bike_steps() {
+        let player = test_player_state();
+
+        let sand_flags = bike_effect_flags_for_step(&player, true, RejectionReason::None, MB_SAND);
+        assert_ne!(sand_flags & BIKE_EFFECT_TIRE_TRACKS, 0);
+
+        let deep_sand_flags =
+            bike_effect_flags_for_step(&player, true, RejectionReason::None, MB_DEEP_SAND);
+        assert_ne!(deep_sand_flags & BIKE_EFFECT_TIRE_TRACKS, 0);
     }
 
     #[test]
     fn bike_effect_flags_include_collision_sfx_for_rejected_bike_collision() {
         let player = test_player_state();
-        let flags = bike_effect_flags_for_step(&player, false, RejectionReason::Collision);
+        let flags = bike_effect_flags_for_step(&player, false, RejectionReason::Collision, 0);
         assert_ne!(flags & BIKE_EFFECT_COLLISION_SFX, 0);
     }
 
