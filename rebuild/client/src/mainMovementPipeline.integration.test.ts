@@ -11,6 +11,10 @@ import {
   type WalkTransition,
   type WalkTransitionMutableState,
 } from "./walkTransitionPipeline";
+import {
+  createInitialFieldCameraOffset,
+  updateFieldCameraPixelOffset,
+} from "./cameraTilemap";
 import { createWalkInputController } from "./input";
 import {
   AcroBikeSubstate,
@@ -183,6 +187,66 @@ describe("main movement pipeline integration", () => {
       );
     },
   );
+
+  it("keeps camera center monotonic during one accepted right-step interpolation", () => {
+    const TILE_SIZE = 16;
+    const state: PipelineState = {
+      playerTileX: 10,
+      playerTileY: 7,
+      renderTileX: 10,
+      renderTileY: 7,
+      facing: Direction.RIGHT,
+    };
+    const cameraOffset = createInitialFieldCameraOffset();
+
+    state.playerTileX = 11;
+    let activeWalkTransition = startAuthoritativeWalkTransition(
+      state,
+      Direction.RIGHT,
+      {
+        traversalState: TraversalState.ON_FOOT,
+        movementMode: MovementMode.WALK,
+      },
+    );
+
+    const stepDurationMs = authoritativeStepDurationMs({
+      traversalState: TraversalState.ON_FOOT,
+      movementMode: MovementMode.WALK,
+    });
+    const frameDeltaMs = stepDurationMs / 16;
+    const cameraCenters: Array<{ x: number; y: number }> = [];
+
+    while (activeWalkTransition !== null) {
+      activeWalkTransition = tickWalkTransition({
+        activeWalkTransition,
+        state,
+        deltaMs: frameDeltaMs,
+        hasPendingAcceptedOrDispatchableStep: () => false,
+        noteWalkTransitionProgress: () => {},
+        markWalkTransitionCompleted: () => {},
+        stopMoving: () => {},
+      });
+      updateFieldCameraPixelOffset(
+        cameraOffset,
+        (state.renderTileX - state.playerTileX) * TILE_SIZE,
+        (state.renderTileY - state.playerTileY) * TILE_SIZE,
+        TILE_SIZE,
+      );
+      cameraCenters.push({
+        x: state.playerTileX * TILE_SIZE + TILE_SIZE / 2 + cameraOffset.xPixelOffset,
+        y: state.playerTileY * TILE_SIZE + TILE_SIZE / 2 + cameraOffset.yPixelOffset,
+      });
+    }
+
+    expect(cameraCenters.length).toBeGreaterThan(0);
+    for (let index = 1; index < cameraCenters.length; index += 1) {
+      const prev = cameraCenters[index - 1];
+      const next = cameraCenters[index];
+      expect(next.x).toBeGreaterThanOrEqual(prev.x);
+      expect(next.x - prev.x).toBeLessThanOrEqual(1);
+      expect(next.y).toBe(prev.y);
+    }
+  });
 
   it("replays authoritative acro runtime states for animation ids without inferring from run mode", () => {
     const playerAnimation = new PlayerAnimationController(makeMockAssets());

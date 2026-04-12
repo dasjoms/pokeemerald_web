@@ -632,10 +632,8 @@ app.ticker.add(() => {
   updateCameraWindowForAuthoritativeTileStep();
   updateFieldCameraPixelOffset(
     fieldCameraOffset,
-    state.renderTileX,
-    state.renderTileY,
-    state.playerTileX,
-    state.playerTileY,
+    resolveInterpolatedCameraPixelOffset(state.renderTileX, state.playerTileX, TILE_SIZE),
+    resolveInterpolatedCameraPixelOffset(state.renderTileY, state.playerTileY, TILE_SIZE),
     TILE_SIZE,
   );
   updateCameraWindowSlotPositions();
@@ -2937,17 +2935,17 @@ function presentPlayerAnimationFrame(): void {
   playerSprite.scale.x = selection.hFlip ? -1 : 1;
 }
 
+function resolveInterpolatedCameraPixelOffset(
+  renderTile: number,
+  authoritativeTile: number,
+  tileSize: number,
+): number {
+  return (renderTile - authoritativeTile) * tileSize;
+}
+
 function updateCamera(): void {
-  const signedOffsetX =
-    fieldCameraOffset.xPixelOffset > TILE_SIZE / 2
-      ? fieldCameraOffset.xPixelOffset - TILE_SIZE
-      : fieldCameraOffset.xPixelOffset;
-  const signedOffsetY =
-    fieldCameraOffset.yPixelOffset > TILE_SIZE / 2
-      ? fieldCameraOffset.yPixelOffset - TILE_SIZE
-      : fieldCameraOffset.yPixelOffset;
-  const centerX = state.playerTileX * TILE_SIZE + TILE_SIZE / 2 + signedOffsetX;
-  const centerY = state.playerTileY * TILE_SIZE + TILE_SIZE / 2 + signedOffsetY;
+  const centerX = state.playerTileX * TILE_SIZE + TILE_SIZE / 2 + fieldCameraOffset.xPixelOffset;
+  const centerY = state.playerTileY * TILE_SIZE + TILE_SIZE / 2 + fieldCameraOffset.yPixelOffset;
   gameContainer.x = app.screen.width / 2 - centerX * RENDER_SCALE;
   gameContainer.y = app.screen.height / 2 - centerY * RENDER_SCALE;
 }
