@@ -150,7 +150,6 @@ type LayoutFile = {
   primary_tileset: string;
   secondary_tileset: string;
   tiles: LayoutTile[];
-  border_tiles?: LayoutTile[];
   render_assets?: RenderAssetsRef;
 };
 
@@ -384,7 +383,6 @@ let activeWalkTransition: WalkTransition | null = null;
 
 const pendingPredictedInputs = new Map<number, Direction>();
 let hasLoggedPrimaryTileCountMismatch = false;
-let hasLoggedMissingBorderTilesForRender = false;
 let socket: WebSocket | null = null;
 let debugOverlayEnabled = ENABLE_DEBUG_OVERLAY_DEFAULT;
 const indexedAtlasPageCache = new Map<string, IndexedAtlasPages>();
@@ -1416,7 +1414,16 @@ function drawCameraSlotAt(bufferX: number, bufferY: number, worldTileX: number, 
   slot.overlay.clear();
   slot.overlay.label = '';
 
-  const tile = resolveCameraSlotTileDescriptor(runtimeChunk, layout, worldTileX, worldTileY);
+  if (
+    worldTileX < 0 ||
+    worldTileY < 0 ||
+    worldTileX >= runtimeChunk.width ||
+    worldTileY >= runtimeChunk.height
+  ) {
+    return;
+  }
+
+  const tile = runtimeChunk.tiles[worldTileY * runtimeChunk.width + worldTileX];
   if (!tile) {
     return;
   }
@@ -1492,47 +1499,6 @@ function drawCameraSlotAt(bufferX: number, bufferY: number, worldTileX: number, 
     .stroke({ color: 0x0f172a, width: 1, alpha: 0.35 });
   slot.overlay.visible = debugOverlayEnabled;
   slot.overlay.label = `collision=${tile.collision} behavior=${tile.behavior_id}`;
-}
-
-function resolveCameraSlotTileDescriptor(
-  runtimeChunk: DecodedMapChunk,
-  layout: LayoutFile,
-  worldTileX: number,
-  worldTileY: number,
-): LayoutTile | null {
-  const isInBounds =
-    worldTileX >= 0 &&
-    worldTileY >= 0 &&
-    worldTileX < runtimeChunk.width &&
-    worldTileY < runtimeChunk.height;
-  if (isInBounds) {
-    return runtimeChunk.tiles[worldTileY * runtimeChunk.width + worldTileX] ?? null;
-  }
-
-  const borderTiles = layout.border_tiles;
-  if (borderTiles && borderTiles.length >= 4) {
-    const borderIndex = ((worldTileX + 1) & 1) + (((worldTileY + 1) & 1) * 2);
-    const borderTile = borderTiles[borderIndex];
-    if (borderTile) {
-      return {
-        metatile_id: borderTile.metatile_id,
-        collision: 1,
-        behavior_id: 0,
-      };
-    }
-  }
-
-  if (import.meta.env.DEV && !hasLoggedMissingBorderTilesForRender) {
-    console.warn(
-      `[render] Layout "${layout.id}" is missing usable border_tiles; falling back to metatile_id=0 for out-of-bounds camera slots.`,
-    );
-    hasLoggedMissingBorderTilesForRender = true;
-  }
-  return {
-    metatile_id: 0,
-    collision: 1,
-    behavior_id: 0,
-  };
 }
 
 function updateCameraWindowSlotPositions(): void {
