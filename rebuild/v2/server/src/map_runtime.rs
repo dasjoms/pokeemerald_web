@@ -29,12 +29,21 @@ pub struct RuntimeMapGrid {
 impl RuntimeMapGrid {
     pub fn get_packed_with_border_fallback(&self, x: i32, y: i32) -> u16 {
         if x >= 0 && y >= 0 && (x as usize) < self.width && (y as usize) < self.height {
-            self.tiles[x as usize + y as usize * self.width]
+            let packed = self.tiles[x as usize + y as usize * self.width];
+            if packed == MAPGRID_UNDEFINED {
+                self.border_tile_with_impassable(x, y)
+            } else {
+                packed
+            }
         } else {
-            let mut i = ((x + 1) & 1) as usize;
-            i += (((y + 1) & 1) as usize) * 2;
-            self.border_tiles[i] | MAPGRID_IMPASSABLE
+            self.border_tile_with_impassable(x, y)
         }
+    }
+
+    fn border_tile_with_impassable(&self, x: i32, y: i32) -> u16 {
+        let mut i = ((x + 1) & 1) as usize;
+        i += (((y + 1) & 1) as usize) * 2;
+        self.border_tiles[i] | MAPGRID_IMPASSABLE
     }
 }
 
@@ -594,7 +603,26 @@ mod tests {
         );
         assert_eq!(
             runtime.get_packed_with_border_fallback(0, 0),
-            MAPGRID_UNDEFINED
+            0x0004 | MAPGRID_IMPASSABLE
+        );
+    }
+
+    #[test]
+    fn in_bounds_undefined_reads_use_border_2x2_index_and_impassable_collision() {
+        let active = mk_layout("A", 2, 2, 10, [0x0101, 0x0102, 0x0103, 0x0104]);
+        let runtime = assemble_runtime_grid(&active, MAX_MAP_DATA_SIZE).expect("runtime");
+
+        assert_eq!(
+            runtime.get_packed_with_border_fallback(0, 0),
+            0x0104 | MAPGRID_IMPASSABLE
+        );
+        assert_eq!(
+            runtime.get_packed_with_border_fallback(1, 0),
+            0x0103 | MAPGRID_IMPASSABLE
+        );
+        assert_eq!(
+            runtime.get_packed_with_border_fallback(0, 1),
+            0x0102 | MAPGRID_IMPASSABLE
         );
     }
 
