@@ -1,0 +1,18 @@
+{
+  "name": "pokeemerald-rebuild-v2-client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check:assets": "node ./scripts/validate-assets.mjs",
+    "dev": "npm run check:assets && vite",
+    "build": "npm run check:assets && tsc --noEmit && vite build"
+  },
+  "dependencies": {
+    "pixi.js": "^8.11.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vite": "^7.1.7"
+  }
+}

@@ -9,3 +9,8 @@ It builds the following ROM:
 To set up the repository, see [INSTALL.md](INSTALL.md).
 
 For contacts and other pret projects, see [pret.github.io](https://pret.github.io/).
+
+## Rebuild workspaces
+
+Developer guidance for old vs fresh-start rebuild paths is documented in `docs/rebuild-development-paths.md`.
+
