@@ -73,6 +73,12 @@ import {
   type BikeTireTrackManifestMetadata,
 } from './bikeTireTrackTransitionResolver';
 import {
+  FIELD_EFFECTS_MANIFEST_PATH,
+  type FieldEffectsManifest,
+  resolveBikeTireTrackVariantFromAnimSymbol,
+  resolveBikeTireTracksMetadataOrThrow,
+} from './fieldEffectsManifest';
+import {
   HopShadowRenderer,
   ROM_SHADOW_TEMPLATE_ID_MEDIUM,
   type HopShadowSizeVariant,
@@ -308,41 +314,6 @@ type AcroHopAttempt = {
 
 type PendingHopLandingParticleEvent = QueuedHopLandingParticleEvent;
 
-type BikeEffectTemplate = {
-  palette_tag: string;
-  pic_table_entries: Array<{
-    tile_width: number;
-    tile_height: number;
-    frame_index: number;
-  }>;
-  anim_table: {
-    anim_cmd_symbols: string[];
-    sequences: Record<string, Array<{ frame: number; duration: number; h_flip?: boolean; v_flip?: boolean }>>;
-  };
-  sources: Array<{ source_path: string }>;
-};
-
-type BikeEffectsManifest = {
-  effects: {
-    bike_tire_tracks?: {
-      template: BikeEffectTemplate;
-      transition_mapping: {
-        direction_index_order: Array<'down' | 'up' | 'left' | 'right'>;
-        table: number[][];
-      };
-      fade_timing: {
-        step0_wait_until_timer_gt: number;
-        step1_stop_when_timer_gt: number;
-        step1_blink: {
-          enabled: boolean;
-          mode: string;
-        };
-      };
-    };
-  };
-};
-
-
 const TILE_SIZE = 16;
 const SUBTILE_SIZE = 8;
 const RENDER_SCALE = 4;
@@ -499,7 +470,6 @@ const HOP_SHADOW_ASSET_PATHS: Readonly<Record<HopShadowSizeVariant, string>> = {
   extra_large: 'field_effects/acro_bike/pics/shadow_extra_large.png',
 };
 const HOP_SHADOW_PALETTE_PATH = 'field_effects/acro_bike/palettes/general_0.pal';
-const BIKE_EFFECTS_MANIFEST_PATH = 'field_effects/acro_bike_effects_manifest.json';
 const BIKE_TIRE_TRACKS_PALETTE_PATH = 'field_effects/acro_bike/palettes/general_0.pal';
 const hopShadowTextures = new Map<HopShadowSizeVariant, Texture>();
 const BIKE_TIRE_TRACK_VARIANTS = [
@@ -2460,12 +2430,9 @@ async function preloadBikeTireTracksConfig(): Promise<{
   atlas: BikeTireTrackAtlas;
   metadata: BikeTireTrackManifestMetadata;
 }> {
-  const manifest = await loadJsonFromAssets<BikeEffectsManifest>(BIKE_EFFECTS_MANIFEST_PATH);
-  const bikeTireTracksEffect = manifest.effects.bike_tire_tracks;
-  const bikeTireTracksTemplate = bikeTireTracksEffect?.template;
-  if (!bikeTireTracksTemplate || !bikeTireTracksEffect?.transition_mapping || !bikeTireTracksEffect.fade_timing) {
-    throw new Error('missing bike_tire_tracks template/transition/fade metadata in bike effects manifest');
-  }
+  const manifest = await loadJsonFromAssets<FieldEffectsManifest>(FIELD_EFFECTS_MANIFEST_PATH);
+  const bikeTireTracksEffect = resolveBikeTireTracksMetadataOrThrow(manifest);
+  const bikeTireTracksTemplate = bikeTireTracksEffect.template;
 
   const paletteColors = loadJascPaletteHexColorsFromAssets(BIKE_TIRE_TRACKS_PALETTE_PATH);
   const sourcePath = bikeTireTracksTemplate.sources[0]?.source_path;
@@ -2535,18 +2502,6 @@ async function preloadBikeTireTracksConfig(): Promise<{
       fade_timing: bikeTireTracksEffect.fade_timing,
     },
   };
-}
-
-function resolveBikeTireTrackVariantFromAnimSymbol(animSymbol: string): BikeTireTrackAnimId | undefined {
-  if (animSymbol.endsWith('South')) return 'south';
-  if (animSymbol.endsWith('North')) return 'north';
-  if (animSymbol.endsWith('West')) return 'west';
-  if (animSymbol.endsWith('East')) return 'east';
-  if (animSymbol.endsWith('SECornerTurn')) return 'se_corner_turn';
-  if (animSymbol.endsWith('SWCornerTurn')) return 'sw_corner_turn';
-  if (animSymbol.endsWith('NWCornerTurn')) return 'nw_corner_turn';
-  if (animSymbol.endsWith('NECornerTurn')) return 'ne_corner_turn';
-  return undefined;
 }
 
 function findAnimTableIndexForVariant(
