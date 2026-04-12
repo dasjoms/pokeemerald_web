@@ -43,6 +43,12 @@ export type RenderStateV1Message = {
     runtimeX: number;
     runtimeY: number;
   };
+  scroll: {
+    xPixelOffset: number;
+    yPixelOffset: number;
+    horizontalPan: number;
+    verticalPan: number;
+  };
   window: {
     originRuntimeX: number;
     originRuntimeY: number;
@@ -87,6 +93,7 @@ export function parseServerMessage(raw: string): ServerMessage | null {
 
   const camera = getObject(parsed, "camera");
   const window = getObject(parsed, "window");
+  const scroll = getObject(parsed, "scroll", "bgScroll", "bg_scroll", "cameraScroll", "camera_scroll");
   const metatilesRaw = getArray(parsed, "metatiles");
   const metatiles: RenderMetatile[] = metatilesRaw
     .map((entry) => normalizeMetatile(entry))
@@ -100,6 +107,12 @@ export function parseServerMessage(raw: string): ServerMessage | null {
     camera: {
       runtimeX: getNumber(camera, "runtimeX", "runtime_x"),
       runtimeY: getNumber(camera, "runtimeY", "runtime_y")
+    },
+    scroll: {
+      xPixelOffset: getNumber(scroll, "xPixelOffset", "x_pixel_offset"),
+      yPixelOffset: getNumber(scroll, "yPixelOffset", "y_pixel_offset"),
+      horizontalPan: getNumber(scroll, "horizontalPan", "horizontal_pan"),
+      verticalPan: getNumber(scroll, "verticalPan", "vertical_pan")
     },
     window: {
       originRuntimeX: getNumber(window, "originRuntimeX", "origin_runtime_x"),

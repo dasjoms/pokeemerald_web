@@ -26,6 +26,12 @@
         "runtimeX": "i32",
         "runtimeY": "i32"
       },
+      "scroll": {
+        "xPixelOffset": "i32",
+        "yPixelOffset": "i32",
+        "horizontalPan": "i32",
+        "verticalPan": "i32"
+      },
       "window": {
         "originRuntimeX": "i32",
         "originRuntimeY": "i32",
