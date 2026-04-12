@@ -54,6 +54,50 @@ function createManifestMetadata(): BikeTireTrackManifestMetadata {
   };
 }
 
+function createCornerTurnManifestMetadata(): BikeTireTrackManifestMetadata {
+  return {
+    transition_mapping: {
+      direction_index_order: ['down', 'up', 'left', 'right'],
+      table: [
+        [0, 0, 0, 0],
+        [0, 0, 0, 7],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+      ],
+    },
+    anim_table: {
+      anim_cmd_symbols: [
+        'sBikeTireTracksAnim_South',
+        'sBikeTireTracksAnim_North',
+        'sBikeTireTracksAnim_West',
+        'sBikeTireTracksAnim_East',
+        'sBikeTireTracksAnim_SECornerTurn',
+        'sBikeTireTracksAnim_SWCornerTurn',
+        'sBikeTireTracksAnim_NWCornerTurn',
+        'sBikeTireTracksAnim_NECornerTurn',
+      ],
+      sequences: {
+        sBikeTireTracksAnim_South: [{ frame: 0, duration: 1 }],
+        sBikeTireTracksAnim_North: [{ frame: 0, duration: 1 }],
+        sBikeTireTracksAnim_West: [{ frame: 0, duration: 1 }],
+        sBikeTireTracksAnim_East: [{ frame: 0, duration: 1 }],
+        sBikeTireTracksAnim_SECornerTurn: [{ frame: 0, duration: 1 }],
+        sBikeTireTracksAnim_SWCornerTurn: [{ frame: 0, duration: 1 }],
+        sBikeTireTracksAnim_NWCornerTurn: [{ frame: 0, duration: 1 }],
+        sBikeTireTracksAnim_NECornerTurn: [{ frame: 0, duration: 1 }],
+      },
+    },
+    fade_timing: {
+      step0_wait_until_timer_gt: 40,
+      step1_stop_when_timer_gt: 56,
+      step1_blink: {
+        enabled: true,
+        mode: 'toggle_visibility_each_frame',
+      },
+    },
+  };
+}
+
 describe('BikeEffectRenderer tire track lifecycle parity', () => {
   it('holds visible, then flickers each frame, and stops at extracted timer threshold', async () => {
     const { renderer: rendererModule, pixi } = await loadRendererWithPixi();
@@ -135,5 +179,65 @@ describe('BikeEffectRenderer tire track lifecycle parity', () => {
 
     renderer.tick(FRAME_MS);
     expect(layer.children[0].visible).toBe(false);
+  });
+
+  it('uses consecutive authoritative facings for UP→RIGHT tire corner and spawns on source tile', async () => {
+    const { renderer: rendererModule, pixi } = await loadRendererWithPixi();
+    const atlas: BikeTireTrackAtlas = {
+      south: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
+      north: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
+      west: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
+      east: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
+      se_corner_turn: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
+      sw_corner_turn: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
+      nw_corner_turn: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
+      ne_corner_turn: { texture: pixi.Texture.EMPTY, hFlip: true, vFlip: true },
+    };
+    const layer = new pixi.Container();
+    const renderer = new rendererModule.BikeEffectRenderer(
+      layer,
+      16,
+      atlas,
+      createCornerTurnManifestMetadata(),
+    );
+
+    const state = {
+      facing: Direction.UP,
+      lastAuthoritativeStepFacing: Direction.UP,
+      playerTileX: 12,
+      playerTileY: 8,
+    };
+
+    // Client presentation can mutate immediately for responsiveness.
+    state.facing = Direction.RIGHT;
+    const previousAuthoritativeFacing = state.lastAuthoritativeStepFacing;
+    const previousAuthoritativeTileX = state.playerTileX;
+    const previousAuthoritativeTileY = state.playerTileY;
+    state.playerTileX = 13;
+    state.playerTileY = 8;
+    state.facing = Direction.RIGHT;
+
+    renderer.onAuthoritativeStep({
+      fromX: previousAuthoritativeTileX,
+      fromY: previousAuthoritativeTileY,
+      previousFacing: previousAuthoritativeFacing,
+      currentFacing: Direction.RIGHT,
+      traversalState: TraversalState.MACH_BIKE,
+      bikeEffectFlags: rendererModule.BIKE_EFFECT_TIRE_TRACKS,
+      serverFrame: 300,
+    });
+    state.lastAuthoritativeStepFacing = Direction.RIGHT;
+
+    expect(layer.children).toHaveLength(1);
+    const trackSprite = layer.children[0] as {
+      x: number;
+      y: number;
+      scale: { x: number; y: number };
+    };
+    expect(trackSprite.x).toBe(12 * 16 + 8);
+    expect(trackSprite.y).toBe(8 * 16 + 8);
+    expect(trackSprite.scale.x).toBe(-1);
+    expect(trackSprite.scale.y).toBe(-1);
+    expect(state.lastAuthoritativeStepFacing).toBe(Direction.RIGHT);
   });
 });
