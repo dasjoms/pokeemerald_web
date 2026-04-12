@@ -59,11 +59,20 @@ playButton.addEventListener("click", async () => {
   if (!latestRenderState) {
     return;
   }
-  launched = true;
-  playButton.style.display = "none";
-  banner.visible = false;
-  compositor.root.visible = true;
-  await compositor.fullRedraw(latestRenderState, DEFAULT_DEV_ASSET_ROOT);
+  try {
+    launched = true;
+    playButton.style.display = "none";
+    banner.visible = false;
+    compositor.root.visible = true;
+    await compositor.fullRedraw(latestRenderState, DEFAULT_DEV_ASSET_ROOT);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    launched = false;
+    playButton.style.display = "block";
+    banner.visible = true;
+    compositor.root.visible = false;
+    banner.text = `Render error: ${reason}`;
+  }
 });
 
 const ws = new WebSocket(
@@ -106,6 +115,7 @@ ws.addEventListener("message", async (event) => {
     await compositor.fullRedraw(message, DEFAULT_DEV_ASSET_ROOT);
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
+    console.error("[v2-client] redraw failed", error);
     banner.visible = true;
     banner.text = `Render error: ${reason}`;
   }
