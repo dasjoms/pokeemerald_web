@@ -115,7 +115,7 @@ import {
   updateFieldCameraPixelOffset,
   type FieldCameraOffset,
 } from './cameraTilemap';
-import { computeCameraViewportLayout } from './cameraViewport';
+import { computeCameraViewportLayout, VIEWPORT_PLAYER_ANCHOR_TILE_X } from './cameraViewport';
 
 type ServerMessage =
   | { type: MessageType.SESSION_ACCEPTED; payload: SessionAccepted }
@@ -1288,7 +1288,7 @@ function clearCameraBufferSlotContent(): void {
 }
 
 function initializeCameraWindowFromPlayerTile(playerTileX: number, playerTileY: number): void {
-  cameraWindowOriginTileX = playerTileX - Math.floor(CAMERA_METATILE_BUFFER_DIM / 2);
+  cameraWindowOriginTileX = Math.trunc(playerTileX - VIEWPORT_PLAYER_ANCHOR_TILE_X);
   cameraWindowOriginTileY = playerTileY - Math.floor(CAMERA_METATILE_BUFFER_DIM / 2);
   fieldCameraOffset.xTileOffset = 0;
   fieldCameraOffset.yTileOffset = 0;
