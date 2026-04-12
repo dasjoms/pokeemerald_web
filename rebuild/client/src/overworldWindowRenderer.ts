@@ -29,8 +29,6 @@ export class OverworldWindowRenderer<TTile> {
   private readonly renderSlot: (args: WindowRenderSlotArgs<TTile>) => void;
   private cameraPosTileX = 0;
   private cameraPosTileY = 0;
-  private xTileOffset = 0;
-  private yTileOffset = 0;
   private mapData: WindowMapData<TTile> | null = null;
 
   // BG-equivalent 32x32 rolling buffers in metatile units.
@@ -47,8 +45,6 @@ export class OverworldWindowRenderer<TTile> {
   initWindow(cameraPosTileX: number, cameraPosTileY: number, mapData: WindowMapData<TTile>): void {
     this.cameraPosTileX = cameraPosTileX;
     this.cameraPosTileY = cameraPosTileY;
-    this.xTileOffset = 0;
-    this.yTileOffset = 0;
     this.mapData = mapData;
     this.redrawWholeWindow();
   }
@@ -92,8 +88,6 @@ export class OverworldWindowRenderer<TTile> {
     if (Math.abs(clampedDeltaX) >= WINDOW_SIZE_TILES || Math.abs(clampedDeltaY) >= WINDOW_SIZE_TILES) {
       this.cameraPosTileX += clampedDeltaX;
       this.cameraPosTileY += clampedDeltaY;
-      this.xTileOffset = 0;
-      this.yTileOffset = 0;
       this.redrawWholeWindow();
       return;
     }
@@ -101,13 +95,11 @@ export class OverworldWindowRenderer<TTile> {
     if (clampedDeltaX > 0) {
       for (let step = 0; step < clampedDeltaX; step += 1) {
         this.cameraPosTileX += 1;
-        this.xTileOffset = mod32(this.xTileOffset + 1);
         this.redrawSliceEast();
       }
     } else if (clampedDeltaX < 0) {
       for (let step = 0; step < -clampedDeltaX; step += 1) {
         this.cameraPosTileX -= 1;
-        this.xTileOffset = mod32(this.xTileOffset - 1);
         this.redrawSliceWest();
       }
     }
@@ -115,13 +107,11 @@ export class OverworldWindowRenderer<TTile> {
     if (clampedDeltaY > 0) {
       for (let step = 0; step < clampedDeltaY; step += 1) {
         this.cameraPosTileY += 1;
-        this.yTileOffset = mod32(this.yTileOffset + 1);
         this.redrawSliceSouth();
       }
     } else if (clampedDeltaY < 0) {
       for (let step = 0; step < -clampedDeltaY; step += 1) {
         this.cameraPosTileY -= 1;
-        this.yTileOffset = mod32(this.yTileOffset - 1);
         this.redrawSliceNorth();
       }
     }
@@ -187,10 +177,8 @@ export class OverworldWindowRenderer<TTile> {
       return;
     }
 
-    const localTileX = worldTileX - this.cameraPosTileX;
-    const localTileY = worldTileY - this.cameraPosTileY;
-    const slotTileX = mod32(localTileX + this.xTileOffset);
-    const slotTileY = mod32(localTileY + this.yTileOffset);
+    const slotTileX = mod32(worldTileX);
+    const slotTileY = mod32(worldTileY);
     const slotIndex = mapPosToBgTilemapOffset(slotTileX, slotTileY);
 
     const tile = this.mapData.sampleTileAt(worldTileX, worldTileY);
