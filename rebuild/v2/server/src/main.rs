@@ -20,8 +20,9 @@ use rebuild_v2_server::{
     movement::{Direction, MovementState, FIXED_SIMULATION_TICK_HZ},
     render_assets::RenderMetatileResolver,
     render_state::{
-        AssetManifest, BgScroll, CameraAnchor, CameraWheelFrame, MovementFrame, RenderStateV1,
-        RenderWindow, ServerMessage, RENDER_WINDOW_HEIGHT, RENDER_WINDOW_WIDTH,
+        AssetManifest, BgScroll, CameraAnchor, CameraWheelFrame, MovementFrame,
+        PlayerRenderProxy, RenderStateV1, RenderWindow, ServerMessage, RENDER_WINDOW_HEIGHT,
+        RENDER_WINDOW_WIDTH,
     },
 };
 use serde::Deserialize;
@@ -464,6 +465,20 @@ fn build_render_state(session: &SessionContext) -> RenderStateV1 {
             y_tile_offset: session.movement.y_tile_offset,
             strip_redraws: Vec::new(),
         },
+        player_render_proxy: PlayerRenderProxy {
+            map_local_x: session.movement.player_runtime_x
+                + session.movement.pixel_offset_x.div_euclid(16)
+                - MAP_OFFSET as i32,
+            map_local_y: session.movement.player_runtime_y
+                + session.movement.pixel_offset_y.div_euclid(16)
+                - MAP_OFFSET as i32,
+            subpixel_x: session.movement.pixel_offset_x.rem_euclid(16),
+            subpixel_y: session.movement.pixel_offset_y.rem_euclid(16),
+            camera_pos_x: session.movement.camera_pos_x,
+            camera_pos_y: session.movement.camera_pos_y,
+            x_tile_offset: session.movement.x_tile_offset,
+            y_tile_offset: session.movement.y_tile_offset,
+        },
         window: RenderWindow {
             origin_runtime_x,
             origin_runtime_y,
@@ -527,7 +542,8 @@ mod tests {
         map_runtime::{RuntimeMapGrid, MAPGRID_IMPASSABLE, MAPGRID_UNDEFINED},
         movement::{Direction, MovementState, RunningState},
         render_state::{
-            BgScroll, CameraAnchor, CameraWheelFrame, MovementFrame, RenderStateV1, RenderWindow,
+            BgScroll, CameraAnchor, CameraWheelFrame, MovementFrame, PlayerRenderProxy,
+            RenderStateV1, RenderWindow,
         },
     };
 
@@ -604,6 +620,16 @@ mod tests {
                 x_tile_offset: 0,
                 y_tile_offset: 0,
                 strip_redraws: Vec::new(),
+            },
+            player_render_proxy: PlayerRenderProxy {
+                map_local_x: 10,
+                map_local_y: 1,
+                subpixel_x: 0,
+                subpixel_y: 0,
+                camera_pos_x: 10,
+                camera_pos_y: 1,
+                x_tile_offset: 0,
+                y_tile_offset: 0,
             },
             window: RenderWindow {
                 origin_runtime_x: 10,
