@@ -167,10 +167,10 @@ ACRO_BIKE_ACTIONS = {
         "east": "ANIM_MOVING_WHEELIE_EAST",
     },
     "acro_wheelie_face": {
-        "south": "ANIM_MOVING_WHEELIE_SOUTH",
-        "north": "ANIM_MOVING_WHEELIE_NORTH",
-        "west": "ANIM_MOVING_WHEELIE_WEST",
-        "east": "ANIM_MOVING_WHEELIE_EAST",
+        "south": "ANIM_STANDING_WHEELIE_BACK_WHEEL_SOUTH",
+        "north": "ANIM_STANDING_WHEELIE_BACK_WHEEL_NORTH",
+        "west": "ANIM_STANDING_WHEELIE_BACK_WHEEL_WEST",
+        "east": "ANIM_STANDING_WHEELIE_BACK_WHEEL_EAST",
     },
     "acro_wheelie_in_place": {
         "south": "ANIM_STANDING_WHEELIE_BACK_WHEEL_SOUTH",

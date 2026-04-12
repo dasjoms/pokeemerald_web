@@ -19,8 +19,7 @@
                     "frame": 45,
                     "h_flip": true
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "north": {
                 "action_id": "acro_bunny_hop_back_wheel",
@@ -36,8 +35,7 @@
                     "frame": 41,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "south": {
                 "action_id": "acro_bunny_hop_back_wheel",
@@ -53,8 +51,7 @@
                     "frame": 37,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "west": {
                 "action_id": "acro_bunny_hop_back_wheel",
@@ -70,8 +67,7 @@
                     "frame": 45,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               }
             },
             "acro_bunny_hop_front_wheel": {
@@ -89,8 +85,7 @@
                     "frame": 47,
                     "h_flip": true
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "north": {
                 "action_id": "acro_bunny_hop_front_wheel",
@@ -106,8 +101,7 @@
                     "frame": 43,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "south": {
                 "action_id": "acro_bunny_hop_front_wheel",
@@ -123,8 +117,7 @@
                     "frame": 39,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "west": {
                 "action_id": "acro_bunny_hop_front_wheel",
@@ -140,8 +133,7 @@
                     "frame": 47,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               }
             },
             "acro_end_wheelie_moving": {
@@ -159,8 +151,7 @@
                     "frame": 29,
                     "h_flip": true
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "north": {
                 "action_id": "acro_end_wheelie_moving",
@@ -176,8 +167,7 @@
                     "frame": 28,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "south": {
                 "action_id": "acro_end_wheelie_moving",
@@ -193,8 +183,7 @@
                     "frame": 27,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "west": {
                 "action_id": "acro_end_wheelie_moving",
@@ -210,8 +199,7 @@
                     "frame": 29,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               }
             },
             "acro_end_wheelie_stationary": {
@@ -229,8 +217,7 @@
                     "frame": 29,
                     "h_flip": true
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "north": {
                 "action_id": "acro_end_wheelie_stationary",
@@ -246,8 +233,7 @@
                     "frame": 28,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "south": {
                 "action_id": "acro_end_wheelie_stationary",
@@ -263,8 +249,7 @@
                     "frame": 27,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "west": {
                 "action_id": "acro_end_wheelie_stationary",
@@ -280,8 +265,7 @@
                     "frame": 29,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               }
             },
             "acro_ledge_hop_back_wheel": {
@@ -525,141 +509,133 @@
             "acro_pop_wheelie_moving": {
               "east": {
                 "action_id": "acro_pop_wheelie_moving",
-                "anim_cmd_symbol": "sAnim_BunnyHopBackWheelEast",
+                "anim_cmd_symbol": "sAnim_StandingWheelieFrontWheelEast",
                 "frames": [
                   {
                     "duration": 4,
-                    "frame": 44,
+                    "frame": 46,
                     "h_flip": true
                   },
                   {
                     "duration": 4,
-                    "frame": 45,
+                    "frame": 29,
                     "h_flip": true
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "north": {
                 "action_id": "acro_pop_wheelie_moving",
-                "anim_cmd_symbol": "sAnim_BunnyHopBackWheelNorth",
+                "anim_cmd_symbol": "sAnim_StandingWheelieFrontWheelNorth",
                 "frames": [
                   {
                     "duration": 4,
-                    "frame": 40,
+                    "frame": 42,
                     "h_flip": false
                   },
                   {
                     "duration": 4,
-                    "frame": 41,
+                    "frame": 28,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "south": {
                 "action_id": "acro_pop_wheelie_moving",
-                "anim_cmd_symbol": "sAnim_BunnyHopBackWheelSouth",
+                "anim_cmd_symbol": "sAnim_StandingWheelieFrontWheelSouth",
                 "frames": [
                   {
                     "duration": 4,
-                    "frame": 36,
+                    "frame": 38,
                     "h_flip": false
                   },
                   {
                     "duration": 4,
-                    "frame": 37,
+                    "frame": 27,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "west": {
                 "action_id": "acro_pop_wheelie_moving",
-                "anim_cmd_symbol": "sAnim_BunnyHopBackWheelWest",
+                "anim_cmd_symbol": "sAnim_StandingWheelieFrontWheelWest",
                 "frames": [
                   {
                     "duration": 4,
-                    "frame": 44,
+                    "frame": 46,
                     "h_flip": false
                   },
                   {
                     "duration": 4,
-                    "frame": 45,
+                    "frame": 29,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               }
             },
             "acro_pop_wheelie_stationary": {
               "east": {
                 "action_id": "acro_pop_wheelie_stationary",
-                "anim_cmd_symbol": "sAnim_BunnyHopBackWheelEast",
+                "anim_cmd_symbol": "sAnim_StandingWheelieFrontWheelEast",
                 "frames": [
                   {
                     "duration": 4,
-                    "frame": 44,
+                    "frame": 46,
                     "h_flip": true
                   },
                   {
                     "duration": 4,
-                    "frame": 45,
+                    "frame": 29,
                     "h_flip": true
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "north": {
                 "action_id": "acro_pop_wheelie_stationary",
-                "anim_cmd_symbol": "sAnim_BunnyHopBackWheelNorth",
+                "anim_cmd_symbol": "sAnim_StandingWheelieFrontWheelNorth",
                 "frames": [
                   {
                     "duration": 4,
-                    "frame": 40,
+                    "frame": 42,
                     "h_flip": false
                   },
                   {
                     "duration": 4,
-                    "frame": 41,
+                    "frame": 28,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "south": {
                 "action_id": "acro_pop_wheelie_stationary",
-                "anim_cmd_symbol": "sAnim_BunnyHopBackWheelSouth",
+                "anim_cmd_symbol": "sAnim_StandingWheelieFrontWheelSouth",
                 "frames": [
                   {
                     "duration": 4,
-                    "frame": 36,
+                    "frame": 38,
                     "h_flip": false
                   },
                   {
                     "duration": 4,
-                    "frame": 37,
+                    "frame": 27,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "west": {
                 "action_id": "acro_pop_wheelie_stationary",
-                "anim_cmd_symbol": "sAnim_BunnyHopBackWheelWest",
+                "anim_cmd_symbol": "sAnim_StandingWheelieFrontWheelWest",
                 "frames": [
                   {
                     "duration": 4,
-                    "frame": 44,
+                    "frame": 46,
                     "h_flip": false
                   },
                   {
                     "duration": 4,
-                    "frame": 45,
+                    "frame": 29,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               }
             },
             "acro_side_jump_front_wheel": {
@@ -677,8 +653,7 @@
                     "frame": 47,
                     "h_flip": true
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "north": {
                 "action_id": "acro_side_jump_front_wheel",
@@ -694,8 +669,7 @@
                     "frame": 43,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "south": {
                 "action_id": "acro_side_jump_front_wheel",
@@ -711,8 +685,7 @@
                     "frame": 39,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "west": {
                 "action_id": "acro_side_jump_front_wheel",
@@ -728,8 +701,7 @@
                     "frame": 47,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               }
             },
             "acro_standing_wheelie_back_wheel": {
@@ -879,8 +851,7 @@
                     "frame": 47,
                     "h_flip": true
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "north": {
                 "action_id": "acro_turn_jump_front_wheel",
@@ -896,8 +867,7 @@
                     "frame": 43,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "south": {
                 "action_id": "acro_turn_jump_front_wheel",
@@ -913,8 +883,7 @@
                     "frame": 39,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "west": {
                 "action_id": "acro_turn_jump_front_wheel",
@@ -930,51 +899,50 @@
                     "frame": 47,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               }
             },
             "acro_wheelie_face": {
               "east": {
                 "action_id": "acro_wheelie_face",
-                "anim_cmd_symbol": "sAnim_MovingWheelieEast",
+                "anim_cmd_symbol": "sAnim_StandingWheelieBackWheelEast",
                 "frames": [
                   {
                     "duration": 4,
-                    "frame": 52,
+                    "frame": 44,
                     "h_flip": true
                   }
                 ]
               },
               "north": {
                 "action_id": "acro_wheelie_face",
-                "anim_cmd_symbol": "sAnim_MovingWheelieNorth",
+                "anim_cmd_symbol": "sAnim_StandingWheelieBackWheelNorth",
                 "frames": [
                   {
                     "duration": 4,
-                    "frame": 50,
+                    "frame": 40,
                     "h_flip": false
                   }
                 ]
               },
               "south": {
                 "action_id": "acro_wheelie_face",
-                "anim_cmd_symbol": "sAnim_MovingWheelieSouth",
+                "anim_cmd_symbol": "sAnim_StandingWheelieBackWheelSouth",
                 "frames": [
                   {
                     "duration": 4,
-                    "frame": 48,
+                    "frame": 36,
                     "h_flip": false
                   }
                 ]
               },
               "west": {
                 "action_id": "acro_wheelie_face",
-                "anim_cmd_symbol": "sAnim_MovingWheelieWest",
+                "anim_cmd_symbol": "sAnim_StandingWheelieBackWheelWest",
                 "frames": [
                   {
                     "duration": 4,
-                    "frame": 52,
+                    "frame": 44,
                     "h_flip": false
                   }
                 ]
@@ -2979,8 +2947,7 @@
                     "frame": 45,
                     "h_flip": true
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "north": {
                 "action_id": "acro_bunny_hop_back_wheel",
@@ -2996,8 +2963,7 @@
                     "frame": 41,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "south": {
                 "action_id": "acro_bunny_hop_back_wheel",
@@ -3013,8 +2979,7 @@
                     "frame": 37,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "west": {
                 "action_id": "acro_bunny_hop_back_wheel",
@@ -3030,8 +2995,7 @@
                     "frame": 45,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               }
             },
             "acro_bunny_hop_front_wheel": {
@@ -3049,8 +3013,7 @@
                     "frame": 47,
                     "h_flip": true
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "north": {
                 "action_id": "acro_bunny_hop_front_wheel",
@@ -3066,8 +3029,7 @@
                     "frame": 43,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "south": {
                 "action_id": "acro_bunny_hop_front_wheel",
@@ -3083,8 +3045,7 @@
                     "frame": 39,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "west": {
                 "action_id": "acro_bunny_hop_front_wheel",
@@ -3100,8 +3061,7 @@
                     "frame": 47,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               }
             },
             "acro_end_wheelie_moving": {
@@ -3119,8 +3079,7 @@
                     "frame": 29,
                     "h_flip": true
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "north": {
                 "action_id": "acro_end_wheelie_moving",
@@ -3136,8 +3095,7 @@
                     "frame": 28,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "south": {
                 "action_id": "acro_end_wheelie_moving",
@@ -3153,8 +3111,7 @@
                     "frame": 27,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "west": {
                 "action_id": "acro_end_wheelie_moving",
@@ -3170,8 +3127,7 @@
                     "frame": 29,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               }
             },
             "acro_end_wheelie_stationary": {
@@ -3189,8 +3145,7 @@
                     "frame": 29,
                     "h_flip": true
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "north": {
                 "action_id": "acro_end_wheelie_stationary",
@@ -3206,8 +3161,7 @@
                     "frame": 28,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "south": {
                 "action_id": "acro_end_wheelie_stationary",
@@ -3223,8 +3177,7 @@
                     "frame": 27,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "west": {
                 "action_id": "acro_end_wheelie_stationary",
@@ -3240,8 +3193,7 @@
                     "frame": 29,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               }
             },
             "acro_ledge_hop_back_wheel": {
@@ -3485,141 +3437,133 @@
             "acro_pop_wheelie_moving": {
               "east": {
                 "action_id": "acro_pop_wheelie_moving",
-                "anim_cmd_symbol": "sAnim_BunnyHopBackWheelEast",
+                "anim_cmd_symbol": "sAnim_StandingWheelieFrontWheelEast",
                 "frames": [
                   {
                     "duration": 4,
-                    "frame": 44,
+                    "frame": 46,
                     "h_flip": true
                   },
                   {
                     "duration": 4,
-                    "frame": 45,
+                    "frame": 29,
                     "h_flip": true
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "north": {
                 "action_id": "acro_pop_wheelie_moving",
-                "anim_cmd_symbol": "sAnim_BunnyHopBackWheelNorth",
+                "anim_cmd_symbol": "sAnim_StandingWheelieFrontWheelNorth",
                 "frames": [
                   {
                     "duration": 4,
-                    "frame": 40,
+                    "frame": 42,
                     "h_flip": false
                   },
                   {
                     "duration": 4,
-                    "frame": 41,
+                    "frame": 28,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "south": {
                 "action_id": "acro_pop_wheelie_moving",
-                "anim_cmd_symbol": "sAnim_BunnyHopBackWheelSouth",
+                "anim_cmd_symbol": "sAnim_StandingWheelieFrontWheelSouth",
                 "frames": [
                   {
                     "duration": 4,
-                    "frame": 36,
+                    "frame": 38,
                     "h_flip": false
                   },
                   {
                     "duration": 4,
-                    "frame": 37,
+                    "frame": 27,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "west": {
                 "action_id": "acro_pop_wheelie_moving",
-                "anim_cmd_symbol": "sAnim_BunnyHopBackWheelWest",
+                "anim_cmd_symbol": "sAnim_StandingWheelieFrontWheelWest",
                 "frames": [
                   {
                     "duration": 4,
-                    "frame": 44,
+                    "frame": 46,
                     "h_flip": false
                   },
                   {
                     "duration": 4,
-                    "frame": 45,
+                    "frame": 29,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               }
             },
             "acro_pop_wheelie_stationary": {
               "east": {
                 "action_id": "acro_pop_wheelie_stationary",
-                "anim_cmd_symbol": "sAnim_BunnyHopBackWheelEast",
+                "anim_cmd_symbol": "sAnim_StandingWheelieFrontWheelEast",
                 "frames": [
                   {
                     "duration": 4,
-                    "frame": 44,
+                    "frame": 46,
                     "h_flip": true
                   },
                   {
                     "duration": 4,
-                    "frame": 45,
+                    "frame": 29,
                     "h_flip": true
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "north": {
                 "action_id": "acro_pop_wheelie_stationary",
-                "anim_cmd_symbol": "sAnim_BunnyHopBackWheelNorth",
+                "anim_cmd_symbol": "sAnim_StandingWheelieFrontWheelNorth",
                 "frames": [
                   {
                     "duration": 4,
-                    "frame": 40,
+                    "frame": 42,
                     "h_flip": false
                   },
                   {
                     "duration": 4,
-                    "frame": 41,
+                    "frame": 28,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "south": {
                 "action_id": "acro_pop_wheelie_stationary",
-                "anim_cmd_symbol": "sAnim_BunnyHopBackWheelSouth",
+                "anim_cmd_symbol": "sAnim_StandingWheelieFrontWheelSouth",
                 "frames": [
                   {
                     "duration": 4,
-                    "frame": 36,
+                    "frame": 38,
                     "h_flip": false
                   },
                   {
                     "duration": 4,
-                    "frame": 37,
+                    "frame": 27,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "west": {
                 "action_id": "acro_pop_wheelie_stationary",
-                "anim_cmd_symbol": "sAnim_BunnyHopBackWheelWest",
+                "anim_cmd_symbol": "sAnim_StandingWheelieFrontWheelWest",
                 "frames": [
                   {
                     "duration": 4,
-                    "frame": 44,
+                    "frame": 46,
                     "h_flip": false
                   },
                   {
                     "duration": 4,
-                    "frame": 45,
+                    "frame": 29,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               }
             },
             "acro_side_jump_front_wheel": {
@@ -3637,8 +3581,7 @@
                     "frame": 47,
                     "h_flip": true
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "north": {
                 "action_id": "acro_side_jump_front_wheel",
@@ -3654,8 +3597,7 @@
                     "frame": 43,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "south": {
                 "action_id": "acro_side_jump_front_wheel",
@@ -3671,8 +3613,7 @@
                     "frame": 39,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "west": {
                 "action_id": "acro_side_jump_front_wheel",
@@ -3688,8 +3629,7 @@
                     "frame": 47,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               }
             },
             "acro_standing_wheelie_back_wheel": {
@@ -3839,8 +3779,7 @@
                     "frame": 47,
                     "h_flip": true
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "north": {
                 "action_id": "acro_turn_jump_front_wheel",
@@ -3856,8 +3795,7 @@
                     "frame": 43,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "south": {
                 "action_id": "acro_turn_jump_front_wheel",
@@ -3873,8 +3811,7 @@
                     "frame": 39,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               },
               "west": {
                 "action_id": "acro_turn_jump_front_wheel",
@@ -3890,51 +3827,50 @@
                     "frame": 47,
                     "h_flip": false
                   }
-                ],
-                "loop_mode": "end_hold"
+                ]
               }
             },
             "acro_wheelie_face": {
               "east": {
                 "action_id": "acro_wheelie_face",
-                "anim_cmd_symbol": "sAnim_MovingWheelieEast",
+                "anim_cmd_symbol": "sAnim_StandingWheelieBackWheelEast",
                 "frames": [
                   {
                     "duration": 4,
-                    "frame": 52,
+                    "frame": 44,
                     "h_flip": true
                   }
                 ]
               },
               "north": {
                 "action_id": "acro_wheelie_face",
-                "anim_cmd_symbol": "sAnim_MovingWheelieNorth",
+                "anim_cmd_symbol": "sAnim_StandingWheelieBackWheelNorth",
                 "frames": [
                   {
                     "duration": 4,
-                    "frame": 50,
+                    "frame": 40,
                     "h_flip": false
                   }
                 ]
               },
               "south": {
                 "action_id": "acro_wheelie_face",
-                "anim_cmd_symbol": "sAnim_MovingWheelieSouth",
+                "anim_cmd_symbol": "sAnim_StandingWheelieBackWheelSouth",
                 "frames": [
                   {
                     "duration": 4,
-                    "frame": 48,
+                    "frame": 36,
                     "h_flip": false
                   }
                 ]
               },
               "west": {
                 "action_id": "acro_wheelie_face",
-                "anim_cmd_symbol": "sAnim_MovingWheelieWest",
+                "anim_cmd_symbol": "sAnim_StandingWheelieBackWheelWest",
                 "frames": [
                   {
                     "duration": 4,
-                    "frame": 52,
+                    "frame": 44,
                     "h_flip": false
                   }
                 ]
