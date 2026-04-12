@@ -49,6 +49,19 @@ export type RenderStateV1Message = {
     horizontalPan: number;
     verticalPan: number;
   };
+  movement: {
+    runningState: string;
+    tileTransitionState: string;
+    facingDirection: string;
+    movementDirection: string;
+    stepTimer: number;
+  };
+  wheel: {
+    cameraPosX: number;
+    cameraPosY: number;
+    xTileOffset: number;
+    yTileOffset: number;
+  };
   window: {
     originRuntimeX: number;
     originRuntimeY: number;
@@ -94,6 +107,8 @@ export function parseServerMessage(raw: string): ServerMessage | null {
   const camera = getObject(parsed, "camera");
   const window = getObject(parsed, "window");
   const scroll = getObject(parsed, "scroll", "bgScroll", "bg_scroll", "cameraScroll", "camera_scroll");
+  const movement = getObject(parsed, "movement");
+  const wheel = getObject(parsed, "wheel");
   const metatilesRaw = getArray(parsed, "metatiles");
   const metatiles: RenderMetatile[] = metatilesRaw
     .map((entry) => normalizeMetatile(entry))
@@ -113,6 +128,19 @@ export function parseServerMessage(raw: string): ServerMessage | null {
       yPixelOffset: getNumber(scroll, "yPixelOffset", "y_pixel_offset"),
       horizontalPan: getNumber(scroll, "horizontalPan", "horizontal_pan"),
       verticalPan: getNumber(scroll, "verticalPan", "vertical_pan")
+    },
+    movement: {
+      runningState: getString(movement, "runningState", "running_state"),
+      tileTransitionState: getString(movement, "tileTransitionState", "tile_transition_state"),
+      facingDirection: getString(movement, "facingDirection", "facing_direction"),
+      movementDirection: getString(movement, "movementDirection", "movement_direction"),
+      stepTimer: getNumber(movement, "stepTimer", "step_timer")
+    },
+    wheel: {
+      cameraPosX: getNumber(wheel, "cameraPosX", "camera_pos_x"),
+      cameraPosY: getNumber(wheel, "cameraPosY", "camera_pos_y"),
+      xTileOffset: getNumber(wheel, "xTileOffset", "x_tile_offset"),
+      yTileOffset: getNumber(wheel, "yTileOffset", "y_tile_offset")
     },
     window: {
       originRuntimeX: getNumber(window, "originRuntimeX", "origin_runtime_x"),
