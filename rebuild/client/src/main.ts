@@ -318,6 +318,13 @@ type CameraBufferSlot = {
   overlay: Graphics;
 };
 
+type CameraRenderTarget = {
+  bg3: Container;
+  bg2: Container;
+  bg1: Container;
+  overlay: Graphics;
+};
+
 type AcroHopFailureReason =
   | 'b_released'
   | 'direction_pressed'
@@ -468,7 +475,21 @@ let lastAuthoritativeCameraTileX = 0;
 let lastAuthoritativeCameraTileY = 0;
 let pendingCameraStepX = 0;
 let pendingCameraStepY = 0;
+let stagedCameraStepX = 0;
+let stagedCameraStepY = 0;
 const cameraBufferSlots: CameraBufferSlot[] = [];
+const stagedCameraSliceX: CameraRenderTarget = {
+  bg3: new Container(),
+  bg2: new Container(),
+  bg1: new Container(),
+  overlay: new Graphics(),
+};
+const stagedCameraSliceY: CameraRenderTarget = {
+  bg3: new Container(),
+  bg2: new Container(),
+  bg1: new Container(),
+  overlay: new Graphics(),
+};
 const renderedSubtileBindings: RenderedSubtileBinding[] = [];
 const subtileBindingsByTile = new Map<string, RenderedSubtileBinding[]>();
 const subtileBindingsByPalette = new Map<string, RenderedSubtileBinding[]>();
@@ -543,15 +564,23 @@ const objectDepthBetweenBg2Bg1Layer = new Container({ sortableChildren: true });
 const mapBg1Layer = new Container();
 const debugOverlayLayer = new Container();
 worldContainer.addChild(mapBg3Layer);
+worldContainer.addChild(stagedCameraSliceX.bg3);
+worldContainer.addChild(stagedCameraSliceY.bg3);
 worldContainer.addChild(shadowBelowBg2Layer);
 worldContainer.addChild(bikeEffectsBelowBg2Layer);
 worldContainer.addChild(objectDepthBelowBg2Layer);
 worldContainer.addChild(mapBg2Layer);
+worldContainer.addChild(stagedCameraSliceX.bg2);
+worldContainer.addChild(stagedCameraSliceY.bg2);
 worldContainer.addChild(shadowBetweenBg2Bg1Layer);
 worldContainer.addChild(bikeEffectsBetweenBg2Bg1Layer);
 worldContainer.addChild(objectDepthBetweenBg2Bg1Layer);
 worldContainer.addChild(mapBg1Layer);
+worldContainer.addChild(stagedCameraSliceX.bg1);
+worldContainer.addChild(stagedCameraSliceY.bg1);
 worldContainer.addChild(debugOverlayLayer);
+debugOverlayLayer.addChild(stagedCameraSliceX.overlay);
+debugOverlayLayer.addChild(stagedCameraSliceY.overlay);
 initializeCameraBufferSlots();
 gameContainer.scale.set(RENDER_SCALE, RENDER_SCALE);
 const viewportLayout = computeCameraViewportLayout({
@@ -664,6 +693,7 @@ app.ticker.add(() => {
   );
   flushPendingCameraStepsAfterPan();
   updateCameraWindowSlotPositions();
+  updateStagedSlicePositions();
   playerAnimation.applyPendingModeChanges();
   presentPlayerAnimationFrame();
   tickTilesetAnimationClock(app.ticker.deltaMS);
@@ -1290,6 +1320,14 @@ function clearCameraBufferSlotContent(): void {
   }
 }
 
+function clearCameraRenderTargetContent(target: CameraRenderTarget): void {
+  target.bg3.removeChildren();
+  target.bg2.removeChildren();
+  target.bg1.removeChildren();
+  target.overlay.clear();
+  target.overlay.label = '';
+}
+
 function initializeCameraWindowFromPlayerTile(playerTileX: number, playerTileY: number): void {
   cameraWindowOriginTileX = playerTileX - Math.floor(CAMERA_METATILE_BUFFER_DIM / 2);
   cameraWindowOriginTileY = playerTileY - Math.floor(CAMERA_METATILE_BUFFER_DIM / 2);
@@ -1301,6 +1339,10 @@ function initializeCameraWindowFromPlayerTile(playerTileX: number, playerTileY: 
   lastAuthoritativeCameraTileY = playerTileY;
   pendingCameraStepX = 0;
   pendingCameraStepY = 0;
+  stagedCameraStepX = 0;
+  stagedCameraStepY = 0;
+  clearCameraRenderTargetContent(stagedCameraSliceX);
+  clearCameraRenderTargetContent(stagedCameraSliceY);
   redrawEntireCameraWindow();
 }
 
@@ -1330,19 +1372,31 @@ function updateCameraWindowForAuthoritativeTileStep(): void {
 
   while (diffX !== 0 || diffY !== 0) {
     if (diffX > 0) {
+      if (pendingCameraStepX === 0) {
+        drawStagedEnteringSlice(1, 0);
+      }
       pendingCameraStepX += 1;
       diffX -= 1;
       continue;
     }
     if (diffX < 0) {
+      if (pendingCameraStepX === 0) {
+        drawStagedEnteringSlice(-1, 0);
+      }
       pendingCameraStepX -= 1;
       diffX += 1;
       continue;
     }
     if (diffY > 0) {
+      if (pendingCameraStepY === 0) {
+        drawStagedEnteringSlice(0, 1);
+      }
       pendingCameraStepY += 1;
       diffY -= 1;
       continue;
+    }
+    if (pendingCameraStepY === 0) {
+      drawStagedEnteringSlice(0, -1);
     }
     pendingCameraStepY -= 1;
     diffY += 1;
@@ -1357,11 +1411,21 @@ function flushPendingCameraStepsAfterPan(): void {
     const stepX = Math.sign(pendingCameraStepX);
     pendingCameraStepX -= stepX;
     applyCameraWindowMetatileStep(stepX, 0);
+    stagedCameraStepX = 0;
+    clearCameraRenderTargetContent(stagedCameraSliceX);
+    if (pendingCameraStepX !== 0) {
+      drawStagedEnteringSlice(Math.sign(pendingCameraStepX), 0);
+    }
   }
   if (shouldFlushPendingCameraStep(pendingCameraStepY, fieldCameraOffset.yPixelOffset)) {
     const stepY = Math.sign(pendingCameraStepY);
     pendingCameraStepY -= stepY;
     applyCameraWindowMetatileStep(0, stepY);
+    stagedCameraStepY = 0;
+    clearCameraRenderTargetContent(stagedCameraSliceY);
+    if (pendingCameraStepY !== 0) {
+      drawStagedEnteringSlice(0, Math.sign(pendingCameraStepY));
+    }
   }
 }
 
@@ -1425,6 +1489,59 @@ function redrawEnteringCameraSlice(stepX: number, stepY: number): void {
 }
 
 function drawCameraSlotAt(bufferX: number, bufferY: number, worldTileX: number, worldTileY: number): void {
+  const slot = cameraBufferSlots[bufferY * CAMERA_METATILE_BUFFER_DIM + bufferX];
+  if (!slot) {
+    return;
+  }
+  clearCameraRenderTargetContent(slot);
+  drawWorldTileIntoRenderTarget(slot, worldTileX, worldTileY, 0, 0);
+}
+
+function drawStagedEnteringSlice(stepX: number, stepY: number): void {
+  if ((stepX === 0 && stepY === 0) || (stepX !== 0 && stepY !== 0)) {
+    return;
+  }
+  if (stepX !== 0) {
+    stagedCameraStepX = Math.sign(stepX);
+    clearCameraRenderTargetContent(stagedCameraSliceX);
+    const worldX = stagedCameraStepX > 0
+      ? cameraWindowOriginTileX + CAMERA_METATILE_BUFFER_DIM
+      : cameraWindowOriginTileX - 1;
+    for (let y = 0; y < CAMERA_METATILE_BUFFER_DIM; y += 1) {
+      drawWorldTileIntoRenderTarget(
+        stagedCameraSliceX,
+        worldX,
+        cameraWindowOriginTileY + y,
+        0,
+        y * TILE_SIZE,
+      );
+    }
+    return;
+  }
+
+  stagedCameraStepY = Math.sign(stepY);
+  clearCameraRenderTargetContent(stagedCameraSliceY);
+  const worldY = stagedCameraStepY > 0
+    ? cameraWindowOriginTileY + CAMERA_METATILE_BUFFER_DIM
+    : cameraWindowOriginTileY - 1;
+  for (let x = 0; x < CAMERA_METATILE_BUFFER_DIM; x += 1) {
+    drawWorldTileIntoRenderTarget(
+      stagedCameraSliceY,
+      cameraWindowOriginTileX + x,
+      worldY,
+      x * TILE_SIZE,
+      0,
+    );
+  }
+}
+
+function drawWorldTileIntoRenderTarget(
+  target: CameraRenderTarget,
+  worldTileX: number,
+  worldTileY: number,
+  localOffsetX: number,
+  localOffsetY: number,
+): void {
   const runtimeChunk = activeRuntimeChunk;
   const layout = activeLayoutForRender;
   const textureCache = activeTextureCache;
@@ -1433,17 +1550,6 @@ function drawCameraSlotAt(bufferX: number, bufferY: number, worldTileX: number, 
   if (!runtimeChunk || !layout || !textureCache || !indexedAtlasPages || !animationState) {
     return;
   }
-
-  const slot = cameraBufferSlots[bufferY * CAMERA_METATILE_BUFFER_DIM + bufferX];
-  if (!slot) {
-    return;
-  }
-  slot.bg3.removeChildren();
-  slot.bg2.removeChildren();
-  slot.bg1.removeChildren();
-  slot.overlay.clear();
-  slot.overlay.label = '';
-
   if (
     worldTileX < 0 ||
     worldTileY < 0 ||
@@ -1452,12 +1558,10 @@ function drawCameraSlotAt(bufferX: number, bufferY: number, worldTileX: number, 
   ) {
     return;
   }
-
   const tile = runtimeChunk.tiles[worldTileY * runtimeChunk.width + worldTileX];
   if (!tile) {
     return;
   }
-
   const isPrimaryMetatile = tile.metatile_id < activePrimaryMetatiles.length;
   const metatile = isPrimaryMetatile
     ? activePrimaryMetatiles[tile.metatile_id]
@@ -1498,8 +1602,8 @@ function drawCameraSlotAt(bufferX: number, bufferY: number, worldTileX: number, 
     });
     const subtileX = subtile.subtile_index % 2;
     const subtileY = Math.floor(subtile.subtile_index / 2) % 2;
-    sprite.x = subtileX * SUBTILE_SIZE;
-    sprite.y = subtileY * SUBTILE_SIZE;
+    sprite.x = localOffsetX + subtileX * SUBTILE_SIZE;
+    sprite.y = localOffsetY + subtileY * SUBTILE_SIZE;
     if (subtile.hflip) {
       sprite.scale.x = -1;
       sprite.x += SUBTILE_SIZE;
@@ -1511,24 +1615,50 @@ function drawCameraSlotAt(bufferX: number, bufferY: number, worldTileX: number, 
     const mapRenderStratum = resolveMapRenderStratum(metatile.layer_type, subtile.layer);
     switch (mapRenderStratum) {
       case MapRenderStratum.BG3:
-        slot.bg3.addChild(sprite);
+        target.bg3.addChild(sprite);
         break;
       case MapRenderStratum.BG2:
-        slot.bg2.addChild(sprite);
+        target.bg2.addChild(sprite);
         break;
       case MapRenderStratum.BG1:
-        slot.bg1.addChild(sprite);
+        target.bg1.addChild(sprite);
         break;
     }
   }
-
   const overlayColor = tile.collision === 0 ? 0x16a34a : 0xdc2626;
-  slot.overlay
-    .rect(0, 0, TILE_SIZE, TILE_SIZE)
+  target.overlay
+    .rect(localOffsetX, localOffsetY, TILE_SIZE, TILE_SIZE)
     .fill({ color: overlayColor, alpha: 0.25 })
     .stroke({ color: 0x0f172a, width: 1, alpha: 0.35 });
-  slot.overlay.visible = debugOverlayEnabled;
-  slot.overlay.label = `collision=${tile.collision} behavior=${tile.behavior_id}`;
+  target.overlay.visible = debugOverlayEnabled;
+  target.overlay.label = `collision=${tile.collision} behavior=${tile.behavior_id}`;
+}
+
+function updateStagedSlicePositions(): void {
+  if (stagedCameraStepX !== 0) {
+    const xTile = stagedCameraStepX > 0
+      ? cameraWindowOriginTileX + CAMERA_METATILE_BUFFER_DIM
+      : cameraWindowOriginTileX - 1;
+    const yTile = cameraWindowOriginTileY;
+    const xPx = xTile * TILE_SIZE;
+    const yPx = yTile * TILE_SIZE;
+    stagedCameraSliceX.bg3.position.set(xPx, yPx);
+    stagedCameraSliceX.bg2.position.set(xPx, yPx);
+    stagedCameraSliceX.bg1.position.set(xPx, yPx);
+    stagedCameraSliceX.overlay.position.set(xPx, yPx);
+  }
+  if (stagedCameraStepY !== 0) {
+    const xTile = cameraWindowOriginTileX;
+    const yTile = stagedCameraStepY > 0
+      ? cameraWindowOriginTileY + CAMERA_METATILE_BUFFER_DIM
+      : cameraWindowOriginTileY - 1;
+    const xPx = xTile * TILE_SIZE;
+    const yPx = yTile * TILE_SIZE;
+    stagedCameraSliceY.bg3.position.set(xPx, yPx);
+    stagedCameraSliceY.bg2.position.set(xPx, yPx);
+    stagedCameraSliceY.bg1.position.set(xPx, yPx);
+    stagedCameraSliceY.overlay.position.set(xPx, yPx);
+  }
 }
 
 function updateCameraWindowSlotPositions(): void {
