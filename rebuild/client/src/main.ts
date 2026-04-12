@@ -118,7 +118,6 @@ import {
   createInitialCameraWindowOffset,
   initializeCameraWindowOriginFromPlayerTile,
   resolveEnteringCameraSlice,
-  resolvePreloadEnteringCameraSlice,
 } from './cameraWindowBuffer';
 import { resolveRenderedCameraAxisTile } from './cameraWindowTiming';
 
@@ -1469,12 +1468,13 @@ function applyCameraWindowSimulationStep(
   stepY: number,
   shouldRedrawSlice: boolean,
 ): void {
-  if (shouldRedrawSlice) {
-    redrawPreloadedEnteringCameraSlice(simulatedOrigin, simulatedOffset, stepX, stepY);
-  }
   simulatedOrigin.originTileX += stepX;
   simulatedOrigin.originTileY += stepY;
   advanceFieldCameraByMetatile(simulatedOffset, stepX, stepY);
+  if (!shouldRedrawSlice) {
+    return;
+  }
+  redrawEnteringCameraSlice(simulatedOrigin, simulatedOffset, stepX, stepY);
 }
 
 function redrawEnteringCameraSlice(
@@ -1490,28 +1490,6 @@ function redrawEnteringCameraSlice(
 ): void {
   // Spare capacity must track incoming movement side to avoid edge pop.
   const redraws = resolveEnteringCameraSlice(
-    origin,
-    offset,
-    stepX,
-    stepY,
-  );
-  for (const redraw of redraws) {
-    drawCameraSlotAt(redraw.bufferX, redraw.bufferY, redraw.worldTileX, redraw.worldTileY);
-  }
-}
-
-function redrawPreloadedEnteringCameraSlice(
-  origin: { originTileX: number; originTileY: number },
-  offset: {
-    xTileOffset: number;
-    yTileOffset: number;
-    xPixelOffset: number;
-    yPixelOffset: number;
-  },
-  stepX: number,
-  stepY: number,
-): void {
-  const redraws = resolvePreloadEnteringCameraSlice(
     origin,
     offset,
     stepX,
