@@ -644,20 +644,10 @@ app.ticker.add(() => {
   walkInputController.tick();
   tickWalkTransition(app.ticker.deltaMS);
   updateCameraWindowForAuthoritativeTileStep();
-  const quantizedInterpolatedOffsetX = resolveQuantizedInterpolatedCameraPixelOffset(
-    state.renderTileX,
-    state.playerTileX,
-    TILE_SIZE,
-  );
-  const quantizedInterpolatedOffsetY = resolveQuantizedInterpolatedCameraPixelOffset(
-    state.renderTileY,
-    state.playerTileY,
-    TILE_SIZE,
-  );
   updateFieldCameraPixelOffset(
     fieldCameraOffset,
-    quantizedInterpolatedOffsetX,
-    quantizedInterpolatedOffsetY,
+    resolveInterpolatedCameraPixelOffset(state.renderTileX, state.playerTileX, TILE_SIZE),
+    resolveInterpolatedCameraPixelOffset(state.renderTileY, state.playerTileY, TILE_SIZE),
     TILE_SIZE,
   );
   updateCameraWindowSlotPositions();
@@ -2659,17 +2649,12 @@ function updateHopShadowSuppressionContext(): void {
 function positionPlayerSprite(): void {
   updatePlayerActorLayer();
   const movementActionVisual = playerMovementActionRuntime.getVisualState();
-  const quantizedDeltaX = fieldCameraOffset.xPixelOffset;
-  const quantizedDeltaY = fieldCameraOffset.yPixelOffset;
-  playerSprite.x = state.playerTileX * TILE_SIZE + TILE_SIZE / 2 + quantizedDeltaX;
-  playerSprite.y =
-    state.playerTileY * TILE_SIZE + TILE_SIZE + quantizedDeltaY + movementActionVisual.yOffsetPx;
-  const shadowTileX = state.playerTileX + quantizedDeltaX / TILE_SIZE;
-  const shadowTileY = state.playerTileY + quantizedDeltaY / TILE_SIZE;
+  playerSprite.x = state.renderTileX * TILE_SIZE + TILE_SIZE / 2;
+  playerSprite.y = state.renderTileY * TILE_SIZE + TILE_SIZE + movementActionVisual.yOffsetPx;
   updateHopShadowSuppressionContext();
   hopShadowRenderer.presentFrame({
-    tileX: shadowTileX,
-    tileY: shadowTileY,
+    tileX: state.renderTileX,
+    tileY: state.renderTileY,
     visualState: movementActionVisual,
   });
 }
@@ -2974,21 +2959,6 @@ function resolveInterpolatedCameraPixelOffset(
   tileSize: number,
 ): number {
   return (renderTile - authoritativeTile) * tileSize;
-}
-
-function resolveQuantizedInterpolatedCameraPixelOffset(
-  renderTile: number,
-  authoritativeTile: number,
-  tileSize: number,
-): number {
-  const rawPixelOffset = resolveInterpolatedCameraPixelOffset(
-    renderTile,
-    authoritativeTile,
-    tileSize,
-  );
-  const minOffset = -(tileSize - 1);
-  const maxOffset = tileSize - 1;
-  return Math.max(minOffset, Math.min(maxOffset, Math.round(rawPixelOffset)));
 }
 
 function updateCamera(): void {
