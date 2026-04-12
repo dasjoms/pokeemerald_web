@@ -1,16 +1,23 @@
-import { Container, SCALE_MODES, Sprite, Texture } from "pixi.js";
+import { Container, Graphics, SCALE_MODES, Sprite, Texture } from "pixi.js";
 import type { AssetManifest, RenderStateV1Message, RenderSubtile } from "./protocol";
 import { wheelIndex, WHEEL_SIZE } from "./tileWheel32";
 import { TilesetTextureResolver } from "./assetLoader";
 
 const TILE_SIZE = 8;
 const METATILE_SIZE = 2;
+export const VISIBLE_METATILES_W = 15;
+export const VISIBLE_METATILES_H = 10;
+export const VISIBLE_WIDTH_PX = VISIBLE_METATILES_W * METATILE_SIZE * TILE_SIZE;
+export const VISIBLE_HEIGHT_PX = VISIBLE_METATILES_H * METATILE_SIZE * TILE_SIZE;
 const NORMAL_BOTTOM_FILL_TILE_INDEX = 0x14;
 const NORMAL_BOTTOM_FILL_PALETTE_INDEX = 3;
 
 export class OverworldCompositor {
   readonly root = new Container();
 
+  private readonly viewport = new Container();
+  private readonly wheel = new Container();
+  private readonly viewportMask = new Graphics();
   private readonly bgBottom = new Container();
   private readonly bgMiddle = new Container();
   private readonly bgTop = new Container();
@@ -21,7 +28,11 @@ export class OverworldCompositor {
   private loadedPairId: string | null = null;
 
   constructor() {
-    this.root.addChild(this.bgBottom, this.bgMiddle, this.bgTop);
+    this.wheel.addChild(this.bgBottom, this.bgMiddle, this.bgTop);
+    this.viewport.addChild(this.wheel);
+    this.viewportMask.rect(0, 0, VISIBLE_WIDTH_PX, VISIBLE_HEIGHT_PX).fill(0xffffff);
+    this.viewport.mask = this.viewportMask;
+    this.root.addChild(this.viewport, this.viewportMask);
     this.seedLayer(this.bgBottom, this.bottomSprites);
     this.seedLayer(this.bgMiddle, this.middleSprites);
     this.seedLayer(this.bgTop, this.topSprites);
