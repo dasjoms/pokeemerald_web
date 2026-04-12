@@ -24,6 +24,8 @@ pub struct RuntimeMapGrid {
     pub height: usize,
     pub tiles: Vec<u16>,
     pub border_tiles: [u16; 4],
+    pub source_map_ids: Vec<String>,
+    pub tile_source_indices: Vec<u16>,
 }
 
 impl RuntimeMapGrid {
@@ -44,6 +46,31 @@ impl RuntimeMapGrid {
         let mut i = ((x + 1) & 1) as usize;
         i += (((y + 1) & 1) as usize) * 2;
         self.border_tiles[i] | MAPGRID_IMPASSABLE
+    }
+
+    pub fn packed_and_source_map_id_with_border_fallback<'a>(
+        &'a self,
+        x: i32,
+        y: i32,
+        active_map_id: &'a str,
+    ) -> (u16, &'a str) {
+        if x >= 0 && y >= 0 && (x as usize) < self.width && (y as usize) < self.height {
+            let idx = x as usize + y as usize * self.width;
+            let packed = self.tiles[idx];
+            if packed == MAPGRID_UNDEFINED {
+                (self.border_tile_with_impassable(x, y), active_map_id)
+            } else {
+                let source_map_id = self
+                    .tile_source_indices
+                    .get(idx)
+                    .and_then(|source_index| self.source_map_ids.get(*source_index as usize))
+                    .map(String::as_str)
+                    .unwrap_or(active_map_id);
+                (packed, source_map_id)
+            }
+        } else {
+            (self.border_tile_with_impassable(x, y), active_map_id)
+        }
     }
 }
 
@@ -145,6 +172,7 @@ pub struct RuntimeMapAssembler {
 pub struct RuntimeMapBundle {
     pub runtime: RuntimeMapGrid,
     pub layout: LayoutAsset,
+    pub source_layouts_by_map_id: HashMap<String, LayoutAsset>,
 }
 
 impl RuntimeMapAssembler {
@@ -181,7 +209,10 @@ impl RuntimeMapAssembler {
         };
 
         let active_layout = self.load_layout(&active_map.layout_id)?;
-        let mut runtime = assemble_runtime_grid(&active_layout, MAX_MAP_DATA_SIZE)?;
+        let mut runtime =
+            assemble_runtime_grid(&active_map.map_id, &active_layout, MAX_MAP_DATA_SIZE)?;
+        let mut source_layouts_by_map_id =
+            HashMap::from([(active_map.map_id.clone(), active_layout.clone())]);
 
         if runtime.width * runtime.height <= MAX_MAP_DATA_SIZE {
             for connection in &active_map.connections {
@@ -194,9 +225,14 @@ impl RuntimeMapAssembler {
                     .get(&connection.target_map_id)
                     .ok_or_else(|| MapRuntimeError::MissingMap(connection.target_map_id.clone()))?;
                 let connected_layout = self.load_layout(&connected_map.layout_id)?;
+                if !source_layouts_by_map_id.contains_key(&connected_map.map_id) {
+                    source_layouts_by_map_id
+                        .insert(connected_map.map_id.clone(), connected_layout.clone());
+                }
                 fill_declared_connection(
                     &mut runtime,
                     &active_layout,
+                    &connected_map.map_id,
                     &connected_layout,
                     connection,
                 );
@@ -206,6 +242,7 @@ impl RuntimeMapAssembler {
         Ok(RuntimeMapBundle {
             runtime,
             layout: active_layout,
+            source_layouts_by_map_id,
         })
     }
 
@@ -224,23 +261,27 @@ impl RuntimeMapAssembler {
 }
 
 pub fn assemble_runtime_grid(
+    active_map_id: &str,
     active_layout: &LayoutAsset,
     max_map_data_size: usize,
 ) -> Result<RuntimeMapGrid, MapRuntimeError> {
     let runtime_width = active_layout.width + MAP_OFFSET_W;
     let runtime_height = active_layout.height + MAP_OFFSET_H;
     let mut tiles = vec![MAPGRID_UNDEFINED; runtime_width * runtime_height];
+    let mut tile_source_indices = vec![u16::MAX; runtime_width * runtime_height];
     if runtime_width * runtime_height <= max_map_data_size {
         for y in 0..active_layout.height {
             let src_start = y * active_layout.width;
             let dst_start = MAP_OFFSET + (MAP_OFFSET + y) * runtime_width;
             let src_end = src_start + active_layout.width;
             let dst_end = dst_start + active_layout.width;
-            for (dst, src) in tiles[dst_start..dst_end]
+            for ((dst, dst_source), src) in tiles[dst_start..dst_end]
                 .iter_mut()
+                .zip(tile_source_indices[dst_start..dst_end].iter_mut())
                 .zip(active_layout.tiles[src_start..src_end].iter())
             {
                 *dst = src.raw;
+                *dst_source = 0;
             }
         }
     }
@@ -252,6 +293,8 @@ pub fn assemble_runtime_grid(
         height: runtime_height,
         tiles,
         border_tiles,
+        source_map_ids: vec![active_map_id.to_owned()],
+        tile_source_indices,
     })
 }
 
@@ -273,19 +316,43 @@ fn extract_border_tiles(layout: &LayoutAsset) -> Result<[u16; 4], MapRuntimeErro
 fn fill_declared_connection(
     runtime: &mut RuntimeMapGrid,
     active_layout: &LayoutAsset,
+    connected_map_id: &str,
     connected_layout: &LayoutAsset,
     connection: &MapConnectionAsset,
 ) {
+    let source_index = upsert_source_map_id(runtime, connected_map_id);
     match connection.direction.as_str() {
-        "down" => {
-            fill_south_connection(runtime, active_layout, connected_layout, connection.offset)
-        }
-        "up" => fill_north_connection(runtime, connected_layout, connection.offset),
-        "left" => fill_west_connection(runtime, connected_layout, connection.offset),
-        "right" => {
-            fill_east_connection(runtime, active_layout, connected_layout, connection.offset)
-        }
+        "down" => fill_south_connection(
+            runtime,
+            active_layout,
+            connected_layout,
+            connection.offset,
+            source_index,
+        ),
+        "up" => fill_north_connection(runtime, connected_layout, connection.offset, source_index),
+        "left" => fill_west_connection(runtime, connected_layout, connection.offset, source_index),
+        "right" => fill_east_connection(
+            runtime,
+            active_layout,
+            connected_layout,
+            connection.offset,
+            source_index,
+        ),
         _ => {}
+    }
+}
+
+fn upsert_source_map_id(runtime: &mut RuntimeMapGrid, map_id: &str) -> u16 {
+    if let Some((idx, _)) = runtime
+        .source_map_ids
+        .iter()
+        .enumerate()
+        .find(|(_, existing)| existing.as_str() == map_id)
+    {
+        idx as u16
+    } else {
+        runtime.source_map_ids.push(map_id.to_owned());
+        (runtime.source_map_ids.len() - 1) as u16
     }
 }
 
@@ -298,6 +365,7 @@ fn fill_connection(
     src_y: i32,
     width: i32,
     height: i32,
+    source_index: u16,
 ) {
     if width <= 0 || height <= 0 {
         return;
@@ -309,11 +377,13 @@ fn fill_connection(
         let dst_start = (dest_x as usize) + (dest_y as usize + row) * runtime.width;
         let dst_end = dst_start + width as usize;
 
-        for (dst, src) in runtime.tiles[dst_start..dst_end]
+        for ((dst, dst_source), src) in runtime.tiles[dst_start..dst_end]
             .iter_mut()
+            .zip(runtime.tile_source_indices[dst_start..dst_end].iter_mut())
             .zip(connected_layout.tiles[src_start..src_end].iter())
         {
             *dst = src.raw;
+            *dst_source = source_index;
         }
     }
 }
@@ -323,6 +393,7 @@ fn fill_south_connection(
     active_layout: &LayoutAsset,
     connected_layout: &LayoutAsset,
     offset: i32,
+    source_index: u16,
 ) {
     let c_width = connected_layout.width as i32;
     let mut x = offset + MAP_OFFSET as i32;
@@ -353,6 +424,7 @@ fn fill_south_connection(
         0,
         copy_width,
         MAP_OFFSET as i32,
+        source_index,
     );
 }
 
@@ -360,6 +432,7 @@ fn fill_north_connection(
     runtime: &mut RuntimeMapGrid,
     connected_layout: &LayoutAsset,
     offset: i32,
+    source_index: u16,
 ) {
     let c_width = connected_layout.width as i32;
     let c_height = connected_layout.height as i32;
@@ -391,10 +464,16 @@ fn fill_north_connection(
         src_y,
         copy_width,
         MAP_OFFSET as i32,
+        source_index,
     );
 }
 
-fn fill_west_connection(runtime: &mut RuntimeMapGrid, connected_layout: &LayoutAsset, offset: i32) {
+fn fill_west_connection(
+    runtime: &mut RuntimeMapGrid,
+    connected_layout: &LayoutAsset,
+    offset: i32,
+    source_index: u16,
+) {
     let c_width = connected_layout.width as i32;
     let c_height = connected_layout.height as i32;
     let mut y = offset + MAP_OFFSET as i32;
@@ -428,6 +507,7 @@ fn fill_west_connection(runtime: &mut RuntimeMapGrid, connected_layout: &LayoutA
         src_y,
         MAP_OFFSET as i32,
         copy_height,
+        source_index,
     );
 }
 
@@ -436,6 +516,7 @@ fn fill_east_connection(
     active_layout: &LayoutAsset,
     connected_layout: &LayoutAsset,
     offset: i32,
+    source_index: u16,
 ) {
     let c_height = connected_layout.height as i32;
     let x = (active_layout.width + MAP_OFFSET) as i32;
@@ -469,6 +550,7 @@ fn fill_east_connection(
         src_y,
         (MAP_OFFSET + 1) as i32,
         copy_height,
+        source_index,
     );
 }
 
@@ -508,7 +590,7 @@ mod tests {
     #[test]
     fn active_map_origin_and_runtime_size_match_emerald_offsets() {
         let active = mk_layout("A", 3, 2, 100, [1, 2, 3, 4]);
-        let runtime = assemble_runtime_grid(&active, MAX_MAP_DATA_SIZE).expect("runtime");
+        let runtime = assemble_runtime_grid("MAP_A", &active, MAX_MAP_DATA_SIZE).expect("runtime");
 
         assert_eq!(runtime.width, 3 + 15);
         assert_eq!(runtime.height, 2 + 14);
@@ -522,10 +604,11 @@ mod tests {
         let active = mk_layout("A", 4, 4, 10, [1, 2, 3, 4]);
         let west = mk_layout("W", 9, 4, 1000, [1, 2, 3, 4]);
         let east = mk_layout("E", 12, 4, 2000, [1, 2, 3, 4]);
-        let mut runtime = assemble_runtime_grid(&active, MAX_MAP_DATA_SIZE).expect("runtime");
+        let mut runtime =
+            assemble_runtime_grid("MAP_A", &active, MAX_MAP_DATA_SIZE).expect("runtime");
 
-        fill_west_connection(&mut runtime, &west, 0);
-        fill_east_connection(&mut runtime, &active, &east, 0);
+        fill_west_connection(&mut runtime, &west, 0, 1);
+        fill_east_connection(&mut runtime, &active, &east, 0, 2);
 
         for x in 0..7 {
             assert_ne!(get(&runtime, x, 7), MAPGRID_UNDEFINED);
@@ -544,16 +627,16 @@ mod tests {
         let connected = mk_layout("N", 8, 12, 1000, [1, 2, 3, 4]);
 
         let mut runtime_neg =
-            assemble_runtime_grid(&active, MAX_MAP_DATA_SIZE).expect("runtime neg");
-        fill_north_connection(&mut runtime_neg, &connected, -9);
+            assemble_runtime_grid("MAP_A", &active, MAX_MAP_DATA_SIZE).expect("runtime neg");
+        fill_north_connection(&mut runtime_neg, &connected, -9, 1);
         assert_eq!(
             get(&runtime_neg, 0, 0),
             connected.tiles[2 + 5 * connected.width].raw
         );
 
         let mut runtime_pos =
-            assemble_runtime_grid(&active, MAX_MAP_DATA_SIZE).expect("runtime pos");
-        fill_south_connection(&mut runtime_pos, &active, &connected, 4);
+            assemble_runtime_grid("MAP_A", &active, MAX_MAP_DATA_SIZE).expect("runtime pos");
+        fill_south_connection(&mut runtime_pos, &active, &connected, 4, 1);
         let sx = 4 + MAP_OFFSET;
         let sy = active.height + MAP_OFFSET;
         assert_eq!(get(&runtime_pos, sx, sy), connected.tiles[0].raw);
@@ -569,16 +652,16 @@ mod tests {
         let connected = mk_layout("C", 10, 8, 3000, [1, 2, 3, 4]);
 
         let mut runtime_neg =
-            assemble_runtime_grid(&active, MAX_MAP_DATA_SIZE).expect("runtime neg");
-        fill_west_connection(&mut runtime_neg, &connected, -10);
+            assemble_runtime_grid("MAP_A", &active, MAX_MAP_DATA_SIZE).expect("runtime neg");
+        fill_west_connection(&mut runtime_neg, &connected, -10, 1);
         assert_eq!(
             get(&runtime_neg, 0, 0),
             connected.tiles[3 + 3 * connected.width].raw
         );
 
         let mut runtime_pos =
-            assemble_runtime_grid(&active, MAX_MAP_DATA_SIZE).expect("runtime pos");
-        fill_east_connection(&mut runtime_pos, &active, &connected, 10);
+            assemble_runtime_grid("MAP_A", &active, MAX_MAP_DATA_SIZE).expect("runtime pos");
+        fill_east_connection(&mut runtime_pos, &active, &connected, 10, 1);
         let x = active.width + MAP_OFFSET;
         let y = 10 + MAP_OFFSET;
         assert_eq!(get(&runtime_pos, x, y), connected.tiles[0].raw);
@@ -587,7 +670,7 @@ mod tests {
     #[test]
     fn out_of_bounds_reads_use_border_2x2_index_and_impassable_collision() {
         let active = mk_layout("A", 2, 2, 10, [0x0001, 0x0002, 0x0003, 0x0004]);
-        let runtime = assemble_runtime_grid(&active, MAX_MAP_DATA_SIZE).expect("runtime");
+        let runtime = assemble_runtime_grid("MAP_A", &active, MAX_MAP_DATA_SIZE).expect("runtime");
 
         assert_eq!(
             runtime.get_packed_with_border_fallback(-1, -1),
@@ -610,7 +693,7 @@ mod tests {
     #[test]
     fn in_bounds_undefined_reads_use_border_2x2_index_and_impassable_collision() {
         let active = mk_layout("A", 2, 2, 10, [0x0101, 0x0102, 0x0103, 0x0104]);
-        let runtime = assemble_runtime_grid(&active, MAX_MAP_DATA_SIZE).expect("runtime");
+        let runtime = assemble_runtime_grid("MAP_A", &active, MAX_MAP_DATA_SIZE).expect("runtime");
 
         assert_eq!(
             runtime.get_packed_with_border_fallback(0, 0),
@@ -631,7 +714,8 @@ mod tests {
         let active = mk_layout("A", 4, 4, 10, [1, 2, 3, 4]);
         let east = mk_layout("E", 8, 8, 2000, [1, 2, 3, 4]);
         let south = mk_layout("S", 8, 8, 3000, [1, 2, 3, 4]);
-        let mut runtime = assemble_runtime_grid(&active, MAX_MAP_DATA_SIZE).expect("runtime");
+        let mut runtime =
+            assemble_runtime_grid("MAP_A", &active, MAX_MAP_DATA_SIZE).expect("runtime");
 
         let declared = vec![
             MapConnectionAsset {
@@ -652,7 +736,7 @@ mod tests {
             } else {
                 &south
             };
-            fill_declared_connection(&mut runtime, &active, connected, connection);
+            fill_declared_connection(&mut runtime, &active, "MAP_C", connected, connection);
         }
 
         // Overlap cell should contain south because it is filled second.
@@ -662,10 +746,43 @@ mod tests {
     #[test]
     fn oversized_runtime_grid_still_returns_prefilled_buffer() {
         let active = mk_layout("A", 200, 100, 10, [1, 2, 3, 4]);
-        let runtime = assemble_runtime_grid(&active, MAX_MAP_DATA_SIZE).expect("runtime");
+        let runtime = assemble_runtime_grid("MAP_A", &active, MAX_MAP_DATA_SIZE).expect("runtime");
 
         assert_eq!(runtime.width, active.width + MAP_OFFSET_W);
         assert_eq!(runtime.height, active.height + MAP_OFFSET_H);
         assert!(runtime.tiles.iter().all(|&tile| tile == MAPGRID_UNDEFINED));
+    }
+
+    #[test]
+    fn source_map_tracking_preserves_connection_provenance() {
+        let active = mk_layout("A", 4, 4, 10, [1, 2, 3, 4]);
+        let east = mk_layout("E", 8, 8, 2000, [1, 2, 3, 4]);
+        let mut runtime =
+            assemble_runtime_grid("MAP_ACTIVE", &active, MAX_MAP_DATA_SIZE).expect("runtime");
+
+        fill_declared_connection(
+            &mut runtime,
+            &active,
+            "MAP_EAST",
+            &east,
+            &MapConnectionAsset {
+                direction: "right".to_string(),
+                offset: 0,
+                target_map_id: "MAP_EAST".to_string(),
+            },
+        );
+
+        let east_x = (active.width + MAP_OFFSET) as i32;
+        let east_y = MAP_OFFSET as i32;
+        let (_, source) =
+            runtime.packed_and_source_map_id_with_border_fallback(east_x, east_y, "MAP_ACTIVE");
+        assert_eq!(source, "MAP_EAST");
+
+        let (_, active_source) = runtime.packed_and_source_map_id_with_border_fallback(
+            MAP_OFFSET as i32,
+            MAP_OFFSET as i32,
+            "MAP_ACTIVE",
+        );
+        assert_eq!(active_source, "MAP_ACTIVE");
     }
 }
