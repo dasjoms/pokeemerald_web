@@ -64,7 +64,14 @@ import {
   type WalkTransitionStart,
   type WalkTransitionMutableState,
 } from './walkTransitionPipeline';
-import { BikeEffectRenderer, type BikeTireTrackAnimId, type BikeTireTrackAtlas } from './bikeEffectRenderer';
+import {
+  BikeEffectRenderer,
+  type BikeTireTrackAtlas,
+} from './bikeEffectRenderer';
+import {
+  type BikeTireTrackAnimId,
+  type BikeTireTrackManifestMetadata,
+} from './bikeTireTrackTransitionResolver';
 import {
   HopShadowRenderer,
   ROM_SHADOW_TEMPLATE_ID_MEDIUM,
@@ -319,6 +326,10 @@ type BikeEffectsManifest = {
   effects: {
     bike_tire_tracks?: {
       template: BikeEffectTemplate;
+      transition_mapping: {
+        direction_index_order: Array<'down' | 'up' | 'left' | 'right'>;
+        table: number[][];
+      };
     };
   };
 };
@@ -483,21 +494,22 @@ const HOP_SHADOW_PALETTE_PATH = 'field_effects/acro_bike/palettes/general_0.pal'
 const BIKE_EFFECTS_MANIFEST_PATH = 'field_effects/acro_bike_effects_manifest.json';
 const BIKE_TIRE_TRACKS_PALETTE_PATH = 'field_effects/acro_bike/palettes/general_0.pal';
 const hopShadowTextures = new Map<HopShadowSizeVariant, Texture>();
-const BIKE_TIRE_TRACK_ANIM_INDEX_BY_VARIANT: Record<BikeTireTrackAnimId, number> = {
-  south: 1,
-  north: 2,
-  west: 3,
-  east: 4,
-  se_corner_turn: 5,
-  sw_corner_turn: 6,
-  nw_corner_turn: 7,
-  ne_corner_turn: 8,
-};
+const BIKE_TIRE_TRACK_VARIANTS = [
+  'south',
+  'north',
+  'west',
+  'east',
+  'se_corner_turn',
+  'sw_corner_turn',
+  'nw_corner_turn',
+  'ne_corner_turn',
+] as const satisfies readonly BikeTireTrackAnimId[];
 TextureStyle.defaultOptions.scaleMode = 'nearest';
 TextureSource.defaultOptions.scaleMode = 'nearest';
 await preloadPlayerAvatarSheets();
 await preloadHopShadowTextures();
-const bikeTireTrackAtlas = await preloadBikeTireTrackAtlas();
+const bikeTireTracksConfig = await preloadBikeTireTracksConfig();
+const bikeTireTrackAtlas = bikeTireTracksConfig.atlas;
 await app.init({
   background: '#0f172a',
   antialias: false,
@@ -567,7 +579,12 @@ objectDepthBetweenBg2Bg1Layer.addChild(playerSprite);
 let playerActiveActorLayer = objectDepthBetweenBg2Bg1Layer;
 let activeMapTileRenderPriorityContexts: (MapTileRenderPriorityContext | undefined)[] = [];
 let playerObjectRenderPriorityState: PlayerObjectRenderPriorityState = 'normal';
-const bikeEffectRenderer = new BikeEffectRenderer(bikeEffectsLayer, TILE_SIZE, bikeTireTrackAtlas);
+const bikeEffectRenderer = new BikeEffectRenderer(
+  bikeEffectsLayer,
+  TILE_SIZE,
+  bikeTireTrackAtlas,
+  bikeTireTracksConfig.metadata,
+);
 const hopParticleRenderer = new HopParticleRenderer(
   (tileX, tileY) => resolveHopEffectLayerForPlayer(tileX, tileY),
   TILE_SIZE,
@@ -2431,11 +2448,15 @@ async function preloadHopShadowTextures(): Promise<void> {
   }
 }
 
-async function preloadBikeTireTrackAtlas(): Promise<BikeTireTrackAtlas> {
+async function preloadBikeTireTracksConfig(): Promise<{
+  atlas: BikeTireTrackAtlas;
+  metadata: BikeTireTrackManifestMetadata;
+}> {
   const manifest = await loadJsonFromAssets<BikeEffectsManifest>(BIKE_EFFECTS_MANIFEST_PATH);
-  const bikeTireTracksTemplate = manifest.effects.bike_tire_tracks?.template;
-  if (!bikeTireTracksTemplate) {
-    throw new Error('missing bike_tire_tracks template metadata in bike effects manifest');
+  const bikeTireTracksEffect = manifest.effects.bike_tire_tracks;
+  const bikeTireTracksTemplate = bikeTireTracksEffect?.template;
+  if (!bikeTireTracksTemplate || !bikeTireTracksEffect?.transition_mapping) {
+    throw new Error('missing bike_tire_tracks template/transition metadata in bike effects manifest');
   }
 
   const paletteColors = loadJascPaletteHexColorsFromAssets(BIKE_TIRE_TRACKS_PALETTE_PATH);
@@ -2461,10 +2482,19 @@ async function preloadBikeTireTrackAtlas(): Promise<BikeTireTrackAtlas> {
     });
   });
 
-  const atlasEntries = Object.entries(BIKE_TIRE_TRACK_ANIM_INDEX_BY_VARIANT).map(
-    ([variantRaw, animTableIndex]) => {
-      const variant = variantRaw as BikeTireTrackAnimId;
-      const animSymbol = bikeTireTracksTemplate.anim_table.anim_cmd_symbols[animTableIndex];
+  const variantByAnimTableIndex = new Map<number, BikeTireTrackAnimId>();
+  bikeTireTracksTemplate.anim_table.anim_cmd_symbols.forEach((animSymbol, animTableIndex) => {
+    const variant = resolveBikeTireTrackVariantFromAnimSymbol(animSymbol);
+    if (variant) {
+      variantByAnimTableIndex.set(animTableIndex, variant);
+    }
+  });
+
+  const atlasEntries = BIKE_TIRE_TRACK_VARIANTS.map((variant) => {
+      const animTableIndex = findAnimTableIndexForVariant(variantByAnimTableIndex, variant);
+      const animSymbol = animTableIndex !== undefined
+        ? bikeTireTracksTemplate.anim_table.anim_cmd_symbols[animTableIndex]
+        : undefined;
       if (!animSymbol) {
         throw new Error(`missing bike tire tracks anim symbol for variant=${variant}`);
       }
@@ -2487,10 +2517,39 @@ async function preloadBikeTireTrackAtlas(): Promise<BikeTireTrackAtlas> {
           vFlip: firstStep.v_flip ?? false,
         },
       ] as const;
-    },
-  );
+    });
 
-  return Object.fromEntries(atlasEntries) as BikeTireTrackAtlas;
+  return {
+    atlas: Object.fromEntries(atlasEntries) as BikeTireTrackAtlas,
+    metadata: {
+      transition_mapping: bikeTireTracksEffect.transition_mapping,
+      anim_table: bikeTireTracksTemplate.anim_table,
+    },
+  };
+}
+
+function resolveBikeTireTrackVariantFromAnimSymbol(animSymbol: string): BikeTireTrackAnimId | undefined {
+  if (animSymbol.endsWith('South')) return 'south';
+  if (animSymbol.endsWith('North')) return 'north';
+  if (animSymbol.endsWith('West')) return 'west';
+  if (animSymbol.endsWith('East')) return 'east';
+  if (animSymbol.endsWith('SECornerTurn')) return 'se_corner_turn';
+  if (animSymbol.endsWith('SWCornerTurn')) return 'sw_corner_turn';
+  if (animSymbol.endsWith('NWCornerTurn')) return 'nw_corner_turn';
+  if (animSymbol.endsWith('NECornerTurn')) return 'ne_corner_turn';
+  return undefined;
+}
+
+function findAnimTableIndexForVariant(
+  variantByAnimTableIndex: Map<number, BikeTireTrackAnimId>,
+  variant: BikeTireTrackAnimId,
+): number | undefined {
+  for (const [animTableIndex, mappedVariant] of variantByAnimTableIndex.entries()) {
+    if (mappedVariant === variant) {
+      return animTableIndex;
+    }
+  }
+  return undefined;
 }
 
 async function loadIndexed4bppTextureFromAssets(
