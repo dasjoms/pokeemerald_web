@@ -19,7 +19,7 @@ use rebuild_v2_server::{
     map_runtime::{LayoutRenderAssets, RuntimeMapAssembler, MAP_OFFSET},
     render_assets::RenderMetatileResolver,
     render_state::{
-        AssetManifest, CameraAnchor, RenderStateV1, RenderWindow, ServerMessage,
+        AssetManifest, BgScroll, CameraAnchor, RenderStateV1, RenderWindow, ServerMessage,
         RENDER_WINDOW_HEIGHT, RENDER_WINDOW_WIDTH,
     },
 };
@@ -365,6 +365,12 @@ fn build_render_payload(
             runtime_x: camera_runtime_x,
             runtime_y: camera_runtime_y,
         },
+        scroll: BgScroll {
+            x_pixel_offset: 0,
+            y_pixel_offset: 0,
+            horizontal_pan: 0,
+            vertical_pan: 32,
+        },
         window: RenderWindow {
             origin_runtime_x,
             origin_runtime_y,
@@ -383,10 +389,13 @@ fn build_render_payload(
 #[cfg(test)]
 mod tests {
     use super::{
-        render_window_origin_from_camera, RuntimeCoord, MAP_OFFSET, RENDER_WINDOW_HEIGHT,
-        RENDER_WINDOW_WIDTH,
+        render_window_origin_from_camera, RuntimeCoord, ServerMessage, MAP_OFFSET,
+        RENDER_WINDOW_HEIGHT, RENDER_WINDOW_WIDTH,
     };
-    use rebuild_v2_server::map_runtime::{RuntimeMapGrid, MAPGRID_IMPASSABLE, MAPGRID_UNDEFINED};
+    use rebuild_v2_server::{
+        map_runtime::{RuntimeMapGrid, MAPGRID_IMPASSABLE, MAPGRID_UNDEFINED},
+        render_state::{BgScroll, CameraAnchor, RenderStateV1, RenderWindow},
+    };
 
     #[test]
     fn render_window_origin_places_camera_focus_at_map_offset() {
@@ -430,6 +439,43 @@ mod tests {
             runtime.get_packed_with_border_fallback(camera_runtime.x, camera_runtime.y);
         assert_ne!(center_packed, MAPGRID_UNDEFINED);
         assert_eq!(center_packed, 0x002A);
+    }
+
+    #[test]
+    fn render_state_serialization_includes_scroll_with_expected_initial_values() {
+        let render_state = RenderStateV1 {
+            protocol_version: 1,
+            map_id: "MAP_LITTLEROOT_TOWN".to_owned(),
+            tileset_pair_id: "gTileset_Petalburg".to_owned(),
+            camera: CameraAnchor {
+                runtime_x: 17,
+                runtime_y: 8,
+            },
+            scroll: BgScroll {
+                x_pixel_offset: 0,
+                y_pixel_offset: 0,
+                horizontal_pan: 0,
+                vertical_pan: 32,
+            },
+            window: RenderWindow {
+                origin_runtime_x: 10,
+                origin_runtime_y: 1,
+                width: 16,
+                height: 16,
+            },
+            metatiles: Vec::new(),
+        };
+        let message = ServerMessage::RenderStateV1 {
+            state: render_state,
+        };
+
+        let json = serde_json::to_value(&message).expect("server message should serialize");
+        assert_eq!(json["type"], "render_state_v1");
+        assert_eq!(json["protocolVersion"], 1);
+        assert_eq!(json["scroll"]["xPixelOffset"], 0);
+        assert_eq!(json["scroll"]["yPixelOffset"], 0);
+        assert_eq!(json["scroll"]["horizontalPan"], 0);
+        assert_eq!(json["scroll"]["verticalPan"], 32);
     }
 }
 
