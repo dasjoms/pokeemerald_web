@@ -19,6 +19,7 @@ type OverworldWindowRendererOptions<TTile> = {
 };
 
 const WINDOW_SIZE_TILES = 32;
+const WINDOW_HALF_TILES = WINDOW_SIZE_TILES / 2;
 
 function mod32(value: number): number {
   return value & (WINDOW_SIZE_TILES - 1);
@@ -27,8 +28,8 @@ function mod32(value: number): number {
 export class OverworldWindowRenderer<TTile> {
   private readonly tileSize: number;
   private readonly renderSlot: (args: WindowRenderSlotArgs<TTile>) => void;
-  private cameraPosTileX = 0;
-  private cameraPosTileY = 0;
+  private centerTileX = 0;
+  private centerTileY = 0;
   private mapData: WindowMapData<TTile> | null = null;
 
   // BG-equivalent 32x32 rolling buffers in metatile units.
@@ -42,9 +43,9 @@ export class OverworldWindowRenderer<TTile> {
     this.renderSlot = options.renderSlot;
   }
 
-  initWindow(cameraPosTileX: number, cameraPosTileY: number, mapData: WindowMapData<TTile>): void {
-    this.cameraPosTileX = cameraPosTileX;
-    this.cameraPosTileY = cameraPosTileY;
+  initWindow(centerTileX: number, centerTileY: number, mapData: WindowMapData<TTile>): void {
+    this.centerTileX = centerTileX;
+    this.centerTileY = centerTileY;
     this.mapData = mapData;
     this.redrawWholeWindow();
   }
@@ -53,8 +54,8 @@ export class OverworldWindowRenderer<TTile> {
     if (!this.mapData) {
       return;
     }
-    const minTileX = this.cameraPosTileX;
-    const minTileY = this.cameraPosTileY;
+    const minTileX = this.centerTileX - WINDOW_HALF_TILES;
+    const minTileY = this.centerTileY - WINDOW_HALF_TILES;
     for (let localY = 0; localY < WINDOW_SIZE_TILES; localY += 1) {
       for (let localX = 0; localX < WINDOW_SIZE_TILES; localX += 1) {
         const worldTileX = minTileX + localX;
@@ -86,68 +87,68 @@ export class OverworldWindowRenderer<TTile> {
     }
 
     if (Math.abs(clampedDeltaX) >= WINDOW_SIZE_TILES || Math.abs(clampedDeltaY) >= WINDOW_SIZE_TILES) {
-      this.cameraPosTileX += clampedDeltaX;
-      this.cameraPosTileY += clampedDeltaY;
+      this.centerTileX += clampedDeltaX;
+      this.centerTileY += clampedDeltaY;
       this.redrawWholeWindow();
       return;
     }
 
     if (clampedDeltaX > 0) {
       for (let step = 0; step < clampedDeltaX; step += 1) {
-        this.cameraPosTileX += 1;
+        this.centerTileX += 1;
         this.redrawSliceEast();
       }
     } else if (clampedDeltaX < 0) {
       for (let step = 0; step < -clampedDeltaX; step += 1) {
-        this.cameraPosTileX -= 1;
+        this.centerTileX -= 1;
         this.redrawSliceWest();
       }
     }
 
     if (clampedDeltaY > 0) {
       for (let step = 0; step < clampedDeltaY; step += 1) {
-        this.cameraPosTileY += 1;
+        this.centerTileY += 1;
         this.redrawSliceSouth();
       }
     } else if (clampedDeltaY < 0) {
       for (let step = 0; step < -clampedDeltaY; step += 1) {
-        this.cameraPosTileY -= 1;
+        this.centerTileY -= 1;
         this.redrawSliceNorth();
       }
     }
   }
 
   redrawSliceNorth(): void {
-    const minTileX = this.cameraPosTileX;
+    const minTileX = this.centerTileX - WINDOW_HALF_TILES;
     const maxTileX = minTileX + WINDOW_SIZE_TILES - 1;
-    const enteringTileY = this.cameraPosTileY;
+    const enteringTileY = this.centerTileY - WINDOW_HALF_TILES;
     for (let worldTileX = minTileX; worldTileX <= maxTileX; worldTileX += 1) {
       this.drawWorldTile(worldTileX, enteringTileY);
     }
   }
 
   redrawSliceSouth(): void {
-    const minTileX = this.cameraPosTileX;
+    const minTileX = this.centerTileX - WINDOW_HALF_TILES;
     const maxTileX = minTileX + WINDOW_SIZE_TILES - 1;
-    const enteringTileY = this.cameraPosTileY + WINDOW_SIZE_TILES - 1;
+    const enteringTileY = this.centerTileY - WINDOW_HALF_TILES + WINDOW_SIZE_TILES - 1;
     for (let worldTileX = minTileX; worldTileX <= maxTileX; worldTileX += 1) {
       this.drawWorldTile(worldTileX, enteringTileY);
     }
   }
 
   redrawSliceEast(): void {
-    const minTileY = this.cameraPosTileY;
+    const minTileY = this.centerTileY - WINDOW_HALF_TILES;
     const maxTileY = minTileY + WINDOW_SIZE_TILES - 1;
-    const enteringTileX = this.cameraPosTileX + WINDOW_SIZE_TILES - 1;
+    const enteringTileX = this.centerTileX - WINDOW_HALF_TILES + WINDOW_SIZE_TILES - 1;
     for (let worldTileY = minTileY; worldTileY <= maxTileY; worldTileY += 1) {
       this.drawWorldTile(enteringTileX, worldTileY);
     }
   }
 
   redrawSliceWest(): void {
-    const minTileY = this.cameraPosTileY;
+    const minTileY = this.centerTileY - WINDOW_HALF_TILES;
     const maxTileY = minTileY + WINDOW_SIZE_TILES - 1;
-    const enteringTileX = this.cameraPosTileX;
+    const enteringTileX = this.centerTileX - WINDOW_HALF_TILES;
     for (let worldTileY = minTileY; worldTileY <= maxTileY; worldTileY += 1) {
       this.drawWorldTile(enteringTileX, worldTileY);
     }
