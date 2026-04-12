@@ -466,6 +466,8 @@ let cameraWindowOriginTileX = 0;
 let cameraWindowOriginTileY = 0;
 let lastAuthoritativeCameraTileX = 0;
 let lastAuthoritativeCameraTileY = 0;
+let pendingCameraStepX = 0;
+let pendingCameraStepY = 0;
 const cameraBufferSlots: CameraBufferSlot[] = [];
 const renderedSubtileBindings: RenderedSubtileBinding[] = [];
 const subtileBindingsByTile = new Map<string, RenderedSubtileBinding[]>();
@@ -660,6 +662,7 @@ app.ticker.add(() => {
     quantizedInterpolatedOffsetY,
     TILE_SIZE,
   );
+  flushPendingCameraStepsAfterPan();
   updateCameraWindowSlotPositions();
   playerAnimation.applyPendingModeChanges();
   presentPlayerAnimationFrame();
@@ -1296,6 +1299,8 @@ function initializeCameraWindowFromPlayerTile(playerTileX: number, playerTileY: 
   fieldCameraOffset.yPixelOffset = 0;
   lastAuthoritativeCameraTileX = playerTileX;
   lastAuthoritativeCameraTileY = playerTileY;
+  pendingCameraStepX = 0;
+  pendingCameraStepY = 0;
   redrawEntireCameraWindow();
 }
 
@@ -1325,27 +1330,39 @@ function updateCameraWindowForAuthoritativeTileStep(): void {
 
   while (diffX !== 0 || diffY !== 0) {
     if (diffX > 0) {
-      applyCameraWindowMetatileStep(1, 0);
+      pendingCameraStepX += 1;
       diffX -= 1;
       continue;
     }
     if (diffX < 0) {
-      applyCameraWindowMetatileStep(-1, 0);
+      pendingCameraStepX -= 1;
       diffX += 1;
       continue;
     }
     if (diffY > 0) {
-      applyCameraWindowMetatileStep(0, 1);
+      pendingCameraStepY += 1;
       diffY -= 1;
       continue;
     }
-    applyCameraWindowMetatileStep(0, -1);
+    pendingCameraStepY -= 1;
     diffY += 1;
   }
 
   lastAuthoritativeCameraTileX = state.playerTileX;
   lastAuthoritativeCameraTileY = state.playerTileY;
-  updateCameraWindowSlotPositions();
+}
+
+function flushPendingCameraStepsAfterPan(): void {
+  if (pendingCameraStepX !== 0 && fieldCameraOffset.xPixelOffset === 0) {
+    const stepX = Math.sign(pendingCameraStepX);
+    pendingCameraStepX -= stepX;
+    applyCameraWindowMetatileStep(stepX, 0);
+  }
+  if (pendingCameraStepY !== 0 && fieldCameraOffset.yPixelOffset === 0) {
+    const stepY = Math.sign(pendingCameraStepY);
+    pendingCameraStepY -= stepY;
+    applyCameraWindowMetatileStep(0, stepY);
+  }
 }
 
 function applyCameraWindowMetatileStep(stepX: number, stepY: number): void {
