@@ -1,6 +1,12 @@
 import { Container, Sprite, Texture } from 'pixi.js';
 import type { ContainerChild } from 'pixi.js';
 import { Direction, TraversalState } from './protocol_generated';
+import {
+  createBikeTireTrackVariantResolver,
+  type BikeTireTrackAnimId,
+  type BikeTireTrackManifestMetadata,
+  type BikeTireTrackVariantResolver,
+} from './bikeTireTrackTransitionResolver';
 
 export const BIKE_EFFECT_TIRE_TRACKS = 1 << 0;
 export const BIKE_EFFECT_HOP_SFX = 1 << 1;
@@ -17,16 +23,6 @@ type BikeStepEffectEvent = {
   bikeEffectFlags: number;
   serverFrame: number;
 };
-
-export type BikeTireTrackAnimId =
-  | 'south'
-  | 'north'
-  | 'west'
-  | 'east'
-  | 'se_corner_turn'
-  | 'sw_corner_turn'
-  | 'nw_corner_turn'
-  | 'ne_corner_turn';
 
 export type BikeTireTrackAtlasEntry = {
   texture: Texture;
@@ -47,12 +43,16 @@ const TRACK_ALPHA = 0.52;
 
 export class BikeEffectRenderer {
   private readonly effects: ActiveTrackEffect[] = [];
+  private readonly variantResolver: BikeTireTrackVariantResolver;
 
   constructor(
     private readonly layer: Container,
     private readonly tileSize: number,
     private readonly tireTrackAtlas: BikeTireTrackAtlas,
-  ) {}
+    metadata: BikeTireTrackManifestMetadata,
+  ) {
+    this.variantResolver = createBikeTireTrackVariantResolver(metadata);
+  }
 
   onAuthoritativeStep(event: BikeStepEffectEvent): void {
     if ((event.bikeEffectFlags & BIKE_EFFECT_TIRE_TRACKS) !== 0 && this.isBike(event.traversalState)) {
@@ -102,7 +102,13 @@ export class BikeEffectRenderer {
   }
 
   private spawnTireTrack(event: BikeStepEffectEvent): void {
-    const variant = selectVariant(event.previousFacing, event.currentFacing);
+    const variant = this.variantResolver(event.previousFacing, event.currentFacing);
+    if (!variant) {
+      console.warn(
+        `[bike-effects] skipping tire track due to missing transition metadata previous=${event.previousFacing} current=${event.currentFacing}`,
+      );
+      return;
+    }
     const atlasEntry = this.tireTrackAtlas[variant];
     const sprite = new Sprite(atlasEntry.texture);
     sprite.anchor.set(0.5, 0.5);
@@ -114,41 +120,4 @@ export class BikeEffectRenderer {
     this.layer.addChild(sprite as unknown as ContainerChild);
     this.effects.push({ sprite, ageMs: 0, lifetimeMs: TRACK_LIFETIME_MS });
   }
-}
-
-function selectVariant(previousFacing: Direction, currentFacing: Direction): BikeTireTrackAnimId {
-  if (previousFacing === currentFacing) {
-    switch (currentFacing) {
-      case Direction.UP:
-        return 'north';
-      case Direction.DOWN:
-        return 'south';
-      case Direction.LEFT:
-        return 'west';
-      case Direction.RIGHT:
-        return 'east';
-      default:
-        return 'south';
-    }
-  }
-
-  if (
-    (previousFacing === Direction.DOWN && currentFacing === Direction.RIGHT) ||
-    (previousFacing === Direction.LEFT && currentFacing === Direction.UP)
-  ) {
-    return 'se_corner_turn';
-  }
-  if (
-    (previousFacing === Direction.DOWN && currentFacing === Direction.LEFT) ||
-    (previousFacing === Direction.RIGHT && currentFacing === Direction.UP)
-  ) {
-    return 'sw_corner_turn';
-  }
-  if (
-    (previousFacing === Direction.UP && currentFacing === Direction.LEFT) ||
-    (previousFacing === Direction.RIGHT && currentFacing === Direction.DOWN)
-  ) {
-    return 'nw_corner_turn';
-  }
-  return 'ne_corner_turn';
 }
