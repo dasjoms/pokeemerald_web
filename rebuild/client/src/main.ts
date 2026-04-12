@@ -1562,27 +1562,9 @@ function redrawPreloadedEnteringCameraSlice(
     stepY,
   );
   if (ENABLE_CAMERA_TRACE_LOGS && stepX !== 0) {
-    const VISIBLE_RADIUS_X = 7;
-    const BUFFER_OUTSIDE_VISIBLE = VISIBLE_RADIUS_X + 1;
     const moveDirection = stepX < 0 ? 'left' : 'right';
-    const desiredBufferColumn = stepX < 0
-      ? state.playerTileX - BUFFER_OUTSIDE_VISIBLE
-      : state.playerTileX + BUFFER_OUTSIDE_VISIBLE;
-    console.log('[camera-trace][desired-column]', {
-      frame: cameraTraceTickCounter,
-      playerTileX: state.playerTileX,
-      playerTileY: state.playerTileY,
-      moveDirection,
-      desiredBufferColumn,
-      input_seq: state.lastInputSeq,
-      server_frame: state.lastAckServerTick,
-    });
     const worldTileXValues = redraws.map((redraw) => redraw.worldTileX);
     const worldTileYValues = redraws.map((redraw) => redraw.worldTileY);
-    const actualPreloadWorldColumnSet = [...new Set(worldTileXValues)];
-    const matchesDesiredColumn = redraws.every(
-      (redraw) => redraw.worldTileX === desiredBufferColumn,
-    );
     const payload = {
       frame: cameraTraceTickCounter,
       moveDirection,
@@ -1605,14 +1587,9 @@ function redrawPreloadedEnteringCameraSlice(
         worldTileX: redraw.worldTileX,
         worldTileY: redraw.worldTileY,
       })),
-      desiredBufferColumn,
-      actualPreloadWorldColumnSet,
-      matchesDesiredColumn,
-      uniqueWorldTileXValues: actualPreloadWorldColumnSet,
+      uniqueWorldTileXValues: [...new Set(worldTileXValues)],
       minWorldTileY: worldTileYValues.length === 0 ? null : Math.min(...worldTileYValues),
       maxWorldTileY: worldTileYValues.length === 0 ? null : Math.max(...worldTileYValues),
-      input_seq: state.lastInputSeq,
-      server_frame: state.lastAckServerTick,
     };
     console.groupCollapsed('[camera-trace][preload-column]', {
       frame: cameraTraceTickCounter,
