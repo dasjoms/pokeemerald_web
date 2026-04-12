@@ -26,7 +26,7 @@ export class TilesetTextureResolver {
   }
 
   static async create(assetRoot: string, tilesetPairId: string): Promise<TilesetTextureResolver> {
-    const atlasUrl = `/${assetRoot}/render/${tilesetPairId}/atlas.json`;
+    const atlasUrl = buildAssetUrl(assetRoot, `render/${tilesetPairId}/atlas.json`);
     const atlasResponse = await fetch(atlasUrl);
     if (!atlasResponse.ok) {
       throw new Error(`Failed to load atlas json: ${atlasUrl}`);
@@ -37,7 +37,7 @@ export class TilesetTextureResolver {
     let runningStart = 0;
 
     for (const page of atlas.pages) {
-      const texture = await Assets.load<Texture>(`/${assetRoot}/${page.path}`);
+      const texture = await Assets.load<Texture>(buildAssetUrl(assetRoot, page.path));
       const tilesPerRow = Math.max(1, Math.floor(texture.width / 8));
       const startTile = runningStart;
       const endTile = runningStart + page.logical_tile_count;
@@ -67,4 +67,13 @@ export class TilesetTextureResolver {
       frame: new Rectangle(srcX, srcY, 8, 8),
     });
   }
+}
+
+function buildAssetUrl(assetRoot: string, relativePath: string): string {
+  const normalizedRoot = assetRoot.replace(/^\/+|\/+$/g, "");
+  const normalizedPath = relativePath.replace(/^\/+/, "");
+  if (!normalizedRoot) {
+    return `/${normalizedPath}`;
+  }
+  return `/${normalizedRoot}/${normalizedPath}`;
 }

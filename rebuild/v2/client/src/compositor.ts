@@ -33,9 +33,14 @@ export class OverworldCompositor {
       try {
         this.resolver = await TilesetTextureResolver.create(assetRoot, message.tilesetPairId);
         this.loadedPairId = message.tilesetPairId;
-      } catch {
+      } catch (error) {
         this.resolver = null;
         this.loadedPairId = null;
+        const reason = error instanceof Error ? error.message : String(error);
+        throw new Error(
+          `Failed loading tileset assets for pair "${message.tilesetPairId}" from asset root "${assetRoot}": ${reason}`,
+          { cause: error }
+        );
       }
     }
 
