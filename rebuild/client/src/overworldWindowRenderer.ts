@@ -36,6 +36,7 @@ export class OverworldWindowRenderer<TTile> {
   private readonly bg1Buffer = new Array<number>(WINDOW_SIZE_TILES * WINDOW_SIZE_TILES).fill(-1);
   private readonly bg2Buffer = new Array<number>(WINDOW_SIZE_TILES * WINDOW_SIZE_TILES).fill(-1);
   private readonly bg3Buffer = new Array<number>(WINDOW_SIZE_TILES * WINDOW_SIZE_TILES).fill(-1);
+  private readonly pendingSlotWrites = new Map<number, WindowRenderSlotArgs<TTile>>();
 
   constructor(options: OverworldWindowRendererOptions<TTile>) {
     this.tileSize = options.tileSize;
@@ -157,6 +158,21 @@ export class OverworldWindowRenderer<TTile> {
     this.drawWorldTile(worldTileX, worldTileY);
   }
 
+  commitScheduledTileWrites(): void {
+    if (this.pendingSlotWrites.size === 0) {
+      return;
+    }
+
+    const orderedSlotIndices = [...this.pendingSlotWrites.keys()].sort((a, b) => a - b);
+    for (const slotIndex of orderedSlotIndices) {
+      const write = this.pendingSlotWrites.get(slotIndex);
+      if (write) {
+        this.renderSlot(write);
+      }
+    }
+    this.pendingSlotWrites.clear();
+  }
+
   private drawWorldTile(worldTileX: number, worldTileY: number): void {
     if (!this.mapData) {
       return;
@@ -173,7 +189,7 @@ export class OverworldWindowRenderer<TTile> {
     this.bg2Buffer[slotIndex] = tileToken;
     this.bg3Buffer[slotIndex] = tileToken;
 
-    this.renderSlot({
+    this.pendingSlotWrites.set(slotIndex, {
       slotIndex,
       slotTileX,
       slotTileY,
