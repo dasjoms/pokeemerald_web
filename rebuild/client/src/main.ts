@@ -330,6 +330,14 @@ type BikeEffectsManifest = {
         direction_index_order: Array<'down' | 'up' | 'left' | 'right'>;
         table: number[][];
       };
+      fade_timing: {
+        step0_wait_until_timer_gt: number;
+        step1_stop_when_timer_gt: number;
+        step1_blink: {
+          enabled: boolean;
+          mode: string;
+        };
+      };
     };
   };
 };
@@ -2455,8 +2463,8 @@ async function preloadBikeTireTracksConfig(): Promise<{
   const manifest = await loadJsonFromAssets<BikeEffectsManifest>(BIKE_EFFECTS_MANIFEST_PATH);
   const bikeTireTracksEffect = manifest.effects.bike_tire_tracks;
   const bikeTireTracksTemplate = bikeTireTracksEffect?.template;
-  if (!bikeTireTracksTemplate || !bikeTireTracksEffect?.transition_mapping) {
-    throw new Error('missing bike_tire_tracks template/transition metadata in bike effects manifest');
+  if (!bikeTireTracksTemplate || !bikeTireTracksEffect?.transition_mapping || !bikeTireTracksEffect.fade_timing) {
+    throw new Error('missing bike_tire_tracks template/transition/fade metadata in bike effects manifest');
   }
 
   const paletteColors = loadJascPaletteHexColorsFromAssets(BIKE_TIRE_TRACKS_PALETTE_PATH);
@@ -2524,6 +2532,7 @@ async function preloadBikeTireTracksConfig(): Promise<{
     metadata: {
       transition_mapping: bikeTireTracksEffect.transition_mapping,
       anim_table: bikeTireTracksTemplate.anim_table,
+      fade_timing: bikeTireTracksEffect.fade_timing,
     },
   };
 }

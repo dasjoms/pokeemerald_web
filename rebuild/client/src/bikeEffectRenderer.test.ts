@@ -1,83 +1,139 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  createBikeTireTrackVariantResolver,
-  type BikeTireTrackManifestMetadata,
-} from './bikeTireTrackTransitionResolver';
-import { Direction } from './protocol_generated';
+import { Direction, TraversalState } from './protocol_generated';
+import type { BikeTireTrackAtlas } from './bikeEffectRenderer';
+import type { BikeTireTrackManifestMetadata } from './bikeTireTrackTransitionResolver';
 
-const METADATA_FIXTURE: BikeTireTrackManifestMetadata = {
-  transition_mapping: {
-    direction_index_order: ['down', 'up', 'left', 'right'],
-    table: [
-      [1, 2, 7, 8],
-      [1, 2, 6, 5],
-      [5, 8, 3, 4],
-      [6, 7, 3, 4],
-    ],
-  },
-  anim_table: {
-    anim_cmd_symbols: [
-      'sBikeTireTracksAnim_South',
-      'sBikeTireTracksAnim_South',
-      'sBikeTireTracksAnim_North',
-      'sBikeTireTracksAnim_West',
-      'sBikeTireTracksAnim_East',
-      'sBikeTireTracksAnim_SECornerTurn',
-      'sBikeTireTracksAnim_SWCornerTurn',
-      'sBikeTireTracksAnim_NWCornerTurn',
-      'sBikeTireTracksAnim_NECornerTurn',
-    ],
-    sequences: {
-      sBikeTireTracksAnim_South: [{ frame: 2, duration: 1 }],
-      sBikeTireTracksAnim_North: [{ frame: 2, duration: 1 }],
-      sBikeTireTracksAnim_West: [{ frame: 1, duration: 1 }],
-      sBikeTireTracksAnim_East: [{ frame: 1, duration: 1 }],
-      sBikeTireTracksAnim_SECornerTurn: [{ frame: 0, duration: 1 }],
-      sBikeTireTracksAnim_SWCornerTurn: [{ frame: 0, duration: 1, h_flip: true }],
-      sBikeTireTracksAnim_NWCornerTurn: [{ frame: 3, duration: 1, h_flip: true }],
-      sBikeTireTracksAnim_NECornerTurn: [{ frame: 3, duration: 1 }],
+const FRAME_MS = 1000 / 60;
+
+type RendererModule = typeof import('./bikeEffectRenderer');
+type PixiModule = typeof import('pixi.js');
+
+async function loadRendererWithPixi(): Promise<{ renderer: RendererModule; pixi: PixiModule }> {
+  Object.defineProperty(globalThis, 'navigator', {
+    configurable: true,
+    value: { userAgent: 'vitest' },
+  });
+  const [renderer, pixi] = await Promise.all([import('./bikeEffectRenderer'), import('pixi.js')]);
+  return { renderer, pixi };
+}
+
+function createManifestMetadata(): BikeTireTrackManifestMetadata {
+  return {
+    transition_mapping: {
+      direction_index_order: ['down', 'up', 'left', 'right'],
+      table: [
+        [0, 1, 2, 3],
+        [0, 1, 2, 3],
+        [0, 1, 2, 3],
+        [0, 1, 2, 3],
+      ],
     },
-  },
-};
+    anim_table: {
+      anim_cmd_symbols: [
+        'sBikeTireTracksAnim_South',
+        'sBikeTireTracksAnim_North',
+        'sBikeTireTracksAnim_West',
+        'sBikeTireTracksAnim_East',
+      ],
+      sequences: {
+        sBikeTireTracksAnim_South: [{ frame: 0, duration: 1 }],
+        sBikeTireTracksAnim_North: [{ frame: 0, duration: 1 }],
+        sBikeTireTracksAnim_West: [{ frame: 0, duration: 1 }],
+        sBikeTireTracksAnim_East: [{ frame: 0, duration: 1 }],
+      },
+    },
+    fade_timing: {
+      step0_wait_until_timer_gt: 40,
+      step1_stop_when_timer_gt: 56,
+      step1_blink: {
+        enabled: true,
+        mode: 'toggle_visibility_each_frame',
+      },
+    },
+  };
+}
 
-describe('createBikeTireTrackVariantResolver', () => {
-  it('matches extracted transition matrix outputs for all 16 direction-pair combinations', () => {
-    const resolver = createBikeTireTrackVariantResolver(METADATA_FIXTURE);
-    const expectedByPair = new Map<string, string>([
-      ['1->1', 'south'],
-      ['1->0', 'north'],
-      ['1->2', 'nw_corner_turn'],
-      ['1->3', 'ne_corner_turn'],
-      ['0->1', 'south'],
-      ['0->0', 'north'],
-      ['0->2', 'sw_corner_turn'],
-      ['0->3', 'se_corner_turn'],
-      ['2->1', 'se_corner_turn'],
-      ['2->0', 'ne_corner_turn'],
-      ['2->2', 'west'],
-      ['2->3', 'east'],
-      ['3->1', 'sw_corner_turn'],
-      ['3->0', 'nw_corner_turn'],
-      ['3->2', 'west'],
-      ['3->3', 'east'],
-    ]);
-    const directions = [Direction.DOWN, Direction.UP, Direction.LEFT, Direction.RIGHT];
-    for (const previous of directions) {
-      for (const current of directions) {
-        expect(resolver(previous, current)).toBe(expectedByPair.get(`${previous}->${current}`));
-      }
+describe('BikeEffectRenderer tire track lifecycle parity', () => {
+  it('holds visible, then flickers each frame, and stops at extracted timer threshold', async () => {
+    const { renderer: rendererModule, pixi } = await loadRendererWithPixi();
+    const atlas: BikeTireTrackAtlas = {
+      south: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
+      north: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
+      west: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
+      east: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
+      se_corner_turn: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
+      sw_corner_turn: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
+      nw_corner_turn: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
+      ne_corner_turn: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
+    };
+    const layer = new pixi.Container();
+    const renderer = new rendererModule.BikeEffectRenderer(layer, 16, atlas, createManifestMetadata());
+    renderer.onAuthoritativeStep({
+      fromX: 4,
+      fromY: 5,
+      previousFacing: Direction.DOWN,
+      currentFacing: Direction.DOWN,
+      traversalState: TraversalState.MACH_BIKE,
+      bikeEffectFlags: rendererModule.BIKE_EFFECT_TIRE_TRACKS,
+      serverFrame: 100,
+    });
+
+    expect(layer.children).toHaveLength(1);
+    expect(layer.children[0].visible).toBe(true);
+
+    for (let i = 0; i < 41; i += 1) renderer.tick(FRAME_MS);
+    expect(layer.children).toHaveLength(1);
+    expect(layer.children[0].visible).toBe(true);
+
+    const blinkSequence: boolean[] = [];
+    for (let i = 0; i < 15; i += 1) {
+      renderer.tick(FRAME_MS);
+      blinkSequence.push(layer.children[0].visible);
     }
+    expect(blinkSequence).toEqual([
+      false, true, false, true, false,
+      true, false, true, false, true,
+      false, true, false, true, false,
+    ]);
+
+    renderer.tick(FRAME_MS);
+    expect(layer.children).toHaveLength(0);
   });
 
-  it('returns undefined for corrupt transition metadata instead of guessing', () => {
-    const resolver = createBikeTireTrackVariantResolver({
-      ...METADATA_FIXTURE,
-      transition_mapping: {
-        ...METADATA_FIXTURE.transition_mapping,
-        table: [[99]],
-      },
+  it('converts ticker delta into deterministic frame ticks for lifecycle updates', async () => {
+    const { renderer: rendererModule, pixi } = await loadRendererWithPixi();
+    const atlas: BikeTireTrackAtlas = {
+      south: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
+      north: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
+      west: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
+      east: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
+      se_corner_turn: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
+      sw_corner_turn: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
+      nw_corner_turn: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
+      ne_corner_turn: { texture: pixi.Texture.EMPTY, hFlip: false, vFlip: false },
+    };
+    const layer = new pixi.Container();
+    const renderer = new rendererModule.BikeEffectRenderer(layer, 16, atlas, createManifestMetadata());
+    renderer.onAuthoritativeStep({
+      fromX: 4,
+      fromY: 5,
+      previousFacing: Direction.DOWN,
+      currentFacing: Direction.DOWN,
+      traversalState: TraversalState.ACRO_BIKE,
+      bikeEffectFlags: rendererModule.BIKE_EFFECT_TIRE_TRACKS,
+      serverFrame: 200,
     });
-    expect(resolver(Direction.DOWN, Direction.DOWN)).toBeUndefined();
+
+    renderer.tick(FRAME_MS * 40.5);
+    expect(layer.children).toHaveLength(1);
+    expect(layer.children[0].visible).toBe(true);
+
+    renderer.tick(FRAME_MS * 0.5);
+    expect(layer.children).toHaveLength(1);
+    expect(layer.children[0].visible).toBe(true);
+
+    renderer.tick(FRAME_MS);
+    expect(layer.children[0].visible).toBe(false);
   });
 });

@@ -32,18 +32,24 @@ export type BikeTireTrackAtlasEntry = {
 
 export type BikeTireTrackAtlas = Record<BikeTireTrackAnimId, BikeTireTrackAtlasEntry>;
 
+type TrackEffectPhase = 'step0_hold' | 'step1_blink';
+
 type ActiveTrackEffect = {
   sprite: Sprite;
-  ageMs: number;
-  lifetimeMs: number;
+  phase: TrackEffectPhase;
+  timerFrames: number;
+  visible: boolean;
 };
 
-const TRACK_LIFETIME_MS = 420;
 const TRACK_ALPHA = 0.52;
+const SIMULATION_FRAME_MS = 1000 / 60;
 
 export class BikeEffectRenderer {
   private readonly effects: ActiveTrackEffect[] = [];
   private readonly variantResolver: BikeTireTrackVariantResolver;
+  private readonly step0VisibleHoldThreshold: number;
+  private readonly step1StopThreshold: number;
+  private simulationFrameRemainder = 0;
 
   constructor(
     private readonly layer: Container,
@@ -52,6 +58,8 @@ export class BikeEffectRenderer {
     metadata: BikeTireTrackManifestMetadata,
   ) {
     this.variantResolver = createBikeTireTrackVariantResolver(metadata);
+    this.step0VisibleHoldThreshold = metadata.fade_timing.step0_wait_until_timer_gt;
+    this.step1StopThreshold = metadata.fade_timing.step1_stop_when_timer_gt;
   }
 
   onAuthoritativeStep(event: BikeStepEffectEvent): void {
@@ -74,16 +82,11 @@ export class BikeEffectRenderer {
   }
 
   tick(deltaMs: number): void {
-    for (let i = this.effects.length - 1; i >= 0; i -= 1) {
-      const effect = this.effects[i];
-      effect.ageMs += Math.max(0, deltaMs);
-      const t = Math.min(1, effect.ageMs / effect.lifetimeMs);
-      effect.sprite.alpha = TRACK_ALPHA * (1 - t);
-      if (t >= 1) {
-        this.layer.removeChild(effect.sprite as unknown as ContainerChild);
-        effect.sprite.destroy();
-        this.effects.splice(i, 1);
-      }
+    const elapsedFrames = this.simulationFrameRemainder + Math.max(0, deltaMs) / SIMULATION_FRAME_MS;
+    const wholeFrameTicks = Math.floor(elapsedFrames);
+    this.simulationFrameRemainder = elapsedFrames - wholeFrameTicks;
+    for (let frameTick = 0; frameTick < wholeFrameTicks; frameTick += 1) {
+      this.tickOneFrame();
     }
   }
 
@@ -93,12 +96,37 @@ export class BikeEffectRenderer {
       effect.sprite.destroy();
     }
     this.effects.length = 0;
+    this.simulationFrameRemainder = 0;
   }
 
   private isBike(traversalState: TraversalState): boolean {
     return (
       traversalState === TraversalState.MACH_BIKE || traversalState === TraversalState.ACRO_BIKE
     );
+  }
+
+  private tickOneFrame(): void {
+    for (let i = this.effects.length - 1; i >= 0; i -= 1) {
+      const effect = this.effects[i];
+      effect.timerFrames += 1;
+
+      if (effect.phase === 'step0_hold') {
+        effect.visible = true;
+        effect.sprite.visible = true;
+        if (effect.timerFrames > this.step0VisibleHoldThreshold) {
+          effect.phase = 'step1_blink';
+        }
+        continue;
+      }
+
+      effect.visible = !effect.visible;
+      effect.sprite.visible = effect.visible;
+      if (effect.timerFrames > this.step1StopThreshold) {
+        this.layer.removeChild(effect.sprite as unknown as ContainerChild);
+        effect.sprite.destroy();
+        this.effects.splice(i, 1);
+      }
+    }
   }
 
   private spawnTireTrack(event: BikeStepEffectEvent): void {
@@ -115,9 +143,15 @@ export class BikeEffectRenderer {
     sprite.scale.x = atlasEntry.hFlip ? -1 : 1;
     sprite.scale.y = atlasEntry.vFlip ? -1 : 1;
     sprite.alpha = TRACK_ALPHA;
+    sprite.visible = true;
     sprite.x = event.fromX * this.tileSize + this.tileSize / 2;
     sprite.y = event.fromY * this.tileSize + this.tileSize / 2;
     this.layer.addChild(sprite as unknown as ContainerChild);
-    this.effects.push({ sprite, ageMs: 0, lifetimeMs: TRACK_LIFETIME_MS });
+    this.effects.push({
+      sprite,
+      phase: 'step0_hold',
+      timerFrames: 0,
+      visible: true,
+    });
   }
 }
