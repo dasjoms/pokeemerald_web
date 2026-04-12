@@ -78,9 +78,8 @@ playButton.addEventListener("click", async () => {
   }
 });
 
-const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
 const ws = new WebSocket(
-  `${wsProtocol}//${window.location.host}/ws?clientVersion=v2-client-proto-${V2_PROTOCOL_VERSION}`
+  `ws://127.0.0.1:4100/ws?clientVersion=v2-client-proto-${V2_PROTOCOL_VERSION}`
 );
 
 ws.addEventListener("message", async (event) => {
@@ -130,6 +129,6 @@ ws.addEventListener("error", () => {
     "Emerald Rebuild V2",
     `Asset root: ${assetRoot}`,
     "Target: 32x32 (16-metatile) buffer-wheel renderer",
-    `Handshake: unable to connect to ${wsProtocol}//${window.location.host}/ws`
+    "Handshake: unable to connect to ws://127.0.0.1:4100/ws"
   ].join("\n");
 });
