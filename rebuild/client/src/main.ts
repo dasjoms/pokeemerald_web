@@ -1339,9 +1339,6 @@ function updateCameraWindowForAuthoritativeTileStep(): void {
 }
 
 function applyCameraWindowMetatileStep(stepX: number, stepY: number): void {
-  // Strict order for deterministic camera-window updates:
-  // 1) advance world origin, 2) advance ring offsets,
-  // 3) redraw entering physical slice.
   cameraWindowOriginTileX += stepX;
   cameraWindowOriginTileY += stepY;
   advanceFieldCameraByMetatile(fieldCameraOffset, stepX, stepY);
@@ -1351,29 +1348,12 @@ function applyCameraWindowMetatileStep(stepX: number, stepY: number): void {
 function redrawEnteringCameraSlice(stepX: number, stepY: number): void {
   const ringOffsetX = toMetatileRingOffset(fieldCameraOffset.xTileOffset);
   const ringOffsetY = toMetatileRingOffset(fieldCameraOffset.yTileOffset);
-  const drawSliceSlotAt = (
-    bufferX: number,
-    bufferY: number,
-    worldTileX: number,
-    worldTileY: number,
-  ): void => {
-    const expectedWorldTileX =
-      cameraWindowOriginTileX + cameraMod(bufferX - ringOffsetX, CAMERA_METATILE_BUFFER_DIM);
-    const expectedWorldTileY =
-      cameraWindowOriginTileY + cameraMod(bufferY - ringOffsetY, CAMERA_METATILE_BUFFER_DIM);
-    console.assert(
-      expectedWorldTileX === worldTileX && expectedWorldTileY === worldTileY,
-      `[camera-window] slice draw mismatch physical=(${bufferX},${bufferY}) world=(${worldTileX},${worldTileY}) expected=(${expectedWorldTileX},${expectedWorldTileY}) ring=(${ringOffsetX},${ringOffsetY}) origin=(${cameraWindowOriginTileX},${cameraWindowOriginTileY}) step=(${stepX},${stepY})`,
-    );
-    drawCameraSlotAt(bufferX, bufferY, worldTileX, worldTileY);
-  };
 
   if (stepX > 0) {
     const bufferX = cameraMod(ringOffsetX + CAMERA_METATILE_BUFFER_DIM - 1, CAMERA_METATILE_BUFFER_DIM);
     const worldX = cameraWindowOriginTileX + CAMERA_METATILE_BUFFER_DIM - 1;
     for (let y = 0; y < CAMERA_METATILE_BUFFER_DIM; y += 1) {
-      const bufferY = cameraMod(ringOffsetY + y, CAMERA_METATILE_BUFFER_DIM);
-      drawSliceSlotAt(bufferX, bufferY, worldX, cameraWindowOriginTileY + y);
+      drawCameraSlotAt(bufferX, y, worldX, cameraWindowOriginTileY + y);
     }
     return;
   }
@@ -1381,8 +1361,7 @@ function redrawEnteringCameraSlice(stepX: number, stepY: number): void {
     const bufferX = ringOffsetX;
     const worldX = cameraWindowOriginTileX;
     for (let y = 0; y < CAMERA_METATILE_BUFFER_DIM; y += 1) {
-      const bufferY = cameraMod(ringOffsetY + y, CAMERA_METATILE_BUFFER_DIM);
-      drawSliceSlotAt(bufferX, bufferY, worldX, cameraWindowOriginTileY + y);
+      drawCameraSlotAt(bufferX, y, worldX, cameraWindowOriginTileY + y);
     }
     return;
   }
@@ -1390,16 +1369,14 @@ function redrawEnteringCameraSlice(stepX: number, stepY: number): void {
     const bufferY = cameraMod(ringOffsetY + CAMERA_METATILE_BUFFER_DIM - 1, CAMERA_METATILE_BUFFER_DIM);
     const worldY = cameraWindowOriginTileY + CAMERA_METATILE_BUFFER_DIM - 1;
     for (let x = 0; x < CAMERA_METATILE_BUFFER_DIM; x += 1) {
-      const bufferX = cameraMod(ringOffsetX + x, CAMERA_METATILE_BUFFER_DIM);
-      drawSliceSlotAt(bufferX, bufferY, cameraWindowOriginTileX + x, worldY);
+      drawCameraSlotAt(x, bufferY, cameraWindowOriginTileX + x, worldY);
     }
     return;
   }
   const bufferY = ringOffsetY;
   const worldY = cameraWindowOriginTileY;
   for (let x = 0; x < CAMERA_METATILE_BUFFER_DIM; x += 1) {
-    const bufferX = cameraMod(ringOffsetX + x, CAMERA_METATILE_BUFFER_DIM);
-    drawSliceSlotAt(bufferX, bufferY, cameraWindowOriginTileX + x, worldY);
+    drawCameraSlotAt(x, bufferY, cameraWindowOriginTileX + x, worldY);
   }
 }
 
@@ -1511,11 +1488,15 @@ function drawCameraSlotAt(bufferX: number, bufferY: number, worldTileX: number, 
 }
 
 function updateCameraWindowSlotPositions(): void {
-  for (let bufferY = 0; bufferY < CAMERA_METATILE_BUFFER_DIM; bufferY += 1) {
-    for (let bufferX = 0; bufferX < CAMERA_METATILE_BUFFER_DIM; bufferX += 1) {
-      const slot = cameraBufferSlots[bufferY * CAMERA_METATILE_BUFFER_DIM + bufferX];
-      const xPx = (cameraWindowOriginTileX + bufferX) * TILE_SIZE;
-      const yPx = (cameraWindowOriginTileY + bufferY) * TILE_SIZE;
+  const ringOffsetX = toMetatileRingOffset(fieldCameraOffset.xTileOffset);
+  const ringOffsetY = toMetatileRingOffset(fieldCameraOffset.yTileOffset);
+  for (let y = 0; y < CAMERA_METATILE_BUFFER_DIM; y += 1) {
+    for (let x = 0; x < CAMERA_METATILE_BUFFER_DIM; x += 1) {
+      const physicalX = cameraMod(x - ringOffsetX, CAMERA_METATILE_BUFFER_DIM);
+      const physicalY = cameraMod(y - ringOffsetY, CAMERA_METATILE_BUFFER_DIM);
+      const slot = cameraBufferSlots[y * CAMERA_METATILE_BUFFER_DIM + x];
+      const xPx = (cameraWindowOriginTileX + physicalX) * TILE_SIZE;
+      const yPx = (cameraWindowOriginTileY + physicalY) * TILE_SIZE;
       slot.bg3.x = xPx;
       slot.bg3.y = yPx;
       slot.bg2.x = xPx;
