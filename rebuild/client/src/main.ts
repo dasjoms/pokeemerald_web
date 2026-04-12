@@ -2983,8 +2983,8 @@ function updateCamera(): void {
     tileSize: TILE_SIZE,
     renderScale: RENDER_SCALE,
   });
-  const centerX = state.renderTileX * TILE_SIZE + TILE_SIZE / 2;
-  const centerY = state.renderTileY * TILE_SIZE + TILE_SIZE / 2;
+  const centerX = state.playerTileX * TILE_SIZE + TILE_SIZE / 2 + fieldCameraOffset.xPixelOffset;
+  const centerY = state.playerTileY * TILE_SIZE + TILE_SIZE / 2 + fieldCameraOffset.yPixelOffset;
   worldContainer.x = viewportLayout.viewportCenterX - centerX;
   worldContainer.y = viewportLayout.viewportCenterY - centerY;
   gameContainer.x = viewportLayout.gameContainerX;
