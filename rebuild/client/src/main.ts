@@ -119,6 +119,7 @@ import {
   initializeCameraWindowOriginFromPlayerTile,
   resolveEnteringCameraSlice,
 } from './cameraWindowBuffer';
+import { resolveRenderedCameraAxisTile } from './cameraWindowTiming';
 
 type ServerMessage =
   | { type: MessageType.SESSION_ACCEPTED; payload: SessionAccepted }
@@ -467,8 +468,8 @@ let activePrimaryTileCount = Number.MAX_SAFE_INTEGER;
 const fieldCameraOffset = createInitialCameraWindowOffset();
 let cameraWindowOriginTileX = 0;
 let cameraWindowOriginTileY = 0;
-let lastAuthoritativeCameraTileX = 0;
-let lastAuthoritativeCameraTileY = 0;
+let lastRenderedCameraTileX = 0;
+let lastRenderedCameraTileY = 0;
 const cameraBufferSlots: CameraBufferSlot[] = [];
 const renderedSubtileBindings: RenderedSubtileBinding[] = [];
 const subtileBindingsByTile = new Map<string, RenderedSubtileBinding[]>();
@@ -1300,8 +1301,8 @@ function initializeCameraWindowFromPlayerTile(playerTileX: number, playerTileY: 
   fieldCameraOffset.yTileOffset = 0;
   fieldCameraOffset.xPixelOffset = 0;
   fieldCameraOffset.yPixelOffset = 0;
-  lastAuthoritativeCameraTileX = playerTileX;
-  lastAuthoritativeCameraTileY = playerTileY;
+  lastRenderedCameraTileX = playerTileX;
+  lastRenderedCameraTileY = playerTileY;
   redrawEntireCameraWindow();
 }
 
@@ -1323,8 +1324,16 @@ function updateCameraWindowForAuthoritativeTileStep(): void {
   if (!activeRuntimeChunk || !activeLayoutForRender) {
     return;
   }
-  let diffX = state.playerTileX - lastAuthoritativeCameraTileX;
-  let diffY = state.playerTileY - lastAuthoritativeCameraTileY;
+  const renderedCameraTileX = resolveRenderedCameraAxisTile(
+    state.renderTileX,
+    state.playerTileX,
+  );
+  const renderedCameraTileY = resolveRenderedCameraAxisTile(
+    state.renderTileY,
+    state.playerTileY,
+  );
+  let diffX = renderedCameraTileX - lastRenderedCameraTileX;
+  let diffY = renderedCameraTileY - lastRenderedCameraTileY;
   if (diffX === 0 && diffY === 0) {
     return;
   }
@@ -1349,8 +1358,8 @@ function updateCameraWindowForAuthoritativeTileStep(): void {
     diffY += 1;
   }
 
-  lastAuthoritativeCameraTileX = state.playerTileX;
-  lastAuthoritativeCameraTileY = state.playerTileY;
+  lastRenderedCameraTileX = renderedCameraTileX;
+  lastRenderedCameraTileY = renderedCameraTileY;
   updateCameraWindowSlotPositions();
 }
 
