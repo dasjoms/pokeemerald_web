@@ -664,11 +664,30 @@ const VISUAL_RUNTIME_TICK_MS = 1000 / 60;
 let visualRuntimeTickAccumulatorMs = 0;
 
 app.ticker.add(() => {
-  const deltaMs = app.ticker.deltaMS;
-  runMovementAndCameraPhase(deltaMs);
-  runMetatileSliceRedrawEnqueuePhase();
-  runTilesetAnimationPhase(deltaMs);
-  runMapLayerCommitAndPresentPhase(deltaMs);
+  visualRuntimeTickAccumulatorMs = Math.min(
+    visualRuntimeTickAccumulatorMs + app.ticker.deltaMS,
+    VISUAL_RUNTIME_TICK_MS * 120,
+  );
+  while (visualRuntimeTickAccumulatorMs >= VISUAL_RUNTIME_TICK_MS) {
+    playerMovementActionRuntime.tickTicks(1);
+    playerAnimation.setHopArcAirborne(playerMovementActionRuntime.isHopArcAirborne());
+    playerAnimation.tickTicks(1);
+    visualRuntimeTickAccumulatorMs -= VISUAL_RUNTIME_TICK_MS;
+  }
+  walkInputController.tick();
+  tickWalkTransition(app.ticker.deltaMS);
+  redrawMapWindowSlicesFromMovement();
+  playerAnimation.applyPendingModeChanges();
+  presentPlayerAnimationFrame();
+  tickTilesetAnimationClock(app.ticker.deltaMS);
+  presentTilesetAnimation();
+  bikeEffectRenderer.tick(app.ticker.deltaMS);
+  hopParticleRenderer.tick(app.ticker.deltaMS);
+  updateMapWindowPresentation();
+  positionPlayerSprite();
+  updateObjectDepthSorting();
+  updateCamera();
+  renderHud();
 });
 
 connectWebSocket();
@@ -1266,45 +1285,7 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
   overworldWindowRenderer.initWindow(state.windowOriginTileX, state.windowOriginTileY, mapWindowBacking);
   activeMapMutationApplier = createMapMutationApplier();
   applyWindowSyncMessages(runtimeChunk.windowSync);
-  overworldWindowRenderer.commitScheduledTileWrites();
   updateMapWindowPresentation();
-}
-
-function runMovementAndCameraPhase(deltaMs: number): void {
-  visualRuntimeTickAccumulatorMs = Math.min(
-    visualRuntimeTickAccumulatorMs + deltaMs,
-    VISUAL_RUNTIME_TICK_MS * 120,
-  );
-  while (visualRuntimeTickAccumulatorMs >= VISUAL_RUNTIME_TICK_MS) {
-    playerMovementActionRuntime.tickTicks(1);
-    playerAnimation.setHopArcAirborne(playerMovementActionRuntime.isHopArcAirborne());
-    playerAnimation.tickTicks(1);
-    visualRuntimeTickAccumulatorMs -= VISUAL_RUNTIME_TICK_MS;
-  }
-  walkInputController.tick();
-  tickWalkTransition(deltaMs);
-  playerAnimation.applyPendingModeChanges();
-  presentPlayerAnimationFrame();
-}
-
-function runMetatileSliceRedrawEnqueuePhase(): void {
-  redrawMapWindowSlicesFromMovement();
-}
-
-function runTilesetAnimationPhase(deltaMs: number): void {
-  tickTilesetAnimationClock(deltaMs);
-  presentTilesetAnimation();
-}
-
-function runMapLayerCommitAndPresentPhase(deltaMs: number): void {
-  overworldWindowRenderer.commitScheduledTileWrites();
-  bikeEffectRenderer.tick(deltaMs);
-  hopParticleRenderer.tick(deltaMs);
-  updateMapWindowPresentation();
-  positionPlayerSprite();
-  updateObjectDepthSorting();
-  updateCamera();
-  renderHud();
 }
 
 function createMapMutationApplier(): MapMutationApplier {
