@@ -469,6 +469,8 @@ let activePrimaryTileCount = Number.MAX_SAFE_INTEGER;
 const fieldCameraOffset = createInitialCameraWindowOffset();
 let cameraWindowOriginTileX = 0;
 let cameraWindowOriginTileY = 0;
+let presentationRingOffsetX: number | null = null;
+let presentationRingOffsetY: number | null = null;
 let lastRenderedCameraTileX = 0;
 let lastRenderedCameraTileY = 0;
 const cameraBufferSlots: CameraBufferSlot[] = [];
@@ -1302,6 +1304,8 @@ function initializeCameraWindowFromPlayerTile(playerTileX: number, playerTileY: 
   fieldCameraOffset.yTileOffset = 0;
   fieldCameraOffset.xPixelOffset = 0;
   fieldCameraOffset.yPixelOffset = 0;
+  presentationRingOffsetX = null;
+  presentationRingOffsetY = null;
   lastRenderedCameraTileX = playerTileX;
   lastRenderedCameraTileY = playerTileY;
   redrawEntireCameraWindow();
@@ -1372,11 +1376,13 @@ function applyCameraWindowMetatileStep(stepX: number, stepY: number): void {
   cameraWindowOriginTileX += stepX;
   cameraWindowOriginTileY += stepY;
   advanceFieldCameraByMetatile(fieldCameraOffset, stepX, stepY);
+  reconcileCameraPresentationRingPhase();
   redrawEnteringCameraSlice(stepX, stepY);
 }
 
 function preloadIncomingCameraSlices(diffX: number, diffY: number): void {
   if (diffX === 0 && diffY === 0) {
+    reconcileCameraPresentationRingPhase();
     return;
   }
 
@@ -1384,23 +1390,49 @@ function preloadIncomingCameraSlices(diffX: number, diffY: number): void {
   let preloadDiffY = diffY;
   while (preloadDiffX !== 0 || preloadDiffY !== 0) {
     if (preloadDiffX > 0) {
+      applyCameraPresentationRingPhaseForStep(1, 0);
       redrawPreloadEnteringCameraSlice(1, 0);
       preloadDiffX -= 1;
       continue;
     }
     if (preloadDiffX < 0) {
+      applyCameraPresentationRingPhaseForStep(-1, 0);
       redrawPreloadEnteringCameraSlice(-1, 0);
       preloadDiffX += 1;
       continue;
     }
     if (preloadDiffY > 0) {
+      applyCameraPresentationRingPhaseForStep(0, 1);
       redrawPreloadEnteringCameraSlice(0, 1);
       preloadDiffY -= 1;
       continue;
     }
+    applyCameraPresentationRingPhaseForStep(0, -1);
     redrawPreloadEnteringCameraSlice(0, -1);
     preloadDiffY += 1;
   }
+}
+
+function applyCameraPresentationRingPhaseForStep(stepX: number, stepY: number): void {
+  const committedRingOffsetX = toMetatileRingOffset(fieldCameraOffset.xTileOffset);
+  const committedRingOffsetY = toMetatileRingOffset(fieldCameraOffset.yTileOffset);
+
+  if (stepX < 0) {
+    presentationRingOffsetX = cameraMod(committedRingOffsetX - 1, CAMERA_METATILE_BUFFER_DIM);
+  } else if (stepX > 0) {
+    presentationRingOffsetX = committedRingOffsetX;
+  }
+
+  if (stepY < 0) {
+    presentationRingOffsetY = cameraMod(committedRingOffsetY - 1, CAMERA_METATILE_BUFFER_DIM);
+  } else if (stepY > 0) {
+    presentationRingOffsetY = committedRingOffsetY;
+  }
+}
+
+function reconcileCameraPresentationRingPhase(): void {
+  presentationRingOffsetX = null;
+  presentationRingOffsetY = null;
 }
 
 function redrawPreloadEnteringCameraSlice(stepX: number, stepY: number): void {
@@ -1539,8 +1571,10 @@ function drawCameraSlotAt(bufferX: number, bufferY: number, worldTileX: number, 
 }
 
 function updateCameraWindowSlotPositions(): void {
-  const ringOffsetX = toMetatileRingOffset(fieldCameraOffset.xTileOffset);
-  const ringOffsetY = toMetatileRingOffset(fieldCameraOffset.yTileOffset);
+  const committedRingOffsetX = toMetatileRingOffset(fieldCameraOffset.xTileOffset);
+  const committedRingOffsetY = toMetatileRingOffset(fieldCameraOffset.yTileOffset);
+  const ringOffsetX = presentationRingOffsetX ?? committedRingOffsetX;
+  const ringOffsetY = presentationRingOffsetY ?? committedRingOffsetY;
   for (let y = 0; y < CAMERA_METATILE_BUFFER_DIM; y += 1) {
     for (let x = 0; x < CAMERA_METATILE_BUFFER_DIM; x += 1) {
       const physicalX = cameraMod(x - ringOffsetX, CAMERA_METATILE_BUFFER_DIM);
