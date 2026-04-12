@@ -85,49 +85,71 @@ export class OverworldWindowRenderer<TTile> {
       return;
     }
 
-    this.centerTileX += clampedDeltaX;
-    this.centerTileY += clampedDeltaY;
-
     if (Math.abs(clampedDeltaX) >= WINDOW_SIZE_TILES || Math.abs(clampedDeltaY) >= WINDOW_SIZE_TILES) {
+      this.centerTileX += clampedDeltaX;
+      this.centerTileY += clampedDeltaY;
       this.redrawWholeWindow();
       return;
     }
 
-    const minTileX = this.centerTileX - WINDOW_HALF_TILES;
-    const maxTileX = minTileX + WINDOW_SIZE_TILES - 1;
-    const minTileY = this.centerTileY - WINDOW_HALF_TILES;
-    const maxTileY = minTileY + WINDOW_SIZE_TILES - 1;
-
     if (clampedDeltaX > 0) {
       for (let step = 0; step < clampedDeltaX; step += 1) {
-        const worldTileX = maxTileX - step;
-        for (let worldTileY = minTileY; worldTileY <= maxTileY; worldTileY += 1) {
-          this.drawWorldTile(worldTileX, worldTileY);
-        }
+        this.centerTileX += 1;
+        this.redrawSliceEast();
       }
     } else if (clampedDeltaX < 0) {
       for (let step = 0; step < -clampedDeltaX; step += 1) {
-        const worldTileX = minTileX + step;
-        for (let worldTileY = minTileY; worldTileY <= maxTileY; worldTileY += 1) {
-          this.drawWorldTile(worldTileX, worldTileY);
-        }
+        this.centerTileX -= 1;
+        this.redrawSliceWest();
       }
     }
 
     if (clampedDeltaY > 0) {
       for (let step = 0; step < clampedDeltaY; step += 1) {
-        const worldTileY = maxTileY - step;
-        for (let worldTileX = minTileX; worldTileX <= maxTileX; worldTileX += 1) {
-          this.drawWorldTile(worldTileX, worldTileY);
-        }
+        this.centerTileY += 1;
+        this.redrawSliceSouth();
       }
     } else if (clampedDeltaY < 0) {
       for (let step = 0; step < -clampedDeltaY; step += 1) {
-        const worldTileY = minTileY + step;
-        for (let worldTileX = minTileX; worldTileX <= maxTileX; worldTileX += 1) {
-          this.drawWorldTile(worldTileX, worldTileY);
-        }
+        this.centerTileY -= 1;
+        this.redrawSliceNorth();
       }
+    }
+  }
+
+  redrawSliceNorth(): void {
+    const minTileX = this.centerTileX - WINDOW_HALF_TILES;
+    const maxTileX = minTileX + WINDOW_SIZE_TILES - 1;
+    const enteringTileY = this.centerTileY - WINDOW_HALF_TILES;
+    for (let worldTileX = minTileX; worldTileX <= maxTileX; worldTileX += 1) {
+      this.drawWorldTile(worldTileX, enteringTileY);
+    }
+  }
+
+  redrawSliceSouth(): void {
+    const minTileX = this.centerTileX - WINDOW_HALF_TILES;
+    const maxTileX = minTileX + WINDOW_SIZE_TILES - 1;
+    const enteringTileY = this.centerTileY - WINDOW_HALF_TILES + WINDOW_SIZE_TILES - 1;
+    for (let worldTileX = minTileX; worldTileX <= maxTileX; worldTileX += 1) {
+      this.drawWorldTile(worldTileX, enteringTileY);
+    }
+  }
+
+  redrawSliceEast(): void {
+    const minTileY = this.centerTileY - WINDOW_HALF_TILES;
+    const maxTileY = minTileY + WINDOW_SIZE_TILES - 1;
+    const enteringTileX = this.centerTileX - WINDOW_HALF_TILES + WINDOW_SIZE_TILES - 1;
+    for (let worldTileY = minTileY; worldTileY <= maxTileY; worldTileY += 1) {
+      this.drawWorldTile(enteringTileX, worldTileY);
+    }
+  }
+
+  redrawSliceWest(): void {
+    const minTileY = this.centerTileY - WINDOW_HALF_TILES;
+    const maxTileY = minTileY + WINDOW_SIZE_TILES - 1;
+    const enteringTileX = this.centerTileX - WINDOW_HALF_TILES;
+    for (let worldTileY = minTileY; worldTileY <= maxTileY; worldTileY += 1) {
+      this.drawWorldTile(enteringTileX, worldTileY);
     }
   }
 

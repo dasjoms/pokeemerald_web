@@ -622,6 +622,7 @@ app.ticker.add(() => {
   }
   walkInputController.tick();
   tickWalkTransition(app.ticker.deltaMS);
+  redrawMapWindowSlicesFromMovement();
   playerAnimation.applyPendingModeChanges();
   presentPlayerAnimationFrame();
   tickTilesetAnimationClock(app.ticker.deltaMS);
@@ -1406,7 +1407,7 @@ function renderWindowSlot({
   });
 }
 
-function updateMapWindowPresentation(): void {
+function redrawMapWindowSlicesFromMovement(): void {
   if (!activeRuntimeChunk) {
     return;
   }
@@ -1419,7 +1420,12 @@ function updateMapWindowPresentation(): void {
     activeWindowCenterTileX = renderTileX;
     activeWindowCenterTileY = renderTileY;
   }
+}
 
+function updateMapWindowPresentation(): void {
+  if (!activeRuntimeChunk) {
+    return;
+  }
   const windowOffset = overworldWindowRenderer.applyWindowScroll(
     Math.floor(state.renderTileX * TILE_SIZE),
     Math.floor(state.renderTileY * TILE_SIZE),
