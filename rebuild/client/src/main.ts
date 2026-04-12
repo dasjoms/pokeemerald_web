@@ -348,8 +348,6 @@ const ENABLE_DEBUG_OVERLAY_DEFAULT =
 const ENABLE_DEV_DEBUG_ACTIONS =
   new URLSearchParams(window.location.search).get('devDebugActions') === '1';
 const DEBUG_ACRO_HOP = true;
-const ENABLE_CAMERA_TRACE_LOGS =
-  new URLSearchParams(window.location.search).get('cameraTrace') === '1';
 const jsonAssetLoaders = import.meta.glob('../../assets/**/*.json');
 const binaryAssetUrls = import.meta.glob('../../assets/**/*.bin', {
   query: '?url',
@@ -456,7 +454,6 @@ let lastLoggedPrereqBlockSignature: string | null = null;
 let nextAcroHopAttemptId = 1;
 let activeAcroHopAttempt: AcroHopAttempt | null = null;
 let pendingHopLandingParticleEvent: PendingHopLandingParticleEvent | null = null;
-let cameraTraceTickCounter = 0;
 
 let activeTilesetAnimationPairId: string | null = null;
 let activeTilesetAnimationState: TilesetAnimationState | null = null;
@@ -641,7 +638,6 @@ const VISUAL_RUNTIME_TICK_MS = 1000 / 60;
 let visualRuntimeTickAccumulatorMs = 0;
 
 app.ticker.add(() => {
-  cameraTraceTickCounter += 1;
   visualRuntimeTickAccumulatorMs = Math.min(
     visualRuntimeTickAccumulatorMs + app.ticker.deltaMS,
     VISUAL_RUNTIME_TICK_MS * 120,
@@ -1417,18 +1413,6 @@ function runCameraWindowPresentationPhase(): void {
 }
 
 function applyCameraWindowMetatileStep(stepX: number, stepY: number): void {
-  const shouldTraceHorizontalStep = ENABLE_CAMERA_TRACE_LOGS && stepX !== 0;
-  const moveDirection = stepX < 0 ? 'left' : 'right';
-  const beforeSnapshot = {
-    cameraWindowOriginTileX,
-    cameraWindowOriginTileY,
-    fieldCameraOffset: {
-      xTileOffset: fieldCameraOffset.xTileOffset,
-      yTileOffset: fieldCameraOffset.yTileOffset,
-      xPixelOffset: fieldCameraOffset.xPixelOffset,
-      yPixelOffset: fieldCameraOffset.yPixelOffset,
-    },
-  };
   cameraWindowOriginTileX += stepX;
   cameraWindowOriginTileY += stepY;
   advanceFieldCameraByMetatile(fieldCameraOffset, stepX, stepY);
@@ -1438,34 +1422,6 @@ function applyCameraWindowMetatileStep(stepX: number, stepY: number): void {
     stepX,
     stepY,
   );
-  if (shouldTraceHorizontalStep) {
-    const visibleMinX = cameraWindowOriginTileX + fieldCameraOffset.xPixelOffset / TILE_SIZE;
-    const visibleMaxX = visibleMinX + CAMERA_METATILE_BUFFER_DIM - 1;
-    console.log('[camera-trace][presentation-step]', {
-      frame: cameraTraceTickCounter,
-      moveDirection,
-      appliedStepX: stepX,
-      before: beforeSnapshot,
-      after: {
-        cameraWindowOriginTileX,
-        cameraWindowOriginTileY,
-        fieldCameraOffset: {
-          xTileOffset: fieldCameraOffset.xTileOffset,
-          yTileOffset: fieldCameraOffset.yTileOffset,
-          xPixelOffset: fieldCameraOffset.xPixelOffset,
-          yPixelOffset: fieldCameraOffset.yPixelOffset,
-        },
-      },
-      playerTileX: state.playerTileX,
-      playerTileY: state.playerTileY,
-      renderTileX: state.renderTileX,
-      renderTileY: state.renderTileY,
-      leftEdgeWorldTileX: cameraWindowOriginTileX,
-      rightEdgeWorldTileX: cameraWindowOriginTileX + CAMERA_METATILE_BUFFER_DIM - 1,
-      visibleMinX,
-      visibleMaxX,
-    });
-  }
 }
 
 function simulateCameraWindowSteps(
@@ -1561,47 +1517,6 @@ function redrawPreloadedEnteringCameraSlice(
     stepX,
     stepY,
   );
-  if (ENABLE_CAMERA_TRACE_LOGS && stepX !== 0) {
-    const moveDirection = stepX < 0 ? 'left' : 'right';
-    const worldTileXValues = redraws.map((redraw) => redraw.worldTileX);
-    const worldTileYValues = redraws.map((redraw) => redraw.worldTileY);
-    const payload = {
-      frame: cameraTraceTickCounter,
-      moveDirection,
-      stepX,
-      playerTileX: state.playerTileX,
-      playerTileY: state.playerTileY,
-      renderTileX: state.renderTileX,
-      renderTileY: state.renderTileY,
-      cameraWindowOriginTileX: origin.originTileX,
-      cameraWindowOriginTileY: origin.originTileY,
-      fieldCameraOffset: {
-        xTileOffset: offset.xTileOffset,
-        yTileOffset: offset.yTileOffset,
-        xPixelOffset: offset.xPixelOffset,
-        yPixelOffset: offset.yPixelOffset,
-      },
-      redrawEntries: redraws.map((redraw) => ({
-        bufferX: redraw.bufferX,
-        bufferY: redraw.bufferY,
-        worldTileX: redraw.worldTileX,
-        worldTileY: redraw.worldTileY,
-      })),
-      uniqueWorldTileXValues: [...new Set(worldTileXValues)],
-      minWorldTileY: worldTileYValues.length === 0 ? null : Math.min(...worldTileYValues),
-      maxWorldTileY: worldTileYValues.length === 0 ? null : Math.max(...worldTileYValues),
-    };
-    console.groupCollapsed('[camera-trace][preload-column]', {
-      frame: cameraTraceTickCounter,
-      moveDirection,
-      stepX,
-      uniqueWorldTileXValues: payload.uniqueWorldTileXValues,
-      minWorldTileY: payload.minWorldTileY,
-      maxWorldTileY: payload.maxWorldTileY,
-    });
-    console.log('[camera-trace][preload-column]', payload);
-    console.groupEnd();
-  }
   for (const redraw of redraws) {
     drawCameraSlotAt(redraw.bufferX, redraw.bufferY, redraw.worldTileX, redraw.worldTileY);
   }
