@@ -127,10 +127,10 @@ type DecodedMapChunk = {
   tiles: LayoutTile[];
 };
 
-type InitialWindowCenterSync = {
-  kind: 'initial_window_center';
-  centerTileX: number;
-  centerTileY: number;
+type InitialCameraPosSync = {
+  kind: 'initial_camera_pos';
+  cameraPosTileX: number;
+  cameraPosTileY: number;
 };
 
 type TileBoundaryCameraDeltaSync = {
@@ -147,7 +147,7 @@ type DirtyMetatilePatchSync = {
 };
 
 type WindowSyncMessage =
-  | InitialWindowCenterSync
+  | InitialCameraPosSync
   | TileBoundaryCameraDeltaSync
   | DirtyMetatilePatchSync;
 
@@ -264,8 +264,8 @@ type ClientWorldState = {
   lastAckServerTick: number;
   renderTileX: number;
   renderTileY: number;
-  windowOriginTileX: number;
-  windowOriginTileY: number;
+  cameraPosTileX: number;
+  cameraPosTileY: number;
   pixelOffsetX: number;
   pixelOffsetY: number;
   verticalCameraBiasPx: number;
@@ -370,6 +370,7 @@ type AcroHopAttempt = {
 type PendingHopLandingParticleEvent = QueuedHopLandingParticleEvent;
 
 const TILE_SIZE = 16;
+const MAP_OFFSET = 7;
 const SUBTILE_SIZE = 8;
 const RENDER_SCALE = 4;
 const ROM_BG_VERTICAL_SCROLL_BIAS_PX = 8;
@@ -416,8 +417,8 @@ const state: ClientWorldState = {
   lastAckServerTick: 0,
   renderTileX: 0,
   renderTileY: 0,
-  windowOriginTileX: 0,
-  windowOriginTileY: 0,
+  cameraPosTileX: 0,
+  cameraPosTileY: 0,
   pixelOffsetX: 0,
   pixelOffsetY: 0,
   verticalCameraBiasPx: ROM_BG_VERTICAL_SCROLL_BIAS_PX,
@@ -597,8 +598,8 @@ const overworldWindowRenderer = new OverworldWindowRenderer<LayoutTile>({
   tileSize: TILE_SIZE,
   renderSlot: renderWindowSlot,
 });
-let activeWindowCenterTileX = 0;
-let activeWindowCenterTileY = 0;
+let activeCameraPosTileX = 0;
+let activeCameraPosTileY = 0;
 let activeMapMutationApplier: MapMutationApplier | null = null;
 
 let activeAvatar: PlayerAvatar = PlayerAvatar.BRENDAN;
@@ -1257,13 +1258,13 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
   }
 
   syncCameraWindowFromRenderPosition();
-  activeWindowCenterTileX = state.windowOriginTileX;
-  activeWindowCenterTileY = state.windowOriginTileY;
+  activeCameraPosTileX = state.cameraPosTileX;
+  activeCameraPosTileY = state.cameraPosTileY;
   const mapWindowBacking = createMapWindowBacking({
     chunk: runtimeChunk.chunk,
     borderTiles: layout.border_tiles,
   });
-  overworldWindowRenderer.initWindow(state.windowOriginTileX, state.windowOriginTileY, mapWindowBacking);
+  overworldWindowRenderer.initWindow(state.cameraPosTileX, state.cameraPosTileY, mapWindowBacking);
   activeMapMutationApplier = createMapMutationApplier();
   applyWindowSyncMessages(runtimeChunk.windowSync);
   overworldWindowRenderer.commitScheduledTileWrites();
@@ -1327,10 +1328,10 @@ function createMapMutationApplier(): MapMutationApplier {
         if (Number.isNaN(tileX) || Number.isNaN(tileY)) {
           continue;
         }
-        const minVisibleTileX = activeWindowCenterTileX - 16;
-        const maxVisibleTileX = activeWindowCenterTileX + 15;
-        const minVisibleTileY = activeWindowCenterTileY - 16;
-        const maxVisibleTileY = activeWindowCenterTileY + 15;
+        const minVisibleTileX = activeCameraPosTileX;
+        const maxVisibleTileX = activeCameraPosTileX + 31;
+        const minVisibleTileY = activeCameraPosTileY;
+        const maxVisibleTileY = activeCameraPosTileY + 31;
         if (tileX >= minVisibleTileX && tileX <= maxVisibleTileX && tileY >= minVisibleTileY && tileY <= maxVisibleTileY) {
           overworldWindowRenderer.redrawWorldTileAt(tileX, tileY);
         }
@@ -1521,8 +1522,8 @@ function redrawMapWindowSlicesFromMovement(): void {
   if (!activeRuntimeChunk) {
     return;
   }
-  const deltaTileX = state.windowOriginTileX - activeWindowCenterTileX;
-  const deltaTileY = state.windowOriginTileY - activeWindowCenterTileY;
+  const deltaTileX = state.cameraPosTileX - activeCameraPosTileX;
+  const deltaTileY = state.cameraPosTileY - activeCameraPosTileY;
   if (deltaTileX !== 0 || deltaTileY !== 0) {
     if (ENABLE_WINDOW_STREAM_RUNTIME) {
       applyWindowSyncMessages([{
@@ -1533,22 +1534,22 @@ function redrawMapWindowSlicesFromMovement(): void {
       return;
     }
     overworldWindowRenderer.redrawEdgeSlices(deltaTileX, deltaTileY);
-    activeWindowCenterTileX = state.windowOriginTileX;
-    activeWindowCenterTileY = state.windowOriginTileY;
+    activeCameraPosTileX = state.cameraPosTileX;
+    activeCameraPosTileY = state.cameraPosTileY;
   }
 }
 
 function applyWindowSyncMessages(messages: WindowSyncMessage[]): void {
   for (const message of messages) {
-    if (message.kind === 'initial_window_center') {
-      activeWindowCenterTileX = message.centerTileX;
-      activeWindowCenterTileY = message.centerTileY;
+    if (message.kind === 'initial_camera_pos') {
+      activeCameraPosTileX = message.cameraPosTileX;
+      activeCameraPosTileY = message.cameraPosTileY;
       continue;
     }
     if (message.kind === 'tile_boundary_camera_delta') {
       overworldWindowRenderer.redrawEdgeSlices(message.deltaTileX, message.deltaTileY);
-      activeWindowCenterTileX += message.deltaTileX;
-      activeWindowCenterTileY += message.deltaTileY;
+      activeCameraPosTileX += message.deltaTileX;
+      activeCameraPosTileY += message.deltaTileY;
       continue;
     }
     if (message.kind === 'dirty_metatile_patch') {
@@ -1563,8 +1564,8 @@ function updateMapWindowPresentation(): void {
     return;
   }
   const windowOffset = overworldWindowRenderer.applyWindowScroll(
-    state.windowOriginTileX * TILE_SIZE + state.pixelOffsetX,
-    state.windowOriginTileY * TILE_SIZE + state.pixelOffsetY + state.verticalCameraBiasPx,
+    state.cameraPosTileX * TILE_SIZE + state.pixelOffsetX,
+    state.cameraPosTileY * TILE_SIZE + state.pixelOffsetY + state.verticalCameraBiasPx,
   );
   mapBg3Layer.x = windowOffset.x;
   mapBg3Layer.y = windowOffset.y;
@@ -1784,9 +1785,9 @@ function resolveRuntimeMapChunk(snapshot: WorldSnapshot, layout: LayoutFile): Re
       chunk: decoded.chunk,
       windowSync: [
         {
-          kind: 'initial_window_center',
-          centerTileX: state.windowOriginTileX,
-          centerTileY: state.windowOriginTileY,
+          kind: 'initial_camera_pos',
+          cameraPosTileX: state.cameraPosTileX,
+          cameraPosTileY: state.cameraPosTileY,
         },
         ...decoded.hooks.dirtyPatches,
       ],
@@ -1803,9 +1804,9 @@ function resolveRuntimeMapChunk(snapshot: WorldSnapshot, layout: LayoutFile): Re
           tiles: layout.tiles,
         },
         windowSync: [{
-          kind: 'initial_window_center',
-          centerTileX: state.windowOriginTileX,
-          centerTileY: state.windowOriginTileY,
+          kind: 'initial_camera_pos',
+          cameraPosTileX: state.cameraPosTileX,
+          cameraPosTileY: state.cameraPosTileY,
         }],
       };
     }
@@ -2762,8 +2763,8 @@ function updateHopShadowSuppressionContext(): void {
 function positionPlayerSprite(): void {
   updatePlayerActorLayer();
   const movementActionVisual = playerMovementActionRuntime.getVisualState();
-  const playerPixelX = state.windowOriginTileX * TILE_SIZE + state.pixelOffsetX;
-  const playerPixelY = state.windowOriginTileY * TILE_SIZE + state.pixelOffsetY;
+  const playerPixelX = state.cameraPosTileX * TILE_SIZE + state.pixelOffsetX;
+  const playerPixelY = state.cameraPosTileY * TILE_SIZE + state.pixelOffsetY;
   playerSprite.x = playerPixelX + TILE_SIZE / 2;
   playerSprite.y = playerPixelY + TILE_SIZE + movementActionVisual.yOffsetPx;
   updateHopShadowSuppressionContext();
@@ -3069,9 +3070,9 @@ function presentPlayerAnimationFrame(): void {
 }
 
 function updateCamera(): void {
-  const centerX = state.windowOriginTileX * TILE_SIZE + state.pixelOffsetX + TILE_SIZE / 2;
+  const centerX = state.cameraPosTileX * TILE_SIZE + state.pixelOffsetX + TILE_SIZE / 2;
   const centerY =
-    state.windowOriginTileY * TILE_SIZE +
+    state.cameraPosTileY * TILE_SIZE +
     state.pixelOffsetY +
     TILE_SIZE / 2 +
     state.verticalCameraBiasPx;
@@ -3088,8 +3089,8 @@ function setRenderPositionToTile(tileX: number, tileY: number): void {
 function syncCameraWindowFromRenderPosition(): void {
   const renderPixelX = Math.floor(state.renderTileX * TILE_SIZE);
   const renderPixelY = Math.floor(state.renderTileY * TILE_SIZE);
-  state.windowOriginTileX = Math.floor(renderPixelX / TILE_SIZE);
-  state.windowOriginTileY = Math.floor(renderPixelY / TILE_SIZE);
+  state.cameraPosTileX = Math.floor(renderPixelX / TILE_SIZE) - MAP_OFFSET;
+  state.cameraPosTileY = Math.floor(renderPixelY / TILE_SIZE) - MAP_OFFSET;
   state.pixelOffsetX = ((renderPixelX % TILE_SIZE) + TILE_SIZE) % TILE_SIZE;
   state.pixelOffsetY = ((renderPixelY % TILE_SIZE) + TILE_SIZE) % TILE_SIZE;
 }
