@@ -28,8 +28,13 @@ export class OverworldCompositor {
 
   async fullRedraw(message: RenderStateV1Message, assetRoot: string): Promise<void> {
     if (!this.resolver || this.loadedPairId !== message.tilesetPairId) {
-      this.resolver = await TilesetTextureResolver.create(assetRoot, message.tilesetPairId);
-      this.loadedPairId = message.tilesetPairId;
+      try {
+        this.resolver = await TilesetTextureResolver.create(assetRoot, message.tilesetPairId);
+        this.loadedPairId = message.tilesetPairId;
+      } catch {
+        this.resolver = null;
+        this.loadedPairId = null;
+      }
     }
 
     this.clearLayers();
@@ -86,6 +91,7 @@ export class OverworldCompositor {
       const idx = wheelIndex(baseX + dx, baseY + dy);
       const sprite = layer[idx];
       sprite.texture = this.tileTexture(subtile.tileIndex);
+      sprite.tint = this.tileTint(subtile.tileIndex, subtile.paletteIndex);
       sprite.visible = true;
       sprite.scale.set(subtile.hflip ? -1 : 1, subtile.vflip ? -1 : 1);
       sprite.anchor.set(subtile.hflip ? 1 : 0, subtile.vflip ? 1 : 0);
@@ -105,6 +111,16 @@ export class OverworldCompositor {
     const texture = this.resolver?.textureForTile(tileIndex) ?? Texture.WHITE;
     texture.source.scaleMode = SCALE_MODES.NEAREST;
     return texture;
+  }
+
+  private tileTint(tileIndex: number, paletteIndex: number): number {
+    if (this.resolver) {
+      return 0xffffff;
+    }
+    const r = (tileIndex * 37 + paletteIndex * 17) & 0xff;
+    const g = (tileIndex * 53 + paletteIndex * 29) & 0xff;
+    const b = (tileIndex * 71 + paletteIndex * 13) & 0xff;
+    return (r << 16) | (g << 8) | b;
   }
 
   private clearLayers(): void {

@@ -11,7 +11,7 @@ use axum::{
 };
 use rebuild_v2_server::{
     map_runtime::{RuntimeMapAssembler, MAP_OFFSET},
-    render_assets::resolve_render_metatile,
+    render_assets::RenderMetatileResolver,
     render_state::{
         CameraAnchor, RenderStateV1, RenderWindow, ServerMessage, RENDER_WINDOW_HEIGHT,
         RENDER_WINDOW_WIDTH,
@@ -123,9 +123,14 @@ async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>, client_versi
 
     match build_render_state(&state.asset_root) {
         Ok(render_state) => {
-            if send_json(&mut socket, &ServerMessage::RenderStateV1(render_state))
-                .await
-                .is_err()
+            if send_json(
+                &mut socket,
+                &ServerMessage::RenderStateV1 {
+                    state: render_state,
+                },
+            )
+            .await
+            .is_err()
             {
                 return;
             }
@@ -162,12 +167,13 @@ fn build_render_state(asset_root: &PathBuf) -> Result<RenderStateV1, String> {
     let origin_runtime_x = camera_runtime_x - (RENDER_WINDOW_WIDTH as i32 / 2);
     let origin_runtime_y = camera_runtime_y - (RENDER_WINDOW_HEIGHT as i32 / 2);
 
+    let resolver = RenderMetatileResolver::from_layout(asset_root, &layout)?;
     let mut metatiles = Vec::with_capacity(RENDER_WINDOW_WIDTH * RENDER_WINDOW_HEIGHT);
     for y in 0..RENDER_WINDOW_HEIGHT as i32 {
         for x in 0..RENDER_WINDOW_WIDTH as i32 {
             let packed =
                 runtime.get_packed_with_border_fallback(origin_runtime_x + x, origin_runtime_y + y);
-            metatiles.push(resolve_render_metatile(asset_root, &layout, packed)?);
+            metatiles.push(resolver.resolve(packed)?);
         }
     }
 

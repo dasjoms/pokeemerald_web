@@ -39,52 +39,64 @@ struct MetatileSubtile {
     layer_order: u8,
 }
 
-pub fn resolve_render_metatile(
-    asset_root: &Path,
-    layout: &LayoutAsset,
-    packed_raw: u16,
-) -> Result<RenderMetatile, String> {
-    let render_assets = layout
-        .render_assets
-        .as_ref()
-        .ok_or_else(|| format!("layout {} missing render_assets", layout.id))?;
+pub struct RenderMetatileResolver {
+    pair_id: String,
+    metatiles: MetatileAsset,
+}
 
-    let metatiles_path = asset_root.join(&render_assets.metatiles);
-    let source = fs::read_to_string(&metatiles_path)
-        .map_err(|err| format!("failed reading {}: {err}", metatiles_path.display()))?;
-    let metatile_asset: MetatileAsset = serde_json::from_str(&source)
-        .map_err(|err| format!("failed parsing {}: {err}", metatiles_path.display()))?;
+impl RenderMetatileResolver {
+    pub fn from_layout(asset_root: &Path, layout: &LayoutAsset) -> Result<Self, String> {
+        let render_assets = layout
+            .render_assets
+            .as_ref()
+            .ok_or_else(|| format!("layout {} missing render_assets", layout.id))?;
 
-    let metatile_id = packed_raw & MAPGRID_METATILE_ID_MASK;
-    let (tileset_index, in_tileset_index) = if metatile_id as usize >= NUM_METATILES_IN_PRIMARY {
-        (1usize, metatile_id as usize - NUM_METATILES_IN_PRIMARY)
-    } else {
-        (0usize, metatile_id as usize)
-    };
+        let metatiles_path = asset_root.join(&render_assets.metatiles);
+        let source = fs::read_to_string(&metatiles_path)
+            .map_err(|err| format!("failed reading {}: {err}", metatiles_path.display()))?;
+        let metatiles: MetatileAsset = serde_json::from_str(&source)
+            .map_err(|err| format!("failed parsing {}: {err}", metatiles_path.display()))?;
 
-    let definition = metatile_asset
-        .tilesets
-        .get(tileset_index)
-        .and_then(|tileset| tileset.metatiles.get(in_tileset_index))
-        .ok_or_else(|| {
-            format!(
-                "metatile definition missing: pair={}, metatile_id={metatile_id}",
-                render_assets.pair_id
-            )
-        })?;
+        Ok(Self {
+            pair_id: render_assets.pair_id.clone(),
+            metatiles,
+        })
+    }
 
-    let subtiles = to_subtiles(&definition.subtiles)?;
-    let collision = ((packed_raw & MAPGRID_COLLISION_MASK) >> MAPGRID_COLLISION_SHIFT) as u8;
-    let elevation = ((packed_raw & MAPGRID_ELEVATION_MASK) >> MAPGRID_ELEVATION_SHIFT) as u8;
+    pub fn resolve(&self, packed_raw: u16) -> Result<RenderMetatile, String> {
+        let metatile_id = packed_raw & MAPGRID_METATILE_ID_MASK;
+        let (tileset_index, in_tileset_index) = if metatile_id as usize >= NUM_METATILES_IN_PRIMARY
+        {
+            (1usize, metatile_id as usize - NUM_METATILES_IN_PRIMARY)
+        } else {
+            (0usize, metatile_id as usize)
+        };
 
-    Ok(RenderMetatile {
-        packed_raw,
-        metatile_id,
-        collision,
-        elevation,
-        layer_type: definition.layer_type,
-        subtiles,
-    })
+        let definition = self
+            .metatiles
+            .tilesets
+            .get(tileset_index)
+            .and_then(|tileset| tileset.metatiles.get(in_tileset_index))
+            .ok_or_else(|| {
+                format!(
+                    "metatile definition missing: pair={}, metatile_id={metatile_id}",
+                    self.pair_id
+                )
+            })?;
+
+        let subtiles = to_subtiles(&definition.subtiles)?;
+        let collision = ((packed_raw & MAPGRID_COLLISION_MASK) >> MAPGRID_COLLISION_SHIFT) as u8;
+        let elevation = ((packed_raw & MAPGRID_ELEVATION_MASK) >> MAPGRID_ELEVATION_SHIFT) as u8;
+
+        Ok(RenderMetatile {
+            packed_raw,
+            metatile_id,
+            collision,
+            elevation,
+            layer_type: definition.layer_type,
+            subtiles,
+        })
+    }
 }
 
 fn to_subtiles(raw: &[MetatileSubtile]) -> Result<[RenderSubtile; 8], String> {

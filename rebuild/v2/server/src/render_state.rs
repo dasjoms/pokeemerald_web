@@ -4,14 +4,21 @@ pub const RENDER_WINDOW_WIDTH: usize = 16;
 pub const RENDER_WINDOW_HEIGHT: usize = 16;
 
 #[derive(Debug, Serialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(
+    tag = "type",
+    rename_all = "snake_case",
+    rename_all_fields = "camelCase"
+)]
 pub enum ServerMessage {
     ServerHello {
         protocol_version: u16,
         server_authority: bool,
         client_version_echo: String,
     },
-    RenderStateV1(RenderStateV1),
+    RenderStateV1 {
+        #[serde(flatten)]
+        state: RenderStateV1,
+    },
 }
 
 #[derive(Debug, Serialize)]
