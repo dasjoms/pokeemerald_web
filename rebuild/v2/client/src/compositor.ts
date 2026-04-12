@@ -5,6 +5,8 @@ import { TilesetTextureResolver } from "./assetLoader";
 
 const TILE_SIZE = 8;
 const METATILE_SIZE = 2;
+const NORMAL_BOTTOM_FILL_TILE_INDEX = 0x14;
+const NORMAL_BOTTOM_FILL_PALETTE_INDEX = 3;
 
 export class OverworldCompositor {
   readonly root = new Container();
@@ -73,10 +75,24 @@ export class OverworldCompositor {
         break;
       case 0: // NORMAL
       default:
-        this.paintTransparent(this.bottomSprites, subtileX, subtileY);
+        this.paintBottomFiller(this.bottomSprites, subtileX, subtileY);
         this.paintLayer(this.middleSprites, subtileX, subtileY, bottom);
         this.paintLayer(this.topSprites, subtileX, subtileY, top);
         break;
+    }
+  }
+
+  private paintBottomFiller(layer: Sprite[], baseX: number, baseY: number): void {
+    for (let i = 0; i < 4; i += 1) {
+      const dx = i % 2;
+      const dy = Math.floor(i / 2);
+      const idx = wheelIndex(baseX + dx, baseY + dy);
+      const sprite = layer[idx];
+      sprite.texture = this.tileTexture(NORMAL_BOTTOM_FILL_TILE_INDEX);
+      sprite.tint = this.tileTint(NORMAL_BOTTOM_FILL_TILE_INDEX, NORMAL_BOTTOM_FILL_PALETTE_INDEX);
+      sprite.visible = true;
+      sprite.scale.set(1, 1);
+      sprite.anchor.set(0, 0);
     }
   }
 
