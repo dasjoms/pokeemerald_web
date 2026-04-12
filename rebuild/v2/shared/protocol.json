@@ -1,0 +1,15 @@
+{
+  "protocolName": "pokeemerald-rebuild-v2",
+  "wireFormat": "versioned-binary-placeholder",
+  "version": 1,
+  "handshake": {
+    "clientHello": {
+      "clientVersion": "string"
+    },
+    "serverHello": {
+      "protocolVersion": 1,
+      "serverAuthority": true,
+      "message": "string"
+    }
+  }
+}
