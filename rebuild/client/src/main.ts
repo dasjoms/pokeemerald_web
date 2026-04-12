@@ -127,44 +127,6 @@ type DecodedMapChunk = {
   tiles: LayoutTile[];
 };
 
-type InitialWindowCenterSync = {
-  kind: 'initial_window_center';
-  centerTileX: number;
-  centerTileY: number;
-};
-
-type TileBoundaryCameraDeltaSync = {
-  kind: 'tile_boundary_camera_delta';
-  deltaTileX: number;
-  deltaTileY: number;
-};
-
-type DirtyMetatilePatchSync = {
-  kind: 'dirty_metatile_patch';
-  tileX: number;
-  tileY: number;
-  tile: LayoutTile;
-};
-
-type WindowSyncMessage =
-  | InitialWindowCenterSync
-  | TileBoundaryCameraDeltaSync
-  | DirtyMetatilePatchSync;
-
-type DecodedMapChunkHooks = {
-  dirtyPatches: DirtyMetatilePatchSync[];
-};
-
-type ResolvedRuntimeMapChunk = {
-  chunk: DecodedMapChunk;
-  windowSync: WindowSyncMessage[];
-};
-
-type MapMutationApplier = {
-  setMetatileAt: (tileX: number, tileY: number, tile: LayoutTile) => boolean;
-  redrawDirtyIfVisible: () => void;
-};
-
 type RenderAssetsRef = {
   pair_id: string;
   atlas: string;
@@ -380,8 +342,6 @@ const ENABLE_DEBUG_OVERLAY_DEFAULT =
   new URLSearchParams(window.location.search).get('debug') === '1';
 const ENABLE_DEV_DEBUG_ACTIONS =
   new URLSearchParams(window.location.search).get('devDebugActions') === '1';
-const ENABLE_WINDOW_STREAM_RUNTIME =
-  new URLSearchParams(window.location.search).get('windowStream') === '1';
 const DEBUG_ACRO_HOP = true;
 const jsonAssetLoaders = import.meta.glob('../../assets/**/*.json');
 const binaryAssetUrls = import.meta.glob('../../assets/**/*.bin', {
@@ -599,7 +559,6 @@ const overworldWindowRenderer = new OverworldWindowRenderer<LayoutTile>({
 });
 let activeWindowCenterTileX = 0;
 let activeWindowCenterTileY = 0;
-let activeMapMutationApplier: MapMutationApplier | null = null;
 
 let activeAvatar: PlayerAvatar = PlayerAvatar.BRENDAN;
 let debugAvatarOverride: PlayerAvatar | null = null;
@@ -1097,8 +1056,8 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
     }
   }
 
-  state.mapWidth = runtimeChunk.chunk.width;
-  state.mapHeight = runtimeChunk.chunk.height;
+  state.mapWidth = runtimeChunk.width;
+  state.mapHeight = runtimeChunk.height;
 
   mapBg3Layer.removeChildren();
   mapBg2Layer.removeChildren();
@@ -1151,8 +1110,8 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
   activeTextureCache = textureCache;
   activeIndexedAtlasPages = indexedAtlasPages;
   activeTilesetAnimationPairId = renderAssets.pair_id;
-  activeMapTileRenderPriorityContexts = new Array(runtimeChunk.chunk.width * runtimeChunk.chunk.height);
-  activeRuntimeChunk = runtimeChunk.chunk;
+  activeMapTileRenderPriorityContexts = new Array(runtimeChunk.width * runtimeChunk.height);
+  activeRuntimeChunk = runtimeChunk;
   activeLayout = layout;
 
   const primaryPage = atlas.pages[0];
@@ -1247,9 +1206,9 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
     tilesetAnimationStates.set(renderAssets.pair_id, animationState);
   }
   activeTilesetAnimationState = animationState;
-  for (let y = 0; y < runtimeChunk.chunk.height; y += 1) {
-    for (let x = 0; x < runtimeChunk.chunk.width; x += 1) {
-      const tile = runtimeChunk.chunk.tiles[y * runtimeChunk.chunk.width + x];
+  for (let y = 0; y < runtimeChunk.height; y += 1) {
+    for (let x = 0; x < runtimeChunk.width; x += 1) {
+      const tile = runtimeChunk.tiles[y * runtimeChunk.width + x];
       if (!tile) {
         continue;
       }
@@ -1262,7 +1221,7 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
       }
       const { layer0SubtileMask, layer1SubtileMask, hasLayer0, hasLayer1 } =
         buildLayerSubtileOccupancy(metatile.subtiles);
-      activeMapTileRenderPriorityContexts[y * runtimeChunk.chunk.width + x] = {
+      activeMapTileRenderPriorityContexts[y * runtimeChunk.width + x] = {
         metatileGlobalId: tile.metatile_id,
         metatileLocalId: metatile.metatile_index,
         metatileLayerType: metatile.layer_type,
@@ -1279,46 +1238,11 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
   activeWindowCenterTileX = state.windowOriginTileX;
   activeWindowCenterTileY = state.windowOriginTileY;
   const mapWindowBacking = createMapWindowBacking({
-    chunk: runtimeChunk.chunk,
+    chunk: runtimeChunk,
     borderTiles: layout.border_tiles,
   });
   overworldWindowRenderer.initWindow(state.windowOriginTileX, state.windowOriginTileY, mapWindowBacking);
-  activeMapMutationApplier = createMapMutationApplier();
-  applyWindowSyncMessages(runtimeChunk.windowSync);
   updateMapWindowPresentation();
-}
-
-function createMapMutationApplier(): MapMutationApplier {
-  const dirtyWorldTiles = new Set<string>();
-  return {
-    setMetatileAt: (tileX, tileY, tile) => {
-      if (!activeRuntimeChunk || tileX < 0 || tileY < 0 || tileX >= activeRuntimeChunk.width || tileY >= activeRuntimeChunk.height) {
-        return false;
-      }
-      const tileIndex = tileY * activeRuntimeChunk.width + tileX;
-      activeRuntimeChunk.tiles[tileIndex] = tile;
-      dirtyWorldTiles.add(`${tileX}:${tileY}`);
-      return true;
-    },
-    redrawDirtyIfVisible: () => {
-      for (const key of dirtyWorldTiles) {
-        const [rawTileX, rawTileY] = key.split(':');
-        const tileX = Number(rawTileX);
-        const tileY = Number(rawTileY);
-        if (Number.isNaN(tileX) || Number.isNaN(tileY)) {
-          continue;
-        }
-        const minVisibleTileX = activeWindowCenterTileX - 16;
-        const maxVisibleTileX = activeWindowCenterTileX + 15;
-        const minVisibleTileY = activeWindowCenterTileY - 16;
-        const maxVisibleTileY = activeWindowCenterTileY + 15;
-        if (tileX >= minVisibleTileX && tileX <= maxVisibleTileX && tileY >= minVisibleTileY && tileY <= maxVisibleTileY) {
-          overworldWindowRenderer.redrawWorldTileAt(tileX, tileY);
-        }
-      }
-      dirtyWorldTiles.clear();
-    },
-  };
 }
 
 function registerSubtileBinding(binding: RenderedSubtileBinding): void {
@@ -1505,38 +1429,10 @@ function redrawMapWindowSlicesFromMovement(): void {
   const deltaTileX = state.windowOriginTileX - activeWindowCenterTileX;
   const deltaTileY = state.windowOriginTileY - activeWindowCenterTileY;
   if (deltaTileX !== 0 || deltaTileY !== 0) {
-    if (ENABLE_WINDOW_STREAM_RUNTIME) {
-      applyWindowSyncMessages([{
-        kind: 'tile_boundary_camera_delta',
-        deltaTileX,
-        deltaTileY,
-      }]);
-      return;
-    }
     overworldWindowRenderer.redrawEdgeSlices(deltaTileX, deltaTileY);
     activeWindowCenterTileX = state.windowOriginTileX;
     activeWindowCenterTileY = state.windowOriginTileY;
   }
-}
-
-function applyWindowSyncMessages(messages: WindowSyncMessage[]): void {
-  for (const message of messages) {
-    if (message.kind === 'initial_window_center') {
-      activeWindowCenterTileX = message.centerTileX;
-      activeWindowCenterTileY = message.centerTileY;
-      continue;
-    }
-    if (message.kind === 'tile_boundary_camera_delta') {
-      overworldWindowRenderer.redrawEdgeSlices(message.deltaTileX, message.deltaTileY);
-      activeWindowCenterTileX += message.deltaTileX;
-      activeWindowCenterTileY += message.deltaTileY;
-      continue;
-    }
-    if (message.kind === 'dirty_metatile_patch') {
-      activeMapMutationApplier?.setMetatileAt(message.tileX, message.tileY, message.tile);
-    }
-  }
-  activeMapMutationApplier?.redrawDirtyIfVisible();
 }
 
 function updateMapWindowPresentation(): void {
@@ -1758,36 +1654,18 @@ function applyTilesetAnimationDiff(
   }
 }
 
-function resolveRuntimeMapChunk(snapshot: WorldSnapshot, layout: LayoutFile): ResolvedRuntimeMapChunk {
+function resolveRuntimeMapChunk(snapshot: WorldSnapshot, layout: LayoutFile): DecodedMapChunk {
   try {
-    const decoded = decodeWorldSnapshotMapChunk(snapshot.map_chunk);
-    return {
-      chunk: decoded.chunk,
-      windowSync: [
-        {
-          kind: 'initial_window_center',
-          centerTileX: state.windowOriginTileX,
-          centerTileY: state.windowOriginTileY,
-        },
-        ...decoded.hooks.dirtyPatches,
-      ],
-    };
+    return decodeWorldSnapshotMapChunk(snapshot.map_chunk);
   } catch (error) {
     if (import.meta.env.DEV) {
       console.warn(
         `[world-snapshot] using local layout fallback after map_chunk decode failure map_id=${snapshot.map_id} hash=${toHex(snapshot.map_chunk_hash)} reason=${String(error)}`,
       );
       return {
-        chunk: {
-          width: layout.width,
-          height: layout.height,
-          tiles: layout.tiles,
-        },
-        windowSync: [{
-          kind: 'initial_window_center',
-          centerTileX: state.windowOriginTileX,
-          centerTileY: state.windowOriginTileY,
-        }],
+        width: layout.width,
+        height: layout.height,
+        tiles: layout.tiles,
       };
     }
 
@@ -1795,7 +1673,7 @@ function resolveRuntimeMapChunk(snapshot: WorldSnapshot, layout: LayoutFile): Re
   }
 }
 
-function decodeWorldSnapshotMapChunk(rawChunk: Uint8Array): { chunk: DecodedMapChunk; hooks: DecodedMapChunkHooks } {
+function decodeWorldSnapshotMapChunk(rawChunk: Uint8Array): DecodedMapChunk {
   if (rawChunk.length === 0) {
     throw new Error('empty map_chunk payload');
   }
@@ -1809,14 +1687,11 @@ function decodeWorldSnapshotMapChunk(rawChunk: Uint8Array): { chunk: DecodedMapC
       typeof parsed.height === 'number' &&
       Array.isArray(parsed.tiles)
     ) {
-      return {
-        chunk: validateDecodedChunk({
-          width: parsed.width,
-          height: parsed.height,
-          tiles: parsed.tiles as LayoutTile[],
-        }),
-        hooks: { dirtyPatches: [] },
-      };
+      return validateDecodedChunk({
+        width: parsed.width,
+        height: parsed.height,
+        tiles: parsed.tiles as LayoutTile[],
+      });
     }
   }
 
@@ -1829,7 +1704,7 @@ function decodeWorldSnapshotMapChunk(rawChunk: Uint8Array): { chunk: DecodedMapC
   const tileCount = readU32(rawChunk, 4);
   const payload = rawChunk.subarray(8);
 
-  if (payload.length >= tileCount * 4) {
+  if (payload.length === tileCount * 4) {
     const tiles: LayoutTile[] = new Array(tileCount);
     let offset = 0;
     for (let i = 0; i < tileCount; i += 1) {
@@ -1840,10 +1715,7 @@ function decodeWorldSnapshotMapChunk(rawChunk: Uint8Array): { chunk: DecodedMapC
       };
       offset += 4;
     }
-    return {
-      chunk: validateDecodedChunk({ width, height, tiles }),
-      hooks: decodeWindowSyncHooks(payload.subarray(tileCount * 4)),
-    };
+    return validateDecodedChunk({ width, height, tiles });
   }
 
   if (payload.length === tileCount * 2) {
@@ -1856,52 +1728,12 @@ function decodeWorldSnapshotMapChunk(rawChunk: Uint8Array): { chunk: DecodedMapC
         behavior_id: 0,
       };
     }
-    return {
-      chunk: validateDecodedChunk({ width, height, tiles }),
-      hooks: { dirtyPatches: [] },
-    };
+    return validateDecodedChunk({ width, height, tiles });
   }
 
   throw new Error(
     `map_chunk payload length did not match known schemas (payload=${payload.length}, tile_count=${tileCount})`,
   );
-}
-
-function decodeWindowSyncHooks(trailer: Uint8Array): DecodedMapChunkHooks {
-  if (!ENABLE_WINDOW_STREAM_RUNTIME || trailer.length === 0) {
-    return { dirtyPatches: [] };
-  }
-  if (trailer.length < 4 || trailer[0] !== 0x57 || trailer[1] !== 0x53) {
-    return { dirtyPatches: [] };
-  }
-  const eventCount = readU16(trailer, 2);
-  const dirtyPatches: DirtyMetatilePatchSync[] = [];
-  let offset = 4;
-  for (let i = 0; i < eventCount; i += 1) {
-    if (offset + 9 > trailer.length) {
-      break;
-    }
-    const eventType = readU8(trailer, offset);
-    const tileX = readS16(trailer, offset + 1);
-    const tileY = readS16(trailer, offset + 3);
-    const metatileId = readU16(trailer, offset + 5);
-    const collision = readU8(trailer, offset + 7);
-    const behaviorId = readU8(trailer, offset + 8);
-    if (eventType === 3) {
-      dirtyPatches.push({
-        kind: 'dirty_metatile_patch',
-        tileX,
-        tileY,
-        tile: {
-          metatile_id: metatileId,
-          collision,
-          behavior_id: behaviorId,
-        },
-      });
-    }
-    offset += 9;
-  }
-  return { dirtyPatches };
 }
 
 function validateDecodedChunk(chunk: DecodedMapChunk): DecodedMapChunk {
@@ -2613,11 +2445,6 @@ function readU8(raw: Uint8Array, offset: number): number {
 
 function readU16(raw: Uint8Array, offset: number): number {
   return new DataView(raw.buffer, raw.byteOffset, raw.byteLength).getUint16(offset, true);
-}
-
-function readS16(raw: Uint8Array, offset: number): number {
-  const value = readU16(raw, offset);
-  return value >= 0x8000 ? value - 0x10000 : value;
 }
 
 function readU32(raw: Uint8Array, offset: number): number {
