@@ -17,9 +17,11 @@ describe('OverworldWindowRenderer slice redraws', () => {
     });
 
     renderer.initWindow(40, 40, { width: mapWidth, height: mapHeight, sampleTileAt: (x, y) => tiles[y * mapWidth + x] });
+    renderer.commitScheduledTileWrites();
     calls.length = 0;
 
     renderer.redrawEdgeSlices(1, 0);
+    renderer.commitScheduledTileWrites();
 
     expect(calls).toHaveLength(32);
     expect(new Set(calls.map((call) => call.worldTileX))).toEqual(new Set([56]));
@@ -41,18 +43,20 @@ describe('OverworldWindowRenderer slice redraws', () => {
     });
 
     renderer.initWindow(40, 40, { width: mapWidth, height: mapHeight, sampleTileAt: (x, y) => tiles[y * mapWidth + x] });
+    renderer.commitScheduledTileWrites();
     calls.length = 0;
 
     renderer.redrawEdgeSlices(1, 1);
+    renderer.commitScheduledTileWrites();
 
-    expect(calls).toHaveLength(64);
+    expect(calls).toHaveLength(63);
     const eastSliceUniqueYs = new Set(
       calls.filter((call) => call.worldTileX === 56).map((call) => call.worldTileY),
     );
     const southSliceUniqueXs = new Set(
       calls.filter((call) => call.worldTileY === 56).map((call) => call.worldTileX),
     );
-    expect(eastSliceUniqueYs.size).toBe(33);
+    expect(eastSliceUniqueYs.size).toBe(32);
     expect(southSliceUniqueXs.size).toBe(32);
   });
 });
