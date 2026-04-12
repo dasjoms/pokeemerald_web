@@ -23,14 +23,19 @@ pub struct StripRedrawSample {
 }
 
 impl CameraWheelState {
-    pub fn from_camera_runtime(camera_runtime_x: i32, camera_runtime_y: i32) -> Self {
+    pub fn initialize_from_camera_runtime(camera_runtime_x: i32, camera_runtime_y: i32) -> Self {
         let camera_pos_x = camera_runtime_x - MAP_OFFSET as i32;
         let camera_pos_y = camera_runtime_y - MAP_OFFSET as i32;
+        Self::initialize_from_camera_pos(camera_pos_x, camera_pos_y)
+    }
+
+    pub fn initialize_from_camera_pos(camera_pos_x: i32, camera_pos_y: i32) -> Self {
+        // Emerald ResetCameraOffset behavior: always begin wheel offsets at 0/0.
         Self {
             camera_pos_x,
             camera_pos_y,
-            x_tile_offset: wrap32(camera_pos_x * METATILE_STEP_SUBTILES),
-            y_tile_offset: wrap32(camera_pos_y * METATILE_STEP_SUBTILES),
+            x_tile_offset: 0,
+            y_tile_offset: 0,
         }
     }
 
@@ -116,6 +121,42 @@ fn wrap32(value: i32) -> i32 {
 #[cfg(test)]
 mod tests {
     use super::{CameraWheelState, StripRedrawSample};
+    use crate::map_runtime::MAP_OFFSET;
+
+    #[test]
+    fn initialize_from_camera_runtime_keeps_offsets_at_zero_for_non_zero_map_position() {
+        let state = CameraWheelState::initialize_from_camera_runtime(
+            MAP_OFFSET as i32 + 53,
+            MAP_OFFSET as i32 - 7,
+        );
+
+        assert_eq!(state.camera_pos_x, 53);
+        assert_eq!(state.camera_pos_y, -7);
+        assert_eq!(state.x_tile_offset, 0);
+        assert_eq!(state.y_tile_offset, 0);
+    }
+
+    #[test]
+    fn initialize_from_camera_pos_keeps_offsets_at_zero() {
+        let state = CameraWheelState::initialize_from_camera_pos(123, -45);
+
+        assert_eq!(state.camera_pos_x, 123);
+        assert_eq!(state.camera_pos_y, -45);
+        assert_eq!(state.x_tile_offset, 0);
+        assert_eq!(state.y_tile_offset, 0);
+    }
+
+    #[test]
+    fn first_step_mutates_offsets_by_delta_times_two_from_zeroed_start() {
+        let mut state = CameraWheelState::initialize_from_camera_pos(10, 11);
+
+        state.apply_metatile_step(1, -1);
+
+        assert_eq!(state.camera_pos_x, 11);
+        assert_eq!(state.camera_pos_y, 10);
+        assert_eq!(state.x_tile_offset, 2);
+        assert_eq!(state.y_tile_offset, 30);
+    }
 
     #[test]
     fn one_step_north_uses_updated_offsets_and_plus_28_destination_row() {

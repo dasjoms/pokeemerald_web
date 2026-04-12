@@ -17,6 +17,16 @@ export type StripRedrawSample = {
   worldY: number;
 };
 
+export function initializeCameraWheelState(cameraPosX: number, cameraPosY: number): CameraWheelState {
+  return {
+    cameraPosX,
+    cameraPosY,
+    // Emerald ResetCameraOffset behavior: offsets start at zero regardless of camera origin.
+    xTileOffset: 0,
+    yTileOffset: 0
+  };
+}
+
 export function applyMetatileStep(state: CameraWheelState, deltaX: number, deltaY: number): StripRedrawSample[] {
   if (deltaX === 0 && deltaY === 0) {
     return [];
@@ -61,6 +71,19 @@ export function applyMetatileStep(state: CameraWheelState, deltaX: number, delta
 }
 
 export function runCameraWheelFixtures(): void {
+  const initializedAtOrigin = initializeCameraWheelState(0, 0);
+  expectEqual(initializedAtOrigin.xTileOffset, 0, "initializedAtOrigin.xTileOffset");
+  expectEqual(initializedAtOrigin.yTileOffset, 0, "initializedAtOrigin.yTileOffset");
+
+  const initializedAwayFromOrigin = initializeCameraWheelState(157, -39);
+  expectEqual(initializedAwayFromOrigin.xTileOffset, 0, "initializedAwayFromOrigin.xTileOffset");
+  expectEqual(initializedAwayFromOrigin.yTileOffset, 0, "initializedAwayFromOrigin.yTileOffset");
+
+  const firstStep = initializeCameraWheelState(157, -39);
+  applyMetatileStep(firstStep, -1, 1);
+  expectEqual(firstStep.xTileOffset, 30, "firstStep.xTileOffset");
+  expectEqual(firstStep.yTileOffset, 2, "firstStep.yTileOffset");
+
   const north: CameraWheelState = { cameraPosX: 100, cameraPosY: 200, xTileOffset: 6, yTileOffset: 10 };
   const northStrip = applyMetatileStep(north, 0, 1);
   expectEqual(north.yTileOffset, 12, "north.yTileOffset");
