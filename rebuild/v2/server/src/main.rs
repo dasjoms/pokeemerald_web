@@ -1,11 +1,17 @@
-use std::{collections::HashMap, env, path::PathBuf, sync::Arc};
+use std::{
+    collections::HashMap,
+    env, fs,
+    path::{Component, Path, PathBuf},
+    sync::Arc,
+};
 
 use axum::{
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
-        Query, State,
+        Path as AxumPath, Query, State,
     },
-    response::IntoResponse,
+    http::{header, HeaderValue, StatusCode},
+    response::{IntoResponse, Response},
     routing::get,
     Router,
 };
@@ -24,6 +30,7 @@ const DEFAULT_ASSET_ROOT: &str = "../../assets";
 const DEFAULT_BIND_ADDR: &str = "127.0.0.1:4100";
 const PROTOCOL_VERSION: u16 = 1;
 const DEFAULT_MAP_ID: &str = "MAP_PETALBURG_CITY";
+const ALLOWED_ASSET_TOP_LEVEL_DIRS: &[&str] = &["layouts", "players", "render"];
 
 #[derive(Clone)]
 struct AppState {
@@ -76,8 +83,12 @@ async fn main() {
         std::process::exit(1);
     }
 
+    let canonical_asset_root = asset_root
+        .canonicalize()
+        .expect("asset root canonicalization should succeed after validation");
+
     let state = Arc::new(AppState {
-        asset_root: asset_root.clone(),
+        asset_root: canonical_asset_root,
         player_runtime: PlayerRuntimeState {
             map_id: DEFAULT_MAP_ID.to_owned(),
             map_local: MapLocalCoord { x: 0, y: 0 },
@@ -86,6 +97,8 @@ async fn main() {
 
     let app = Router::new()
         .route("/ws", get(handle_ws_upgrade))
+        .route("/assets/*path", get(handle_asset_request))
+        .route("/v2/assets/*path", get(handle_asset_request))
         .with_state(state);
     let bind_addr =
         env::var("V2_SERVER_BIND_ADDR").unwrap_or_else(|_| DEFAULT_BIND_ADDR.to_string());
@@ -140,6 +153,78 @@ async fn handle_ws_upgrade(
     Query(query): Query<HandshakeQuery>,
 ) -> impl IntoResponse {
     ws.on_upgrade(move |socket| handle_socket(socket, state, query.client_version))
+}
+
+async fn handle_asset_request(
+    State(state): State<Arc<AppState>>,
+    AxumPath(path): AxumPath<String>,
+) -> Response {
+    let relative_path = match normalize_and_validate_asset_path(&path) {
+        Ok(relative_path) => relative_path,
+        Err(status) => return status.into_response(),
+    };
+    let requested_path = state.asset_root.join(&relative_path);
+
+    let canonical_requested_path = match requested_path.canonicalize() {
+        Ok(path) => path,
+        Err(_) => return StatusCode::NOT_FOUND.into_response(),
+    };
+
+    if !canonical_requested_path.starts_with(&state.asset_root) {
+        return StatusCode::FORBIDDEN.into_response();
+    }
+
+    let bytes = match fs::read(&canonical_requested_path) {
+        Ok(bytes) => bytes,
+        Err(_) => return StatusCode::NOT_FOUND.into_response(),
+    };
+
+    let content_type = content_type_for_path(&canonical_requested_path);
+    let mut response = (StatusCode::OK, bytes).into_response();
+    response
+        .headers_mut()
+        .insert(header::CONTENT_TYPE, HeaderValue::from_static(content_type));
+    response
+}
+
+fn normalize_and_validate_asset_path(path: &str) -> Result<PathBuf, StatusCode> {
+    let request_path = Path::new(path);
+    let mut normalized = PathBuf::new();
+
+    for component in request_path.components() {
+        match component {
+            Component::Normal(part) => normalized.push(part),
+            Component::CurDir => {}
+            Component::ParentDir | Component::Prefix(_) | Component::RootDir => {
+                return Err(StatusCode::FORBIDDEN);
+            }
+        }
+    }
+
+    let first_segment = normalized
+        .components()
+        .next()
+        .and_then(|component| match component {
+            Component::Normal(part) => part.to_str(),
+            _ => None,
+        })
+        .ok_or(StatusCode::NOT_FOUND)?;
+
+    if !ALLOWED_ASSET_TOP_LEVEL_DIRS.contains(&first_segment) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    Ok(normalized)
+}
+
+fn content_type_for_path(path: &Path) -> &'static str {
+    match path.extension().and_then(|ext| ext.to_str()) {
+        Some("json") => "application/json",
+        Some("png") => "image/png",
+        Some("bin") => "application/octet-stream",
+        Some("pal") => "application/octet-stream",
+        _ => "application/octet-stream",
+    }
 }
 
 async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>, client_version: String) {
