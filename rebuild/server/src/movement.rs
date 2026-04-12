@@ -351,10 +351,10 @@ pub const fn get_player_speed(
         }
         TraversalState::MachBike => mach_speed_tier_for_frame_counter(bike_frame_counter),
         TraversalState::AcroBike => {
-            if matches!(acro_substate, Some(AcroBikeSubstate::BunnyHop)) {
-                PlayerSpeed::Normal
-            } else {
-                PlayerSpeed::Faster
+            match acro_substate {
+                Some(AcroBikeSubstate::BunnyHop) => PlayerSpeed::Normal,
+                Some(AcroBikeSubstate::MovingWheelie) => PlayerSpeed::Fast,
+                _ => PlayerSpeed::Faster,
             }
         }
     }
@@ -1033,13 +1033,43 @@ mod tests {
             PlayerSpeed::Normal
         );
         assert_eq!(
+            player_speed_step_speed(PlayerSpeed::Normal),
+            StepSpeed::Step1
+        );
+    }
+
+    #[test]
+    fn acro_moving_wheelie_uses_fast_speed_tier() {
+        assert_eq!(
             get_player_speed(
                 TraversalState::AcroBike,
                 MovementMode::Walk,
                 0,
                 Some(AcroBikeSubstate::MovingWheelie)
             ),
+            PlayerSpeed::Fast
+        );
+        assert_eq!(player_speed_step_speed(PlayerSpeed::Fast), StepSpeed::Step2);
+    }
+
+    #[test]
+    fn acro_non_wheelie_grounded_uses_faster_speed_tier() {
+        assert_eq!(
+            get_player_speed(TraversalState::AcroBike, MovementMode::Walk, 0, None),
             PlayerSpeed::Faster
+        );
+        assert_eq!(
+            get_player_speed(
+                TraversalState::AcroBike,
+                MovementMode::Walk,
+                0,
+                Some(AcroBikeSubstate::StandingWheelie)
+            ),
+            PlayerSpeed::Faster
+        );
+        assert_eq!(
+            player_speed_step_speed(PlayerSpeed::Faster),
+            StepSpeed::Step3
         );
     }
 }
