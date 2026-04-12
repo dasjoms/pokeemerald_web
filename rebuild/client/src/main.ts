@@ -115,7 +115,6 @@ import {
   updateFieldCameraPixelOffset,
   type FieldCameraOffset,
 } from './cameraTilemap';
-import { computeCameraViewportLayout } from './cameraViewport';
 
 type ServerMessage =
   | { type: MessageType.SESSION_ACCEPTED; payload: SessionAccepted }
@@ -528,7 +527,6 @@ await app.init({
 appRoot.appendChild(app.canvas);
 
 const gameContainer = new Container();
-const viewportContainer = new Container();
 const worldContainer = new Container();
 const mapBg3Layer = new Container();
 const shadowBelowBg2Layer = new Container();
@@ -552,19 +550,7 @@ worldContainer.addChild(mapBg1Layer);
 worldContainer.addChild(debugOverlayLayer);
 initializeCameraBufferSlots();
 gameContainer.scale.set(RENDER_SCALE, RENDER_SCALE);
-const viewportLayout = computeCameraViewportLayout({
-  screenWidth: app.screen.width,
-  screenHeight: app.screen.height,
-  tileSize: TILE_SIZE,
-  renderScale: RENDER_SCALE,
-});
-const viewportMask = new Graphics()
-  .rect(0, 0, viewportLayout.viewportWidthPx, viewportLayout.viewportHeightPx)
-  .fill(0xffffff);
-viewportContainer.addChild(worldContainer);
-viewportContainer.addChild(viewportMask);
-viewportContainer.mask = viewportMask;
-gameContainer.addChild(viewportContainer);
+gameContainer.addChild(worldContainer);
 app.stage.addChild(gameContainer);
 debugOverlayLayer.visible = debugOverlayEnabled;
 
@@ -2958,18 +2944,10 @@ function resolveInterpolatedCameraPixelOffset(
 }
 
 function updateCamera(): void {
-  const viewportLayout = computeCameraViewportLayout({
-    screenWidth: app.screen.width,
-    screenHeight: app.screen.height,
-    tileSize: TILE_SIZE,
-    renderScale: RENDER_SCALE,
-  });
   const centerX = state.playerTileX * TILE_SIZE + TILE_SIZE / 2 + fieldCameraOffset.xPixelOffset;
   const centerY = state.playerTileY * TILE_SIZE + TILE_SIZE / 2 + fieldCameraOffset.yPixelOffset;
-  worldContainer.x = viewportLayout.viewportCenterX - centerX;
-  worldContainer.y = viewportLayout.viewportCenterY - centerY;
-  gameContainer.x = viewportLayout.gameContainerX;
-  gameContainer.y = viewportLayout.gameContainerY;
+  gameContainer.x = app.screen.width / 2 - centerX * RENDER_SCALE;
+  gameContainer.y = app.screen.height / 2 - centerY * RENDER_SCALE;
 }
 
 function startAuthoritativeWalkTransition(
