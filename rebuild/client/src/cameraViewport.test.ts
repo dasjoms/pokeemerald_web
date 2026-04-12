@@ -12,7 +12,7 @@ describe('camera viewport masking', () => {
     { label: '1080p', screenWidth: 1920, screenHeight: 1080, renderScale: 4 },
     { label: '1440p low scale', screenWidth: 2560, screenHeight: 1440, renderScale: 3 },
     { label: 'mobile-ish', screenWidth: 854, screenHeight: 480, renderScale: 2 },
-  ])('keeps exactly 15x11 visible metatiles at $label', ({ screenWidth, screenHeight, renderScale }) => {
+  ])('keeps exactly 15x10 visible metatiles at $label', ({ screenWidth, screenHeight, renderScale }) => {
     const layout = computeCameraViewportLayout({
       screenWidth,
       screenHeight,
@@ -34,7 +34,7 @@ describe('camera viewport masking', () => {
         renderScale: 4,
       });
       expect(layout.visibleMetatileColumns).toBe(15);
-      expect(layout.visibleMetatileRows).toBe(11);
+      expect(layout.visibleMetatileRows).toBe(10);
     }
   });
 });

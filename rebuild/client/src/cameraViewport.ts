@@ -1,7 +1,7 @@
 export const VIEWPORT_VISIBLE_METATILE_COLUMNS = 15;
-export const VIEWPORT_VISIBLE_METATILE_ROWS = 11;
+export const VIEWPORT_VISIBLE_METATILE_ROWS = 10;
 export const VIEWPORT_PLAYER_ANCHOR_TILE_X = 7;
-export const VIEWPORT_PLAYER_ANCHOR_TILE_Y = 5;
+export const VIEWPORT_PLAYER_ANCHOR_TILE_Y = 4.5;
 
 export type CameraViewportLayout = {
   viewportWidthPx: number;
