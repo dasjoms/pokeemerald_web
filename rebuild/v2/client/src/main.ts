@@ -1,6 +1,12 @@
 import { Application, Text } from "pixi.js";
 import { V2_PROTOCOL_VERSION } from "./assetConfig";
-import { OverworldCompositor } from "./compositor";
+import {
+  OverworldCompositor,
+  VISIBLE_HEIGHT_PX,
+  VISIBLE_METATILES_H,
+  VISIBLE_METATILES_W,
+  VISIBLE_WIDTH_PX
+} from "./compositor";
 import { parseServerMessage, type AssetManifest, type RenderStateV1Message } from "./protocol";
 
 const appElement = document.querySelector<HTMLDivElement>("#app");
@@ -25,7 +31,8 @@ const banner = new Text({
   text: [
     "Emerald Rebuild V2",
     "Asset root: pending server manifest",
-    "Target: 32x32 (16-metatile) buffer-wheel renderer",
+    `Viewport: ${VISIBLE_WIDTH_PX}x${VISIBLE_HEIGHT_PX} (${VISIBLE_METATILES_W}x${VISIBLE_METATILES_H} metatiles)`,
+    "Backing: 32x32 subtiles (16x16 metatiles) buffer-wheel renderer",
     "Handshake: connecting..."
   ].join("\n"),
   style: {
@@ -107,7 +114,8 @@ ws.addEventListener("message", async (event) => {
       "Emerald Rebuild V2",
       `Asset root: ${message.assetManifest.assetBaseUrl}`,
       `Asset version: ${message.assetManifest.assetVersion}`,
-      "Target: 32x32 (16-metatile) buffer-wheel renderer",
+      `Viewport: ${VISIBLE_WIDTH_PX}x${VISIBLE_HEIGHT_PX} (${VISIBLE_METATILES_W}x${VISIBLE_METATILES_H} metatiles)`,
+      "Backing: 32x32 subtiles (16x16 metatiles) buffer-wheel renderer",
       `Handshake: protocol=${message.protocolVersion} authority=${message.serverAuthority}`,
       "Press Play when render state arrives"
     ].join("\n");
@@ -149,7 +157,8 @@ ws.addEventListener("error", () => {
   banner.text = [
     "Emerald Rebuild V2",
     "Asset root: pending server manifest",
-    "Target: 32x32 (16-metatile) buffer-wheel renderer",
+    `Viewport: ${VISIBLE_WIDTH_PX}x${VISIBLE_HEIGHT_PX} (${VISIBLE_METATILES_W}x${VISIBLE_METATILES_H} metatiles)`,
+    "Backing: 32x32 subtiles (16x16 metatiles) buffer-wheel renderer",
     "Handshake: unable to connect to ws://127.0.0.1:4100/ws"
   ].join("\n");
 });
