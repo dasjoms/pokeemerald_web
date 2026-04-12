@@ -18,10 +18,11 @@ use rebuild_v2_server::{
     },
 };
 use serde::Deserialize;
-use tower_http::services::ServeDir;
+use tower_http::services::{ServeDir, ServeFile};
 use tracing::{error, info};
 
 const DEFAULT_ASSET_ROOT: &str = "../../assets";
+const DEFAULT_CLIENT_DIST_ROOT: &str = "../client/dist-v2";
 const DEFAULT_BIND_ADDR: &str = "127.0.0.1:4100";
 const ASSET_BASE_PATH: &str = "/v2/assets";
 const PROTOCOL_VERSION: u16 = 1;
@@ -77,6 +78,11 @@ async fn main() {
         error!("{message}");
         std::process::exit(1);
     }
+    let client_dist_root = resolve_client_dist_root();
+    if let Err(message) = validate_client_dist_root(&client_dist_root) {
+        error!("{message}");
+        std::process::exit(1);
+    }
 
     let state = Arc::new(AppState {
         asset_root: asset_root.clone(),
@@ -89,6 +95,10 @@ async fn main() {
     let app = Router::new()
         .route("/ws", get(handle_ws_upgrade))
         .nest_service(ASSET_BASE_PATH, ServeDir::new(asset_root.clone()))
+        .fallback_service(
+            ServeDir::new(client_dist_root.clone())
+                .not_found_service(ServeFile::new(client_dist_root.join("index.html"))),
+        )
         .with_state(state);
     let bind_addr =
         env::var("V2_SERVER_BIND_ADDR").unwrap_or_else(|_| DEFAULT_BIND_ADDR.to_string());
@@ -100,6 +110,7 @@ async fn main() {
     info!(
         protocol_version = PROTOCOL_VERSION,
         asset_root = %asset_root.display(),
+        client_dist_root = %client_dist_root.display(),
         asset_base_path = ASSET_BASE_PATH,
         "rebuild v2 server starting"
     );
@@ -113,6 +124,12 @@ fn resolve_asset_root() -> PathBuf {
     env::var("V2_ASSET_ROOT")
         .map(PathBuf::from)
         .unwrap_or_else(|_| PathBuf::from(DEFAULT_ASSET_ROOT))
+}
+
+fn resolve_client_dist_root() -> PathBuf {
+    env::var("V2_CLIENT_DIST_ROOT")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from(DEFAULT_CLIENT_DIST_ROOT))
 }
 
 fn validate_asset_root(asset_root: &PathBuf) -> Result<(), String> {
@@ -133,6 +150,25 @@ fn validate_asset_root(asset_root: &PathBuf) -> Result<(), String> {
                 asset_root.display()
             ));
         }
+    }
+
+    Ok(())
+}
+
+fn validate_client_dist_root(client_dist_root: &PathBuf) -> Result<(), String> {
+    if !client_dist_root.exists() {
+        return Err(format!(
+            "V2 client dist root does not exist: {} (build rebuild/v2/client first or set V2_CLIENT_DIST_ROOT)",
+            client_dist_root.display()
+        ));
+    }
+
+    let index_html = client_dist_root.join("index.html");
+    if !index_html.exists() {
+        return Err(format!(
+            "V2 client dist is missing index.html: {} (expected Vite output directory dist-v2)",
+            index_html.display()
+        ));
     }
 
     Ok(())
