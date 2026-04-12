@@ -57,14 +57,17 @@ python3 -m rebuild.tools.field_effect_assets.cli extract --clean --output-dir re
 - `validate`
   - Checks ROM-reference symbols and animation/template metadata for:
     - hop shadows (`FLDEFF_SHADOW`),
-    - landing dust (`FLDEFF_DUST` / ground impact dust).
+    - landing dust (`FLDEFF_DUST` / ground impact dust),
+    - bike tire tracks (`FLDEFF_BIKE_TIRE_TRACKS`) including transition and fade timing parity metadata.
 
 - `extract`
   - Writes artifacts under `rebuild/assets/field_effects/` (or a custom output dir):
-    - `acro_bike_effects_manifest.json` with versioned metadata for shadow template mapping, vertical offsets, dust frame timing, source symbols, and palette references.
+    - `acro_bike_effects_manifest.json` with versioned metadata for shadow template mapping, dust/tire-track animation metadata, tire-track direction-transition lookup table, fade timing lifecycle constants, source symbols, and palette references.
     - runtime source copies under `field_effects/acro_bike/`:
       - `pics/*.png` (resolved from declared `.4bpp` sources when available as PNG),
+      - includes `pics/bike_tire_tracks.png`,
       - `palettes/*.gbapal` or `palettes/*.pal` (fallback when declared `.gbapal` resolves to `.pal` in source tree),
+      - includes `palettes/general_0.pal` for bike tire-track palette tag resolution,
       - `runtime_asset_index.json` mapping symbols + declared source paths to emitted files.
 
 ## Player asset extractor / validator

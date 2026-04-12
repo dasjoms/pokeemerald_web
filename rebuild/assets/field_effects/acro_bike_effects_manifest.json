@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "effects": {
     "shadow": {
       "field_effect_id": "FLDEFF_SHADOW",
@@ -39,7 +39,8 @@
               "sAnim_Shadow": [
                 {
                   "frame": 0,
-                  "duration": 1
+                  "duration": 1,
+                  "h_flip": false
                 }
               ]
             }
@@ -72,7 +73,8 @@
               "sAnim_Shadow": [
                 {
                   "frame": 0,
-                  "duration": 1
+                  "duration": 1,
+                  "h_flip": false
                 }
               ]
             }
@@ -105,7 +107,8 @@
               "sAnim_Shadow": [
                 {
                   "frame": 0,
-                  "duration": 1
+                  "duration": 1,
+                  "h_flip": false
                 }
               ]
             }
@@ -138,7 +141,8 @@
               "sAnim_Shadow": [
                 {
                   "frame": 0,
-                  "duration": 1
+                  "duration": 1,
+                  "h_flip": false
                 }
               ]
             }
@@ -194,15 +198,18 @@
             "sAnim_GroundImpactDust": [
               {
                 "frame": 0,
-                "duration": 8
+                "duration": 8,
+                "h_flip": false
               },
               {
                 "frame": 1,
-                "duration": 8
+                "duration": 8,
+                "h_flip": false
               },
               {
                 "frame": 2,
-                "duration": 8
+                "duration": 8,
+                "h_flip": false
               }
             ]
           }
@@ -264,19 +271,23 @@
             "sAnim_JumpTallGrass": [
               {
                 "frame": 0,
-                "duration": 8
+                "duration": 8,
+                "h_flip": false
               },
               {
                 "frame": 1,
-                "duration": 8
+                "duration": 8,
+                "h_flip": false
               },
               {
                 "frame": 2,
-                "duration": 8
+                "duration": 8,
+                "h_flip": false
               },
               {
                 "frame": 3,
-                "duration": 8
+                "duration": 8,
+                "h_flip": false
               }
             ]
           }
@@ -352,27 +363,33 @@
             "sAnim_JumpLongGrass": [
               {
                 "frame": 0,
-                "duration": 4
+                "duration": 4,
+                "h_flip": false
               },
               {
                 "frame": 1,
-                "duration": 4
+                "duration": 4,
+                "h_flip": false
               },
               {
                 "frame": 2,
-                "duration": 8
+                "duration": 8,
+                "h_flip": false
               },
               {
                 "frame": 3,
-                "duration": 8
+                "duration": 8,
+                "h_flip": false
               },
               {
                 "frame": 4,
-                "duration": 8
+                "duration": 8,
+                "h_flip": false
               },
               {
                 "frame": 5,
-                "duration": 8
+                "duration": 8,
+                "h_flip": false
               }
             ]
           }
@@ -427,15 +444,18 @@
             "sAnim_JumpSmallSplash": [
               {
                 "frame": 0,
-                "duration": 4
+                "duration": 4,
+                "h_flip": false
               },
               {
                 "frame": 1,
-                "duration": 4
+                "duration": 4,
+                "h_flip": false
               },
               {
                 "frame": 2,
-                "duration": 4
+                "duration": 4,
+                "h_flip": false
               }
             ]
           }
@@ -497,19 +517,23 @@
             "sAnim_JumpBigSplash": [
               {
                 "frame": 0,
-                "duration": 8
+                "duration": 8,
+                "h_flip": false
               },
               {
                 "frame": 1,
-                "duration": 8
+                "duration": 8,
+                "h_flip": false
               },
               {
                 "frame": 2,
-                "duration": 8
+                "duration": 8,
+                "h_flip": false
               },
               {
                 "frame": 3,
-                "duration": 8
+                "duration": 8,
+                "h_flip": false
               }
             ]
           }
@@ -520,6 +544,197 @@
             "source_path": "graphics/field_effects/pics/jump_big_splash.4bpp"
           }
         ]
+      }
+    },
+    "bike_tire_tracks": {
+      "field_effect_id": "FLDEFF_BIKE_TIRE_TRACKS",
+      "helper_function": "FldEff_BikeTireTracks",
+      "helper_update_callback": "UpdateFootprintsTireTracksFieldEffect",
+      "template": {
+        "template_symbol": "gFieldEffectObjectTemplate_BikeTireTracks",
+        "palette_tag": "FLDEFF_PAL_TAG_GENERAL_0",
+        "oam_symbol": "gObjectEventBaseOam_16x16",
+        "callback": "UpdateFootprintsTireTracksFieldEffect",
+        "pic_table_symbol": "sPicTable_BikeTireTracks",
+        "anim_table_symbol": "sAnimTable_BikeTireTracks",
+        "pic_table_entries": [
+          {
+            "source_symbol": "gFieldEffectObjectPic_BikeTireTracks",
+            "layout": "overworld_frame",
+            "tile_width": 2,
+            "tile_height": 2,
+            "frame_index": 0
+          },
+          {
+            "source_symbol": "gFieldEffectObjectPic_BikeTireTracks",
+            "layout": "overworld_frame",
+            "tile_width": 2,
+            "tile_height": 2,
+            "frame_index": 1
+          },
+          {
+            "source_symbol": "gFieldEffectObjectPic_BikeTireTracks",
+            "layout": "overworld_frame",
+            "tile_width": 2,
+            "tile_height": 2,
+            "frame_index": 2
+          },
+          {
+            "source_symbol": "gFieldEffectObjectPic_BikeTireTracks",
+            "layout": "overworld_frame",
+            "tile_width": 2,
+            "tile_height": 2,
+            "frame_index": 3
+          }
+        ],
+        "anim_table": {
+          "anim_cmd_symbols": [
+            "sBikeTireTracksAnim_South",
+            "sBikeTireTracksAnim_South",
+            "sBikeTireTracksAnim_North",
+            "sBikeTireTracksAnim_West",
+            "sBikeTireTracksAnim_East",
+            "sBikeTireTracksAnim_SECornerTurn",
+            "sBikeTireTracksAnim_SWCornerTurn",
+            "sBikeTireTracksAnim_NWCornerTurn",
+            "sBikeTireTracksAnim_NECornerTurn"
+          ],
+          "sequences": {
+            "sBikeTireTracksAnim_South": [
+              {
+                "frame": 2,
+                "duration": 1,
+                "h_flip": false
+              }
+            ],
+            "sBikeTireTracksAnim_North": [
+              {
+                "frame": 2,
+                "duration": 1,
+                "h_flip": false
+              }
+            ],
+            "sBikeTireTracksAnim_West": [
+              {
+                "frame": 1,
+                "duration": 1,
+                "h_flip": false
+              }
+            ],
+            "sBikeTireTracksAnim_East": [
+              {
+                "frame": 1,
+                "duration": 1,
+                "h_flip": false
+              }
+            ],
+            "sBikeTireTracksAnim_SECornerTurn": [
+              {
+                "frame": 0,
+                "duration": 1,
+                "h_flip": false
+              }
+            ],
+            "sBikeTireTracksAnim_SWCornerTurn": [
+              {
+                "frame": 0,
+                "duration": 1,
+                "h_flip": true
+              }
+            ],
+            "sBikeTireTracksAnim_NWCornerTurn": [
+              {
+                "frame": 3,
+                "duration": 1,
+                "h_flip": true
+              }
+            ],
+            "sBikeTireTracksAnim_NECornerTurn": [
+              {
+                "frame": 3,
+                "duration": 1,
+                "h_flip": false
+              }
+            ]
+          }
+        },
+        "sources": [
+          {
+            "symbol": "gFieldEffectObjectPic_BikeTireTracks",
+            "source_path": "graphics/field_effects/pics/bike_tire_tracks.4bpp"
+          }
+        ]
+      },
+      "transition_mapping": {
+        "table_symbol": "bikeTireTracks_Transitions",
+        "direction_index_order": [
+          "down",
+          "up",
+          "left",
+          "right"
+        ],
+        "table": [
+          [
+            1,
+            2,
+            7,
+            8
+          ],
+          [
+            1,
+            2,
+            6,
+            5
+          ],
+          [
+            5,
+            8,
+            3,
+            4
+          ],
+          [
+            6,
+            7,
+            3,
+            4
+          ]
+        ],
+        "by_previous_direction": {
+          "down": {
+            "down": 1,
+            "up": 2,
+            "left": 7,
+            "right": 8
+          },
+          "up": {
+            "down": 1,
+            "up": 2,
+            "left": 6,
+            "right": 5
+          },
+          "left": {
+            "down": 5,
+            "up": 8,
+            "left": 3,
+            "right": 4
+          },
+          "right": {
+            "down": 6,
+            "up": 7,
+            "left": 3,
+            "right": 4
+          }
+        }
+      },
+      "fade_timing": {
+        "timer_field": "sprite->sTimer",
+        "step0_wait_until_timer_gt": 40,
+        "step1_stop_when_timer_gt": 56,
+        "step1_blink": {
+          "enabled": true,
+          "mode": "toggle_visibility_each_frame",
+          "expression": "sprite->invisible ^= 1"
+        }
       }
     }
   },
@@ -537,6 +752,7 @@
     "include/constants/field_effects.h",
     "src/field_effect_helpers.c",
     "src/data/object_events/object_event_graphics.h",
-    "src/data/field_effects/field_effect_objects.h"
+    "src/data/field_effects/field_effect_objects.h",
+    "src/event_object_movement.c"
   ]
 }

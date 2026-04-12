@@ -18,6 +18,7 @@ class FieldEffectAssetsTest(unittest.TestCase):
         self.assertIn("jump_long_grass", payload["effects"])
         self.assertIn("jump_small_splash", payload["effects"])
         self.assertIn("jump_big_splash", payload["effects"])
+        self.assertIn("bike_tire_tracks", payload["effects"])
 
     def test_shadow_templates_and_offsets_align(self) -> None:
         payload = cli.resolve_assets()
@@ -56,6 +57,58 @@ class FieldEffectAssetsTest(unittest.TestCase):
             self.assertIn("jump_long_grass.png", pic_names)
             self.assertIn("jump_small_splash.png", pic_names)
             self.assertIn("jump_big_splash.png", pic_names)
+            self.assertIn("bike_tire_tracks.png", pic_names)
+            palette_names = {path.name for path in output_paths if "palettes" in path.parts}
+            self.assertIn("general_0.pal", palette_names)
+
+    def test_bike_tire_tracks_transition_and_timing_metadata_matches_reference(self) -> None:
+        payload = cli.resolve_assets()
+        bike = payload["effects"]["bike_tire_tracks"]
+        self.assertEqual(bike["field_effect_id"], "FLDEFF_BIKE_TIRE_TRACKS")
+        self.assertEqual(bike["helper_function"], "FldEff_BikeTireTracks")
+        self.assertEqual(bike["helper_update_callback"], "UpdateFootprintsTireTracksFieldEffect")
+        self.assertEqual(bike["template"]["pic_table_symbol"], "sPicTable_BikeTireTracks")
+        self.assertEqual(bike["template"]["anim_table_symbol"], "sAnimTable_BikeTireTracks")
+
+        anim_symbols = bike["template"]["anim_table"]["anim_cmd_symbols"]
+        self.assertEqual(
+            anim_symbols,
+            [
+                "sBikeTireTracksAnim_South",
+                "sBikeTireTracksAnim_South",
+                "sBikeTireTracksAnim_North",
+                "sBikeTireTracksAnim_West",
+                "sBikeTireTracksAnim_East",
+                "sBikeTireTracksAnim_SECornerTurn",
+                "sBikeTireTracksAnim_SWCornerTurn",
+                "sBikeTireTracksAnim_NWCornerTurn",
+                "sBikeTireTracksAnim_NECornerTurn",
+            ],
+        )
+        sequences = bike["template"]["anim_table"]["sequences"]
+        self.assertTrue(sequences["sBikeTireTracksAnim_SWCornerTurn"][0]["h_flip"])
+        self.assertTrue(sequences["sBikeTireTracksAnim_NWCornerTurn"][0]["h_flip"])
+        self.assertFalse(sequences["sBikeTireTracksAnim_SECornerTurn"][0]["h_flip"])
+        self.assertFalse(sequences["sBikeTireTracksAnim_NECornerTurn"][0]["h_flip"])
+
+        transitions = bike["transition_mapping"]
+        self.assertEqual(transitions["direction_index_order"], ["down", "up", "left", "right"])
+        self.assertEqual(
+            transitions["table"],
+            [
+                [1, 2, 7, 8],
+                [1, 2, 6, 5],
+                [5, 8, 3, 4],
+                [6, 7, 3, 4],
+            ],
+        )
+        self.assertEqual(transitions["by_previous_direction"]["up"]["right"], 5)
+        self.assertEqual(transitions["by_previous_direction"]["left"]["up"], 8)
+
+        timing = bike["fade_timing"]
+        self.assertEqual(timing["step0_wait_until_timer_gt"], 40)
+        self.assertEqual(timing["step1_stop_when_timer_gt"], 56)
+        self.assertEqual(timing["step1_blink"]["mode"], "toggle_visibility_each_frame")
 
     def test_extract_command_supports_external_output_dir(self) -> None:
         with tempfile.TemporaryDirectory() as td:
