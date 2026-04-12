@@ -1353,16 +1353,29 @@ function updateCameraWindowForAuthoritativeTileStep(): void {
 }
 
 function flushPendingCameraStepsAfterPan(): void {
-  if (pendingCameraStepX !== 0 && fieldCameraOffset.xPixelOffset === 0) {
+  if (shouldFlushPendingCameraStep(pendingCameraStepX, fieldCameraOffset.xPixelOffset)) {
     const stepX = Math.sign(pendingCameraStepX);
     pendingCameraStepX -= stepX;
     applyCameraWindowMetatileStep(stepX, 0);
   }
-  if (pendingCameraStepY !== 0 && fieldCameraOffset.yPixelOffset === 0) {
+  if (shouldFlushPendingCameraStep(pendingCameraStepY, fieldCameraOffset.yPixelOffset)) {
     const stepY = Math.sign(pendingCameraStepY);
     pendingCameraStepY -= stepY;
     applyCameraWindowMetatileStep(0, stepY);
   }
+}
+
+function shouldFlushPendingCameraStep(pendingStep: number, pixelOffset: number): boolean {
+  if (pendingStep === 0) {
+    return false;
+  }
+  if (pixelOffset === 0) {
+    return true;
+  }
+  if (pendingStep > 0) {
+    return pixelOffset < 0;
+  }
+  return pixelOffset > 0;
 }
 
 function applyCameraWindowMetatileStep(stepX: number, stepY: number): void {
