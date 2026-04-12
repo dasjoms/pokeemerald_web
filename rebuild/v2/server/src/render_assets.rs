@@ -97,6 +97,10 @@ impl RenderMetatileResolver {
             subtiles,
         })
     }
+
+    pub fn pair_id(&self) -> &str {
+        &self.pair_id
+    }
 }
 
 fn to_subtiles(raw: &[MetatileSubtile]) -> Result<[RenderSubtile; 8], String> {

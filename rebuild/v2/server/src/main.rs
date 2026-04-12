@@ -1,4 +1,4 @@
-use std::{env, path::PathBuf, sync::Arc};
+use std::{collections::HashMap, env, path::PathBuf, sync::Arc};
 
 use axum::{
     extract::{
@@ -211,13 +211,42 @@ fn build_render_state(
     let origin_runtime_x = camera_runtime_x - (RENDER_WINDOW_WIDTH as i32 / 2);
     let origin_runtime_y = camera_runtime_y - (RENDER_WINDOW_HEIGHT as i32 / 2);
 
-    let resolver = RenderMetatileResolver::from_layout(asset_root, &layout)?;
+    let mut resolver_by_map_id: HashMap<String, RenderMetatileResolver> = HashMap::new();
+    for (source_map_id, source_layout) in &bundle.source_layouts_by_map_id {
+        let resolver =
+            RenderMetatileResolver::from_layout(asset_root, source_layout).map_err(|err| {
+                format!(
+                    "failed building metatile resolver for source_map_id={source_map_id}: {err}"
+                )
+            })?;
+        resolver_by_map_id.insert(source_map_id.clone(), resolver);
+    }
+
+    let active_pair_id = render_assets.pair_id.clone();
     let mut metatiles = Vec::with_capacity(RENDER_WINDOW_WIDTH * RENDER_WINDOW_HEIGHT);
     for y in 0..RENDER_WINDOW_HEIGHT as i32 {
         for x in 0..RENDER_WINDOW_WIDTH as i32 {
-            let packed =
-                runtime.get_packed_with_border_fallback(origin_runtime_x + x, origin_runtime_y + y);
-            metatiles.push(resolver.resolve(packed)?);
+            let runtime_x = origin_runtime_x + x;
+            let runtime_y = origin_runtime_y + y;
+            let (packed, source_map_id) = runtime.packed_and_source_map_id_with_border_fallback(
+                runtime_x,
+                runtime_y,
+                &player_runtime.map_id,
+            );
+            let resolver = resolver_by_map_id.get(source_map_id).ok_or_else(|| {
+                format!(
+                    "missing render resolver for source_map_id={source_map_id}; active_pair_id={active_pair_id}; metatile_id={}",
+                    packed & rebuild_v2_server::map_runtime::MAPGRID_METATILE_ID_MASK
+                )
+            })?;
+            let source_pair_id = resolver.pair_id();
+            let metatile = resolver.resolve(packed).map_err(|err| {
+                format!(
+                    "metatile resolve failed: source_map_id={source_map_id}, active_pair_id={active_pair_id}, source_pair_id={source_pair_id}, metatile_id={}, runtime_x={runtime_x}, runtime_y={runtime_y}, error={err}",
+                    packed & rebuild_v2_server::map_runtime::MAPGRID_METATILE_ID_MASK
+                )
+            })?;
+            metatiles.push(metatile);
         }
     }
 
