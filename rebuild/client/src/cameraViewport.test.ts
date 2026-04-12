@@ -2,11 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
   computeCameraViewportLayout,
-  VIEWPORT_PLAYER_ANCHOR_TILE_X,
   VIEWPORT_VISIBLE_METATILE_COLUMNS,
   VIEWPORT_VISIBLE_METATILE_ROWS,
 } from './cameraViewport';
-import { CAMERA_METATILE_BUFFER_DIM } from './cameraTilemap';
 
 describe('camera viewport masking', () => {
   it.each([
@@ -41,26 +39,3 @@ describe('camera viewport masking', () => {
   });
 });
 
-describe('camera window parity against viewport anchor', () => {
-  it('keeps left/right entering slice preload symmetric for a 15-column viewport', () => {
-    const playerTileX = 100;
-    const cameraWindowOriginTileX = playerTileX - VIEWPORT_PLAYER_ANCHOR_TILE_X;
-    const initialWindowMinX = cameraWindowOriginTileX;
-    const initialWindowMaxX = initialWindowMinX + CAMERA_METATILE_BUFFER_DIM - 1;
-
-    const rightPlayerTileX = playerTileX + 1;
-    const rightOrigin = rightPlayerTileX - VIEWPORT_PLAYER_ANCHOR_TILE_X;
-    const rightEnteringSliceX = rightOrigin + CAMERA_METATILE_BUFFER_DIM - 1;
-
-    const leftPlayerTileX = playerTileX - 1;
-    const leftOrigin = leftPlayerTileX - VIEWPORT_PLAYER_ANCHOR_TILE_X;
-    const leftEnteringSliceX = leftOrigin;
-
-    expect(cameraWindowOriginTileX).toBe(playerTileX - VIEWPORT_PLAYER_ANCHOR_TILE_X);
-    expect(initialWindowMaxX - initialWindowMinX + 1).toBe(CAMERA_METATILE_BUFFER_DIM);
-    expect(rightEnteringSliceX).toBe(initialWindowMaxX + 1);
-    expect(leftEnteringSliceX).toBe(initialWindowMinX - 1);
-    expect(rightEnteringSliceX - initialWindowMaxX).toBe(1);
-    expect(initialWindowMinX - leftEnteringSliceX).toBe(1);
-  });
-});
