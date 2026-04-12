@@ -1324,10 +1324,6 @@ function updateCameraWindowForAuthoritativeTileStep(): void {
   if (!activeRuntimeChunk || !activeLayoutForRender) {
     return;
   }
-  const authoritativeDiffX = state.playerTileX - lastRenderedCameraTileX;
-  const authoritativeDiffY = state.playerTileY - lastRenderedCameraTileY;
-  preloadIncomingCameraSlices(authoritativeDiffX, authoritativeDiffY);
-
   const renderedCameraTileX = resolveRenderedCameraAxisTile(
     state.renderTileX,
     state.playerTileX,
@@ -1372,56 +1368,6 @@ function applyCameraWindowMetatileStep(stepX: number, stepY: number): void {
   cameraWindowOriginTileY += stepY;
   advanceFieldCameraByMetatile(fieldCameraOffset, stepX, stepY);
   redrawEnteringCameraSlice(stepX, stepY);
-}
-
-function preloadIncomingCameraSlices(diffX: number, diffY: number): void {
-  if (diffX === 0 && diffY === 0) {
-    return;
-  }
-
-  let preloadDiffX = diffX;
-  let preloadDiffY = diffY;
-  while (preloadDiffX !== 0 || preloadDiffY !== 0) {
-    if (preloadDiffX > 0) {
-      redrawPreloadEnteringCameraSlice(1, 0);
-      preloadDiffX -= 1;
-      continue;
-    }
-    if (preloadDiffX < 0) {
-      redrawPreloadEnteringCameraSlice(-1, 0);
-      preloadDiffX += 1;
-      continue;
-    }
-    if (preloadDiffY > 0) {
-      redrawPreloadEnteringCameraSlice(0, 1);
-      preloadDiffY -= 1;
-      continue;
-    }
-    redrawPreloadEnteringCameraSlice(0, -1);
-    preloadDiffY += 1;
-  }
-}
-
-function redrawPreloadEnteringCameraSlice(stepX: number, stepY: number): void {
-  const preloadOffset = {
-    xTileOffset: fieldCameraOffset.xTileOffset,
-    yTileOffset: fieldCameraOffset.yTileOffset,
-    xPixelOffset: fieldCameraOffset.xPixelOffset,
-    yPixelOffset: fieldCameraOffset.yPixelOffset,
-  };
-  advanceFieldCameraByMetatile(preloadOffset, stepX, stepY);
-  const redraws = resolveEnteringCameraSlice(
-    {
-      originTileX: cameraWindowOriginTileX + stepX,
-      originTileY: cameraWindowOriginTileY + stepY,
-    },
-    preloadOffset,
-    stepX,
-    stepY,
-  );
-  for (const redraw of redraws) {
-    drawCameraSlotAt(redraw.bufferX, redraw.bufferY, redraw.worldTileX, redraw.worldTileY);
-  }
 }
 
 function redrawEnteringCameraSlice(stepX: number, stepY: number): void {
