@@ -43,6 +43,7 @@ pub struct RenderStateV1 {
     pub map_id: String,
     pub tileset_pair_id: String,
     pub camera: CameraAnchor,
+    pub scroll: BgScroll,
     pub window: RenderWindow,
     pub metatiles: Vec<RenderMetatile>,
 }
@@ -52,6 +53,15 @@ pub struct RenderStateV1 {
 pub struct CameraAnchor {
     pub runtime_x: i32,
     pub runtime_y: i32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BgScroll {
+    pub x_pixel_offset: i32,
+    pub y_pixel_offset: i32,
+    pub horizontal_pan: i32,
+    pub vertical_pan: i32,
 }
 
 #[derive(Debug, Serialize)]
