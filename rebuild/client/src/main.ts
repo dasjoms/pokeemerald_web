@@ -468,10 +468,8 @@ let activePrimaryTileCount = Number.MAX_SAFE_INTEGER;
 const fieldCameraOffset = createInitialCameraWindowOffset();
 let cameraWindowOriginTileX = 0;
 let cameraWindowOriginTileY = 0;
-let lastPreloadedCameraTileX = 0;
-let lastPreloadedCameraTileY = 0;
-let lastPresentedCameraTileX = 0;
-let lastPresentedCameraTileY = 0;
+let lastRenderedCameraTileX = 0;
+let lastRenderedCameraTileY = 0;
 const cameraBufferSlots: CameraBufferSlot[] = [];
 const renderedSubtileBindings: RenderedSubtileBinding[] = [];
 const subtileBindingsByTile = new Map<string, RenderedSubtileBinding[]>();
@@ -1303,10 +1301,8 @@ function initializeCameraWindowFromPlayerTile(playerTileX: number, playerTileY: 
   fieldCameraOffset.yTileOffset = 0;
   fieldCameraOffset.xPixelOffset = 0;
   fieldCameraOffset.yPixelOffset = 0;
-  lastPreloadedCameraTileX = playerTileX;
-  lastPreloadedCameraTileY = playerTileY;
-  lastPresentedCameraTileX = playerTileX;
-  lastPresentedCameraTileY = playerTileY;
+  lastRenderedCameraTileX = playerTileX;
+  lastRenderedCameraTileY = playerTileY;
   redrawEntireCameraWindow();
 }
 
@@ -1328,51 +1324,6 @@ function updateCameraWindowForAuthoritativeTileStep(): void {
   if (!activeRuntimeChunk || !activeLayoutForRender) {
     return;
   }
-  runCameraWindowPreloadPhase();
-  runCameraWindowPresentationPhase();
-}
-
-function runCameraWindowPreloadPhase(): void {
-  let diffX = state.playerTileX - lastPreloadedCameraTileX;
-  let diffY = state.playerTileY - lastPreloadedCameraTileY;
-  if (diffX === 0 && diffY === 0) {
-    return;
-  }
-
-  const simulatedOrigin = {
-    originTileX: cameraWindowOriginTileX,
-    originTileY: cameraWindowOriginTileY,
-  };
-  const simulatedOffset = {
-    xTileOffset: fieldCameraOffset.xTileOffset,
-    yTileOffset: fieldCameraOffset.yTileOffset,
-    xPixelOffset: fieldCameraOffset.xPixelOffset,
-    yPixelOffset: fieldCameraOffset.yPixelOffset,
-  };
-
-  const presentedAheadDiffX = lastPreloadedCameraTileX - lastPresentedCameraTileX;
-  const presentedAheadDiffY = lastPreloadedCameraTileY - lastPresentedCameraTileY;
-  simulateCameraWindowSteps(
-    simulatedOrigin,
-    simulatedOffset,
-    presentedAheadDiffX,
-    presentedAheadDiffY,
-    false,
-  );
-
-  simulateCameraWindowSteps(
-    simulatedOrigin,
-    simulatedOffset,
-    diffX,
-    diffY,
-    true,
-  );
-
-  lastPreloadedCameraTileX = state.playerTileX;
-  lastPreloadedCameraTileY = state.playerTileY;
-}
-
-function runCameraWindowPresentationPhase(): void {
   const renderedCameraTileX = resolveRenderedCameraAxisTile(
     state.renderTileX,
     state.playerTileX,
@@ -1381,8 +1332,8 @@ function runCameraWindowPresentationPhase(): void {
     state.renderTileY,
     state.playerTileY,
   );
-  let diffX = renderedCameraTileX - lastPresentedCameraTileX;
-  let diffY = renderedCameraTileY - lastPresentedCameraTileY;
+  let diffX = renderedCameraTileX - lastRenderedCameraTileX;
+  let diffY = renderedCameraTileY - lastRenderedCameraTileY;
   if (diffX === 0 && diffY === 0) {
     return;
   }
@@ -1406,8 +1357,9 @@ function runCameraWindowPresentationPhase(): void {
     applyCameraWindowMetatileStep(0, -1);
     diffY += 1;
   }
-  lastPresentedCameraTileX = renderedCameraTileX;
-  lastPresentedCameraTileY = renderedCameraTileY;
+
+  lastRenderedCameraTileX = renderedCameraTileX;
+  lastRenderedCameraTileY = renderedCameraTileY;
   updateCameraWindowSlotPositions();
 }
 
@@ -1415,83 +1367,14 @@ function applyCameraWindowMetatileStep(stepX: number, stepY: number): void {
   cameraWindowOriginTileX += stepX;
   cameraWindowOriginTileY += stepY;
   advanceFieldCameraByMetatile(fieldCameraOffset, stepX, stepY);
-  redrawEnteringCameraSlice(
-    { originTileX: cameraWindowOriginTileX, originTileY: cameraWindowOriginTileY },
-    fieldCameraOffset,
-    stepX,
-    stepY,
-  );
+  redrawEnteringCameraSlice(stepX, stepY);
 }
 
-function simulateCameraWindowSteps(
-  simulatedOrigin: { originTileX: number; originTileY: number },
-  simulatedOffset: {
-    xTileOffset: number;
-    yTileOffset: number;
-    xPixelOffset: number;
-    yPixelOffset: number;
-  },
-  diffX: number,
-  diffY: number,
-  shouldRedrawSlice: boolean,
-): void {
-  while (diffX !== 0 || diffY !== 0) {
-    if (diffX > 0) {
-      applyCameraWindowSimulationStep(simulatedOrigin, simulatedOffset, 1, 0, shouldRedrawSlice);
-      diffX -= 1;
-      continue;
-    }
-    if (diffX < 0) {
-      applyCameraWindowSimulationStep(simulatedOrigin, simulatedOffset, -1, 0, shouldRedrawSlice);
-      diffX += 1;
-      continue;
-    }
-    if (diffY > 0) {
-      applyCameraWindowSimulationStep(simulatedOrigin, simulatedOffset, 0, 1, shouldRedrawSlice);
-      diffY -= 1;
-      continue;
-    }
-    applyCameraWindowSimulationStep(simulatedOrigin, simulatedOffset, 0, -1, shouldRedrawSlice);
-    diffY += 1;
-  }
-}
-
-function applyCameraWindowSimulationStep(
-  simulatedOrigin: { originTileX: number; originTileY: number },
-  simulatedOffset: {
-    xTileOffset: number;
-    yTileOffset: number;
-    xPixelOffset: number;
-    yPixelOffset: number;
-  },
-  stepX: number,
-  stepY: number,
-  shouldRedrawSlice: boolean,
-): void {
-  simulatedOrigin.originTileX += stepX;
-  simulatedOrigin.originTileY += stepY;
-  advanceFieldCameraByMetatile(simulatedOffset, stepX, stepY);
-  if (!shouldRedrawSlice) {
-    return;
-  }
-  redrawEnteringCameraSlice(simulatedOrigin, simulatedOffset, stepX, stepY);
-}
-
-function redrawEnteringCameraSlice(
-  origin: { originTileX: number; originTileY: number },
-  offset: {
-    xTileOffset: number;
-    yTileOffset: number;
-    xPixelOffset: number;
-    yPixelOffset: number;
-  },
-  stepX: number,
-  stepY: number,
-): void {
+function redrawEnteringCameraSlice(stepX: number, stepY: number): void {
   // Spare capacity must track incoming movement side to avoid edge pop.
   const redraws = resolveEnteringCameraSlice(
-    origin,
-    offset,
+    { originTileX: cameraWindowOriginTileX, originTileY: cameraWindowOriginTileY },
+    fieldCameraOffset,
     stepX,
     stepY,
   );
