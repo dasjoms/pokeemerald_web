@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 use tokio::sync::mpsc;
 
 use crate::{
-    acro::{AcroRuntime, StationaryAcroMovementOverride},
+    acro::AcroRuntime,
     movement::{step_progress_pixels, StepSpeed, WALK_SAMPLE_MS},
     protocol::{
         AcroBikeSubstate, BikeTransitionType, Direction, HeldInputState, MovementMode,
@@ -377,24 +377,17 @@ impl Session {
     pub fn avatar_action_lock_active(&self) -> bool {
         self.avatar_action_lock
             .as_ref()
-            .is_some_and(|lock| match lock.remaining_ticks {
-                Some(remaining_ticks) => remaining_ticks > 0,
-                None => true,
-            })
+            .is_some_and(|lock| lock.remaining_ticks > 0)
     }
 
-    pub fn begin_avatar_action_lock(
-        &mut self,
-        lock_type: AvatarActionLockType,
-        remaining_ticks: Option<u8>,
-    ) {
-        if remaining_ticks == Some(0) {
+    pub fn begin_avatar_action_lock(&mut self, lock_type: AvatarActionLockType, ticks: u8) {
+        if ticks == 0 {
             self.avatar_action_lock = None;
             return;
         }
         self.avatar_action_lock = Some(AvatarActionLock {
             lock_type,
-            remaining_ticks,
+            remaining_ticks: ticks,
         });
     }
 
@@ -402,13 +395,10 @@ impl Session {
         let Some(lock) = self.avatar_action_lock.as_mut() else {
             return;
         };
-        let Some(remaining_ticks) = lock.remaining_ticks.as_mut() else {
-            return;
-        };
-        if *remaining_ticks > 0 {
-            *remaining_ticks -= 1;
+        if lock.remaining_ticks > 0 {
+            lock.remaining_ticks -= 1;
         }
-        if *remaining_ticks == 0 {
+        if lock.remaining_ticks == 0 {
             self.avatar_action_lock = None;
         }
     }
@@ -424,13 +414,12 @@ impl Session {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AvatarActionLockType {
     BikeTransition(BikeTransitionType),
-    StationaryAcroMovementOverride(StationaryAcroMovementOverride),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AvatarActionLock {
     pub lock_type: AvatarActionLockType,
-    pub remaining_ticks: Option<u8>,
+    pub remaining_ticks: u8,
 }
 
 #[derive(Debug)]

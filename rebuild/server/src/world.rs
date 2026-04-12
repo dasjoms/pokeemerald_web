@@ -11,7 +11,7 @@ use tokio::sync::{mpsc, RwLock};
 use tracing::{error, trace};
 
 use crate::{
-    acro::{bunny_hop_cycle_ticks, AcroAnimationAction, AcroState, StationaryAcroMovementOverride},
+    acro::{bunny_hop_cycle_ticks, AcroAnimationAction, AcroState},
     map_chunk::{serialize_world_snapshot_map_chunk, world_snapshot_map_chunk_hash},
     movement::{
         facing_delta, get_player_speed, is_biking_disallowed_by_player as movement_bike_gate,
@@ -52,6 +52,8 @@ const MB_UNUSED_SOOTOPOLIS_DEEP_WATER: u8 = 0x18;
 const MB_NO_SURFACING: u8 = 0x19;
 const MB_UNUSED_SOOTOPOLIS_DEEP_WATER_2: u8 = 0x1A;
 const MB_SEAWEED_NO_SURFACING: u8 = 0x2A;
+const ACRO_WHEELIE_TO_NORMAL_LOCK_TICKS: u8 = 8;
+const ACRO_WHEELIE_POP_LOCK_TICKS: u8 = 8;
 const ACRO_WHEELIE_RISING_MOVING_HOLD_TICKS: u8 = 8;
 const ACRO_WHEELIE_LOWERING_MOVING_HOLD_TICKS: u8 = 8;
 
@@ -587,35 +589,13 @@ impl World {
                     .stationary_hop_landing_ticks_remaining = ticks_remaining_until_landing;
             }
             if current_bike_transition != previous_bike_transition {
-                if let Some(movement_override) = stationary_acro_movement_override_for_transition(
-                    current_bike_transition,
-                    had_active_walk_at_tick_start,
-                ) {
-                    session.begin_avatar_action_lock(
-                        AvatarActionLockType::StationaryAcroMovementOverride(movement_override),
-                        None,
-                    );
-                } else if let Some(lock_ticks) =
+                if let Some(lock_ticks) =
                     avatar_action_lock_ticks_for_bike_transition(current_bike_transition)
                 {
                     session.begin_avatar_action_lock(
                         AvatarActionLockType::BikeTransition(current_bike_transition),
-                        Some(lock_ticks),
+                        lock_ticks,
                     );
-                }
-            }
-            if let Some(lock) = session.avatar_action_lock {
-                if let AvatarActionLockType::StationaryAcroMovementOverride(movement_override) =
-                    lock.lock_type
-                {
-                    if session
-                        .player_state
-                        .bike_runtime
-                        .acro_runtime
-                        .is_stationary_movement_override_complete(movement_override)
-                    {
-                        session.avatar_action_lock = None;
-                    }
                 }
             }
             let (hop_landing_map_id, hop_landing_x, hop_landing_y) =
@@ -1642,33 +1622,19 @@ fn bike_transition_from_action(action: AcroAnimationAction) -> BikeTransitionTyp
 }
 
 fn avatar_action_lock_ticks_for_bike_transition(transition: BikeTransitionType) -> Option<u8> {
-    let _ = transition;
-    None
+    match transition {
+        BikeTransitionType::NormalToWheelie => Some(ACRO_WHEELIE_POP_LOCK_TICKS),
+        BikeTransitionType::WheelieToNormal => Some(ACRO_WHEELIE_TO_NORMAL_LOCK_TICKS),
+        _ => None,
+    }
 }
 
 fn transition_hold_ticks_for_bike_transition(transition: BikeTransitionType) -> Option<u8> {
     match transition {
         BikeTransitionType::WheelieRisingMoving => Some(ACRO_WHEELIE_RISING_MOVING_HOLD_TICKS),
         BikeTransitionType::WheelieLoweringMoving => Some(ACRO_WHEELIE_LOWERING_MOVING_HOLD_TICKS),
-        _ => None,
-    }
-}
-
-fn stationary_acro_movement_override_for_transition(
-    transition: BikeTransitionType,
-    had_active_walk_at_tick_start: bool,
-) -> Option<StationaryAcroMovementOverride> {
-    if had_active_walk_at_tick_start {
-        return None;
-    }
-
-    match transition {
-        BikeTransitionType::NormalToWheelie => {
-            Some(StationaryAcroMovementOverride::NormalToWheelie)
-        }
-        BikeTransitionType::WheelieToNormal => {
-            Some(StationaryAcroMovementOverride::WheelieToNormal)
-        }
+        BikeTransitionType::NormalToWheelie => Some(ACRO_WHEELIE_POP_LOCK_TICKS),
+        BikeTransitionType::WheelieToNormal => Some(ACRO_WHEELIE_TO_NORMAL_LOCK_TICKS),
         _ => None,
     }
 }
@@ -2582,8 +2548,8 @@ mod tests {
             })
             .expect("expected WheelieIdle transition tick");
         assert!(
-            first_wheelie_idle_tick > normal_to_wheelie_tick,
-            "WheelieIdle must not override NormalToWheelie on the same tick; normal_tick={normal_to_wheelie_tick}, wheelie_idle_tick={first_wheelie_idle_tick}"
+            first_wheelie_idle_tick >= normal_to_wheelie_tick + ACRO_WHEELIE_POP_LOCK_TICKS as u32,
+            "WheelieIdle must not override NormalToWheelie during pop-window; normal_tick={normal_to_wheelie_tick}, wheelie_idle_tick={first_wheelie_idle_tick}"
         );
     }
 
@@ -2823,51 +2789,25 @@ mod tests {
             "directional walk input should remain queued when WheelieToNormal lock starts"
         );
 
-        let mut transition_completion_seen = false;
-        for _ in 0..8 {
+        for _ in 0..(ACRO_WHEELIE_TO_NORMAL_LOCK_TICKS as usize - 1) {
             world.tick().await;
             let tick_messages = drain_server_messages(&mut rx);
-            if tick_messages.iter().any(|message| {
-                matches!(
-                    message,
-                    ServerMessage::BikeRuntimeDelta(BikeRuntimeDelta {
-                        bike_transition: Some(BikeTransitionType::None),
-                        ..
-                    })
-                )
-            }) {
-                transition_completion_seen = true;
-            }
             assert!(
                 tick_messages
                     .iter()
                     .all(|message| !matches!(message, ServerMessage::WalkResult(_))),
                 "no walk result should be produced while the stationary lock remains active"
             );
-            if transition_completion_seen {
-                break;
-            }
         }
 
-        assert!(
-            transition_completion_seen,
-            "authoritative completion signal should arrive before queued walk executes"
-        );
-
-        let mut accepted_result = None;
-        for _ in 0..8 {
-            world.tick().await;
-            let release_tick_messages = drain_server_messages(&mut rx);
-            accepted_result = release_tick_messages
-                .into_iter()
-                .find_map(|message| match message {
-                    ServerMessage::WalkResult(result) if result.input_seq == 0 => Some(result),
-                    _ => None,
-                });
-            if accepted_result.is_some() {
-                break;
-            }
-        }
+        world.tick().await;
+        let release_tick_messages = drain_server_messages(&mut rx);
+        let accepted_result = release_tick_messages
+            .into_iter()
+            .find_map(|message| match message {
+                ServerMessage::WalkResult(result) if result.input_seq == 0 => Some(result),
+                _ => None,
+            });
         let accepted_result = accepted_result
             .expect("queued directional walk input should execute once lock expires");
         assert!(accepted_result.accepted);
@@ -4321,18 +4261,18 @@ mod tests {
     }
 
     #[test]
-    fn bike_transitions_use_no_tick_based_avatar_action_lock() {
+    fn wheelie_rising_moving_transition_has_no_avatar_action_lock() {
         assert_eq!(
             avatar_action_lock_ticks_for_bike_transition(BikeTransitionType::WheelieRisingMoving),
             None
         );
         assert_eq!(
             avatar_action_lock_ticks_for_bike_transition(BikeTransitionType::NormalToWheelie),
-            None
+            Some(ACRO_WHEELIE_POP_LOCK_TICKS)
         );
         assert_eq!(
             avatar_action_lock_ticks_for_bike_transition(BikeTransitionType::WheelieToNormal),
-            None
+            Some(ACRO_WHEELIE_TO_NORMAL_LOCK_TICKS)
         );
     }
 
@@ -4372,7 +4312,7 @@ mod tests {
             );
         }
 
-        for _ in 0..8 {
+        for _ in 0..ACRO_WHEELIE_POP_LOCK_TICKS {
             locked.bike_runtime.action_in_progress = true;
             locked.bike_runtime.held_transition = Some(BikeTransitionType::NormalToWheelie);
             update_bike_runtime_per_tick(

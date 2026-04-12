@@ -56,12 +56,6 @@ pub enum AcroAnimationAction {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum StationaryAcroMovementOverride {
-    NormalToWheelie,
-    WheelieToNormal,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct BikeHistoryInputInfo {
     dir_history_match: u32,
     ab_start_select_history_match: u32,
@@ -204,26 +198,6 @@ impl AcroRuntime {
 
     pub fn pending_action(&self) -> Option<AcroAnimationAction> {
         self.pending_action
-    }
-
-    pub fn is_stationary_movement_override_complete(
-        &self,
-        movement_override: StationaryAcroMovementOverride,
-    ) -> bool {
-        match movement_override {
-            StationaryAcroMovementOverride::NormalToWheelie => {
-                !matches!(
-                    self.pending_action,
-                    Some(AcroAnimationAction::NormalToWheelie)
-                ) && !matches!(self.state, AcroState::Normal)
-            }
-            StationaryAcroMovementOverride::WheelieToNormal => {
-                !matches!(
-                    self.pending_action,
-                    Some(AcroAnimationAction::WheelieToNormal)
-                ) && matches!(self.state, AcroState::Normal)
-            }
-        }
     }
 
     pub fn update_history(&mut self, held_direction: Option<Direction>, held_ab_start_select: u8) {
