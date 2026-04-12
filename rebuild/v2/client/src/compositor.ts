@@ -38,7 +38,8 @@ export class OverworldCompositor {
         this.loadedPairId = null;
         const reason = error instanceof Error ? error.message : String(error);
         throw new Error(
-          `Failed loading tileset assets for pair "${message.tilesetPairId}" from asset root "${assetRoot}": ${reason}`
+          `Failed loading tileset assets for pair "${message.tilesetPairId}" from asset root "${assetRoot}": ${reason}`,
+          { cause: error }
         );
       }
     }

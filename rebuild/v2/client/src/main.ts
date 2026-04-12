@@ -67,6 +67,7 @@ playButton.addEventListener("click", async () => {
     await compositor.fullRedraw(latestRenderState, DEFAULT_DEV_ASSET_ROOT);
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
+    console.error("[v2-client] initial redraw failed", error);
     launched = false;
     playButton.style.display = "block";
     banner.visible = true;
