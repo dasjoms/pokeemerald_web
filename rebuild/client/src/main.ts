@@ -106,6 +106,7 @@ import {
   resolvePlayerRenderPriority,
   type PlayerObjectRenderPriorityState,
 } from './playerLayerSelection';
+import { createMapWindowBacking } from './mapWindowBacking';
 import { OverworldWindowRenderer } from './overworldWindowRenderer';
 
 type ServerMessage =
@@ -141,6 +142,7 @@ type LayoutFile = {
   primary_tileset: string;
   secondary_tileset: string;
   tiles: LayoutTile[];
+  border_tiles?: LayoutTile[];
   render_assets?: RenderAssetsRef;
 };
 
@@ -1235,7 +1237,11 @@ async function renderMapFromSnapshot(snapshot: WorldSnapshot): Promise<void> {
   syncCameraWindowFromRenderPosition();
   activeWindowCenterTileX = state.windowOriginTileX;
   activeWindowCenterTileY = state.windowOriginTileY;
-  overworldWindowRenderer.initWindow(state.windowOriginTileX, state.windowOriginTileY, runtimeChunk);
+  const mapWindowBacking = createMapWindowBacking({
+    chunk: runtimeChunk,
+    borderTiles: layout.border_tiles,
+  });
+  overworldWindowRenderer.initWindow(state.windowOriginTileX, state.windowOriginTileY, mapWindowBacking);
   updateMapWindowPresentation();
 }
 
