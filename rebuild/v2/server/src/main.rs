@@ -18,7 +18,6 @@ use rebuild_v2_server::{
     },
 };
 use serde::Deserialize;
-use tower_http::services::ServeDir;
 use tracing::{error, info};
 
 const DEFAULT_ASSET_ROOT: &str = "../../assets";
@@ -85,14 +84,11 @@ async fn main() {
         },
     });
 
-    let bind_addr =
-        env::var("V2_SERVER_BIND_ADDR").unwrap_or_else(|_| DEFAULT_BIND_ADDR.to_string());
-    let asset_base_path = "/v2/assets";
-    let asset_base_url = format!("http://{bind_addr}{asset_base_path}");
     let app = Router::new()
         .route("/ws", get(handle_ws_upgrade))
-        .nest_service(asset_base_path, ServeDir::new(asset_root.clone()))
         .with_state(state);
+    let bind_addr =
+        env::var("V2_SERVER_BIND_ADDR").unwrap_or_else(|_| DEFAULT_BIND_ADDR.to_string());
 
     let listener = tokio::net::TcpListener::bind(&bind_addr)
         .await
@@ -101,13 +97,7 @@ async fn main() {
     info!(
         protocol_version = PROTOCOL_VERSION,
         asset_root = %asset_root.display(),
-        asset_base_url = %asset_base_url,
         "rebuild v2 server starting"
-    );
-    info!(
-        asset_root = %asset_root.display(),
-        asset_base_url = %asset_base_url,
-        "v2 static asset route ready"
     );
 
     axum::serve(listener, app)
