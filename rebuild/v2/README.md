@@ -22,3 +22,16 @@ The first rendering objective is a **32x32 (16-metatile) buffer-wheel overworld 
 - `rebuild/assets`
 
 No asset duplication is introduced. Asset root is configurable via `V2_ASSET_ROOT`.
+
+## Split-origin local development
+
+The server emits asset URLs via `V2_ASSET_BASE_URL` (default: `/assets`). In split-origin dev setups (for example, Vite on one port and the Rust server on another), you can use either approach:
+
+- Set `V2_ASSET_BASE_URL` to the full server origin, for example:
+  - `V2_ASSET_BASE_URL=http://127.0.0.1:4100/assets`
+- Keep same-origin URLs and rely on the Vite dev proxy (`client/vite.config.ts`) forwarding `/assets` to `http://127.0.0.1:4100`.
+
+Expected atlas requests should resolve to:
+
+- `http://127.0.0.1:4100/assets/render/<pair>/atlas.json?...`
+- or the Vite-fronted `/assets/...` path proxied to that backend.
