@@ -349,7 +349,7 @@ const ENABLE_DEV_DEBUG_ACTIONS =
   new URLSearchParams(window.location.search).get('devDebugActions') === '1';
 const DEBUG_ACRO_HOP = true;
 const ENABLE_CAMERA_TRACE_LOGS =
-  new URLSearchParams(window.location.search).get('cameraTrace') !== '0';
+  new URLSearchParams(window.location.search).get('cameraTrace') === '1';
 const jsonAssetLoaders = import.meta.glob('../../assets/**/*.json');
 const binaryAssetUrls = import.meta.glob('../../assets/**/*.bin', {
   query: '?url',
