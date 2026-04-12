@@ -29,7 +29,9 @@ use tracing::{error, info};
 const DEFAULT_ASSET_ROOT: &str = "../../assets";
 const DEFAULT_BIND_ADDR: &str = "127.0.0.1:4100";
 const PROTOCOL_VERSION: u16 = 1;
-const DEFAULT_MAP_ID: &str = "MAP_PETALBURG_CITY";
+const DEFAULT_MAP_ID: &str = "MAP_LITTLEROOT_TOWN";
+const DEFAULT_START_MAP_LOCAL_X: i32 = 10;
+const DEFAULT_START_MAP_LOCAL_Y: i32 = 1;
 const ALLOWED_ASSET_TOP_LEVEL_DIRS: &[&str] = &["layouts", "players", "render"];
 const DEFAULT_ASSET_BASE_URL: &str = "/assets";
 const DEFAULT_ASSET_VERSION: &str = "dev";
@@ -93,7 +95,11 @@ async fn main() {
         asset_root: canonical_asset_root,
         player_runtime: PlayerRuntimeState {
             map_id: DEFAULT_MAP_ID.to_owned(),
-            map_local: MapLocalCoord { x: 0, y: 0 },
+            // temporary Phase 1 spawn near Route 101 transition
+            map_local: MapLocalCoord {
+                x: DEFAULT_START_MAP_LOCAL_X,
+                y: DEFAULT_START_MAP_LOCAL_Y,
+            },
         },
     });
 
