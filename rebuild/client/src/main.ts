@@ -1352,31 +1352,35 @@ function redrawEnteringCameraSlice(stepX: number, stepY: number): void {
   if (stepX > 0) {
     const bufferX = cameraMod(ringOffsetX + CAMERA_METATILE_BUFFER_DIM - 1, CAMERA_METATILE_BUFFER_DIM);
     const worldX = cameraWindowOriginTileX + CAMERA_METATILE_BUFFER_DIM - 1;
-    for (let y = 0; y < CAMERA_METATILE_BUFFER_DIM; y += 1) {
-      drawCameraSlotAt(bufferX, y, worldX, cameraWindowOriginTileY + y);
+    for (let logicalY = 0; logicalY < CAMERA_METATILE_BUFFER_DIM; logicalY += 1) {
+      const bufferY = cameraMod(logicalY + ringOffsetY, CAMERA_METATILE_BUFFER_DIM);
+      drawCameraSlotAt(bufferX, bufferY, worldX, cameraWindowOriginTileY + logicalY);
     }
     return;
   }
   if (stepX < 0) {
     const bufferX = ringOffsetX;
     const worldX = cameraWindowOriginTileX;
-    for (let y = 0; y < CAMERA_METATILE_BUFFER_DIM; y += 1) {
-      drawCameraSlotAt(bufferX, y, worldX, cameraWindowOriginTileY + y);
+    for (let logicalY = 0; logicalY < CAMERA_METATILE_BUFFER_DIM; logicalY += 1) {
+      const bufferY = cameraMod(logicalY + ringOffsetY, CAMERA_METATILE_BUFFER_DIM);
+      drawCameraSlotAt(bufferX, bufferY, worldX, cameraWindowOriginTileY + logicalY);
     }
     return;
   }
   if (stepY > 0) {
     const bufferY = cameraMod(ringOffsetY + CAMERA_METATILE_BUFFER_DIM - 1, CAMERA_METATILE_BUFFER_DIM);
     const worldY = cameraWindowOriginTileY + CAMERA_METATILE_BUFFER_DIM - 1;
-    for (let x = 0; x < CAMERA_METATILE_BUFFER_DIM; x += 1) {
-      drawCameraSlotAt(x, bufferY, cameraWindowOriginTileX + x, worldY);
+    for (let logicalX = 0; logicalX < CAMERA_METATILE_BUFFER_DIM; logicalX += 1) {
+      const bufferX = cameraMod(logicalX + ringOffsetX, CAMERA_METATILE_BUFFER_DIM);
+      drawCameraSlotAt(bufferX, bufferY, cameraWindowOriginTileX + logicalX, worldY);
     }
     return;
   }
   const bufferY = ringOffsetY;
   const worldY = cameraWindowOriginTileY;
-  for (let x = 0; x < CAMERA_METATILE_BUFFER_DIM; x += 1) {
-    drawCameraSlotAt(x, bufferY, cameraWindowOriginTileX + x, worldY);
+  for (let logicalX = 0; logicalX < CAMERA_METATILE_BUFFER_DIM; logicalX += 1) {
+    const bufferX = cameraMod(logicalX + ringOffsetX, CAMERA_METATILE_BUFFER_DIM);
+    drawCameraSlotAt(bufferX, bufferY, cameraWindowOriginTileX + logicalX, worldY);
   }
 }
 
