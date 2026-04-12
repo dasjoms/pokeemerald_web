@@ -28,12 +28,40 @@ const DEFAULT_MAP_ID: &str = "MAP_PETALBURG_CITY";
 #[derive(Clone)]
 struct AppState {
     asset_root: PathBuf,
+    player_runtime: PlayerRuntimeState,
 }
 
 #[derive(Debug, Deserialize)]
 struct HandshakeQuery {
     #[serde(default, rename = "clientVersion")]
     client_version: String,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct MapLocalCoord {
+    x: i32,
+    y: i32,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct RuntimeCoord {
+    x: i32,
+    y: i32,
+}
+
+#[derive(Clone, Debug)]
+struct PlayerRuntimeState {
+    map_id: String,
+    map_local: MapLocalCoord,
+}
+
+impl PlayerRuntimeState {
+    fn runtime_camera_from_map_local(map_local: MapLocalCoord) -> RuntimeCoord {
+        RuntimeCoord {
+            x: map_local.x + MAP_OFFSET as i32,
+            y: map_local.y + MAP_OFFSET as i32,
+        }
+    }
 }
 
 #[tokio::main]
@@ -50,6 +78,10 @@ async fn main() {
 
     let state = Arc::new(AppState {
         asset_root: asset_root.clone(),
+        player_runtime: PlayerRuntimeState {
+            map_id: DEFAULT_MAP_ID.to_owned(),
+            map_local: MapLocalCoord { x: 0, y: 0 },
+        },
     });
 
     let app = Router::new()
@@ -121,7 +153,7 @@ async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>, client_versi
         return;
     }
 
-    match build_render_state(&state.asset_root) {
+    match build_render_state(&state.asset_root, &state.player_runtime) {
         Ok(render_state) => {
             if send_json(
                 &mut socket,
@@ -148,11 +180,14 @@ async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>, client_versi
     }
 }
 
-fn build_render_state(asset_root: &PathBuf) -> Result<RenderStateV1, String> {
+fn build_render_state(
+    asset_root: &PathBuf,
+    player_runtime: &PlayerRuntimeState,
+) -> Result<RenderStateV1, String> {
     let assembler =
         RuntimeMapAssembler::from_asset_root(asset_root).map_err(|err| err.to_string())?;
     let bundle = assembler
-        .build_bundle_for_map_id(DEFAULT_MAP_ID)
+        .build_bundle_for_map_id(&player_runtime.map_id)
         .map_err(|err| err.to_string())?;
 
     let runtime = bundle.runtime;
@@ -162,8 +197,17 @@ fn build_render_state(asset_root: &PathBuf) -> Result<RenderStateV1, String> {
         .as_ref()
         .ok_or_else(|| format!("layout {} missing render assets", layout.id))?;
 
-    let camera_runtime_x = MAP_OFFSET as i32 + (layout.width as i32 / 2);
-    let camera_runtime_y = MAP_OFFSET as i32 + (layout.height as i32 / 2);
+    let clamped_player_x = player_runtime.map_local.x.clamp(0, layout.width as i32 - 1);
+    let clamped_player_y = player_runtime
+        .map_local
+        .y
+        .clamp(0, layout.height as i32 - 1);
+    let camera_runtime = PlayerRuntimeState::runtime_camera_from_map_local(MapLocalCoord {
+        x: clamped_player_x,
+        y: clamped_player_y,
+    });
+    let camera_runtime_x = camera_runtime.x;
+    let camera_runtime_y = camera_runtime.y;
     let origin_runtime_x = camera_runtime_x - (RENDER_WINDOW_WIDTH as i32 / 2);
     let origin_runtime_y = camera_runtime_y - (RENDER_WINDOW_HEIGHT as i32 / 2);
 
@@ -179,7 +223,7 @@ fn build_render_state(asset_root: &PathBuf) -> Result<RenderStateV1, String> {
 
     Ok(RenderStateV1 {
         protocol_version: PROTOCOL_VERSION,
-        map_id: DEFAULT_MAP_ID.to_owned(),
+        map_id: player_runtime.map_id.clone(),
         tileset_pair_id: render_assets.pair_id.clone(),
         camera: CameraAnchor {
             runtime_x: camera_runtime_x,
