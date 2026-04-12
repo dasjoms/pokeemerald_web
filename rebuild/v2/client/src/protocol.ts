@@ -62,6 +62,16 @@ export type RenderStateV1Message = {
     xTileOffset: number;
     yTileOffset: number;
   };
+  playerRenderProxy: {
+    mapLocalX: number;
+    mapLocalY: number;
+    subpixelX: number;
+    subpixelY: number;
+    cameraPosX: number;
+    cameraPosY: number;
+    xTileOffset: number;
+    yTileOffset: number;
+  };
   window: {
     originRuntimeX: number;
     originRuntimeY: number;
@@ -73,7 +83,7 @@ export type RenderStateV1Message = {
 
 export type ServerMessage = ServerHelloMessage | RenderStateV1Message;
 
-export function parseServerMessage(raw: string): ServerMessage | null {
+export function parseServerMessage(raw: string, options?: { requirePlayerRenderProxy?: boolean }): ServerMessage | null {
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
@@ -109,6 +119,10 @@ export function parseServerMessage(raw: string): ServerMessage | null {
   const scroll = getObject(parsed, "scroll", "bgScroll", "bg_scroll", "cameraScroll", "camera_scroll");
   const movement = getObject(parsed, "movement");
   const wheel = getObject(parsed, "wheel");
+  const playerRenderProxy = getObject(parsed, "playerRenderProxy", "player_render_proxy");
+  if (options?.requirePlayerRenderProxy && Object.keys(playerRenderProxy).length === 0) {
+    return null;
+  }
   const metatilesRaw = getArray(parsed, "metatiles");
   const metatiles: RenderMetatile[] = metatilesRaw
     .map((entry) => normalizeMetatile(entry))
@@ -141,6 +155,16 @@ export function parseServerMessage(raw: string): ServerMessage | null {
       cameraPosY: getNumber(wheel, "cameraPosY", "camera_pos_y"),
       xTileOffset: getNumber(wheel, "xTileOffset", "x_tile_offset"),
       yTileOffset: getNumber(wheel, "yTileOffset", "y_tile_offset")
+    },
+    playerRenderProxy: {
+      mapLocalX: getNumber(playerRenderProxy, "mapLocalX", "map_local_x"),
+      mapLocalY: getNumber(playerRenderProxy, "mapLocalY", "map_local_y"),
+      subpixelX: getNumber(playerRenderProxy, "subpixelX", "subpixel_x"),
+      subpixelY: getNumber(playerRenderProxy, "subpixelY", "subpixel_y"),
+      cameraPosX: getNumber(playerRenderProxy, "cameraPosX", "camera_pos_x"),
+      cameraPosY: getNumber(playerRenderProxy, "cameraPosY", "camera_pos_y"),
+      xTileOffset: getNumber(playerRenderProxy, "xTileOffset", "x_tile_offset"),
+      yTileOffset: getNumber(playerRenderProxy, "yTileOffset", "y_tile_offset")
     },
     window: {
       originRuntimeX: getNumber(window, "originRuntimeX", "origin_runtime_x"),

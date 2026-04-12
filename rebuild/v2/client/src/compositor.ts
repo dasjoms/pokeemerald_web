@@ -10,6 +10,10 @@ import {
   VIEWPORT_HEIGHT,
   VIEWPORT_WIDTH
 } from "./scrollWindow";
+import {
+  computePlayerRenderProxyScreenPosition,
+  runPlayerRenderProxyFixtures
+} from "./playerRenderProxy";
 
 const METATILE_SIZE = 2;
 const NORMAL_BOTTOM_FILL_TILE_INDEX = 0x14;
@@ -17,6 +21,7 @@ const NORMAL_BOTTOM_FILL_PALETTE_INDEX = 3;
 
 runScrollWindowFixtures();
 runCameraWheelFixtures();
+runPlayerRenderProxyFixtures();
 
 export class OverworldCompositor {
   readonly root = new Container();
@@ -28,6 +33,7 @@ export class OverworldCompositor {
   private readonly bgBottom = new Container();
   private readonly bgMiddle = new Container();
   private readonly bgTop = new Container();
+  private readonly debugMarker = new Graphics();
   private readonly bottomSprites: Sprite[] = [];
   private readonly middleSprites: Sprite[] = [];
   private readonly topSprites: Sprite[] = [];
@@ -38,6 +44,7 @@ export class OverworldCompositor {
     this.root.addChild(this.viewport, this.viewportMask);
     this.viewport.addChild(this.wheelRoot);
     this.wheelRoot.addChild(this.bgBottom, this.bgMiddle, this.bgTop);
+    this.viewport.addChild(this.debugMarker);
 
     this.seedLayer(this.bgBottom, this.bottomSprites);
     this.seedLayer(this.bgMiddle, this.middleSprites);
@@ -47,6 +54,7 @@ export class OverworldCompositor {
     this.viewport.mask = this.viewportMask;
 
     this.root.position.set(64, 64);
+    this.seedDebugMarker();
   }
 
   async fullRedraw(message: RenderStateV1Message, assetManifest: AssetManifest): Promise<void> {
@@ -102,6 +110,13 @@ export class OverworldCompositor {
         this.topSprites[idx].position.set(drawX, drawY);
       }
     }
+
+    const marker = computePlayerRenderProxyScreenPosition(message.playerRenderProxy, message.scroll);
+    this.debugMarker.position.set(marker.screenX, marker.screenY);
+  }
+
+  setDebugMarkerVisible(visible: boolean): void {
+    this.debugMarker.visible = visible;
   }
 
   private drawMetatile(subtileX: number, subtileY: number, layerType: number, subtiles: RenderSubtile[]): void {
@@ -275,5 +290,13 @@ export class OverworldCompositor {
         target.push(sprite);
       }
     }
+  }
+
+  private seedDebugMarker(): void {
+    this.debugMarker.clear();
+    this.debugMarker.moveTo(-3, 0).lineTo(3, 0).stroke({ color: 0xff4d4d, width: 1 });
+    this.debugMarker.moveTo(0, -3).lineTo(0, 3).stroke({ color: 0xff4d4d, width: 1 });
+    this.debugMarker.circle(0, 0, 2).stroke({ color: 0xffffff, width: 1 });
+    this.debugMarker.visible = false;
   }
 }

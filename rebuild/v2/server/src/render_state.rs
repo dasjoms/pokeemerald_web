@@ -46,6 +46,7 @@ pub struct RenderStateV1 {
     pub scroll: BgScroll,
     pub movement: MovementFrame,
     pub wheel: CameraWheelFrame,
+    pub player_render_proxy: PlayerRenderProxy,
     pub window: RenderWindow,
     pub metatiles: Vec<RenderMetatile>,
 }
@@ -84,6 +85,19 @@ pub struct CameraWheelFrame {
     pub x_tile_offset: i32,
     pub y_tile_offset: i32,
     pub strip_redraws: Vec<StripRedrawFrame>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlayerRenderProxy {
+    pub map_local_x: i32,
+    pub map_local_y: i32,
+    pub subpixel_x: i32,
+    pub subpixel_y: i32,
+    pub camera_pos_x: i32,
+    pub camera_pos_y: i32,
+    pub x_tile_offset: i32,
+    pub y_tile_offset: i32,
 }
 
 #[derive(Debug, Serialize, Clone)]

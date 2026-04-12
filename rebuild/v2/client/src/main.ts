@@ -83,6 +83,7 @@ playButton.addEventListener("click", async () => {
     playButton.style.display = "none";
     banner.visible = false;
     compositor.root.visible = true;
+    compositor.setDebugMarkerVisible(true);
     debugOverlay.visible = true;
     if (!assetManifest) {
       throw new Error("Missing asset manifest from server hello");
@@ -95,6 +96,7 @@ playButton.addEventListener("click", async () => {
     playButton.style.display = "block";
     banner.visible = true;
     compositor.root.visible = false;
+    compositor.setDebugMarkerVisible(false);
     banner.text = `Render error: ${reason}`;
   }
 });
@@ -132,7 +134,9 @@ ws.addEventListener("open", () => {
 
 ws.addEventListener("message", async (event) => {
   const raw = String(event.data);
-  const message = parseServerMessage(raw);
+  const message = parseServerMessage(raw, {
+    requirePlayerRenderProxy: debugOverlay.visible
+  });
   if (!message) {
     if (!reportManifestParseError(raw)) {
       banner.text = `Invalid message: ${raw}`;

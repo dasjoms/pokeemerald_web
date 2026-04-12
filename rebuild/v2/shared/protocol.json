@@ -32,6 +32,16 @@
         "horizontalPan": "i32",
         "verticalPan": "i32"
       },
+      "playerRenderProxy": {
+        "mapLocalX": "i32",
+        "mapLocalY": "i32",
+        "subpixelX": "i32",
+        "subpixelY": "i32",
+        "cameraPosX": "i32",
+        "cameraPosY": "i32",
+        "xTileOffset": "i32",
+        "yTileOffset": "i32"
+      },
       "window": {
         "originRuntimeX": "i32",
         "originRuntimeY": "i32",
