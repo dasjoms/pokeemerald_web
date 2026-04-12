@@ -1,5 +1,5 @@
 import { Container, SCALE_MODES, Sprite, Texture } from "pixi.js";
-import type { RenderStateV1Message, RenderSubtile } from "./protocol";
+import type { AssetManifest, RenderStateV1Message, RenderSubtile } from "./protocol";
 import { wheelIndex, WHEEL_SIZE } from "./tileWheel32";
 import { TilesetTextureResolver } from "./assetLoader";
 
@@ -28,17 +28,17 @@ export class OverworldCompositor {
     this.root.position.set(64, 64);
   }
 
-  async fullRedraw(message: RenderStateV1Message, assetRoot: string): Promise<void> {
+  async fullRedraw(message: RenderStateV1Message, assetManifest: AssetManifest): Promise<void> {
     if (!this.resolver || this.loadedPairId !== message.tilesetPairId) {
       try {
-        this.resolver = await TilesetTextureResolver.create(assetRoot, message.tilesetPairId);
+        this.resolver = await TilesetTextureResolver.create(assetManifest);
         this.loadedPairId = message.tilesetPairId;
       } catch (error) {
         this.resolver = null;
         this.loadedPairId = null;
         const reason = error instanceof Error ? error.message : String(error);
         throw new Error(
-          `Failed loading tileset assets for pair "${message.tilesetPairId}" from asset root "${assetRoot}": ${reason}`,
+          `Failed loading tileset assets for pair "${message.tilesetPairId}" from asset base "${assetManifest.assetBaseUrl}": ${reason}`,
           { cause: error }
         );
       }
