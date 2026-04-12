@@ -279,6 +279,13 @@ struct BuildRenderPayload {
     asset_manifest: AssetManifest,
 }
 
+fn render_window_origin_from_camera(camera_runtime: RuntimeCoord) -> RuntimeCoord {
+    RuntimeCoord {
+        x: camera_runtime.x - MAP_OFFSET as i32,
+        y: camera_runtime.y - MAP_OFFSET as i32,
+    }
+}
+
 fn build_render_payload(
     asset_root: &PathBuf,
     player_runtime: &PlayerRuntimeState,
@@ -307,8 +314,9 @@ fn build_render_payload(
     });
     let camera_runtime_x = camera_runtime.x;
     let camera_runtime_y = camera_runtime.y;
-    let origin_runtime_x = camera_runtime_x - (RENDER_WINDOW_WIDTH as i32 / 2);
-    let origin_runtime_y = camera_runtime_y - (RENDER_WINDOW_HEIGHT as i32 / 2);
+    let origin_runtime = render_window_origin_from_camera(camera_runtime);
+    let origin_runtime_x = origin_runtime.x;
+    let origin_runtime_y = origin_runtime.y;
 
     let mut resolver_by_map_id: HashMap<String, RenderMetatileResolver> = HashMap::new();
     for (source_map_id, source_layout) in &bundle.source_layouts_by_map_id {
@@ -370,6 +378,59 @@ fn build_render_payload(
         render_state,
         asset_manifest: build_asset_manifest(render_assets),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        render_window_origin_from_camera, RuntimeCoord, MAP_OFFSET, RENDER_WINDOW_HEIGHT,
+        RENDER_WINDOW_WIDTH,
+    };
+    use rebuild_v2_server::map_runtime::{RuntimeMapGrid, MAPGRID_IMPASSABLE, MAPGRID_UNDEFINED};
+
+    #[test]
+    fn render_window_origin_places_camera_focus_at_map_offset() {
+        let camera_runtime = RuntimeCoord { x: 22, y: 19 };
+        let origin_runtime = render_window_origin_from_camera(camera_runtime);
+
+        assert_eq!(origin_runtime.x, 15);
+        assert_eq!(origin_runtime.y, 12);
+
+        let focus_index_x = (camera_runtime.x - origin_runtime.x) as usize;
+        let focus_index_y = (camera_runtime.y - origin_runtime.y) as usize;
+        assert_eq!(focus_index_x, MAP_OFFSET);
+        assert_eq!(focus_index_y, MAP_OFFSET);
+        assert_eq!(RENDER_WINDOW_WIDTH, 16);
+        assert_eq!(RENDER_WINDOW_HEIGHT, 16);
+    }
+
+    #[test]
+    fn edge_window_samples_still_use_border_fallback_with_map_offset_origin() {
+        let runtime = RuntimeMapGrid {
+            width: 14,
+            height: 14,
+            tiles: vec![0x002A; 14 * 14],
+            border_tiles: [0x0001, 0x0002, 0x0003, 0x0004],
+            source_map_ids: vec!["MAP_ACTIVE".to_owned()],
+            tile_source_indices: vec![0; 14 * 14],
+        };
+
+        let camera_runtime = RuntimeCoord { x: 13, y: 13 };
+        let origin_runtime = render_window_origin_from_camera(camera_runtime);
+
+        let edge_runtime_x = origin_runtime.x + (RENDER_WINDOW_WIDTH as i32 - 1);
+        let edge_runtime_y = origin_runtime.y + (RENDER_WINDOW_HEIGHT as i32 - 1);
+        let border_packed = runtime.get_packed_with_border_fallback(edge_runtime_x, edge_runtime_y);
+
+        assert!(edge_runtime_x >= runtime.width as i32);
+        assert!(edge_runtime_y >= runtime.height as i32);
+        assert_eq!(border_packed, 0x0001 | MAPGRID_IMPASSABLE);
+
+        let center_packed =
+            runtime.get_packed_with_border_fallback(camera_runtime.x, camera_runtime.y);
+        assert_ne!(center_packed, MAPGRID_UNDEFINED);
+        assert_eq!(center_packed, 0x002A);
+    }
 }
 
 fn build_asset_manifest(render_assets: &LayoutRenderAssets) -> AssetManifest {
