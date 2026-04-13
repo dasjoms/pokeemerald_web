@@ -15,13 +15,26 @@ import {
   runPlayerRenderProxyFixtures
 } from "./playerRenderProxy";
 
+
+declare global {
+  interface Window {
+    __RUN_PARITY_FIXTURES__?: boolean;
+  }
+}
+
 const METATILE_SIZE = 2;
 const NORMAL_BOTTOM_FILL_TILE_INDEX = 0x14;
 const NORMAL_BOTTOM_FILL_PALETTE_INDEX = 3;
 
-runScrollWindowFixtures();
-runCameraWheelFixtures();
-runPlayerRenderProxyFixtures();
+const isDevBuild = (import.meta as ImportMeta & { env?: { DEV?: boolean } }).env?.DEV === true;
+const shouldRunParityFixtures =
+  isDevBuild && typeof window !== "undefined" && window.__RUN_PARITY_FIXTURES__ === true;
+
+if (shouldRunParityFixtures) {
+  runScrollWindowFixtures();
+  runCameraWheelFixtures();
+  runPlayerRenderProxyFixtures();
+}
 
 export class OverworldCompositor {
   readonly root = new Container();

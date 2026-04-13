@@ -93,6 +93,9 @@ export function runPlayerRenderProxyFixtures(): void {
     expectEqual(eastWalkPositions[tick], eastWalkPositions[tick - 1] + 1, `eastWalk.tick.${tick}`);
   }
 
+  const wrapCaseRawSum = 30 * 8 + (11 - 10) * 16 + 15;
+  expectEqual(wrapCaseRawSum, 271, "wrapCase.rawSum");
+
   const wrapCase = computePlayerRenderProxyScreenPosition(
     {
       mapLocalX: 11,
@@ -111,8 +114,8 @@ export function runPlayerRenderProxyFixtures(): void {
       verticalPan: 32
     }
   );
-  expectEqual(wrapCase.wheelPxX, 255, "wrapCase.wheelPxX");
-  expectEqual(wrapCase.screenX, 255, "wrapCase.screenX");
+  expectEqual(wrapCase.wheelPxX, 15, "wrapCase.wheelPxX");
+  expectEqual(wrapCase.screenX, 15, "wrapCase.screenX");
   const wrapCaseNext = computePlayerRenderProxyScreenPosition(
     {
       mapLocalX: 12,
