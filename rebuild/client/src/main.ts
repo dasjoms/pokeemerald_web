@@ -333,22 +333,13 @@ const ENABLE_DEV_DEBUG_ACTIONS =
   new URLSearchParams(window.location.search).get('devDebugActions') === '1';
 const ENABLE_PARITY_CAMERA_SHADOW = true;
 const DEBUG_ACRO_HOP = true;
-const jsonAssetLoaders = import.meta.glob('../../assets/**/*.json');
-const binaryAssetUrls = import.meta.glob('../../assets/**/*.bin', {
-  query: '?url',
-  import: 'default',
-  eager: true,
-}) as Record<string, string>;
-const imageAssetUrls = import.meta.glob('../../assets/**/*.png', {
-  query: '?url',
-  import: 'default',
-  eager: true,
-}) as Record<string, string>;
-const rawTextAssetContents = import.meta.glob('../../assets/**/*.pal', {
-  query: '?raw',
-  import: 'default',
-  eager: true,
-}) as Record<string, string>;
+type AssetResolver = {
+  assetVersion: string;
+  loadJsonFromAssets: <T>(path: string) => Promise<T>;
+  loadBinaryFromAssets: (path: string) => Promise<Uint8Array>;
+  loadTextFromAssets: (path: string) => Promise<string>;
+  resolveImageUrlFromAssets: (path: string) => string;
+};
 
 const state: ClientWorldState = {
   mapId: 0,
@@ -444,6 +435,7 @@ let fieldCameraParityState: FieldCameraParityState = initFieldCameraParityFromTi
   state.renderTileY,
 );
 let lastParityCameraBoundaryEvents: CameraBoundaryEvent[] = [];
+let assetResolver = createAssetResolver(`${window.location.origin}/assets`, '');
 
 let activeTilesetAnimationPairId: string | null = null;
 let activeTilesetAnimationState: TilesetAnimationState | null = null;
@@ -633,6 +625,44 @@ function normalizeRepoRelative(path: string): string {
   return posixPath.replace(rebuildAssetsPrefix, '');
 }
 
+function createAssetResolver(assetBaseUrl: string, assetVersion: string): AssetResolver {
+  const trimmedBaseUrl = assetBaseUrl.replace(/\/+$/, '');
+  const resolveAssetUrl = (repoRelativePath: string): string => {
+    const normalized = normalizeRepoRelative(repoRelativePath).replace(/^\/+/, '');
+    const assetUrl = `${trimmedBaseUrl}/${normalized}`;
+    const versionSuffix = assetVersion.length > 0
+      ? `?v=${encodeURIComponent(assetVersion)}`
+      : '';
+    return `${assetUrl}${versionSuffix}`;
+  };
+
+  const fetchAsset = async (repoRelativePath: string): Promise<Response> => {
+    const url = resolveAssetUrl(repoRelativePath);
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`failed to fetch asset ${url}: ${response.status}`);
+    }
+    return response;
+  };
+
+  return {
+    assetVersion,
+    loadJsonFromAssets: async <T>(repoRelativePath: string): Promise<T> => {
+      const response = await fetchAsset(repoRelativePath);
+      return (await response.json()) as T;
+    },
+    loadBinaryFromAssets: async (repoRelativePath: string): Promise<Uint8Array> => {
+      const response = await fetchAsset(repoRelativePath);
+      return new Uint8Array(await response.arrayBuffer());
+    },
+    loadTextFromAssets: async (repoRelativePath: string): Promise<string> => {
+      const response = await fetchAsset(repoRelativePath);
+      return await response.text();
+    },
+    resolveImageUrlFromAssets: (repoRelativePath: string): string => resolveAssetUrl(repoRelativePath),
+  };
+}
+
 function resetFieldCameraParityFromAuthoritativeTile(tileX: number, tileY: number): void {
   if (!ENABLE_PARITY_CAMERA_SHADOW) {
     return;
@@ -642,28 +672,11 @@ function resetFieldCameraParityFromAuthoritativeTile(tileX: number, tileY: numbe
 }
 
 async function loadJsonFromAssets<T>(repoRelativePath: string): Promise<T> {
-  const normalized = normalizeRepoRelative(repoRelativePath);
-  const modulePath = `../../assets/${normalized}`;
-  const loader = jsonAssetLoaders[modulePath];
-  if (!loader) {
-    throw new Error(`missing json asset at ${modulePath}`);
-  }
-
-  const loaded = (await loader()) as { default: T };
-  return loaded.default;
+  return assetResolver.loadJsonFromAssets<T>(repoRelativePath);
 }
 
 async function resolveImageUrlFromAssets(repoRelativePath: string): Promise<string> {
-  const normalized = normalizeRepoRelative(repoRelativePath);
-  const modulePath = `../../assets/${normalized}`;
-  const imageUrl = imageAssetUrls[modulePath];
-  if (!imageUrl) {
-    throw new Error(
-      `missing image asset for original="${repoRelativePath}" normalized="${normalized}" at ${modulePath}`,
-    );
-  }
-
-  return imageUrl;
+  return assetResolver.resolveImageUrlFromAssets(repoRelativePath);
 }
 
 function resolvePlayerSheetPngPathFromManifest(sourcePath: string): string {
@@ -695,17 +708,7 @@ async function preloadPlayerAvatarSheets(): Promise<void> {
 }
 
 async function loadBinaryFromAssets(repoRelativePath: string): Promise<Uint8Array> {
-  const normalized = normalizeRepoRelative(repoRelativePath);
-  const modulePath = `../../assets/${normalized}`;
-  const binaryUrl = binaryAssetUrls[modulePath];
-  if (!binaryUrl) {
-    throw new Error(`missing binary asset at ${modulePath}`);
-  }
-  const response = await fetch(binaryUrl);
-  if (!response.ok) {
-    throw new Error(`failed to fetch binary asset ${modulePath}: ${response.status}`);
-  }
-  return new Uint8Array(await response.arrayBuffer());
+  return assetResolver.loadBinaryFromAssets(repoRelativePath);
 }
 
 function makeRenderAssetRef(layout: LayoutFile): RenderAssetsRef {
@@ -743,6 +746,12 @@ async function connectWebSocket(): Promise<void> {
 async function handleServerMessage(message: ServerMessage): Promise<void> {
   if (message.type === MessageType.SESSION_ACCEPTED) {
     syncVisualRuntimesToServerFrame(message.payload.server_frame);
+    if (message.payload.asset_base_url.length > 0) {
+      assetResolver = createAssetResolver(
+        message.payload.asset_base_url,
+        message.payload.asset_version,
+      );
+    }
     await applyAuthoritativeAvatar(message.payload.avatar);
     state.lastAckServerTick = message.payload.server_frame;
     renderHud();
@@ -2017,6 +2026,8 @@ function decodeServerFrame(frame: Uint8Array): ServerMessage {
         session_id: readU32(payload, 0),
         server_frame: readU32(payload, 4),
         avatar: readU8(payload, 8) as PlayerAvatar,
+        asset_base_url: '',
+        asset_version: '',
       },
     };
   }
@@ -2441,7 +2452,7 @@ function createHopShadowSprite(variant: HopShadowSizeVariant): Sprite {
 }
 
 async function preloadHopShadowTextures(): Promise<void> {
-  const paletteColors = loadJascPaletteHexColorsFromAssets(HOP_SHADOW_PALETTE_PATH);
+  const paletteColors = await loadJascPaletteHexColorsFromAssets(HOP_SHADOW_PALETTE_PATH);
   for (const [variant, repoRelativePath] of Object.entries(HOP_SHADOW_ASSET_PATHS) as [
     HopShadowSizeVariant,
     string,
@@ -2459,7 +2470,7 @@ async function preloadBikeTireTracksConfig(): Promise<{
   const bikeTireTracksEffect = resolveBikeTireTracksMetadataOrThrow(manifest);
   const bikeTireTracksTemplate = bikeTireTracksEffect.template;
 
-  const paletteColors = loadJascPaletteHexColorsFromAssets(BIKE_TIRE_TRACKS_PALETTE_PATH);
+  const paletteColors = await loadJascPaletteHexColorsFromAssets(BIKE_TIRE_TRACKS_PALETTE_PATH);
   const sourcePath = bikeTireTracksTemplate.sources[0]?.source_path;
   if (!sourcePath) {
     throw new Error('missing bike_tire_tracks source path in manifest');
@@ -2574,13 +2585,8 @@ function bakeRgbaTexture(width: number, height: number, rgba: Uint8ClampedArray<
   return texture;
 }
 
-function loadJascPaletteHexColorsFromAssets(repoRelativePath: string): string[] {
-  const normalized = normalizeRepoRelative(repoRelativePath);
-  const modulePath = `../../assets/${normalized}`;
-  const raw = rawTextAssetContents[modulePath];
-  if (!raw) {
-    throw new Error(`missing palette asset at ${modulePath}`);
-  }
+async function loadJascPaletteHexColorsFromAssets(repoRelativePath: string): Promise<string[]> {
+  const raw = await assetResolver.loadTextFromAssets(repoRelativePath);
   return parseJascPaletteToHexColors(raw);
 }
 
