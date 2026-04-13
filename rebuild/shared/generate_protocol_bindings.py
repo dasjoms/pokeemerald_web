@@ -264,11 +264,13 @@ pub struct PlayerActionInput {{
     pub action: PlayerAction,
 }}
 
-#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct SessionAccepted {{
     pub session_id: u32,
     pub server_frame: u32,
     pub avatar: PlayerAvatar,
+    pub asset_base_url: String,
+    pub asset_version: String,
 }}
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
@@ -525,7 +527,13 @@ export type DebugTraversalInput = {{
 export type PlayerActionInput = {{
   action: PlayerAction;
 }};
-export type SessionAccepted = {{ session_id: number; server_frame: number; avatar: PlayerAvatar }};
+export type SessionAccepted = {{
+  session_id: number;
+  server_frame: number;
+  avatar: PlayerAvatar;
+  asset_base_url: string;
+  asset_version: string;
+}};
 export type WorldSnapshot = {{
   map_id: number;
   player_pos: Position;

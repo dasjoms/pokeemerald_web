@@ -234,11 +234,13 @@ pub struct PlayerActionInput {
     pub action: PlayerAction,
 }
 
-#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct SessionAccepted {
     pub session_id: u32,
     pub server_frame: u32,
     pub avatar: PlayerAvatar,
+    pub asset_base_url: String,
+    pub asset_version: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
