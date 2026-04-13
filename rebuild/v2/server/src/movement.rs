@@ -212,8 +212,6 @@ impl MovementState {
         self.y_tile_offset = wheel.y_tile_offset;
 
         self.step_timer = 0;
-        self.pixel_offset_x = 0;
-        self.pixel_offset_y = 0;
         self.running_state = RunningState::NotMoving;
         self.tile_transition_state = TileTransitionState::TNotMoving;
 
@@ -295,7 +293,13 @@ mod tests {
                     "trace mismatch for {direction:?} {tile_count}"
                 );
                 assert_eq!(first.final_step_timer, 0);
-                assert_eq!(first.final_offsets, (0, 0));
+                let expected_offsets = match direction {
+                    Direction::North => (0, -16 * tile_count),
+                    Direction::South => (0, 16 * tile_count),
+                    Direction::West => (-16 * tile_count, 0),
+                    Direction::East => (16 * tile_count, 0),
+                };
+                assert_eq!(first.final_offsets, expected_offsets);
                 assert_eq!(first.strip_lengths.len(), tile_count as usize);
                 assert!(first.strip_lengths.iter().all(|len| *len == 16));
             }
