@@ -505,19 +505,19 @@ fn build_render_position_contract(session: &SessionContext) -> RenderPositionCon
         session.movement.player_runtime_y * 16 + session.movement.pixel_offset_y;
     let camera_runtime_top_left_x = session.movement.camera_pos_x;
     let camera_runtime_top_left_y = session.movement.camera_pos_y;
+    let wrapped_pixel_offset_x = session.movement.pixel_offset_x.rem_euclid(256);
+    let wrapped_pixel_offset_y = session.movement.pixel_offset_y.rem_euclid(256);
 
     RenderPositionContract {
         frame_id: session.frame_id,
         player_map_pixel_x: player_runtime_px_x - (MAP_OFFSET as i32 * 16),
         player_map_pixel_y: player_runtime_px_y - (MAP_OFFSET as i32 * 16),
-        wheel_pixel_x: (session.movement.x_tile_offset * 8)
-            + ((session.movement.player_runtime_x - camera_runtime_top_left_x) * 16)
-            + session.movement.pixel_offset_x,
-        wheel_pixel_y: (session.movement.y_tile_offset * 8)
-            + ((session.movement.player_runtime_y - camera_runtime_top_left_y) * 16)
-            + session.movement.pixel_offset_y,
-        hofs: session.movement.pixel_offset_x + session.movement.horizontal_pan,
-        vofs: session.movement.pixel_offset_y + session.movement.vertical_pan + 8,
+        wheel_pixel_x: ((session.movement.player_runtime_x - camera_runtime_top_left_x) * 16)
+            + wrapped_pixel_offset_x,
+        wheel_pixel_y: ((session.movement.player_runtime_y - camera_runtime_top_left_y) * 16)
+            + wrapped_pixel_offset_y,
+        hofs: (session.movement.pixel_offset_x + session.movement.horizontal_pan).rem_euclid(256),
+        vofs: (session.movement.pixel_offset_y + session.movement.vertical_pan + 8).rem_euclid(256),
     }
 }
 
@@ -526,8 +526,12 @@ fn debug_render_contract_frame(session: &SessionContext, render_position: &Rende
         return;
     }
 
-    let screen_x = (render_position.wheel_pixel_x - render_position.hofs).rem_euclid(256);
-    let screen_y = (render_position.wheel_pixel_y - render_position.vofs).rem_euclid(256);
+    let raw_hofs = session.movement.pixel_offset_x + session.movement.horizontal_pan;
+    let raw_vofs = session.movement.pixel_offset_y + session.movement.vertical_pan + 8;
+    let wrapped_hofs = raw_hofs.rem_euclid(256);
+    let wrapped_vofs = raw_vofs.rem_euclid(256);
+    let screen_x = (render_position.wheel_pixel_x - wrapped_hofs).rem_euclid(256);
+    let screen_y = (render_position.wheel_pixel_y - wrapped_vofs).rem_euclid(256);
     info!(
         frame_id = render_position.frame_id,
         player_runtime_x = session.movement.player_runtime_x,
@@ -536,8 +540,12 @@ fn debug_render_contract_frame(session: &SessionContext, render_position: &Rende
         camera_top_left_y = session.movement.camera_pos_y,
         wheel_pixel_x = render_position.wheel_pixel_x,
         wheel_pixel_y = render_position.wheel_pixel_y,
-        hofs = render_position.hofs,
-        vofs = render_position.vofs,
+        raw_pixel_offset_x = session.movement.pixel_offset_x,
+        raw_pixel_offset_y = session.movement.pixel_offset_y,
+        raw_hofs,
+        raw_vofs,
+        wrapped_hofs = render_position.hofs,
+        wrapped_vofs = render_position.vofs,
         screen_x,
         screen_y,
         "render_position debug frame"
@@ -806,6 +814,80 @@ mod tests {
 
         let screen_x = (render_position.wheel_pixel_x - render_position.hofs).rem_euclid(256);
         assert_eq!(screen_x, 112);
+    }
+
+    #[test]
+    fn east_step_keeps_screen_x_stable_through_boundary_frame() {
+        assert_screen_stable_for_one_step(Direction::East);
+    }
+
+    #[test]
+    fn west_step_keeps_screen_x_stable_through_boundary_frame() {
+        assert_screen_stable_for_one_step(Direction::West);
+    }
+
+    #[test]
+    fn north_step_keeps_screen_y_stable_through_boundary_frame() {
+        assert_screen_stable_for_one_step(Direction::North);
+    }
+
+    fn assert_screen_stable_for_one_step(direction: Direction) {
+        let runtime = RuntimeMapGrid {
+            width: 96,
+            height: 96,
+            tiles: vec![0; 96 * 96],
+            border_tiles: [0; 4],
+            source_map_ids: vec!["MAP".to_owned()],
+            tile_source_indices: vec![0; 96 * 96],
+        };
+        let mut movement = MovementState::new(24, 24, direction);
+        assert!(movement.try_start_walk(direction, &runtime));
+
+        let mut expected_screen_x = None;
+        let mut expected_screen_y = None;
+
+        for frame_id in 0..16 {
+            movement.tick();
+            let render_position = super::build_render_position_contract(&super::SessionContext {
+                map_id: "MAP_LITTLEROOT_TOWN".to_owned(),
+                tileset_pair_id: "gTileset_Petalburg".to_owned(),
+                runtime: runtime.clone(),
+                resolver_by_map_id: HashMap::new(),
+                movement: movement.clone(),
+                frame_id,
+                asset_manifest: super::AssetManifest {
+                    asset_base_url: "/assets".to_owned(),
+                    asset_version: "dev".to_owned(),
+                    tileset_pair_id: "gTileset_Petalburg".to_owned(),
+                    atlas_url: None,
+                    palettes_url: None,
+                    metatiles_url: None,
+                },
+            });
+
+            let screen_x = (render_position.wheel_pixel_x - render_position.hofs).rem_euclid(256);
+            let screen_y = (render_position.wheel_pixel_y - render_position.vofs).rem_euclid(256);
+
+            match direction {
+                Direction::East | Direction::West => {
+                    expected_screen_x.get_or_insert(screen_x);
+                    assert_eq!(
+                        screen_x,
+                        expected_screen_x.expect("expected x should be initialized"),
+                        "direction={direction:?} frame_id={frame_id}"
+                    );
+                }
+                Direction::North => {
+                    expected_screen_y.get_or_insert(screen_y);
+                    assert_eq!(
+                        screen_y,
+                        expected_screen_y.expect("expected y should be initialized"),
+                        "direction={direction:?} frame_id={frame_id}"
+                    );
+                }
+                Direction::South => unreachable!(),
+            }
+        }
     }
 }
 
