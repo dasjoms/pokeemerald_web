@@ -39,6 +39,8 @@ const DEFAULT_START_MAP_LOCAL_Y: i32 = 1;
 const ALLOWED_ASSET_TOP_LEVEL_DIRS: &[&str] = &["layouts", "players", "render"];
 const DEFAULT_ASSET_BASE_URL: &str = "/assets";
 const DEFAULT_ASSET_VERSION: &str = "dev";
+const DEBUG_RENDER_CONTRACT_ENV: &str = "V2_DEBUG_RENDER_POSITION";
+const DEBUG_RENDER_LOG_FRAME_COUNT: u64 = 5;
 
 #[derive(Clone)]
 struct AppState {
@@ -436,6 +438,9 @@ fn build_render_state(session: &SessionContext) -> RenderStateV1 {
         }
     }
 
+    let render_position = build_render_position_contract(session);
+    debug_render_contract_frame(session, &render_position);
+
     RenderStateV1 {
         protocol_version: PROTOCOL_VERSION,
         map_id: session.map_id.clone(),
@@ -450,27 +455,7 @@ fn build_render_state(session: &SessionContext) -> RenderStateV1 {
             horizontal_pan: session.movement.horizontal_pan,
             vertical_pan: session.movement.vertical_pan,
         },
-        render_position: RenderPositionContract {
-            frame_id: session.frame_id,
-            player_map_pixel_x: (session.movement.player_runtime_x - MAP_OFFSET as i32) * 16
-                + session.movement.pixel_offset_x,
-            player_map_pixel_y: (session.movement.player_runtime_y - MAP_OFFSET as i32) * 16
-                + session.movement.pixel_offset_y,
-            wheel_pixel_x: (session.movement.x_tile_offset * 8)
-                + ((session.movement.player_runtime_x
-                    - MAP_OFFSET as i32
-                    - session.movement.camera_pos_x)
-                    * 16)
-                + session.movement.pixel_offset_x,
-            wheel_pixel_y: (session.movement.y_tile_offset * 8)
-                + ((session.movement.player_runtime_y
-                    - MAP_OFFSET as i32
-                    - session.movement.camera_pos_y)
-                    * 16)
-                + session.movement.pixel_offset_y,
-            hofs: session.movement.pixel_offset_x + session.movement.horizontal_pan,
-            vofs: session.movement.pixel_offset_y + session.movement.vertical_pan + 8,
-        },
+        render_position,
         movement: MovementFrame {
             running_state: session.movement.running_state.as_spec_str().to_owned(),
             tile_transition_state: session
@@ -511,6 +496,63 @@ fn build_render_state(session: &SessionContext) -> RenderStateV1 {
         },
         metatiles,
     }
+}
+
+fn build_render_position_contract(session: &SessionContext) -> RenderPositionContract {
+    let player_runtime_px_x =
+        session.movement.player_runtime_x * 16 + session.movement.pixel_offset_x;
+    let player_runtime_px_y =
+        session.movement.player_runtime_y * 16 + session.movement.pixel_offset_y;
+    let camera_runtime_top_left_x = session.movement.camera_pos_x;
+    let camera_runtime_top_left_y = session.movement.camera_pos_y;
+
+    RenderPositionContract {
+        frame_id: session.frame_id,
+        player_map_pixel_x: player_runtime_px_x - (MAP_OFFSET as i32 * 16),
+        player_map_pixel_y: player_runtime_px_y - (MAP_OFFSET as i32 * 16),
+        wheel_pixel_x: (session.movement.x_tile_offset * 8)
+            + ((session.movement.player_runtime_x - camera_runtime_top_left_x) * 16)
+            + session.movement.pixel_offset_x,
+        wheel_pixel_y: (session.movement.y_tile_offset * 8)
+            + ((session.movement.player_runtime_y - camera_runtime_top_left_y) * 16)
+            + session.movement.pixel_offset_y,
+        hofs: session.movement.pixel_offset_x + session.movement.horizontal_pan,
+        vofs: session.movement.pixel_offset_y + session.movement.vertical_pan + 8,
+    }
+}
+
+fn debug_render_contract_frame(session: &SessionContext, render_position: &RenderPositionContract) {
+    if session.frame_id >= DEBUG_RENDER_LOG_FRAME_COUNT || !render_position_debug_enabled() {
+        return;
+    }
+
+    let screen_x = (render_position.wheel_pixel_x - render_position.hofs).rem_euclid(256);
+    let screen_y = (render_position.wheel_pixel_y - render_position.vofs).rem_euclid(256);
+    info!(
+        frame_id = render_position.frame_id,
+        player_runtime_x = session.movement.player_runtime_x,
+        player_runtime_y = session.movement.player_runtime_y,
+        camera_top_left_x = session.movement.camera_pos_x,
+        camera_top_left_y = session.movement.camera_pos_y,
+        wheel_pixel_x = render_position.wheel_pixel_x,
+        wheel_pixel_y = render_position.wheel_pixel_y,
+        hofs = render_position.hofs,
+        vofs = render_position.vofs,
+        screen_x,
+        screen_y,
+        "render_position debug frame"
+    );
+}
+
+fn render_position_debug_enabled() -> bool {
+    env::var(DEBUG_RENDER_CONTRACT_ENV)
+        .ok()
+        .is_some_and(|value| {
+            matches!(
+                value.trim().to_ascii_lowercase().as_str(),
+                "1" | "true" | "yes" | "on"
+            )
+        })
 }
 
 fn parse_client_input_frame(raw: &str) -> Option<ClientInputFrame> {
@@ -557,6 +599,8 @@ fn run_overworld_frame(
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use super::{
         parse_client_input_frame, render_window_origin_from_camera, resolve_dpad_direction,
         run_overworld_frame, RuntimeCoord, ServerMessage, DPAD_DOWN, DPAD_LEFT, DPAD_RIGHT,
@@ -731,6 +775,37 @@ mod tests {
         assert_eq!(movement.player_runtime_y, 24);
         assert_eq!(movement.running_state, RunningState::Moving);
         assert_eq!(movement.step_timer, 5);
+    }
+
+    #[test]
+    fn runtime_space_render_position_keeps_spawn_anchor_at_map_offset() {
+        let movement = MovementState::new(17, 8, Direction::South);
+        let render_position = super::build_render_position_contract(&super::SessionContext {
+            map_id: "MAP_LITTLEROOT_TOWN".to_owned(),
+            tileset_pair_id: "gTileset_Petalburg".to_owned(),
+            runtime: RuntimeMapGrid {
+                width: 1,
+                height: 1,
+                tiles: vec![0],
+                border_tiles: [0; 4],
+                source_map_ids: vec!["MAP".to_owned()],
+                tile_source_indices: vec![0],
+            },
+            resolver_by_map_id: HashMap::new(),
+            movement,
+            frame_id: 0,
+            asset_manifest: super::AssetManifest {
+                asset_base_url: "/assets".to_owned(),
+                asset_version: "dev".to_owned(),
+                tileset_pair_id: "gTileset_Petalburg".to_owned(),
+                atlas_url: None,
+                palettes_url: None,
+                metatiles_url: None,
+            },
+        });
+
+        let screen_x = (render_position.wheel_pixel_x - render_position.hofs).rem_euclid(256);
+        assert_eq!(screen_x, 112);
     }
 }
 

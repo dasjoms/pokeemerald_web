@@ -19,6 +19,11 @@
     },
     "render_state_v1": {
       "type": "render_state_v1",
+      "notes": [
+        "renderPosition is runtime-space authoritative.",
+        "wheelPixelX/Y must be computed from runtime player-vs-camera deltas and sub-tile offsets.",
+        "Clients must not recompute or infer screen position from map-local-adjusted coordinates."
+      ],
       "protocolVersion": "u16",
       "mapId": "string",
       "tilesetPairId": "string",
