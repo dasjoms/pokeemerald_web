@@ -124,7 +124,7 @@ export class OverworldCompositor {
       }
     }
 
-    const marker = computePlayerRenderProxyScreenPosition(message.playerRenderProxy, message.scroll);
+    const marker = computePlayerRenderProxyScreenPosition(message.renderPosition);
     this.debugMarker.position.set(marker.screenX, marker.screenY);
   }
 

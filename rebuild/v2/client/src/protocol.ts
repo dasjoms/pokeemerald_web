@@ -49,6 +49,15 @@ export type RenderStateV1Message = {
     horizontalPan: number;
     verticalPan: number;
   };
+  renderPosition: {
+    frameId: number;
+    playerMapPixelX: number;
+    playerMapPixelY: number;
+    wheelPixelX: number;
+    wheelPixelY: number;
+    hofs: number;
+    vofs: number;
+  };
   movement: {
     runningState: string;
     tileTransitionState: string;
@@ -118,6 +127,7 @@ export function parseServerMessage(raw: string, options?: { requirePlayerRenderP
   const window = getObject(parsed, "window");
   const scroll = getObject(parsed, "scroll", "bgScroll", "bg_scroll", "cameraScroll", "camera_scroll");
   const movement = getObject(parsed, "movement");
+  const renderPosition = getObject(parsed, "renderPosition", "render_position");
   const wheel = getObject(parsed, "wheel");
   const playerRenderProxy = getObject(parsed, "playerRenderProxy", "player_render_proxy");
   if (options?.requirePlayerRenderProxy && Object.keys(playerRenderProxy).length === 0) {
@@ -142,6 +152,15 @@ export function parseServerMessage(raw: string, options?: { requirePlayerRenderP
       yPixelOffset: getNumber(scroll, "yPixelOffset", "y_pixel_offset"),
       horizontalPan: getNumber(scroll, "horizontalPan", "horizontal_pan"),
       verticalPan: getNumber(scroll, "verticalPan", "vertical_pan")
+    },
+    renderPosition: {
+      frameId: getNumber(renderPosition, "frameId", "frame_id"),
+      playerMapPixelX: getNumber(renderPosition, "playerMapPixelX", "player_map_pixel_x"),
+      playerMapPixelY: getNumber(renderPosition, "playerMapPixelY", "player_map_pixel_y"),
+      wheelPixelX: getNumber(renderPosition, "wheelPixelX", "wheel_pixel_x"),
+      wheelPixelY: getNumber(renderPosition, "wheelPixelY", "wheel_pixel_y"),
+      hofs: getNumber(renderPosition, "hofs"),
+      vofs: getNumber(renderPosition, "vofs")
     },
     movement: {
       runningState: getString(movement, "runningState", "running_state"),
