@@ -19,7 +19,7 @@ type EffectKey =
 type RendererAssetLoaders = {
   loadJsonFromAssets: <T>(repoRelativePath: string) => Promise<T>;
   resolveImageUrlFromAssets: (repoRelativePath: string) => Promise<string>;
-  loadJascPaletteHexColorsFromAssets: (repoRelativePath: string) => string[];
+  loadJascPaletteHexColorsFromAssets: (repoRelativePath: string) => Promise<string[]>;
 };
 
 type SpawnEvent = {
@@ -221,7 +221,7 @@ export class HopParticleRenderer {
       .replace(/\.4bpp$/i, '.png');
     const imageUrl = await this.assets.resolveImageUrlFromAssets(pngPath);
     const decodedSheet = await decodeIndexed4bppPngFromUrl(imageUrl, Number.MAX_SAFE_INTEGER);
-    const paletteColors = this.assets.loadJascPaletteHexColorsFromAssets(palettePath);
+    const paletteColors = await this.assets.loadJascPaletteHexColorsFromAssets(palettePath);
     const sheetRgba = buildPlayerSheetRgba(
       decodedSheet.width,
       decodedSheet.height,
