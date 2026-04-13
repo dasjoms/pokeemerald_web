@@ -505,6 +505,8 @@ fn build_render_position_contract(session: &SessionContext) -> RenderPositionCon
         session.movement.player_runtime_y * 16 + session.movement.pixel_offset_y;
     let camera_runtime_top_left_x = session.movement.camera_pos_x;
     let camera_runtime_top_left_y = session.movement.camera_pos_y;
+    let subpixel_x = session.movement.pixel_offset_x.rem_euclid(16);
+    let subpixel_y = session.movement.pixel_offset_y.rem_euclid(16);
 
     RenderPositionContract {
         frame_id: session.frame_id,
@@ -512,12 +514,13 @@ fn build_render_position_contract(session: &SessionContext) -> RenderPositionCon
         player_map_pixel_y: player_runtime_px_y - (MAP_OFFSET as i32 * 16),
         wheel_pixel_x: (session.movement.x_tile_offset * 8)
             + ((session.movement.player_runtime_x - camera_runtime_top_left_x) * 16)
-            + session.movement.pixel_offset_x,
+            + subpixel_x,
         wheel_pixel_y: (session.movement.y_tile_offset * 8)
             + ((session.movement.player_runtime_y - camera_runtime_top_left_y) * 16)
-            + session.movement.pixel_offset_y,
-        hofs: session.movement.pixel_offset_x + session.movement.horizontal_pan,
-        vofs: session.movement.pixel_offset_y + session.movement.vertical_pan + 8,
+            + subpixel_y,
+        hofs: (session.movement.pixel_offset_x + session.movement.horizontal_pan).rem_euclid(256),
+        vofs: (session.movement.pixel_offset_y + session.movement.vertical_pan + 8)
+            .rem_euclid(256),
     }
 }
 
@@ -534,10 +537,12 @@ fn debug_render_contract_frame(session: &SessionContext, render_position: &Rende
         player_runtime_y = session.movement.player_runtime_y,
         camera_top_left_x = session.movement.camera_pos_x,
         camera_top_left_y = session.movement.camera_pos_y,
+        raw_pixel_offset_x = session.movement.pixel_offset_x,
+        raw_pixel_offset_y = session.movement.pixel_offset_y,
         wheel_pixel_x = render_position.wheel_pixel_x,
         wheel_pixel_y = render_position.wheel_pixel_y,
-        hofs = render_position.hofs,
-        vofs = render_position.vofs,
+        wrapped_hofs = render_position.hofs,
+        wrapped_vofs = render_position.vofs,
         screen_x,
         screen_y,
         "render_position debug frame"
@@ -608,7 +613,7 @@ mod tests {
     };
     use rebuild_v2_server::{
         map_runtime::{RuntimeMapGrid, MAPGRID_IMPASSABLE, MAPGRID_UNDEFINED},
-        movement::{Direction, MovementState, RunningState},
+        movement::{Direction, MovementState, RunningState, WALK_TICKS_PER_TILE},
         render_state::{
             BgScroll, CameraAnchor, CameraWheelFrame, MovementFrame, PlayerRenderProxy,
             RenderPositionContract, RenderStateV1, RenderWindow,
@@ -806,6 +811,115 @@ mod tests {
 
         let screen_x = (render_position.wheel_pixel_x - render_position.hofs).rem_euclid(256);
         assert_eq!(screen_x, 112);
+    }
+
+    #[test]
+    fn east_step_keeps_screen_x_stable_through_boundary_frame() {
+        let runtime = open_runtime();
+        let mut movement = MovementState::new(24, 24, Direction::East);
+        assert!(movement.try_start_walk(Direction::East, &runtime));
+
+        let mut screen_samples = Vec::new();
+        for frame_id in 0..u64::from(WALK_TICKS_PER_TILE) {
+            movement.tick();
+            let render_position = super::build_render_position_contract(&build_test_session_context(
+                movement.clone(),
+                runtime.clone(),
+                frame_id,
+            ));
+            let screen_x =
+                (render_position.wheel_pixel_x.rem_euclid(256) - render_position.hofs).rem_euclid(256);
+            screen_samples.push(screen_x);
+        }
+
+        assert!(screen_samples.iter().all(|x| *x == screen_samples[0]));
+    }
+
+    #[test]
+    fn west_step_keeps_screen_x_stable_with_wrapped_hofs() {
+        let runtime = open_runtime();
+        let mut movement = MovementState::new(24, 24, Direction::West);
+        assert!(movement.try_start_walk(Direction::West, &runtime));
+
+        let mut screen_samples = Vec::new();
+        for frame_id in 0..u64::from(WALK_TICKS_PER_TILE) {
+            movement.tick();
+            let render_position = super::build_render_position_contract(&build_test_session_context(
+                movement.clone(),
+                runtime.clone(),
+                frame_id,
+            ));
+            let screen_x =
+                (render_position.wheel_pixel_x.rem_euclid(256) - render_position.hofs).rem_euclid(256);
+            screen_samples.push((screen_x, render_position.hofs));
+        }
+
+        assert!(screen_samples[..15]
+            .iter()
+            .all(|sample| sample.0 == screen_samples[0].0));
+        assert!(screen_samples[15].0 <= screen_samples[14].0);
+        assert!(screen_samples.iter().any(|sample| sample.1 > 200));
+    }
+
+    #[test]
+    fn north_step_keeps_screen_y_stable_with_wrapped_vofs() {
+        let runtime = open_runtime();
+        let mut movement = MovementState::new(24, 24, Direction::North);
+        movement.vertical_pan = 0;
+        assert!(movement.try_start_walk(Direction::North, &runtime));
+
+        let mut screen_samples = Vec::new();
+        for frame_id in 0..u64::from(WALK_TICKS_PER_TILE) {
+            movement.tick();
+            let render_position = super::build_render_position_contract(&build_test_session_context(
+                movement.clone(),
+                runtime.clone(),
+                frame_id,
+            ));
+            let screen_y =
+                (render_position.wheel_pixel_y.rem_euclid(256) - render_position.vofs).rem_euclid(256);
+            screen_samples.push((screen_y, render_position.vofs));
+        }
+
+        assert!(screen_samples[..15]
+            .iter()
+            .all(|sample| sample.0 == screen_samples[0].0));
+        assert!(screen_samples[15].0 <= screen_samples[14].0);
+        assert!(screen_samples.iter().any(|sample| sample.1 > 200));
+    }
+
+    fn build_test_session_context(
+        movement: MovementState,
+        runtime: RuntimeMapGrid,
+        frame_id: u64,
+    ) -> super::SessionContext {
+        super::SessionContext {
+            map_id: "MAP_LITTLEROOT_TOWN".to_owned(),
+            tileset_pair_id: "gTileset_Petalburg".to_owned(),
+            runtime,
+            resolver_by_map_id: HashMap::new(),
+            movement,
+            frame_id,
+            asset_manifest: super::AssetManifest {
+                asset_base_url: "/assets".to_owned(),
+                asset_version: "dev".to_owned(),
+                tileset_pair_id: "gTileset_Petalburg".to_owned(),
+                atlas_url: None,
+                palettes_url: None,
+                metatiles_url: None,
+            },
+        }
+    }
+
+    fn open_runtime() -> RuntimeMapGrid {
+        RuntimeMapGrid {
+            width: 96,
+            height: 96,
+            tiles: vec![0; 96 * 96],
+            border_tiles: [0; 4],
+            source_map_ids: vec!["MAP".to_owned()],
+            tile_source_indices: vec![0; 96 * 96],
+        }
     }
 }
 
