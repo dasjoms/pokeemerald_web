@@ -33,7 +33,11 @@ const DEBUG_ACTIONS_ENV_VAR: &str = "REBUILD_ENABLE_DEBUG_ACTIONS";
 const MAPS_INDEX_PATH: &str = "../assets/maps_index.json";
 const LAYOUTS_INDEX_PATH: &str = "../assets/layouts_index.json";
 const ASSET_ROOT_ENV_VAR: &str = "REBUILD_ASSET_ROOT";
+const ASSET_BASE_URL_ENV_VAR: &str = "REBUILD_ASSET_BASE_URL";
+const ASSET_VERSION_ENV_VAR: &str = "REBUILD_ASSET_VERSION";
 const DEFAULT_ASSET_ROOT: &str = "../assets";
+const DEFAULT_ASSET_BASE_URL: &str = "/assets";
+const DEFAULT_ASSET_VERSION: &str = "dev";
 const ALLOWED_ASSET_TOP_LEVEL_DIRS: &[&str] =
     &["layouts", "players", "render", "meta", "field_effects"];
 
@@ -42,6 +46,8 @@ struct AppState {
     world: Arc<World>,
     allow_debug_actions: bool,
     asset_root: PathBuf,
+    asset_base_url: String,
+    asset_version: String,
 }
 
 #[tokio::main]
@@ -53,6 +59,8 @@ async fn main() -> anyhow::Result<()> {
     let initial_map_id = resolve_initial_map_id()?;
     let allow_debug_actions = resolve_debug_actions_enabled();
     let asset_root = resolve_asset_root();
+    let asset_base_url = resolve_asset_base_url();
+    let asset_version = resolve_asset_version();
     if let Err(message) = validate_asset_root(&asset_root) {
         error!("{message}");
         std::process::exit(1);
@@ -82,6 +90,8 @@ async fn main() -> anyhow::Result<()> {
         world,
         allow_debug_actions,
         asset_root: canonical_asset_root,
+        asset_base_url,
+        asset_version,
     };
     let app = Router::new()
         .route("/ws", get(ws_handler))
@@ -142,6 +152,22 @@ fn resolve_asset_root() -> PathBuf {
     env::var(ASSET_ROOT_ENV_VAR)
         .map(PathBuf::from)
         .unwrap_or_else(|_| PathBuf::from(DEFAULT_ASSET_ROOT))
+}
+
+fn resolve_asset_base_url() -> String {
+    env::var(ASSET_BASE_URL_ENV_VAR)
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| DEFAULT_ASSET_BASE_URL.to_string())
+}
+
+fn resolve_asset_version() -> String {
+    env::var(ASSET_VERSION_ENV_VAR)
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| DEFAULT_ASSET_VERSION.to_string())
 }
 
 fn validate_asset_root(asset_root: &PathBuf) -> Result<(), String> {
@@ -253,6 +279,14 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
 
     let writer = tokio::spawn(async move {
         while let Some(message) = outgoing_rx.recv().await {
+            let message = match message {
+                ServerMessage::SessionAccepted(mut accepted) => {
+                    accepted.asset_base_url = state.asset_base_url.clone();
+                    accepted.asset_version = state.asset_version.clone();
+                    ServerMessage::SessionAccepted(accepted)
+                }
+                other => other,
+            };
             match encode_server_message(&message) {
                 Ok(payload) => {
                     if ws_tx.send(Message::Binary(payload)).await.is_err() {

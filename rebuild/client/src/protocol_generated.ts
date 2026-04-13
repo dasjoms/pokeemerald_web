@@ -182,7 +182,13 @@ export type DebugTraversalInput = {
 export type PlayerActionInput = {
   action: PlayerAction;
 };
-export type SessionAccepted = { session_id: number; server_frame: number; avatar: PlayerAvatar };
+export type SessionAccepted = {
+  session_id: number;
+  server_frame: number;
+  avatar: PlayerAvatar;
+  asset_base_url: string;
+  asset_version: string;
+};
 export type WorldSnapshot = {
   map_id: number;
   player_pos: Position;

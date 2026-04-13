@@ -370,6 +370,8 @@ impl World {
             session_id: session.connection_id as u32,
             server_frame: tick,
             avatar: session.player_state.avatar,
+            asset_base_url: String::new(),
+            asset_version: String::new(),
         }))?;
         session.send(ServerMessage::WorldSnapshot(
             self.world_snapshot_for_player_state(&session.player_state, tick)?,

@@ -176,6 +176,8 @@ class SessionAccepted:
     session_id: int
     server_frame: int
     avatar: PlayerAvatar
+    asset_base_url: str
+    asset_version: str
 
 
 @dataclass(frozen=True)
@@ -319,6 +321,8 @@ def _encode_payload(message: WireMessage) -> tuple[MessageType, bytes]:
                 _U32.pack(message.session_id),
                 _U32.pack(message.server_frame),
                 _U8.pack(int(message.avatar)),
+                _pack_str(message.asset_base_url),
+                _pack_str(message.asset_version),
             ]
         )
 
@@ -477,11 +481,15 @@ def _decode_payload(message_type: MessageType, payload: bytes) -> WireMessage:
         session_id, offset = _unpack_u32(payload, offset)
         server_frame, offset = _unpack_u32(payload, offset)
         avatar, offset = _unpack_u8(payload, offset)
+        asset_base_url, offset = _unpack_str(payload, offset)
+        asset_version, offset = _unpack_str(payload, offset)
         _ensure_done(payload, offset)
         return SessionAccepted(
             session_id=session_id,
             server_frame=server_frame,
             avatar=PlayerAvatar(avatar),
+            asset_base_url=asset_base_url,
+            asset_version=asset_version,
         )
 
     if message_type is MessageType.WORLD_SNAPSHOT:
