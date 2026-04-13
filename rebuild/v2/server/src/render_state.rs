@@ -44,11 +44,24 @@ pub struct RenderStateV1 {
     pub tileset_pair_id: String,
     pub camera: CameraAnchor,
     pub scroll: BgScroll,
+    pub render_position: RenderPositionContract,
     pub movement: MovementFrame,
     pub wheel: CameraWheelFrame,
     pub player_render_proxy: PlayerRenderProxy,
     pub window: RenderWindow,
     pub metatiles: Vec<RenderMetatile>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RenderPositionContract {
+    pub frame_id: u64,
+    pub player_map_pixel_x: i32,
+    pub player_map_pixel_y: i32,
+    pub wheel_pixel_x: i32,
+    pub wheel_pixel_y: i32,
+    pub hofs: i32,
+    pub vofs: i32,
 }
 
 #[derive(Debug, Serialize)]

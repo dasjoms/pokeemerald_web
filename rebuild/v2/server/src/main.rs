@@ -20,8 +20,8 @@ use rebuild_v2_server::{
     movement::{Direction, MovementState, FIXED_SIMULATION_TICK_HZ},
     render_assets::RenderMetatileResolver,
     render_state::{
-        AssetManifest, BgScroll, CameraAnchor, CameraWheelFrame, MovementFrame,
-        PlayerRenderProxy, RenderStateV1, RenderWindow, ServerMessage, RENDER_WINDOW_HEIGHT,
+        AssetManifest, BgScroll, CameraAnchor, CameraWheelFrame, MovementFrame, PlayerRenderProxy,
+        RenderPositionContract, RenderStateV1, RenderWindow, ServerMessage, RENDER_WINDOW_HEIGHT,
         RENDER_WINDOW_WIDTH,
     },
 };
@@ -305,6 +305,7 @@ async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>, client_versi
         tokio::select! {
             _ = simulation_interval.tick() => {
                 run_overworld_frame(&mut session.movement, input_state.held_keys, &session.runtime);
+                session.frame_id = session.frame_id.saturating_add(1);
                 if send_json(&mut socket, &ServerMessage::RenderStateV1 { state: build_render_state(&session) }).await.is_err() {
                     return;
                 }
@@ -335,6 +336,7 @@ struct SessionContext {
     runtime: rebuild_v2_server::map_runtime::RuntimeMapGrid,
     resolver_by_map_id: HashMap<String, RenderMetatileResolver>,
     movement: MovementState,
+    frame_id: u64,
     asset_manifest: AssetManifest,
 }
 
@@ -391,6 +393,7 @@ fn build_session_context(
         runtime,
         resolver_by_map_id,
         movement,
+        frame_id: 0,
         asset_manifest: build_asset_manifest(render_assets),
     })
 }
@@ -446,6 +449,27 @@ fn build_render_state(session: &SessionContext) -> RenderStateV1 {
             y_pixel_offset: session.movement.pixel_offset_y,
             horizontal_pan: session.movement.horizontal_pan,
             vertical_pan: session.movement.vertical_pan,
+        },
+        render_position: RenderPositionContract {
+            frame_id: session.frame_id,
+            player_map_pixel_x: (session.movement.player_runtime_x - MAP_OFFSET as i32) * 16
+                + session.movement.pixel_offset_x,
+            player_map_pixel_y: (session.movement.player_runtime_y - MAP_OFFSET as i32) * 16
+                + session.movement.pixel_offset_y,
+            wheel_pixel_x: (session.movement.x_tile_offset * 8)
+                + ((session.movement.player_runtime_x
+                    - MAP_OFFSET as i32
+                    - session.movement.camera_pos_x)
+                    * 16)
+                + session.movement.pixel_offset_x,
+            wheel_pixel_y: (session.movement.y_tile_offset * 8)
+                + ((session.movement.player_runtime_y
+                    - MAP_OFFSET as i32
+                    - session.movement.camera_pos_y)
+                    * 16)
+                + session.movement.pixel_offset_y,
+            hofs: session.movement.pixel_offset_x + session.movement.horizontal_pan,
+            vofs: session.movement.pixel_offset_y + session.movement.vertical_pan + 8,
         },
         movement: MovementFrame {
             running_state: session.movement.running_state.as_spec_str().to_owned(),
@@ -543,7 +567,7 @@ mod tests {
         movement::{Direction, MovementState, RunningState},
         render_state::{
             BgScroll, CameraAnchor, CameraWheelFrame, MovementFrame, PlayerRenderProxy,
-            RenderStateV1, RenderWindow,
+            RenderPositionContract, RenderStateV1, RenderWindow,
         },
     };
 
@@ -607,6 +631,15 @@ mod tests {
                 horizontal_pan: 0,
                 vertical_pan: 32,
             },
+            render_position: RenderPositionContract {
+                frame_id: 0,
+                player_map_pixel_x: 160,
+                player_map_pixel_y: 16,
+                wheel_pixel_x: 0,
+                wheel_pixel_y: 0,
+                hofs: 0,
+                vofs: 40,
+            },
             movement: MovementFrame {
                 running_state: "NOT_MOVING".to_owned(),
                 tile_transition_state: "T_NOT_MOVING".to_owned(),
@@ -650,6 +683,9 @@ mod tests {
         assert_eq!(json["scroll"]["yPixelOffset"], 0);
         assert_eq!(json["scroll"]["horizontalPan"], 0);
         assert_eq!(json["scroll"]["verticalPan"], 32);
+        assert_eq!(json["renderPosition"]["frameId"], 0);
+        assert_eq!(json["renderPosition"]["hofs"], 0);
+        assert_eq!(json["renderPosition"]["vofs"], 40);
     }
 
     #[test]

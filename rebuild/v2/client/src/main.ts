@@ -2,6 +2,7 @@ import { Application, Text } from "pixi.js";
 import { V2_PROTOCOL_VERSION } from "./assetConfig";
 import { OverworldCompositor } from "./compositor";
 import { InputPipeline, runInputPipelineFixtures } from "./inputPipeline";
+import { computePlayerRenderProxyScreenPosition } from "./playerRenderProxy";
 import { parseServerMessage, type AssetManifest, type RenderStateV1Message } from "./protocol";
 
 const appElement = document.querySelector<HTMLDivElement>("#app");
@@ -216,11 +217,16 @@ function refreshDebugOverlay(): void {
   if (!latestRenderState || !debugOverlay.visible) {
     return;
   }
+  const marker = computePlayerRenderProxyScreenPosition(latestRenderState.renderPosition);
   debugOverlay.text = [
     `dpad=${latestResolvedDirection}`,
+    `frame=${latestRenderState.renderPosition.frameId}`,
     `run=${latestRenderState.movement.runningState}`,
     `transition=${latestRenderState.movement.tileTransitionState}`,
-    `step=${latestRenderState.movement.stepTimer}`
+    `step=${latestRenderState.movement.stepTimer}`,
+    `hofs=${latestRenderState.renderPosition.hofs}`,
+    `vofs=${latestRenderState.renderPosition.vofs}`,
+    `marker=${marker.screenX},${marker.screenY}`
   ].join(" ");
 }
 

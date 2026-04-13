@@ -1,17 +1,15 @@
-import type { BgScrollInputs } from "./scrollWindow";
-
-export type PlayerRenderProxy = {
-  mapLocalX: number;
-  mapLocalY: number;
-  subpixelX: number;
-  subpixelY: number;
-  cameraPosX: number;
-  cameraPosY: number;
-  xTileOffset: number;
-  yTileOffset: number;
+export type RenderPositionContract = {
+  frameId: number;
+  playerMapPixelX: number;
+  playerMapPixelY: number;
+  wheelPixelX: number;
+  wheelPixelY: number;
+  hofs: number;
+  vofs: number;
 };
 
 export type PlayerRenderProxyScreenPosition = {
+  frameId: number;
   wheelPxX: number;
   wheelPxY: number;
   hofs: number;
@@ -21,160 +19,80 @@ export type PlayerRenderProxyScreenPosition = {
 };
 
 export function computePlayerRenderProxyScreenPosition(
-  proxy: PlayerRenderProxy,
-  scroll: BgScrollInputs
+  renderPosition: RenderPositionContract
 ): PlayerRenderProxyScreenPosition {
-  const wheelPxX = wrap256(
-    proxy.xTileOffset * 8 + (proxy.mapLocalX - proxy.cameraPosX) * 16 + proxy.subpixelX
-  );
-  const wheelPxY = wrap256(
-    proxy.yTileOffset * 8 + (proxy.mapLocalY - proxy.cameraPosY) * 16 + proxy.subpixelY
-  );
-
-  const hofs = scroll.xPixelOffset + scroll.horizontalPan;
-  const vofs = scroll.yPixelOffset + scroll.verticalPan + 8;
+  const wheelPxX = wrap256(renderPosition.wheelPixelX);
+  const wheelPxY = wrap256(renderPosition.wheelPixelY);
 
   return {
+    frameId: renderPosition.frameId,
     wheelPxX,
     wheelPxY,
-    hofs,
-    vofs,
-    screenX: wrap256(wheelPxX - hofs),
-    screenY: wrap256(wheelPxY - vofs)
+    hofs: renderPosition.hofs,
+    vofs: renderPosition.vofs,
+    screenX: wrap256(wheelPxX - renderPosition.hofs),
+    screenY: wrap256(wheelPxY - renderPosition.vofs)
   };
 }
 
+type TraceFrame = {
+  label: string;
+  contract: RenderPositionContract;
+};
+
+const TRACE_FRAMES: TraceFrame[] = [
+  { label: "stationary", contract: { frameId: 0, playerMapPixelX: 160, playerMapPixelY: 16, wheelPixelX: 0, wheelPixelY: 0, hofs: 0, vofs: 40 } },
+  ...Array.from({ length: 16 }, (_, idx) => ({
+    label: `east_walk_${idx + 1}`,
+    contract: {
+      frameId: idx + 1,
+      playerMapPixelX: 160 + (idx + 1),
+      playerMapPixelY: 16,
+      wheelPixelX: idx + 1,
+      wheelPixelY: 0,
+      hofs: 0,
+      vofs: 40
+    }
+  })),
+  {
+    label: "boundary_cross",
+    contract: { frameId: 17, playerMapPixelX: 176, playerMapPixelY: 16, wheelPixelX: 271, wheelPixelY: 0, hofs: 0, vofs: 40 }
+  },
+  {
+    label: "boundary_cross_next",
+    contract: { frameId: 18, playerMapPixelX: 177, playerMapPixelY: 16, wheelPixelX: 272, wheelPixelY: 0, hofs: 0, vofs: 40 }
+  }
+];
+
 export function runPlayerRenderProxyFixtures(): void {
-  const stationary = computePlayerRenderProxyScreenPosition(
-    {
-      mapLocalX: 10,
-      mapLocalY: 1,
-      subpixelX: 0,
-      subpixelY: 0,
-      cameraPosX: 10,
-      cameraPosY: 1,
-      xTileOffset: 0,
-      yTileOffset: 0
-    },
-    {
-      xPixelOffset: 0,
-      yPixelOffset: 0,
-      horizontalPan: 0,
-      verticalPan: 32
-    }
-  );
-  expectEqual(stationary.screenX, 0, "stationary.screenX");
-  expectEqual(stationary.screenY, 216, "stationary.screenY");
+  const computed = TRACE_FRAMES.map((frame) => ({ label: frame.label, value: computePlayerRenderProxyScreenPosition(frame.contract) }));
 
-  const eastWalkPositions: number[] = [];
-  for (let tick = 0; tick < 16; tick += 1) {
-    eastWalkPositions.push(
-      computePlayerRenderProxyScreenPosition(
-        {
-          mapLocalX: 10,
-          mapLocalY: 1,
-          subpixelX: tick,
-          subpixelY: 0,
-          cameraPosX: 10,
-          cameraPosY: 1,
-          xTileOffset: 0,
-          yTileOffset: 0
-        },
-        {
-          xPixelOffset: 0,
-          yPixelOffset: 0,
-          horizontalPan: 0,
-          verticalPan: 32
-        }
-      ).screenX
-    );
-  }
-  for (let tick = 1; tick < eastWalkPositions.length; tick += 1) {
-    expectEqual(eastWalkPositions[tick], eastWalkPositions[tick - 1] + 1, `eastWalk.tick.${tick}`);
+  expectEqual(computed[0].value.screenX, 0, "stationary.screenX");
+  expectEqual(computed[0].value.screenY, 216, "stationary.screenY");
+
+  for (let i = 1; i <= 16; i += 1) {
+    const delta = wrapDelta(computed[i - 1].value.screenX, computed[i].value.screenX);
+    expectEqual(delta, 1, `${computed[i].label}.deltaX`);
   }
 
-  const wrapCaseRawSum = 30 * 8 + (11 - 10) * 16 + 15;
-  expectEqual(wrapCaseRawSum, 271, "wrapCase.rawSum");
+  const boundary = computed.find((frame) => frame.label === "boundary_cross");
+  const next = computed.find((frame) => frame.label === "boundary_cross_next");
+  if (!boundary || !next) {
+    throw new Error("[player-render-proxy-fixture] missing boundary fixtures");
+  }
 
-  const wrapCase = computePlayerRenderProxyScreenPosition(
-    {
-      mapLocalX: 11,
-      mapLocalY: 1,
-      subpixelX: 15,
-      subpixelY: 0,
-      cameraPosX: 10,
-      cameraPosY: 1,
-      xTileOffset: 30,
-      yTileOffset: 0
-    },
-    {
-      xPixelOffset: 0,
-      yPixelOffset: 0,
-      horizontalPan: 0,
-      verticalPan: 32
-    }
-  );
-  expectEqual(wrapCase.wheelPxX, 15, "wrapCase.wheelPxX");
-  expectEqual(wrapCase.screenX, 15, "wrapCase.screenX");
-  const wrapCaseNext = computePlayerRenderProxyScreenPosition(
-    {
-      mapLocalX: 12,
-      mapLocalY: 1,
-      subpixelX: 0,
-      subpixelY: 0,
-      cameraPosX: 10,
-      cameraPosY: 1,
-      xTileOffset: 28,
-      yTileOffset: 0
-    },
-    {
-      xPixelOffset: 0,
-      yPixelOffset: 0,
-      horizontalPan: 0,
-      verticalPan: 32
-    }
-  );
-  expectEqual(wrapCaseNext.wheelPxX, 0, "wrapCaseNext.wheelPxX");
-  expectEqual(wrapCaseNext.screenX, 0, "wrapCaseNext.screenX");
+  const beforeBoundary = computed[16];
+  expectEqual(wrapDelta(beforeBoundary.value.screenX, boundary.value.screenX), 1, "boundary.deltaX");
+  expectEqual(wrapDelta(boundary.value.screenX, next.value.screenX), 1, "boundary.next.deltaX");
 
-  const vofsBaseline = computePlayerRenderProxyScreenPosition(
-    {
-      mapLocalX: 10,
-      mapLocalY: 1,
-      subpixelX: 0,
-      subpixelY: 0,
-      cameraPosX: 10,
-      cameraPosY: 1,
-      xTileOffset: 0,
-      yTileOffset: 0
-    },
-    {
-      xPixelOffset: 0,
-      yPixelOffset: 0,
-      horizontalPan: 0,
-      verticalPan: 0
-    }
-  );
-  const vofsWithPlusEight = computePlayerRenderProxyScreenPosition(
-    {
-      mapLocalX: 10,
-      mapLocalY: 1,
-      subpixelX: 0,
-      subpixelY: 0,
-      cameraPosX: 10,
-      cameraPosY: 1,
-      xTileOffset: 0,
-      yTileOffset: 0
-    },
-    {
-      xPixelOffset: 0,
-      yPixelOffset: 0,
-      horizontalPan: 0,
-      verticalPan: 8
-    }
-  );
-  expectEqual(vofsBaseline.screenY, 248, "vofsBaseline.screenY");
-  expectEqual(vofsWithPlusEight.screenY, 240, "vofsWithPlusEight.screenY");
+  for (const frame of computed) {
+    expectEqual(frame.value.screenX, wrap256(frame.value.wheelPxX - frame.value.hofs), `${frame.label}.relation.x`);
+    expectEqual(frame.value.screenY, wrap256(frame.value.wheelPxY - frame.value.vofs), `${frame.label}.relation.y`);
+  }
+}
+
+function wrapDelta(previous: number, current: number): number {
+  return wrap256(current - previous);
 }
 
 function wrap256(value: number): number {
