@@ -1,11 +1,18 @@
-use std::{env, net::SocketAddr, sync::Arc, time::Duration};
+use std::{
+    env, fs,
+    net::SocketAddr,
+    path::{Component, Path, PathBuf},
+    sync::Arc,
+    time::Duration,
+};
 
 use anyhow::anyhow;
 use axum::{
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
-        State,
+        Path as AxumPath, State,
     },
+    http::{header, HeaderValue, StatusCode},
     response::IntoResponse,
     routing::get,
     Router,
@@ -25,11 +32,16 @@ const INITIAL_MAP_ENV_VAR: &str = "REBUILD_INITIAL_MAP";
 const DEBUG_ACTIONS_ENV_VAR: &str = "REBUILD_ENABLE_DEBUG_ACTIONS";
 const MAPS_INDEX_PATH: &str = "../assets/maps_index.json";
 const LAYOUTS_INDEX_PATH: &str = "../assets/layouts_index.json";
+const ASSET_ROOT_ENV_VAR: &str = "REBUILD_ASSET_ROOT";
+const DEFAULT_ASSET_ROOT: &str = "../assets";
+const ALLOWED_ASSET_TOP_LEVEL_DIRS: &[&str] =
+    &["layouts", "players", "render", "meta", "field_effects"];
 
 #[derive(Clone)]
 struct AppState {
     world: Arc<World>,
     allow_debug_actions: bool,
+    asset_root: PathBuf,
 }
 
 #[tokio::main]
@@ -40,6 +52,14 @@ async fn main() -> anyhow::Result<()> {
 
     let initial_map_id = resolve_initial_map_id()?;
     let allow_debug_actions = resolve_debug_actions_enabled();
+    let asset_root = resolve_asset_root();
+    if let Err(message) = validate_asset_root(&asset_root) {
+        error!("{message}");
+        std::process::exit(1);
+    }
+    let canonical_asset_root = asset_root
+        .canonicalize()
+        .expect("asset root canonicalization should succeed after validation");
     let world = Arc::new(World::load_from_assets(
         &initial_map_id,
         MAPS_INDEX_PATH,
@@ -61,9 +81,12 @@ async fn main() -> anyhow::Result<()> {
     let app_state = AppState {
         world,
         allow_debug_actions,
+        asset_root: canonical_asset_root,
     };
     let app = Router::new()
         .route("/ws", get(ws_handler))
+        .route("/assets/*path", get(handle_asset_request))
+        .route("/v1/assets/*path", get(handle_asset_request))
         .with_state(app_state);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
@@ -113,6 +136,111 @@ fn resolve_debug_actions_enabled() -> bool {
             )
         })
         .unwrap_or(false)
+}
+
+fn resolve_asset_root() -> PathBuf {
+    env::var(ASSET_ROOT_ENV_VAR)
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from(DEFAULT_ASSET_ROOT))
+}
+
+fn validate_asset_root(asset_root: &PathBuf) -> Result<(), String> {
+    if !asset_root.exists() {
+        return Err(format!(
+            "asset root does not exist: {} (set {ASSET_ROOT_ENV_VAR} or ensure rebuild/assets is present)",
+            asset_root.display()
+        ));
+    }
+
+    let required_dirs = ["layouts", "render", "players"];
+    for dir in required_dirs {
+        let full = asset_root.join(dir);
+        if !full.exists() {
+            return Err(format!(
+                "asset root is missing required directory: {} (asset root: {})",
+                full.display(),
+                asset_root.display()
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+async fn handle_asset_request(
+    State(state): State<AppState>,
+    AxumPath(path): AxumPath<String>,
+) -> impl IntoResponse {
+    let relative_path = match normalize_and_validate_asset_path(&path) {
+        Ok(relative_path) => relative_path,
+        Err(status) => return status.into_response(),
+    };
+    let requested_path = state.asset_root.join(&relative_path);
+
+    let canonical_requested_path = match requested_path.canonicalize() {
+        Ok(path) => path,
+        Err(_) => return StatusCode::NOT_FOUND.into_response(),
+    };
+
+    if !canonical_requested_path.starts_with(&state.asset_root) {
+        return StatusCode::FORBIDDEN.into_response();
+    }
+
+    let bytes = match fs::read(&canonical_requested_path) {
+        Ok(bytes) => bytes,
+        Err(_) => return StatusCode::NOT_FOUND.into_response(),
+    };
+
+    let content_type = content_type_for_path(&canonical_requested_path);
+    let mut response = (StatusCode::OK, bytes).into_response();
+    response
+        .headers_mut()
+        .insert(header::CONTENT_TYPE, HeaderValue::from_static(content_type));
+    response.headers_mut().insert(
+        header::CACHE_CONTROL,
+        HeaderValue::from_static("public, max-age=3600"),
+    );
+    response
+}
+
+fn normalize_and_validate_asset_path(path: &str) -> Result<PathBuf, StatusCode> {
+    let request_path = Path::new(path);
+    let mut normalized = PathBuf::new();
+
+    for component in request_path.components() {
+        match component {
+            Component::Normal(part) => normalized.push(part),
+            Component::CurDir => {}
+            Component::ParentDir | Component::Prefix(_) | Component::RootDir => {
+                return Err(StatusCode::FORBIDDEN);
+            }
+        }
+    }
+
+    let first_segment = normalized
+        .components()
+        .next()
+        .and_then(|component| match component {
+            Component::Normal(part) => part.to_str(),
+            _ => None,
+        })
+        .ok_or(StatusCode::NOT_FOUND)?;
+
+    if !ALLOWED_ASSET_TOP_LEVEL_DIRS.contains(&first_segment) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    Ok(normalized)
+}
+
+fn content_type_for_path(path: &Path) -> &'static str {
+    match path.extension().and_then(|ext| ext.to_str()) {
+        Some("json") => "application/json",
+        Some("png") => "image/png",
+        Some("bin") => "application/octet-stream",
+        Some("pal") => "application/octet-stream",
+        _ => "application/octet-stream",
+    }
 }
 
 async fn ws_handler(ws: WebSocketUpgrade, State(state): State<AppState>) -> impl IntoResponse {
